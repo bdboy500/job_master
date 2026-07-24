@@ -282,11 +282,12 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<"Bangla" | "English" | "Science" | "Math" | "">("");
+  const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
   // Drawer & Overlay States
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
@@ -1923,29 +1924,6 @@ export default function Home() {
               {/* CASE 2: Inside Specific Exam Section (e.g. Daily Quick Test / Weekly Model Test / BCS Health Special) */}
               {activeExamSection && (
                 <div className="space-y-5">
-                  {/* Section Breadcrumb Banner */}
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                        <span>
-                          {activeExamSection === "daily" ? "⚡ Daily Quick Test" :
-                           activeExamSection === "weekly" ? "📅 Weekly Model Test" :
-                           activeExamSection === "special" ? "🩺 BCS Health Special" : "📚 Subject Wise Test"}
-                        </span>
-                      </h4>
-                      <p className="text-[11px] font-bold text-slate-400">
-                        {selectedCourseDetail.title} এর অধীনে চলমান ও সময়সূচি ভিত্তিক প্রশ্নপত্রসমূহ
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => setActiveExamSection(null)}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl cursor-pointer active:scale-95 transition-all"
-                    >
-                      ← সেকশন তালিকা
-                    </button>
-                  </div>
-
                   {/* Papers list for this section */}
                   {(() => {
                     const sectionPapers = examPapers.filter(p => {
@@ -2504,6 +2482,185 @@ export default function Home() {
             </div>
           )}
 
+          {/* ========================================================= */}
+          {/* 7. SCREEN: PACKAGES (Apple UI Style)                       */}
+          {/* ========================================================= */}
+          {currentScreen === "packages" && (
+            <div className="p-4 sm:p-5 space-y-5 animate-fade-in pb-12">
+              {/* Header Banner */}
+              <div className="text-center space-y-1.5 pt-2">
+                <span className="inline-block text-[10px] font-black uppercase tracking-widest text-[#007AFF] bg-[#007AFF]/10 px-3 py-1 rounded-full">
+                  PRICING & MEMBERSHIP
+                </span>
+                <h3 className="font-extrabold text-2xl text-[#1D1D1F] tracking-tight">
+                  প্যাকেজসমূহ
+                </h3>
+                <p className="text-xs font-semibold text-slate-500 max-w-xs mx-auto">
+                  বিসিএস, ব্যাংক, প্রাইমারি ও NTRCA সহ সকল প্রস্তুতির সেরা প্ল্যান বেছে নিন
+                </p>
+              </div>
+
+              {/* Section 1: All Access Packages */}
+              <div className="space-y-3">
+                {[
+                  {
+                    id: "pkg-1m",
+                    title: "১ মাসের ফুল অ্যাপ এক্সেস",
+                    desc: "৩০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+                    price: "৳১৪৯",
+                    oldPrice: null,
+                    badge: null,
+                    bg: "bg-white",
+                    border: "border-slate-200/80",
+                  },
+                  {
+                    id: "pkg-3m",
+                    title: "৩ মাসের ফুল অ্যাপ এক্সেস",
+                    desc: "৯০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+                    price: "৳২৯৯",
+                    oldPrice: null,
+                    badge: null,
+                    bg: "bg-white",
+                    border: "border-slate-200/80",
+                  },
+                  {
+                    id: "pkg-6m",
+                    title: "৬ মাসের ফুল অ্যাপ এক্সেস 🌟",
+                    desc: "১৮০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+                    price: "৳৪৯৯",
+                    oldPrice: null,
+                    badge: "POPULAR",
+                    bg: "bg-gradient-to-b from-white to-amber-50/20",
+                    border: "border-amber-200/80",
+                  },
+                  {
+                    id: "pkg-1y",
+                    title: "১ বছরের ফুল অ্যাপ এক্সেস 🌟",
+                    desc: "১ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+                    price: "৳৭৯৯",
+                    oldPrice: null,
+                    badge: "BEST VALUE",
+                    bg: "bg-gradient-to-b from-white to-blue-50/20",
+                    border: "border-blue-200/80",
+                  },
+                  {
+                    id: "pkg-2y",
+                    title: "২ বছরের ফুল অ্যাপ এক্সেস",
+                    desc: "২ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+                    price: "৳৯৯৯",
+                    oldPrice: "৳১২৯৯",
+                    badge: "NEW",
+                    bg: "bg-gradient-to-b from-white to-indigo-50/20",
+                    border: "border-indigo-200/80",
+                  },
+                ].map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    onClick={() => {
+                      setSelectedPurchasePkg(pkg);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className={`${pkg.bg} ${pkg.border} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1.5 pr-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
+                            {pkg.title}
+                          </h4>
+                          {pkg.badge && (
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                              pkg.badge === "NEW" 
+                                ? "bg-[#007AFF] text-white" 
+                                : "bg-amber-100 text-amber-800 border border-amber-200/80"
+                            }`}>
+                              {pkg.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                          {pkg.desc}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right flex flex-col items-end">
+                        <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1">
+                          <span>{pkg.price}</span>
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                        {pkg.oldPrice && (
+                          <div className="text-[11px] font-bold text-slate-400 line-through">
+                            {pkg.oldPrice}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Section 2: Course Based (কোর্সভিত্তিক) */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">
+                  কোর্সভিত্তিক
+                </h4>
+
+                {[
+                  {
+                    id: "pkg-undergrad",
+                    title: "১ বছরের Undergrad - Student Package [শুধু Undergrad কোর্স এক্সেস]",
+                    desc: "১ বছরের জন্য শুধুমাত্র \"বিসিএস প্রস্তুতি - Undergrad [Student Package]\" কোর্স এর এক্সেস থাকবে",
+                    price: "৳৩৯৯",
+                    oldPrice: "৳৪৯৯",
+                    badge: null,
+                    bg: "bg-white",
+                    border: "border-slate-200/80",
+                  },
+                ].map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    onClick={() => {
+                      setSelectedPurchasePkg(pkg);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className={`${pkg.bg} ${pkg.border} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1.5 pr-2">
+                        <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
+                          {pkg.title}
+                        </h4>
+                        <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                          {pkg.desc}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right flex flex-col items-end">
+                        <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1">
+                          <span>{pkg.price}</span>
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                        {pkg.oldPrice && (
+                          <div className="text-[11px] font-bold text-slate-400 line-through">
+                            {pkg.oldPrice}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Apple-style Security & Payment Notice */}
+              <div className="bg-slate-100/80 border border-slate-200/60 rounded-2xl p-4 text-center space-y-1">
+                <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
+                  🛡️ <span>ইনস্ট্যান্ট এক্সেস ও সেফ পেমেন্ট</span>
+                </p>
+                <p className="text-[10px] font-semibold text-slate-500">
+                  bKash, Nagad বা Rocket এর মাধ্যমে পেমেন্ট সম্পন্ন করে মুহূর্তেই সকল ফিচারের আনলিমিটেড এক্সেস সক্রিয় করুন।
+                </p>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -2600,14 +2757,20 @@ export default function Home() {
             {/* 2. Package */}
             <button
               onClick={() => {
-                setActiveDrawerModal("package");
-                setDrawerOpen(false);
+                attemptExitQuiz(() => {
+                  setDrawerOpen(false);
+                  setCurrentScreen("packages");
+                });
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                currentScreen === "packages"
+                  ? "bg-orange-50 text-[#FF6A00] font-bold"
+                  : "text-slate-600 hover:bg-slate-100 font-semibold"
+              } text-xs`}
               id="drawer-item-package"
             >
-              <Package className="w-4 h-4 text-slate-400" />
+              <Package className={`w-4 h-4 ${currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-400"}`} />
               <span>Package</span>
             </button>
 
@@ -2698,20 +2861,6 @@ export default function Home() {
               <HelpCircle className="w-4 h-4 text-slate-400" />
               <span>Contact Us</span>
             </button>
-
-            {/* 8. Admin Panel Link */}
-            <Link
-              href="/admin"
-              onClick={() => {
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-orange-600 hover:bg-orange-50 font-bold text-xs"
-              id="drawer-item-admin"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#FF6A00]" />
-              <span>Admin Panel</span>
-            </Link>
 
             {/* 9. Logout/LogIn */}
             <button
@@ -3114,6 +3263,29 @@ export default function Home() {
               }`}
             >
               Result
+            </span>
+          </button>
+
+          {/* Packages Tab */}
+          <button
+            onClick={() => {
+              attemptExitQuiz(() => setCurrentScreen("packages"));
+              if (soundEnabled) quizAudio.playClick();
+            }}
+            className="flex flex-col items-center justify-center flex-1 py-1 active:scale-95 transition-transform cursor-pointer"
+            id="bottom-nav-packages"
+          >
+            <Package 
+              className={`w-5 h-5 transition-colors ${
+                currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-400"
+              }`} 
+            />
+            <span 
+              className={`text-[9px] mt-1 font-bold transition-colors ${
+                currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-500"
+              }`}
+            >
+              Packages
             </span>
           </button>
 
@@ -3772,6 +3944,79 @@ export default function Home() {
                       className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer"
                     >
                       বন্ধ করুন
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Apple UI Package Purchase Modal */}
+            {selectedPurchasePkg && (
+              <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full text-center shadow-2xl space-y-4 border border-slate-100 relative">
+                  <button 
+                    onClick={() => setSelectedPurchasePkg(null)}
+                    className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+
+                  <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black shadow-2xs">
+                    🛍️
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="font-extrabold text-base text-[#1D1D1F] leading-snug">
+                      {selectedPurchasePkg.title}
+                    </h3>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <span className="text-xl font-black text-[#007AFF]">
+                        {selectedPurchasePkg.price}
+                      </span>
+                      {selectedPurchasePkg.oldPrice && (
+                        <span className="text-xs text-slate-400 font-bold line-through">
+                          {selectedPurchasePkg.oldPrice}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed pt-1">
+                      {selectedPurchasePkg.desc}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 text-left space-y-2">
+                    <p className="text-[11px] font-bold text-slate-700">পেমেন্ট মাধ্যম নির্বাচন করুন:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white border-2 border-[#007AFF] rounded-xl p-2 text-center text-xs font-bold text-slate-800 shadow-2xs cursor-pointer">
+                        bKash
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
+                        Nagad
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
+                        Rocket
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-semibold pt-1">
+                      মার্চেন্ট নম্বর: <span className="font-mono text-slate-800 font-bold">01700000000</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => setSelectedPurchasePkg(null)}
+                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
+                    >
+                      বাতিল করুন
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert(`ধন্যবাদ! ${selectedPurchasePkg.title} এর জন্য আপনার রিকোয়েস্ট গ্রহণ করা হয়েছে। দ্রুতই আপনার এক্সেস এক্টিভ করা হবে।`);
+                        setSelectedPurchasePkg(null);
+                      }}
+                      className="flex-1 py-3 bg-[#007AFF] hover:bg-blue-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                    >
+                      পেমেন্ট সম্পন্ন করুন
                     </button>
                   </div>
                 </div>
