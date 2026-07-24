@@ -1,0 +1,208 @@
+import { getSupabase } from "./supabase";
+
+export interface PackageItem {
+  id: string;
+  title: string;
+  desc: string;
+  price: string;
+  oldPrice?: string | null;
+  badge?: string | null; // e.g. "POPULAR", "BEST VALUE", "NEW", "BASIC" or null
+  category: "all" | "course"; // "all": Full App Access, "course": Course Based
+  bg?: string;
+  border?: string;
+  order?: number;
+  active?: boolean;
+  createdAt?: string;
+}
+
+export const DEFAULT_PACKAGES: PackageItem[] = [
+  {
+    id: "pkg-1m",
+    title: "১ মাসের ফুল অ্যাপ এক্সেস",
+    desc: "৩০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+    price: "৳১৪৯",
+    oldPrice: null,
+    badge: null,
+    category: "all",
+    bg: "bg-white",
+    border: "border-slate-200/80",
+    order: 1,
+    active: true
+  },
+  {
+    id: "pkg-3m",
+    title: "৩ মাসের ফুল অ্যাপ এক্সেস",
+    desc: "৯০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+    price: "৳২৯৯",
+    oldPrice: null,
+    badge: null,
+    category: "all",
+    bg: "bg-white",
+    border: "border-slate-200/80",
+    order: 2,
+    active: true
+  },
+  {
+    id: "pkg-6m",
+    title: "৬ মাসের ফুল অ্যাপ এক্সেস 🌟",
+    desc: "১৮০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+    price: "৳৪৯৯",
+    oldPrice: null,
+    badge: "POPULAR",
+    category: "all",
+    bg: "bg-gradient-to-b from-white to-amber-50/20",
+    border: "border-amber-200/80",
+    order: 3,
+    active: true
+  },
+  {
+    id: "pkg-1y",
+    title: "১ বছরের ফুল অ্যাপ এক্সেস 🌟",
+    desc: "১ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+    price: "৳৭৯৯",
+    oldPrice: null,
+    badge: "BEST VALUE",
+    category: "all",
+    bg: "bg-gradient-to-b from-white to-blue-50/20",
+    border: "border-blue-200/80",
+    order: 4,
+    active: true
+  },
+  {
+    id: "pkg-2y",
+    title: "২ বছরের ফুল অ্যাপ এক্সেস",
+    desc: "২ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
+    price: "৳৯৯৯",
+    oldPrice: "৳১২৯৯",
+    badge: "NEW",
+    category: "all",
+    bg: "bg-gradient-to-b from-white to-indigo-50/20",
+    border: "border-indigo-200/80",
+    order: 5,
+    active: true
+  },
+  {
+    id: "pkg-undergrad",
+    title: "১ বছরের Undergrad - Student Package [শুধু Undergrad কোর্স এক্সেস]",
+    desc: "১ বছরের জন্য শুধুমাত্র \"বিসিএস প্রস্তুতি - Undergrad [Student Package]\" কোর্স এর এক্সেস থাকবে",
+    price: "৳৩৯৯",
+    oldPrice: "৳৪৯৯",
+    badge: null,
+    category: "course",
+    bg: "bg-white",
+    border: "border-slate-200/80",
+    order: 6,
+    active: true
+  }
+];
+
+const STORAGE_KEY = "jobmaster_packages_v2";
+
+export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("packages")
+        .select("*")
+        .order("order", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data as PackageItem[];
+      }
+    }
+  } catch (err) {
+    console.warn("Supabase packages fetch failed, using local storage fallback:", err);
+  }
+
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error("Error parsing stored packages:", e);
+      }
+    }
+    // Save defaults to localStorage for persistence
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PACKAGES));
+  }
+
+  return DEFAULT_PACKAGES;
+}
+
+export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> {
+  const packages = await fetchPackagesFromDb();
+  const existingIndex = packages.findIndex(p => p.id === pkg.id);
+  
+  let updatedPackages: PackageItem[];
+  if (existingIndex >= 0) {
+    updatedPackages = [...packages];
+    updatedPackages[existingIndex] = { ...pkg };
+  } else {
+    updatedPackages = [...packages, pkg];
+  }
+
+  // Sort by order or creation
+  updatedPackages.sort((a, b) => (a.order || 99) - (b.order || 99));
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
+    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
+  }
+
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      await supabase.from("packages").upsert(pkg);
+    }
+  } catch (err) {
+    console.warn("Supabase package save failed:", err);
+  }
+
+  return updatedPackages;
+}
+
+export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
+  const packages = await fetchPackagesFromDb();
+  const updatedPackages = packages.filter(p => p.id !== id);
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
+    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
+  }
+
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      await supabase.from("packages").delete().eq("id", id);
+    }
+  } catch (err) {
+    console.warn("Supabase package delete failed:", err);
+  }
+
+  return updatedPackages;
+}
+
+export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleUpdate = (e: any) => {
+    if (e.detail) {
+      callback(e.detail);
+    } else {
+      fetchPackagesFromDb().then(callback);
+    }
+  };
+
+  window.addEventListener("jobmaster_packages_updated", handleUpdate);
+  window.addEventListener("storage", handleUpdate);
+
+  return () => {
+    window.removeEventListener("jobmaster_packages_updated", handleUpdate);
+    window.removeEventListener("storage", handleUpdate);
+  };
+}

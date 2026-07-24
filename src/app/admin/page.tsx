@@ -27,12 +27,15 @@ import {
   Filter,
   Sparkles,
   RefreshCw,
-  Archive
+  Archive,
+  Package,
+  Tag
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
 import { getSupabase } from "../../lib/supabase";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus } from "../../lib/exams";
+import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages } from "../../lib/packages";
 
 // Interfaces for local state types
 function normalizeQuestion(q: any): Question {
@@ -91,7 +94,19 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages">("questions");
+
+  // Packages Management State
+  const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
+  const [pkgFormTitle, setPkgFormTitle] = useState("");
+  const [pkgFormDesc, setPkgFormDesc] = useState("");
+  const [pkgFormPrice, setPkgFormPrice] = useState("");
+  const [pkgFormOldPrice, setPkgFormOldPrice] = useState("");
+  const [pkgFormBadgePreset, setPkgFormBadgePreset] = useState<"none" | "POPULAR" | "BEST VALUE" | "NEW" | "BASIC" | "custom">("none");
+  const [pkgFormBadgeCustom, setPkgFormBadgeCustom] = useState("");
+  const [pkgFormCategory, setPkgFormCategory] = useState<"all" | "course">("all");
+  const [pkgFormOrder, setPkgFormOrder] = useState<number>(1);
+  const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -244,11 +259,112 @@ export default function AdminPage() {
     // Fetch questions & exam papers from Supabase/Storage
     loadQuestionsFromDb();
     loadExamPapersFromDb();
+
+    // Fetch packages & subscribe
+    fetchPackagesFromDb().then((pkgs) => {
+      setPackagesList(pkgs);
+      setPkgFormOrder(pkgs.length + 1);
+    });
+    const unsubPkgs = subscribeToPackages(setPackagesList);
+    return () => unsubPkgs();
   }, []);
 
   const loadExamPapersFromDb = async () => {
     const papers = await fetchExamPapersFromDb();
     setExamPapers(papers);
+  };
+
+  // Package Management Handlers
+  const handleSavePackage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pkgFormTitle.trim() || !pkgFormPrice.trim()) {
+      triggerNotification("error", "প্যাকেজের শিরোনাম এবং মূল্য পূরণ করা বাধ্যতামূলক।");
+      return;
+    }
+
+    let badgeVal: string | null = null;
+    if (pkgFormBadgePreset === "custom") {
+      badgeVal = pkgFormBadgeCustom.trim() || null;
+    } else if (pkgFormBadgePreset !== "none") {
+      badgeVal = pkgFormBadgePreset;
+    }
+
+    let bgVal = "bg-white";
+    let borderVal = "border-slate-200/80";
+    if (badgeVal === "POPULAR") {
+      bgVal = "bg-gradient-to-b from-white to-amber-50/20";
+      borderVal = "border-amber-200/80";
+    } else if (badgeVal === "BEST VALUE") {
+      bgVal = "bg-gradient-to-b from-white to-blue-50/20";
+      borderVal = "border-blue-200/80";
+    } else if (badgeVal === "NEW") {
+      bgVal = "bg-gradient-to-b from-white to-indigo-50/20";
+      borderVal = "border-indigo-200/80";
+    }
+
+    const pkgToSave: PackageItem = {
+      id: editingPkgId || `pkg_${Date.now()}`,
+      title: pkgFormTitle.trim(),
+      desc: pkgFormDesc.trim(),
+      price: pkgFormPrice.trim(),
+      oldPrice: pkgFormOldPrice.trim() || null,
+      badge: badgeVal,
+      category: pkgFormCategory,
+      bg: bgVal,
+      border: borderVal,
+      order: Number(pkgFormOrder) || (packagesList.length + 1),
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = await savePackageToDb(pkgToSave);
+    setPackagesList(updated);
+    triggerNotification("success", editingPkgId ? "প্যাকেজ আপডেট করা হয়েছে!" : "নতুন প্যাকেজ যুক্ত করা হয়েছে!");
+
+    handleCancelPkgEdit();
+  };
+
+  const handleStartEditPackage = (pkg: PackageItem) => {
+    setEditingPkgId(pkg.id);
+    setPkgFormTitle(pkg.title);
+    setPkgFormDesc(pkg.desc);
+    setPkgFormPrice(pkg.price);
+    setPkgFormOldPrice(pkg.oldPrice || "");
+    if (!pkg.badge) {
+      setPkgFormBadgePreset("none");
+      setPkgFormBadgeCustom("");
+    } else if (["POPULAR", "BEST VALUE", "NEW", "BASIC"].includes(pkg.badge)) {
+      setPkgFormBadgePreset(pkg.badge as any);
+      setPkgFormBadgeCustom("");
+    } else {
+      setPkgFormBadgePreset("custom");
+      setPkgFormBadgeCustom(pkg.badge);
+    }
+    setPkgFormCategory(pkg.category || "all");
+    setPkgFormOrder(pkg.order || 1);
+  };
+
+  const handleCancelPkgEdit = () => {
+    setEditingPkgId(null);
+    setPkgFormTitle("");
+    setPkgFormDesc("");
+    setPkgFormPrice("");
+    setPkgFormOldPrice("");
+    setPkgFormBadgePreset("none");
+    setPkgFormBadgeCustom("");
+    setPkgFormCategory("all");
+    setPkgFormOrder(packagesList.length + 1);
+  };
+
+  const handleDeletePackage = async (id: string, title: string) => {
+    if (confirm(`আপনি কি নিশ্চিত যে "${title}" প্যাকেজটি ডিলিট করতে চান?`)) {
+      const updated = await deletePackageFromDb(id);
+      setPackagesList(updated);
+      triggerNotification("success", "প্যাকেজ সফলভাবে ডিলিট করা হয়েছে।");
+      if (editingPkgId === id) {
+        handleCancelPkgEdit();
+      }
+    }
   };
 
   // Exam Paper Builder handlers
@@ -1005,7 +1121,7 @@ export default function AdminPage() {
               <span>ইউজার লিস্ট ({users.length})</span>
             </button>
 
-            {/* Tab Button 3: Offers */}
+            {/* Tab Button 4: Offers */}
             <button
               onClick={() => setActiveTab("offers")}
               className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
@@ -1016,6 +1132,19 @@ export default function AdminPage() {
             >
               <Megaphone className="w-4 h-4" />
               <span>ব্যানার ও অফার ({offers.length})</span>
+            </button>
+
+            {/* Tab Button 5: Packages Management */}
+            <button
+              onClick={() => setActiveTab("packages")}
+              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+                activeTab === "packages"
+                  ? "bg-orange-50 text-[#FF6A00]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
             </button>
           </div>
 
@@ -2140,6 +2269,277 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW E: PACKAGES MANAGEMENT                                */}
+          {/* ========================================================= */}
+          {activeTab === "packages" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fade-in text-left">
+              
+              {/* Left Column: Add/Edit Package Form */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-50 text-[#007AFF] rounded-xl flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4 stroke-[2.5px]" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                          {editingPkgId ? "প্যাকেজ এডিট করুন" : "নতুন প্যাকেজ যোগ করুন"}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold">
+                          {editingPkgId ? "প্যাকেজের তথ্য সংশোধন করুন" : "অ্যাপে প্রদর্শনের জন্য প্যাকেজ এড করুন"}
+                        </p>
+                      </div>
+                    </div>
+                    {editingPkgId && (
+                      <button
+                        onClick={handleCancelPkgEdit}
+                        className="text-[10px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg cursor-pointer"
+                      >
+                        বাতিল
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSavePackage} className="space-y-3.5">
+                    {/* Title */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        প্যাকেজ শিরোনাম (Title) *
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="যেমন: ৬ মাসের ফুল অ্যাপ এক্সেস 🌟"
+                        value={pkgFormTitle}
+                        onChange={(e) => setPkgFormTitle(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                        required
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        বিস্তারিত বিবরণ (Description)
+                      </label>
+                      <textarea 
+                        rows={2}
+                        placeholder="যেমন: ১৮০ দিনের জন্য সকল ফিচারের ফুল এক্সেস..."
+                        value={pkgFormDesc}
+                        onChange={(e) => setPkgFormDesc(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all text-slate-800 resize-none"
+                      />
+                    </div>
+
+                    {/* Category & Order */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ক্যাটাগরি
+                        </label>
+                        <select
+                          value={pkgFormCategory}
+                          onChange={(e) => setPkgFormCategory(e.target.value as "all" | "course")}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] rounded-2xl px-3 py-2.5 text-xs font-bold focus:outline-none text-slate-800 cursor-pointer"
+                        >
+                          <option value="all">ফুল অ্যাপ এক্সেস</option>
+                          <option value="course">কোর্সভিত্তিক</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ক্রম (Order)
+                        </label>
+                        <input 
+                          type="number"
+                          value={pkgFormOrder}
+                          onChange={(e) => setPkgFormOrder(parseInt(e.target.value) || 1)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none text-slate-800"
+                          min={1}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Price & Old Price */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          মূল্য (Price) *
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="যেমন: ৳৪৯৯"
+                          value={pkgFormPrice}
+                          onChange={(e) => setPkgFormPrice(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none text-slate-800"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          পূর্বের মূল্য (Old Price)
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="যেমন: ৳৬৯৯ (ঐচ্ছিক)"
+                          value={pkgFormOldPrice}
+                          onChange={(e) => setPkgFormOldPrice(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Badge Selection */}
+                    <div className="space-y-2 pt-1 border-t border-slate-100">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        ব্যাজ লেবেল (Badge Option)
+                      </label>
+                      <select
+                        value={pkgFormBadgePreset}
+                        onChange={(e) => setPkgFormBadgePreset(e.target.value as any)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] rounded-2xl px-3 py-2.5 text-xs font-bold focus:outline-none text-slate-800 cursor-pointer"
+                      >
+                        <option value="none">কোনো ব্যাজ নেই (None)</option>
+                        <option value="POPULAR">POPULAR (পপুলার)</option>
+                        <option value="BEST VALUE">BEST VALUE (সেরা মান)</option>
+                        <option value="NEW">NEW (নতুন)</option>
+                        <option value="BASIC">BASIC (বেসিক)</option>
+                        <option value="custom">✍️ নিজ থেকে কাস্টম ব্যাজ নাম লিখুন</option>
+                      </select>
+
+                      {pkgFormBadgePreset === "custom" && (
+                        <input 
+                          type="text"
+                          placeholder="কাস্টম ব্যাজ টেক্সট (যেমন: SPECIAL OFFER)"
+                          value={pkgFormBadgeCustom}
+                          onChange={(e) => setPkgFormBadgeCustom(e.target.value)}
+                          className="w-full bg-amber-50/50 border border-amber-200 focus:border-[#007AFF] rounded-2xl px-3.5 py-2 text-xs font-extrabold text-amber-900 placeholder:text-amber-400"
+                        />
+                      )}
+                    </div>
+
+                    {/* Submit Action */}
+                    <div className="pt-3 flex items-center gap-2">
+                      {editingPkgId && (
+                        <button
+                          type="button"
+                          onClick={handleCancelPkgEdit}
+                          className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl transition-all cursor-pointer"
+                        >
+                          বাতিল
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        className="flex-1 py-3 bg-[#007AFF] hover:bg-blue-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition-all shadow-md shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4 stroke-[2.5px]" />
+                        <span>{editingPkgId ? "প্যাকেজ আপডেট করুন" : "প্যাকেজ সেভ করুন"}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: Packages List */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-[#007AFF]" />
+                    <h3 className="font-extrabold text-sm text-slate-800">
+                      বিদ্যমান প্যাকেজসমূহ ({packagesList.length} টি)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    ইউজার প্যানেলে এই প্যাকেজগুলো দৃশ্যমান
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {packagesList.length === 0 ? (
+                    <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 font-semibold text-xs">
+                      কোনো প্যাকেজ পাওয়া যায়নি। বামপাশের ফর্ম থেকে নতুন প্যাকেজ যোগ করুন।
+                    </div>
+                  ) : (
+                    packagesList.map((pkg) => (
+                      <div 
+                        key={pkg.id}
+                        className={`bg-white border ${
+                          editingPkgId === pkg.id ? "border-[#007AFF] ring-2 ring-[#007AFF]/10" : "border-slate-100"
+                        } rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                                #{pkg.order || 0}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                                pkg.category === "course"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}>
+                                {pkg.category === "course" ? "কোর্সভিত্তিক" : "ফুল অ্যাপ এক্সেস"}
+                              </span>
+                              {pkg.badge && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200/80">
+                                  {pkg.badge}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-extrabold text-sm text-slate-900 leading-snug">
+                              {pkg.title}
+                            </h4>
+                            <p className="text-xs font-medium text-slate-500 leading-relaxed">
+                              {pkg.desc}
+                            </p>
+                          </div>
+
+                          <div className="shrink-0 text-right space-y-1">
+                            <div className="text-base font-black text-[#007AFF]">
+                              {pkg.price}
+                            </div>
+                            {pkg.oldPrice && (
+                              <div className="text-xs font-bold text-slate-400 line-through">
+                                {pkg.oldPrice}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-slate-400">
+                            ID: {pkg.id}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleStartEditPackage(pkg)}
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#007AFF] font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>এডিট</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeletePackage(pkg.id, pkg.title)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>ডিলেট</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

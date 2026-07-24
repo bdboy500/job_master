@@ -48,6 +48,7 @@ import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus } from "../lib/exams";
+import { PackageItem, fetchPackagesFromDb, subscribeToPackages } from "../lib/packages";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 
@@ -304,8 +305,9 @@ export default function Home() {
   const [activeQuizTitle, setActiveQuizTitle] = useState<string>("General Quiz Game");
   const [activeQuizSubtitle, setActiveQuizSubtitle] = useState<string>("45th BCS International Affairs");
 
-  // Dynamic Exam Papers State
+  // Dynamic Exam Papers & Packages State
   const [examPapers, setExamPapers] = useState<ExamPaper[]>([]);
+  const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
@@ -448,8 +450,18 @@ export default function Home() {
         setExamPapers(updatedPapers);
       });
 
+      // Fetch dynamic packages & subscribe
+      fetchPackagesFromDb().then(pkgs => {
+        setPackagesList(pkgs);
+      });
+
+      const unsubPkgs = subscribeToPackages((updatedPkgs) => {
+        setPackagesList(updatedPkgs);
+      });
+
       return () => {
         if (unsubscribe) unsubscribe();
+        if (unsubPkgs) unsubPkgs();
       };
     }
   }, []);
@@ -2486,81 +2498,30 @@ export default function Home() {
           {/* 7. SCREEN: PACKAGES (Apple UI Style)                       */}
           {/* ========================================================= */}
           {currentScreen === "packages" && (
-            <div className="p-4 sm:p-5 space-y-5 animate-fade-in pb-12">
-              {/* Header Banner */}
-              <div className="text-center space-y-1.5 pt-2">
-                <span className="inline-block text-[10px] font-black uppercase tracking-widest text-[#007AFF] bg-[#007AFF]/10 px-3 py-1 rounded-full">
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12">
+              {/* Header Banner - reduced top padding & removed "প্যাকেজসমূহ" header */}
+              <div className="text-center space-y-1 pt-0 mt-0">
+                <span className="inline-block text-[10px] font-black uppercase tracking-widest text-[#007AFF] bg-[#007AFF]/10 px-3 py-0.5 rounded-full">
                   PRICING & MEMBERSHIP
                 </span>
-                <h3 className="font-extrabold text-2xl text-[#1D1D1F] tracking-tight">
-                  প্যাকেজসমূহ
-                </h3>
                 <p className="text-xs font-semibold text-slate-500 max-w-xs mx-auto">
-                  বিসিএস, ব্যাংক, প্রাইমারি ও NTRCA সহ সকল প্রস্তুতির সেরা প্ল্যান বেছে নিন
+                  সকল প্রস্তুতির সেরা প্ল্যান বেছে নিন
                 </p>
               </div>
 
               {/* Section 1: All Access Packages */}
               <div className="space-y-3">
-                {[
-                  {
-                    id: "pkg-1m",
-                    title: "১ মাসের ফুল অ্যাপ এক্সেস",
-                    desc: "৩০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
-                    price: "৳১৪৯",
-                    oldPrice: null,
-                    badge: null,
-                    bg: "bg-white",
-                    border: "border-slate-200/80",
-                  },
-                  {
-                    id: "pkg-3m",
-                    title: "৩ মাসের ফুল অ্যাপ এক্সেস",
-                    desc: "৯০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
-                    price: "৳২৯৯",
-                    oldPrice: null,
-                    badge: null,
-                    bg: "bg-white",
-                    border: "border-slate-200/80",
-                  },
-                  {
-                    id: "pkg-6m",
-                    title: "৬ মাসের ফুল অ্যাপ এক্সেস 🌟",
-                    desc: "১৮০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
-                    price: "৳৪৯৯",
-                    oldPrice: null,
-                    badge: "POPULAR",
-                    bg: "bg-gradient-to-b from-white to-amber-50/20",
-                    border: "border-amber-200/80",
-                  },
-                  {
-                    id: "pkg-1y",
-                    title: "১ বছরের ফুল অ্যাপ এক্সেস 🌟",
-                    desc: "১ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
-                    price: "৳৭৯৯",
-                    oldPrice: null,
-                    badge: "BEST VALUE",
-                    bg: "bg-gradient-to-b from-white to-blue-50/20",
-                    border: "border-blue-200/80",
-                  },
-                  {
-                    id: "pkg-2y",
-                    title: "২ বছরের ফুল অ্যাপ এক্সেস",
-                    desc: "২ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
-                    price: "৳৯৯৯",
-                    oldPrice: "৳১২৯৯",
-                    badge: "NEW",
-                    bg: "bg-gradient-to-b from-white to-indigo-50/20",
-                    border: "border-indigo-200/80",
-                  },
-                ].map((pkg) => (
+                {packagesList
+                  .filter((p) => (p.category || "all") !== "course")
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((pkg) => (
                   <div
                     key={pkg.id}
                     onClick={() => {
                       setSelectedPurchasePkg(pkg);
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className={`${pkg.bg} ${pkg.border} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
+                    className={`${pkg.bg || "bg-white"} ${pkg.border || "border-slate-200/80"} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1.5 pr-2">
@@ -2599,55 +2560,56 @@ export default function Home() {
               </div>
 
               {/* Section 2: Course Based (কোর্সভিত্তিক) */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">
-                  কোর্সভিত্তিক
-                </h4>
+              {packagesList.some((p) => p.category === "course") && (
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">
+                    কোর্সভিত্তিক
+                  </h4>
 
-                {[
-                  {
-                    id: "pkg-undergrad",
-                    title: "১ বছরের Undergrad - Student Package [শুধু Undergrad কোর্স এক্সেস]",
-                    desc: "১ বছরের জন্য শুধুমাত্র \"বিসিএস প্রস্তুতি - Undergrad [Student Package]\" কোর্স এর এক্সেস থাকবে",
-                    price: "৳৩৯৯",
-                    oldPrice: "৳৪৯৯",
-                    badge: null,
-                    bg: "bg-white",
-                    border: "border-slate-200/80",
-                  },
-                ].map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    onClick={() => {
-                      setSelectedPurchasePkg(pkg);
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className={`${pkg.bg} ${pkg.border} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1.5 pr-2">
-                        <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
-                          {pkg.title}
-                        </h4>
-                        <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
-                          {pkg.desc}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right flex flex-col items-end">
-                        <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1">
-                          <span>{pkg.price}</span>
-                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
-                        </div>
-                        {pkg.oldPrice && (
-                          <div className="text-[11px] font-bold text-slate-400 line-through">
-                            {pkg.oldPrice}
+                  {packagesList
+                    .filter((p) => p.category === "course")
+                    .sort((a, b) => (a.order || 0) - (b.order || 0))
+                    .map((pkg) => (
+                    <div
+                      key={pkg.id}
+                      onClick={() => {
+                        setSelectedPurchasePkg(pkg);
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className={`${pkg.bg || "bg-white"} ${pkg.border || "border-slate-200/80"} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1.5 pr-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
+                              {pkg.title}
+                            </h4>
+                            {pkg.badge && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200/80">
+                                {pkg.badge}
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                            {pkg.desc}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right flex flex-col items-end">
+                          <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1">
+                            <span>{pkg.price}</span>
+                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
+                          </div>
+                          {pkg.oldPrice && (
+                            <div className="text-[11px] font-bold text-slate-400 line-through">
+                              {pkg.oldPrice}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Apple-style Security & Payment Notice */}
               <div className="bg-slate-100/80 border border-slate-200/60 rounded-2xl p-4 text-center space-y-1">
