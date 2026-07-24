@@ -132,86 +132,138 @@ export const DEFAULT_EXAM_PAPERS: ExamPaper[] = [
 ];
 
 export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
+  let localPapers: ExamPaper[] = [];
+  if (typeof window !== "undefined") {
+    const cached = localStorage.getItem("job_master_exam_papers");
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          localPapers = parsed;
+        }
+      } catch (e) {
+        console.error("Failed parsing cached exam papers:", e);
+      }
+    }
+  }
+
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase.from("exam_papers").select("*");
-    
-    if (error || !data || data.length === 0) {
-      // Check localStorage cached papers
-      const cached = localStorage.getItem("job_master_exam_papers");
-      if (cached) {
-        return JSON.parse(cached);
+    if (supabase) {
+      const { data, error } = await supabase.from("exam_papers").select("*");
+      
+      if (!error && data) {
+        const parsedSupabaseData: ExamPaper[] = data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          course: item.course,
+          examType: item.examType || item.exam_type || "weekly",
+          subject: item.subject,
+          questionCount: item.questionCount || item.question_count || (Array.isArray(item.questions) ? item.questions.length : 10),
+          timePerQuestionSeconds: item.timePerQuestionSeconds || item.time_per_question || 36,
+          totalDurationSeconds: item.totalDurationSeconds || item.total_duration || 360,
+          totalMarks: item.totalMarks || item.total_marks || 10,
+          topic: item.topic || "মডেল টেস্ট",
+          examDate: item.examDate || item.exam_date || "Today",
+          startDateTime: item.startDateTime || item.start_date_time || item.startDate,
+          endDateTime: item.endDateTime || item.end_date_time || item.endDate,
+          status: item.status || "Live",
+          questions: typeof item.questions === "string" 
+            ? (item.questions ? JSON.parse(item.questions) : []) 
+            : (Array.isArray(item.questions) ? item.questions : [])
+        }));
+
+        // Merge Supabase and Local papers (Local papers take precedence to preserve newly added/edited items)
+        const mergedMap = new Map<string, ExamPaper>();
+        parsedSupabaseData.forEach(p => mergedMap.set(p.id, p));
+        localPapers.forEach(p => mergedMap.set(p.id, p));
+
+        const mergedPapers = Array.from(mergedMap.values());
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("job_master_exam_papers", JSON.stringify(mergedPapers));
+        }
+        return mergedPapers;
       }
-      // Return defaults if nothing saved yet
-      localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
-      return DEFAULT_EXAM_PAPERS;
     }
-
-    const parsedData: ExamPaper[] = data.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      course: item.course,
-      examType: item.examType || item.exam_type || "weekly",
-      subject: item.subject,
-      questionCount: item.questionCount || item.question_count || item.questions?.length || 10,
-      timePerQuestionSeconds: item.timePerQuestionSeconds || item.time_per_question || 36,
-      totalDurationSeconds: item.totalDurationSeconds || item.total_duration || (item.questions?.length || 10) * 36,
-      totalMarks: item.totalMarks || item.total_marks || item.questions?.length || 10,
-      topic: item.topic || "মডেল টেস্ট",
-      examDate: item.examDate || item.exam_date || "Today",
-      startDateTime: item.startDateTime || item.start_date_time || item.startDate,
-      endDateTime: item.endDateTime || item.end_date_time || item.endDate,
-      status: item.status || "Live",
-      questions: typeof item.questions === "string" ? JSON.parse(item.questions) : item.questions || []
-    }));
-
-    // Cache locally
-    localStorage.setItem("job_master_exam_papers", JSON.stringify(parsedData));
-    return parsedData;
   } catch (err) {
     console.warn("Falling back to local exam papers:", err);
-    const cached = localStorage.getItem("job_master_exam_papers");
-    if (cached) return JSON.parse(cached);
-    localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
-    return DEFAULT_EXAM_PAPERS;
   }
+
+  if (localPapers && localPapers.length > 0) {
+    return localPapers;
+  }
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
+  }
+  return DEFAULT_EXAM_PAPERS;
 }
 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
-  // Update local storage first
   const currentPapers = await fetchExamPapersFromDb();
   const index = currentPapers.findIndex(p => p.id === paper.id);
+  
+  let updatedPapers: ExamPaper[];
   if (index >= 0) {
-    currentPapers[index] = paper;
+    updatedPapers = [...currentPapers];
+    updatedPapers[index] = paper;
   } else {
-    currentPapers.unshift(paper);
+    updatedPapers = [paper, ...currentPapers];
   }
-  localStorage.setItem("job_master_exam_papers", JSON.stringify(currentPapers));
 
-  // Sync to Supabase
+  if (typeof window !== "undefined") {
+    localStorage.setItem("job_master_exam_papers", JSON.stringify(updatedPapers));
+    window.dispatchEvent(new CustomEvent("jobmaster_exam_papers_updated", { detail: updatedPapers }));
+    window.dispatchEvent(new Event("storage"));
+  }
+
   try {
     const supabase = getSupabase();
-    const payload = {
-      id: paper.id,
-      title: paper.title,
-      course: paper.course,
-      exam_type: paper.examType,
-      subject: paper.subject || "All Subjects",
-      question_count: paper.questionCount,
-      time_per_question: paper.timePerQuestionSeconds,
-      total_duration: paper.totalDurationSeconds,
-      total_marks: paper.totalMarks,
-      topic: paper.topic,
-      exam_date: paper.examDate,
-      start_date_time: paper.startDateTime,
-      end_date_time: paper.endDateTime,
-      status: paper.status,
-      questions: JSON.stringify(paper.questions)
-    };
+    if (supabase) {
+      const payload = {
+        id: paper.id,
+        title: paper.title,
+        course: paper.course,
+        exam_type: paper.examType,
+        subject: paper.subject || "All Subjects",
+        question_count: paper.questionCount,
+        time_per_question: paper.timePerQuestionSeconds,
+        total_duration: paper.totalDurationSeconds,
+        total_marks: paper.totalMarks,
+        topic: paper.topic,
+        exam_date: paper.examDate,
+        start_date_time: paper.startDateTime,
+        end_date_time: paper.endDateTime,
+        status: paper.status,
+        questions: typeof paper.questions === "string" ? paper.questions : JSON.stringify(paper.questions)
+      };
 
-    const { error } = await supabase.from("exam_papers").upsert(payload, { onConflict: "id" });
-    if (error) {
-      console.warn("Supabase upsert exam_paper error:", error);
+      const { error } = await supabase.from("exam_papers").upsert(payload, { onConflict: "id" });
+      if (error) {
+        console.warn("Supabase upsert exam_paper error with snake_case, trying camelCase fallback:", error);
+        const fallbackPayload = {
+          id: paper.id,
+          title: paper.title,
+          course: paper.course,
+          examType: paper.examType,
+          subject: paper.subject || "All Subjects",
+          questionCount: paper.questionCount,
+          timePerQuestionSeconds: paper.timePerQuestionSeconds,
+          totalDurationSeconds: paper.totalDurationSeconds,
+          totalMarks: paper.totalMarks,
+          topic: paper.topic,
+          examDate: paper.examDate,
+          startDateTime: paper.startDateTime,
+          endDateTime: paper.endDateTime,
+          status: paper.status,
+          questions: typeof paper.questions === "string" ? paper.questions : JSON.stringify(paper.questions)
+        };
+        const { error: err2 } = await supabase.from("exam_papers").upsert(fallbackPayload, { onConflict: "id" });
+        if (err2) {
+          console.warn("Supabase upsert exam_paper fallback failed:", err2);
+        }
+      }
     }
   } catch (e) {
     console.warn("Supabase save exam paper failed:", e);
@@ -222,11 +274,18 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
 export async function deleteExamPaperFromDb(id: string): Promise<boolean> {
   const currentPapers = await fetchExamPapersFromDb();
   const filtered = currentPapers.filter(p => p.id !== id);
-  localStorage.setItem("job_master_exam_papers", JSON.stringify(filtered));
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("job_master_exam_papers", JSON.stringify(filtered));
+    window.dispatchEvent(new CustomEvent("jobmaster_exam_papers_updated", { detail: filtered }));
+    window.dispatchEvent(new Event("storage"));
+  }
 
   try {
     const supabase = getSupabase();
-    await supabase.from("exam_papers").delete().eq("id", id);
+    if (supabase) {
+      await supabase.from("exam_papers").delete().eq("id", id);
+    }
   } catch (e) {
     console.warn("Supabase delete exam paper failed:", e);
   }
@@ -234,25 +293,47 @@ export async function deleteExamPaperFromDb(id: string): Promise<boolean> {
 }
 
 export function subscribeToExamPapers(onUpdate: (papers: ExamPaper[]) => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleUpdate = (e: any) => {
+    if (e.detail) {
+      onUpdate(e.detail);
+    } else {
+      fetchExamPapersFromDb().then(onUpdate);
+    }
+  };
+
+  window.addEventListener("jobmaster_exam_papers_updated", handleUpdate);
+  window.addEventListener("storage", handleUpdate);
+
+  let removeRealtimeChannel = () => {};
+
   try {
     const supabase = getSupabase();
-    const channel = supabase
-      .channel("public:exam_papers")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "exam_papers" },
-        async () => {
-          const updatedPapers = await fetchExamPapersFromDb();
-          onUpdate(updatedPapers);
-        }
-      )
-      .subscribe();
+    if (supabase) {
+      const channel = supabase
+        .channel("public:exam_papers")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "exam_papers" },
+          async () => {
+            const updatedPapers = await fetchExamPapersFromDb();
+            onUpdate(updatedPapers);
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      removeRealtimeChannel = () => {
+        supabase.removeChannel(channel);
+      };
+    }
   } catch (e) {
     console.warn("Realtime subscription setup failed:", e);
-    return () => {};
   }
+
+  return () => {
+    removeRealtimeChannel();
+    window.removeEventListener("jobmaster_exam_papers_updated", handleUpdate);
+    window.removeEventListener("storage", handleUpdate);
+  };
 }

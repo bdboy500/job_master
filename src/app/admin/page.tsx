@@ -34,7 +34,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
 import { getSupabase } from "../../lib/supabase";
-import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages } from "../../lib/packages";
 
 // Interfaces for local state types
@@ -276,6 +276,7 @@ export default function AdminPage() {
     // Fetch questions & exam papers from Supabase/Storage
     loadQuestionsFromDb();
     loadExamPapersFromDb();
+    const unsubExams = subscribeToExamPapers(setExamPapers);
 
     // Fetch packages & subscribe
     fetchPackagesFromDb().then((pkgs) => {
@@ -283,7 +284,10 @@ export default function AdminPage() {
       setPkgFormOrder(pkgs.length + 1);
     });
     const unsubPkgs = subscribeToPackages(setPackagesList);
-    return () => unsubPkgs();
+    return () => {
+      unsubExams();
+      unsubPkgs();
+    };
   }, []);
 
   const loadExamPapersFromDb = async () => {
