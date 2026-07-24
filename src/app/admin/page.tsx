@@ -456,26 +456,10 @@ export default function AdminPage() {
     } else if (paperStatus === "Archive" || paperStatus === "Completed") {
       finalStatus = "Archive";
     } else {
-      // Upcoming: use startDateTime and endDateTime calendar picker
+      // Upcoming
       finalStartDT = paperStartDateTime || undefined;
       finalEndDT = paperEndDateTime || undefined;
-      finalStatus = getExamStatus({
-        id: editingPaperId || "temp",
-        title: paperTitle.trim(),
-        course: paperCourse,
-        examType: paperExamType,
-        subject: paperSubject,
-        questionCount: normalizedPaperQuestions.length,
-        timePerQuestionSeconds: 36,
-        totalDurationSeconds: totalSeconds,
-        totalMarks: normalizedPaperQuestions.length,
-        topic: paperTopic.trim() || "মডেল টেস্ট",
-        examDate: paperDate.trim() || (finalStartDT ? formatDisplayDate(finalStartDT) : "Fri, Jul 31, 2026"),
-        startDateTime: finalStartDT,
-        endDateTime: finalEndDT,
-        status: "Upcoming",
-        questions: normalizedPaperQuestions
-      });
+      finalStatus = "Upcoming";
     }
 
     const newPaper: ExamPaper = {
@@ -497,14 +481,16 @@ export default function AdminPage() {
       createdAt: new Date().toISOString()
     };
 
-    await saveExamPaperToDb(newPaper);
-    await loadExamPapersFromDb();
+    const success = await saveExamPaperToDb(newPaper);
 
-    triggerNotification("success", editingPaperId ? "প্রশ্ন পত্র সফলভাবে আপডেট করা হয়েছে!" : "প্রশ্ন পত্র সফলভাবে পাবলিশ করা হয়েছে!");
-
-    // Reset form
-    setEditingPaperId(null);
-    setPaperQuestions([]);
+    if (success) {
+      triggerNotification("success", editingPaperId ? "প্রশ্ন পত্র সফলভাবে আপডেট করা হয়েছে!" : "প্রশ্ন পত্র সফলভাবে পাবলিশ করা হয়েছে!");
+      // Reset form
+      setEditingPaperId(null);
+      setPaperQuestions([]);
+    } else {
+      triggerNotification("error", "প্রশ্ন পত্র লোকাল সেভ হয়েছে কিন্তু সার্ভারে সেভ করতে সমস্যা হয়েছে।");
+    }
   };
 
   const handleEditExamPaper = (paper: ExamPaper) => {
@@ -527,7 +513,6 @@ export default function AdminPage() {
   const handleDeleteExamPaper = async (id: string) => {
     if (!confirm("আপনি কি নিশ্চিত যে এই প্রশ্ন পত্রটি ডিলেট করতে চান?")) return;
     await deleteExamPaperFromDb(id);
-    await loadExamPapersFromDb();
     triggerNotification("success", "প্রশ্ন পত্র ডিলেট করা হয়েছে।");
   };
 
@@ -538,7 +523,6 @@ export default function AdminPage() {
       status: isArchived ? "Live" : "Archive"
     };
     await saveExamPaperToDb(updatedPaper);
-    await loadExamPapersFromDb();
     triggerNotification("success", isArchived ? "প্রশ্নপত্রটি পুনরায় লাইভ করা হয়েছে!" : "প্রশ্নপত্রটি আর্কাইভে পাঠানো হয়েছে!");
   };
 
