@@ -38,6 +38,23 @@ import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFro
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages } from "../../lib/packages";
 
 // Interfaces for local state types
+function formatDisplayDate(dateTimeStr: string): string {
+  if (!dateTimeStr) return "";
+  try {
+    const d = new Date(dateTimeStr);
+    if (isNaN(d.getTime())) return dateTimeStr;
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const dayName = days[d.getDay()];
+    const monthName = months[d.getMonth()];
+    const dateNum = d.getDate();
+    const year = d.getFullYear();
+    return `${dayName}, ${monthName} ${dateNum}, ${year}`;
+  } catch {
+    return dateTimeStr;
+  }
+}
+
 function normalizeQuestion(q: any): Question {
   if (!q) {
     return {
@@ -163,10 +180,10 @@ export default function AdminPage() {
   const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
   const [paperTopic, setPaperTopic] = useState('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
-  const [paperDate, setPaperDate] = useState("Fri, Jul 31, 2026");
   const [paperStartDateTime, setPaperStartDateTime] = useState<string>("2026-07-24T00:00");
   const [paperEndDateTime, setPaperEndDateTime] = useState<string>("2026-07-31T23:59");
-  const [paperStatus, setPaperStatus] = useState<"Live" | "Upcoming" | "Completed" | "Archive">("Live");
+  const [paperDate, setPaperDate] = useState(() => formatDisplayDate("2026-07-24T00:00"));
+  const [paperStatus, setPaperStatus] = useState<"Live" | "Upcoming" | "Completed" | "Archive">("Upcoming");
   const [paperTargetCount, setPaperTargetCount] = useState<number>(20);
   const [paperQuestions, setPaperQuestions] = useState<Question[]>([]);
   
@@ -426,23 +443,36 @@ export default function AdminPage() {
     const normalizedPaperQuestions = paperQuestions.map(q => normalizeQuestion(q));
     const totalSeconds = normalizedPaperQuestions.length * 36; // 36 seconds per question
 
-    const calculatedStatus = getExamStatus({
-      id: editingPaperId || "temp",
-      title: paperTitle.trim(),
-      course: paperCourse,
-      examType: paperExamType,
-      subject: paperSubject,
-      questionCount: normalizedPaperQuestions.length,
-      timePerQuestionSeconds: 36,
-      totalDurationSeconds: totalSeconds,
-      totalMarks: normalizedPaperQuestions.length,
-      topic: paperTopic.trim() || "মডেল টেস্ট",
-      examDate: paperDate.trim() || "Fri, Jul 31, 2026",
-      startDateTime: paperStartDateTime || undefined,
-      endDateTime: paperEndDateTime || undefined,
-      status: paperStatus,
-      questions: normalizedPaperQuestions
-    });
+    let finalStatus: "Live" | "Upcoming" | "Archive" = "Upcoming";
+    let finalStartDT: string | undefined = undefined;
+    let finalEndDT: string | undefined = undefined;
+
+    if (paperStatus === "Live") {
+      finalStatus = "Live";
+    } else if (paperStatus === "Archive" || paperStatus === "Completed") {
+      finalStatus = "Archive";
+    } else {
+      // Upcoming: use startDateTime and endDateTime calendar picker
+      finalStartDT = paperStartDateTime || undefined;
+      finalEndDT = paperEndDateTime || undefined;
+      finalStatus = getExamStatus({
+        id: editingPaperId || "temp",
+        title: paperTitle.trim(),
+        course: paperCourse,
+        examType: paperExamType,
+        subject: paperSubject,
+        questionCount: normalizedPaperQuestions.length,
+        timePerQuestionSeconds: 36,
+        totalDurationSeconds: totalSeconds,
+        totalMarks: normalizedPaperQuestions.length,
+        topic: paperTopic.trim() || "মডেল টেস্ট",
+        examDate: paperDate.trim() || (finalStartDT ? formatDisplayDate(finalStartDT) : "Fri, Jul 31, 2026"),
+        startDateTime: finalStartDT,
+        endDateTime: finalEndDT,
+        status: "Upcoming",
+        questions: normalizedPaperQuestions
+      });
+    }
 
     const newPaper: ExamPaper = {
       id: editingPaperId || `exam-${Date.now()}`,
@@ -455,10 +485,10 @@ export default function AdminPage() {
       totalDurationSeconds: totalSeconds,
       totalMarks: normalizedPaperQuestions.length,
       topic: paperTopic.trim() || "মডেল টেস্ট",
-      examDate: paperDate.trim() || "Fri, Jul 31, 2026",
-      startDateTime: paperStartDateTime || undefined,
-      endDateTime: paperEndDateTime || undefined,
-      status: calculatedStatus,
+      examDate: paperDate.trim() || (finalStartDT ? formatDisplayDate(finalStartDT) : "Fri, Jul 31, 2026"),
+      startDateTime: finalStartDT,
+      endDateTime: finalEndDT,
+      status: finalStatus,
       questions: normalizedPaperQuestions,
       createdAt: new Date().toISOString()
     };
@@ -1616,9 +1646,6 @@ export default function AdminPage() {
                       <h3 className="font-extrabold text-sm sm:text-base text-slate-800 tracking-tight">
                         {editingPaperId ? "প্রশ্ন পত্র এডিট করুন" : "নতুন প্রশ্ন সেট / প্রশ্ন পত্র তৈরি করুন"}
                       </h3>
-                      <p className="text-[11px] font-bold text-slate-400">
-                        কোর্স, পরীক্ষা পদ্ধতি, সময় ও প্রশ্ন সিলেক্ট করে সাইটে পাবলিশ করুন
-                      </p>
                     </div>
                   </div>
 
@@ -1628,6 +1655,7 @@ export default function AdminPage() {
                         setEditingPaperId(null);
                         setPaperQuestions([]);
                         setPaperTitle("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
+                        setPaperStatus("Upcoming");
                       }}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all"
                     >
@@ -1701,7 +1729,7 @@ export default function AdminPage() {
 
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ৫. ডিসপ্লে টেক্সট (Display Label Text) & ডিফল্ট স্ট্যাটাস
+                        ৫. ডিসপ্লে টেক্সট (Display Label Text) & স্ট্যাটাস
                       </label>
                       <div className="flex items-center gap-2">
                         <input 
@@ -1716,103 +1744,113 @@ export default function AdminPage() {
                           onChange={(e) => setPaperStatus(e.target.value as any)}
                           className="bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-3 text-xs font-bold focus:outline-none text-slate-800 cursor-pointer shrink-0"
                         >
-                          <option value="Live">Live (লাইভ)</option>
                           <option value="Upcoming">Upcoming (আসন্ন)</option>
+                          <option value="Live">Live (লাইভ)</option>
                           <option value="Archive">Archive (আর্কাইভ)</option>
                         </select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Row 2.5: START & END DATE & TIME PICKER (CALENDAR) */}
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl space-y-3.5">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                        📅 <span>পরীক্ষার সময়কাল নির্ধারণ (Start & End Date/Time Calendar) *</span>
-                      </label>
-                      <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                        লাইভ / আসন্ন / আর্কাইভ স্বয়ংক্রিয় ফিল্টার
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
-                          কখন থেকে শুরু হবে (Start Date & Time)
+                  {/* Row 2.5: START & END DATE & TIME PICKER (CALENDAR) - Only for Upcoming */}
+                  {paperStatus === "Upcoming" && (
+                    <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl space-y-3.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                          📅 <span>পরীক্ষার সময়কাল নির্ধারণ (Start & End Date/Time Calendar) *</span>
                         </label>
-                        <input 
-                          type="datetime-local"
-                          value={paperStartDateTime}
-                          onChange={(e) => setPaperStartDateTime(e.target.value)}
-                          className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs"
-                          required
-                        />
+                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                          আসন্ন পরীক্ষার সময়সূচি নির্ধারণ
+                        </span>
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
-                          কখন শেষ হবে (End Date & Time)
-                        </label>
-                        <input 
-                          type="datetime-local"
-                          value={paperEndDateTime}
-                          onChange={(e) => setPaperEndDateTime(e.target.value)}
-                          className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs"
-                          required
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
+                            কখন থেকে শুরু হবে (Start Date & Time)
+                          </label>
+                          <input 
+                            type="datetime-local"
+                            value={paperStartDateTime}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPaperStartDateTime(val);
+                              if (val) {
+                                setPaperDate(formatDisplayDate(val));
+                              }
+                            }}
+                            className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
+                            কখন শেষ হবে (End Date & Time)
+                          </label>
+                          <input 
+                            type="datetime-local"
+                            value={paperEndDateTime}
+                            onChange={(e) => setPaperEndDateTime(e.target.value)}
+                            className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs"
+                            required
+                          />
+                        </div>
                       </div>
+
+                      {/* Quick Presets */}
+                      <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold text-slate-600 pt-1">
+                        <span className="text-slate-400">দ্রুত সময় সেট করুন:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const today = new Date().toISOString().split("T")[0];
+                            const startVal = `${today}T06:00`;
+                            setPaperStartDateTime(startVal);
+                            setPaperEndDateTime(`${today}T23:59`);
+                            setPaperDate(formatDisplayDate(startVal));
+                          }}
+                          className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
+                        >
+                          ⚡ আজকের লাইভ মক (সকাল ৬:০০ - রাত ১১:৫৯)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const now = new Date();
+                            const start = new Date(now.getTime() - 24*3600*1000).toISOString().split("T")[0];
+                            const end = new Date(now.getTime() + 3*24*3600*1000).toISOString().split("T")[0];
+                            const startVal = `${start}T00:00`;
+                            setPaperStartDateTime(startVal);
+                            setPaperEndDateTime(`${end}T23:59`);
+                            setPaperDate(formatDisplayDate(startVal));
+                          }}
+                          className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
+                        >
+                          📅 ৩ দিনের লাইভ এক্সাম
+                        </button>
+                      </div>
+
+                      {/* Calculated Live Status Banner */}
+                      {paperStartDateTime && paperEndDateTime && (
+                        <div className="pt-2 border-t border-purple-100/80 flex items-center justify-between text-xs font-bold flex-wrap gap-2">
+                          <span className="text-slate-600">নির্ধারিত সময়সূচি অনুযায়ী বর্তমান অবস্থা:</span>
+                          {(() => {
+                            const now = new Date();
+                            const start = new Date(paperStartDateTime);
+                            const end = new Date(paperEndDateTime);
+                            if (now < start) {
+                              return <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">⏳ Upcoming (নির্ধারিত সময়ের আগে)</span>;
+                            } else if (now >= start && now <= end) {
+                              return <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">🔴 Live (লাইভ পরীক্ষা চলছে)</span>;
+                            } else {
+                              return <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">📂 Archive (সময় শেষ, আর্কাইভে চলে যাবে)</span>;
+                            }
+                          })()}
+                        </div>
+                      )}
                     </div>
-
-                    {/* Quick Presets */}
-                    <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold text-slate-600 pt-1">
-                      <span className="text-slate-400">দ্রুত সময় সেট করুন:</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const today = new Date().toISOString().split("T")[0];
-                          setPaperStartDateTime(`${today}T06:00`);
-                          setPaperEndDateTime(`${today}T23:59`);
-                          setPaperDate(`আজ (${today})`);
-                        }}
-                        className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
-                      >
-                        ⚡ আজকের লাইভ মক (সকাল ৬:০০ - রাত ১১:৫৯)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const now = new Date();
-                          const start = new Date(now.getTime() - 24*3600*1000).toISOString().split("T")[0];
-                          const end = new Date(now.getTime() + 3*24*3600*1000).toISOString().split("T")[0];
-                          setPaperStartDateTime(`${start}T00:00`);
-                          setPaperEndDateTime(`${end}T23:59`);
-                          setPaperDate(`সাপ্তাহিক লাইভ (${start} - ${end})`);
-                        }}
-                        className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
-                      >
-                        📅 ৩ দিনের লাইভ এক্সাম
-                      </button>
-                    </div>
-
-                    {/* Calculated Live Status Banner */}
-                    {paperStartDateTime && paperEndDateTime && (
-                      <div className="pt-2 border-t border-purple-100/80 flex items-center justify-between text-xs font-bold flex-wrap gap-2">
-                        <span className="text-slate-600">নির্ধারিত সময়সূচি অনুযায়ী বর্তমান অবস্থা:</span>
-                        {(() => {
-                          const now = new Date();
-                          const start = new Date(paperStartDateTime);
-                          const end = new Date(paperEndDateTime);
-                          if (now < start) {
-                            return <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">⏳ Upcoming (নির্ধারিত সময়ের আগে)</span>;
-                          } else if (now >= start && now <= end) {
-                            return <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">🔴 Live (লাইভ পরীক্ষা চলছে)</span>;
-                          } else {
-                            return <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">📂 Archive (সময় শেষ, আর্কাইভে চলে যাবে)</span>;
-                          }
-                        })()}
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Row 3: Target Question Count & Timer Calc */}
                   <div className="p-4 bg-orange-50/50 border border-orange-100/80 rounded-2xl space-y-3">
