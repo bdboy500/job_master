@@ -333,6 +333,7 @@ export default function Home() {
   const [examResultSummary, setExamResultSummary] = useState<any | null>(null);
   const [showExamNoticeAlert, setShowExamNoticeAlert] = useState<boolean>(true);
   const [examQuestionsDrawerOpen, setExamQuestionsDrawerOpen] = useState<boolean>(false);
+  const [showExamSubmitConfirmModal, setShowExamSubmitConfirmModal] = useState<boolean>(false);
 
   // Detailed Answer Sheet State
   const [viewingAnswerSheetData, setViewingAnswerSheetData] = useState<{
@@ -539,6 +540,7 @@ export default function Home() {
     setExamTimer(duration);
     setShowExamNoticeAlert(true);
     setExamQuestionsDrawerOpen(false);
+    setShowExamSubmitConfirmModal(false);
     if (soundEnabled) quizAudio.playClick();
   };
 
@@ -3884,7 +3886,7 @@ export default function Home() {
 
               {/* Submit Button */}
               <button
-                onClick={handleFinishExam}
+                onClick={() => setShowExamSubmitConfirmModal(true)}
                 className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-orange-500/20 cursor-pointer active:scale-95"
               >
                 Submit
@@ -3911,8 +3913,28 @@ export default function Home() {
                 const selectedOpt = examUserAnswers[qIdx];
 
                 return (
-                  <div key={qIdx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-                    <div className="flex items-start justify-between gap-2">
+                  <div key={qIdx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-2.5">
+                    {/* Top status bar with Answered / Not Answered indicator on right */}
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        প্রশ্ন {qIdx + 1}
+                      </span>
+                      <div>
+                        {selectedOpt !== undefined ? (
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/90 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Answered
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                            Not Answered
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-2 pt-0.5">
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed">
                         <span className="text-[#FF6A00] mr-1.5">{qIdx + 1}.</span>
                         {q.question}
@@ -3956,12 +3978,54 @@ export default function Home() {
               </span>
 
               <button
-                onClick={handleFinishExam}
+                onClick={() => setShowExamSubmitConfirmModal(true)}
                 className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-xs px-6 py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-orange-500/20 cursor-pointer"
               >
                 পরীক্ষা জমা দিন (Submit Exam)
               </button>
             </div>
+
+            {/* Exam Submit Confirmation Popup Modal */}
+            {showExamSubmitConfirmModal && (
+              <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl space-y-4 border border-slate-100 relative">
+                  <div className="w-12 h-12 bg-orange-100 text-[#FF6A00] rounded-full flex items-center justify-center mx-auto shadow-2xs">
+                    <HelpCircle className="w-6 h-6 stroke-[2.5px]" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h3 className="font-extrabold text-base text-slate-800">
+                      পরীক্ষার খাতা জমা দিবেন?
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                      আপনি কি নিশ্চিত যে আপনার পরীক্ষার খাতা জমা দিবেন? নাকি এখনো পরীক্ষা চালিয়ে যেতে চান?
+                    </p>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-xs text-slate-600 font-bold flex justify-around mt-2">
+                      <span>উত্তর দিয়েছেন: <strong className="text-[#FF6A00]">{Object.keys(examUserAnswers).length}</strong></span>
+                      <span>বাকি: <strong className="text-slate-800">{takingExamModal.questions.length - Object.keys(examUserAnswers).length}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      onClick={() => setShowExamSubmitConfirmModal(false)}
+                      className="flex-1 py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer active:scale-95"
+                    >
+                      Continue
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowExamSubmitConfirmModal(false);
+                        handleFinishExam();
+                      }}
+                      className="flex-1 py-3 px-3 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-orange-500/20 cursor-pointer active:scale-95"
+                    >
+                      Yes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Result Summary Modal */}
             {examSubmitted && examResultSummary && (
