@@ -100,7 +100,45 @@ const STORAGE_KEY = "jobmaster_packages_v2";
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_packages_v2";
 
 export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
-  // 1. Try Cloud Store for worldwide live updates
+  // 1. Primary: Try Supabase Server
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("packages")
+        .select("*")
+        .order("order", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        return data as PackageItem[];
+      } else if (!error && data && data.length === 0) {
+        // Table exists but is EMPTY -> Automatically SEED default packages into Supabase
+        console.log("Supabase packages table is empty. Seeding default packages...");
+        const cleanDefaults = DEFAULT_PACKAGES.map(pkg => ({
+          id: pkg.id,
+          title: pkg.title,
+          desc: pkg.desc,
+          price: pkg.price,
+          oldPrice: pkg.oldPrice || null,
+          badge: pkg.badge || null,
+          category: pkg.category || "all",
+          bg: pkg.bg || "bg-white",
+          border: pkg.border || "border-slate-200/80",
+          order: pkg.order || 1,
+          active: pkg.active !== undefined ? pkg.active : true
+        }));
+        await supabase.from("packages").upsert(cleanDefaults);
+        return DEFAULT_PACKAGES;
+      }
+    }
+  } catch (err) {
+    console.warn("Supabase packages fetch exception:", err);
+  }
+
+  // 2. Secondary: Try Cloud Store KV
   try {
     const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
     if (res.ok) {
@@ -116,27 +154,7 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
     console.warn("Cloud packages fetch warning:", err);
   }
 
-  // 2. Try Supabase
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("packages")
-        .select("*")
-        .order("order", { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-        return data as PackageItem[];
-      }
-    }
-  } catch (err) {
-    console.warn("Supabase packages fetch failed, using local storage fallback:", err);
-  }
-
-  // 3. Fallback to localStorage
+  // 3. Fallback: LocalStorage / Defaults
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -156,38 +174,7 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
 }
 
 export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> {
-  const packages = await fetchPackagesFromDb();
-  const existingIndex = packages.findIndex(p => p.id === pkg.id);
-  
-  let updatedPackages: PackageItem[];
-  if (existingIndex >= 0) {
-    updatedPackages = [...packages];
-    updatedPackages[existingIndex] = { ...pkg };
-  } else {
-    updatedPackages = [...packages, pkg];
-  }
-
-  // Sort by order or creation
-  updatedPackages.sort((a, b) => (a.order || 99) - (b.order || 99));
-
-  // Save to LocalStorage immediately
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
-    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
-  }
-
-  // Sync to Cloud Store so ALL users in the world get the update
-  try {
-    await fetch(CLOUD_KV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedPackages)
-    });
-  } catch (err) {
-    console.warn("Cloud package sync failed:", err);
-  }
-
-  // Sync to Supabase
+  // 1. Save to Supabase first
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -204,19 +191,32 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
         order: pkg.order || 1,
         active: pkg.active !== undefined ? pkg.active : true
       };
-      await supabase.from("packages").upsert(cleanPkgPayload);
+      const { error } = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
+      if (error) {
+        console.error("Supabase package upsert error:", error);
+      } else {
+        console.log("Successfully saved package to Supabase server:", pkg.id);
+      }
     }
   } catch (err) {
-    console.warn("Supabase package save failed:", err);
+    console.warn("Supabase package save exception:", err);
   }
 
-  return updatedPackages;
-}
-
-export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
+  // 2. Fetch updated list
   const packages = await fetchPackagesFromDb();
-  const updatedPackages = packages.filter(p => p.id !== id);
+  const existingIndex = packages.findIndex(p => p.id === pkg.id);
+  
+  let updatedPackages: PackageItem[];
+  if (existingIndex >= 0) {
+    updatedPackages = [...packages];
+    updatedPackages[existingIndex] = { ...pkg };
+  } else {
+    updatedPackages = [...packages, pkg];
+  }
 
+  updatedPackages.sort((a, b) => (a.order || 99) - (b.order || 99));
+
+  // Save to LocalStorage & Dispatch Event
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
     window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
@@ -230,17 +230,44 @@ export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
       body: JSON.stringify(updatedPackages)
     });
   } catch (err) {
-    console.warn("Cloud package delete sync failed:", err);
+    console.warn("Cloud package sync failed:", err);
   }
 
-  // Sync to Supabase
+  return updatedPackages;
+}
+
+export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
+  // 1. Delete from Supabase first
   try {
     const supabase = getSupabase();
     if (supabase) {
-      await supabase.from("packages").delete().eq("id", id);
+      const { error } = await supabase.from("packages").delete().eq("id", id);
+      if (error) {
+        console.error("Supabase package delete error:", error);
+      } else {
+        console.log("Successfully deleted package from Supabase server:", id);
+      }
     }
   } catch (err) {
-    console.warn("Supabase package delete failed:", err);
+    console.warn("Supabase package delete exception:", err);
+  }
+
+  const packages = await fetchPackagesFromDb();
+  const updatedPackages = packages.filter(p => p.id !== id);
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
+    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
+  }
+
+  try {
+    await fetch(CLOUD_KV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedPackages)
+    });
+  } catch (err) {
+    console.warn("Cloud package delete sync failed:", err);
   }
 
   return updatedPackages;
