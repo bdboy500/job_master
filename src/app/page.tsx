@@ -1161,7 +1161,7 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 overflow-y-auto overscroll-y-contain pb-20 md:pb-10 bg-slate-50/60 relative">
+        <div className="flex-1 overflow-y-auto overscroll-y-contain pb-2 md:pb-4 bg-slate-50/60 relative">
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}
@@ -3281,7 +3281,7 @@ export default function Home() {
 
         {/* Android/iOS App-Style Bottom Navigation Bar (Persistent across all screens including Quiz) */}
         <nav 
-          className="shrink-0 w-full bg-[#FFF8F3] border-t border-orange-200/60 flex justify-around items-center pt-2.5 pb-2 shadow-[0_-8px_30px_rgba(255,106,0,0.06)] z-50 transition-all duration-300 relative touch-none select-none"
+          className="shrink-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-2.5 pb-2 shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 relative touch-none select-none"
           id="mobile-bottom-nav"
         >
           {/* Home Tab */}

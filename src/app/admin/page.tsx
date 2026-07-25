@@ -35,7 +35,7 @@ import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
 import { getSupabase } from "../../lib/supabase";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, subscribeToExamPapers } from "../../lib/exams";
-import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages } from "../../lib/packages";
+import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 
 // Interfaces for local state types
 function formatDisplayDate(dateTimeStr: string): string {
@@ -347,9 +347,19 @@ export default function AdminPage() {
 
     const updated = await savePackageToDb(pkgToSave);
     setPackagesList(updated);
-    triggerNotification("success", editingPkgId ? "প্যাকেজ আপডেট করা হয়েছে!" : "নতুন প্যাকেজ যুক্ত করা হয়েছে!");
+    triggerNotification("success", editingPkgId ? "প্যাকেজ আপডেট ও সার্ভারে সিঙ্ক করা হয়েছে!" : "নতুন প্যাকেজ যুক্ত ও সার্ভারে সিঙ্ক করা হয়েছে!");
 
     handleCancelPkgEdit();
+  };
+
+  const handleSyncPackagesToSupabase = async () => {
+    triggerNotification("success", "সার্ভারে সিঙ্ক করা হচ্ছে...");
+    const res = await syncAllPackagesToSupabase(packagesList);
+    if (res.success) {
+      triggerNotification("success", "✅ " + res.message);
+    } else {
+      triggerNotification("error", "⚠️ সিঙ্ক এরর: " + res.message);
+    }
   };
 
   const handleStartEditPackage = (pkg: PackageItem) => {
@@ -2505,16 +2515,22 @@ export default function AdminPage() {
 
               {/* Right Column: Packages List */}
               <div className="lg:col-span-7 space-y-4">
-                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-2xl p-4 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-100 rounded-2xl p-4 shadow-xs">
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4 text-[#007AFF]" />
                     <h3 className="font-extrabold text-sm text-slate-800">
                       বিদ্যমান প্যাকেজসমূহ ({packagesList.length} টি)
                     </h3>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    ইউজার প্যানেলে এই প্যাকেজগুলো দৃশ্যমান
-                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSyncPackagesToSupabase}
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#007AFF] font-extrabold text-[11px] rounded-xl flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    title="সকল প্যাকেজ Supabase লাইভ ডেটাবেসে আপলোড করুন"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Supabase এ সিঙ্ক করুন</span>
+                  </button>
                 </div>
 
                 <div className="space-y-3">

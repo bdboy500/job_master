@@ -110,28 +110,31 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
         .order("order", { ascending: true });
 
       if (!error && data && data.length > 0) {
+        const mappedData: PackageItem[] = data.map((item: any) => ({
+          id: String(item.id),
+          title: String(item.title || ""),
+          desc: String(item.desc || ""),
+          price: String(item.price || ""),
+          oldPrice: item.oldPrice ?? item.oldprice ?? null,
+          badge: item.badge || null,
+          category: item.category === "course" ? "course" : "all",
+          bg: item.bg || "bg-white",
+          border: item.border || "border-slate-200/80",
+          order: Number(item.order) || 1,
+          active: item.active !== false
+        }));
+
         if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mappedData));
         }
-        return data as PackageItem[];
+        return mappedData;
       } else if (!error && data && data.length === 0) {
         // Table exists but is EMPTY -> Automatically SEED default packages into Supabase
         console.log("Supabase packages table is empty. Seeding default packages...");
-        const cleanDefaults = DEFAULT_PACKAGES.map(pkg => ({
-          id: pkg.id,
-          title: pkg.title,
-          desc: pkg.desc,
-          price: pkg.price,
-          oldPrice: pkg.oldPrice || null,
-          badge: pkg.badge || null,
-          category: pkg.category || "all",
-          bg: pkg.bg || "bg-white",
-          border: pkg.border || "border-slate-200/80",
-          order: pkg.order || 1,
-          active: pkg.active !== undefined ? pkg.active : true
-        }));
-        await supabase.from("packages").upsert(cleanDefaults);
+        await syncAllPackagesToSupabase(DEFAULT_PACKAGES);
         return DEFAULT_PACKAGES;
+      } else if (error) {
+        console.warn("Supabase packages fetch error:", error);
       }
     }
   } catch (err) {
@@ -173,12 +176,67 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
   return DEFAULT_PACKAGES;
 }
 
+export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return { success: false, message: "Supabase client unavailable" };
+
+    const list = pkgsToSync || await fetchPackagesFromDb();
+    if (!list || list.length === 0) return { success: false, message: "No packages to sync" };
+
+    const payload = list.map(pkg => ({
+      id: pkg.id,
+      title: pkg.title,
+      desc: pkg.desc,
+      price: pkg.price,
+      oldPrice: pkg.oldPrice || null,
+      badge: pkg.badge || null,
+      category: pkg.category || "all",
+      bg: pkg.bg || "bg-white",
+      border: pkg.border || "border-slate-200/80",
+      order: pkg.order || 1,
+      active: pkg.active !== undefined ? pkg.active : true
+    }));
+
+    let { error } = await supabase.from("packages").upsert(payload, { onConflict: "id" });
+    if (error && error.message.includes("oldPrice")) {
+      // Retry with oldprice lowercase column if column was created lowercase
+      const payloadAlt = payload.map(p => ({
+        id: p.id,
+        title: p.title,
+        desc: p.desc,
+        price: p.price,
+        oldprice: p.oldPrice,
+        badge: p.badge,
+        category: p.category,
+        bg: p.bg,
+        border: p.border,
+        order: p.order,
+        active: p.active
+      }));
+      const resAlt = await supabase.from("packages").upsert(payloadAlt, { onConflict: "id" });
+      error = resAlt.error;
+    }
+
+    if (error) {
+      console.error("Supabase batch packages sync error:", error);
+      return { success: false, message: error.message };
+    }
+
+    console.log("Successfully synced all packages to Supabase server!");
+    return { success: true, message: `${list.length}টি প্যাকেজ সফলভাবে Supabase সার্ভারে সিঙ্ক হয়েছে` };
+  } catch (err: any) {
+    console.error("Supabase batch sync exception:", err);
+    return { success: false, message: err.message || "Unknown error" };
+  }
+}
+
 export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> {
   // 1. Save to Supabase first
   try {
     const supabase = getSupabase();
     if (supabase) {
-      const cleanPkgPayload = {
+      const cleanPkgPayload: any = {
         id: pkg.id,
         title: pkg.title,
         desc: pkg.desc,
@@ -191,7 +249,16 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
         order: pkg.order || 1,
         active: pkg.active !== undefined ? pkg.active : true
       };
-      const { error } = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
+
+      let { error } = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
+      if (error && (error.message.includes("oldPrice") || error.code === "PGRST204")) {
+        // Fallback for lowercase oldprice column name
+        delete cleanPkgPayload.oldPrice;
+        cleanPkgPayload.oldprice = pkg.oldPrice || null;
+        const res2 = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
+        error = res2.error;
+      }
+
       if (error) {
         console.error("Supabase package upsert error:", error);
       } else {
