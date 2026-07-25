@@ -129,10 +129,22 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
         }
         return mappedData;
       } else if (!error && data && data.length === 0) {
-        // Table exists but is EMPTY -> Automatically SEED default packages into Supabase
-        console.log("Supabase packages table is empty. Seeding default packages...");
-        await syncAllPackagesToSupabase(DEFAULT_PACKAGES);
-        return DEFAULT_PACKAGES;
+        // Table exists in Supabase, but is empty (0 rows).
+        // Auto-seed current local or default packages to Supabase so it's populated!
+        let localPkgs: PackageItem[] | null = null;
+        if (typeof window !== "undefined") {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed) && parsed.length > 0) localPkgs = parsed;
+            } catch (e) {}
+          }
+        }
+        const pkgsToSeed = localPkgs || DEFAULT_PACKAGES;
+        console.log("Supabase packages table is empty. Auto-seeding packages to Supabase server...");
+        syncAllPackagesToSupabase(pkgsToSeed).catch(e => console.warn("Auto-seed error:", e));
+        return pkgsToSeed;
       } else if (error) {
         console.warn("Supabase packages fetch error:", error);
       }
@@ -181,10 +193,19 @@ export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Pro
     const supabase = getSupabase();
     if (!supabase) return { success: false, message: "Supabase client unavailable" };
 
-    const list = pkgsToSync || await fetchPackagesFromDb();
-    if (!list || list.length === 0) return { success: false, message: "No packages to sync" };
+    let list = pkgsToSync;
+    if (!list || list.length === 0) {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          try { list = JSON.parse(stored); } catch (e) {}
+        }
+      }
+      if (!list || list.length === 0) list = DEFAULT_PACKAGES;
+    }
 
-    const payload = list.map(pkg => ({
+    // Try payload with camelCase "oldPrice"
+    const payloadCamel = list.map(pkg => ({
       id: pkg.id,
       title: pkg.title,
       desc: pkg.desc,
@@ -198,24 +219,45 @@ export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Pro
       active: pkg.active !== undefined ? pkg.active : true
     }));
 
-    let { error } = await supabase.from("packages").upsert(payload, { onConflict: "id" });
-    if (error && error.message.includes("oldPrice")) {
-      // Retry with oldprice lowercase column if column was created lowercase
-      const payloadAlt = payload.map(p => ({
-        id: p.id,
-        title: p.title,
-        desc: p.desc,
-        price: p.price,
-        oldprice: p.oldPrice,
-        badge: p.badge,
-        category: p.category,
-        bg: p.bg,
-        border: p.border,
-        order: p.order,
-        active: p.active
+    let { error } = await supabase.from("packages").upsert(payloadCamel, { onConflict: "id" });
+
+    // Fallback attempt with lowercase "oldprice" if column name in Supabase Postgres is lowercase
+    if (error) {
+      console.warn("Supabase upsert with oldPrice column failed. Retrying with oldprice...", error.message);
+      const payloadLower = list.map(pkg => ({
+        id: pkg.id,
+        title: pkg.title,
+        desc: pkg.desc,
+        price: pkg.price,
+        oldprice: pkg.oldPrice || null,
+        badge: pkg.badge || null,
+        category: pkg.category || "all",
+        bg: pkg.bg || "bg-white",
+        border: pkg.border || "border-slate-200/80",
+        order: pkg.order || 1,
+        active: pkg.active !== undefined ? pkg.active : true
       }));
-      const resAlt = await supabase.from("packages").upsert(payloadAlt, { onConflict: "id" });
+      const resAlt = await supabase.from("packages").upsert(payloadLower, { onConflict: "id" });
       error = resAlt.error;
+
+      // Fallback attempt without oldPrice if column doesn't exist
+      if (error) {
+        console.warn("Supabase upsert with oldprice failed. Retrying without oldPrice column...", error.message);
+        const payloadNoOld = list.map(pkg => ({
+          id: pkg.id,
+          title: pkg.title,
+          desc: pkg.desc,
+          price: pkg.price,
+          badge: pkg.badge || null,
+          category: pkg.category || "all",
+          bg: pkg.bg || "bg-white",
+          border: pkg.border || "border-slate-200/80",
+          order: pkg.order || 1,
+          active: pkg.active !== undefined ? pkg.active : true
+        }));
+        const resNoOld = await supabase.from("packages").upsert(payloadNoOld, { onConflict: "id" });
+        error = resNoOld.error;
+      }
     }
 
     if (error) {
@@ -232,31 +274,68 @@ export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Pro
 }
 
 export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> {
-  // 1. Save to Supabase first
+  // 1. Get current local packages list from localStorage or defaults
+  let currentList: PackageItem[] = [];
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try { currentList = JSON.parse(stored); } catch (e) {}
+    }
+  }
+  if (!currentList || currentList.length === 0) {
+    currentList = [...DEFAULT_PACKAGES];
+  }
+
+  // 2. Update/insert package locally
+  const existingIndex = currentList.findIndex(p => p.id === pkg.id);
+  let updatedPackages: PackageItem[];
+  if (existingIndex >= 0) {
+    updatedPackages = [...currentList];
+    updatedPackages[existingIndex] = { ...pkg };
+  } else {
+    updatedPackages = [...currentList, pkg];
+  }
+  updatedPackages.sort((a, b) => (a.order || 99) - (b.order || 99));
+
+  // 3. Save to LocalStorage & Dispatch Event INSTANTLY so UI updates without lag
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
+    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
+  }
+
+  // 4. Save to Supabase Server with column name fallbacks
   try {
     const supabase = getSupabase();
     if (supabase) {
       const cleanPkgPayload: any = {
         id: pkg.id,
-        title: pkg.title,
-        desc: pkg.desc,
-        price: pkg.price,
+        title: pkg.title || "",
+        desc: pkg.desc || "",
+        price: pkg.price || "",
         oldPrice: pkg.oldPrice || null,
         badge: pkg.badge || null,
         category: pkg.category || "all",
         bg: pkg.bg || "bg-white",
         border: pkg.border || "border-slate-200/80",
         order: pkg.order || 1,
-        active: pkg.active !== undefined ? pkg.active : true
+        active: pkg.active !== false
       };
 
       let { error } = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
-      if (error && (error.message.includes("oldPrice") || error.code === "PGRST204")) {
-        // Fallback for lowercase oldprice column name
+      
+      if (error) {
+        // Fallback for lowercase oldprice
         delete cleanPkgPayload.oldPrice;
         cleanPkgPayload.oldprice = pkg.oldPrice || null;
-        const res2 = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
+        let res2 = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
         error = res2.error;
+
+        if (error) {
+          // Fallback omitting oldPrice
+          delete cleanPkgPayload.oldprice;
+          let res3 = await supabase.from("packages").upsert(cleanPkgPayload, { onConflict: "id" });
+          error = res3.error;
+        }
       }
 
       if (error) {
@@ -269,27 +348,7 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
     console.warn("Supabase package save exception:", err);
   }
 
-  // 2. Fetch updated list
-  const packages = await fetchPackagesFromDb();
-  const existingIndex = packages.findIndex(p => p.id === pkg.id);
-  
-  let updatedPackages: PackageItem[];
-  if (existingIndex >= 0) {
-    updatedPackages = [...packages];
-    updatedPackages[existingIndex] = { ...pkg };
-  } else {
-    updatedPackages = [...packages, pkg];
-  }
-
-  updatedPackages.sort((a, b) => (a.order || 99) - (b.order || 99));
-
-  // Save to LocalStorage & Dispatch Event
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
-    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
-  }
-
-  // Sync to Cloud Store
+  // 5. Sync to Cloud KV store as extra safety backup
   try {
     await fetch(CLOUD_KV_URL, {
       method: "POST",
@@ -304,7 +363,27 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
 }
 
 export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
-  // 1. Delete from Supabase first
+  // 1. Get current local list
+  let currentList: PackageItem[] = [];
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try { currentList = JSON.parse(stored); } catch (e) {}
+    }
+  }
+  if (!currentList || currentList.length === 0) {
+    currentList = [...DEFAULT_PACKAGES];
+  }
+
+  const updatedPackages = currentList.filter(p => p.id !== id);
+
+  // 2. Save locally & dispatch event instantly
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
+    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
+  }
+
+  // 3. Delete from Supabase
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -319,14 +398,7 @@ export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
     console.warn("Supabase package delete exception:", err);
   }
 
-  const packages = await fetchPackagesFromDb();
-  const updatedPackages = packages.filter(p => p.id !== id);
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
-    window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
-  }
-
+  // 4. Sync to Cloud Store
   try {
     await fetch(CLOUD_KV_URL, {
       method: "POST",
