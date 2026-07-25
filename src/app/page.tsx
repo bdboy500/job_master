@@ -953,7 +953,7 @@ export default function Home() {
 
   return (
     <PwaProvider>
-      <div className="min-h-screen w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex flex-col items-center justify-start p-0 sm:p-4 md:p-6 selection:bg-orange-500 selection:text-white relative overflow-y-auto">
+      <div className="min-h-screen h-[100dvh] sm:h-auto w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex flex-col items-center justify-start p-0 sm:p-4 md:p-6 selection:bg-orange-500 selection:text-white relative overflow-hidden sm:overflow-y-auto">
         
         {/* Global PWA Toast & Guide Modals */}
         <InstallPwaPopup />
@@ -966,7 +966,7 @@ export default function Home() {
         <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
 
         {/* Primary Container - Responsive full-width on Desktop, Phone Frame on Mobile */}
-        <div className="w-full max-w-full sm:max-w-md md:max-w-5xl lg:max-w-7xl bg-slate-50 h-full sm:h-[840px] md:h-auto sm:max-h-[880px] md:max-h-none rounded-none sm:rounded-[40px] md:rounded-[2.5rem] border-none sm:border sm:border-slate-200/50 md:border-slate-200/80 shadow-none sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col relative overflow-hidden z-10">
+        <div className="w-full max-w-full sm:max-w-md md:max-w-5xl lg:max-w-7xl bg-slate-50 h-[100dvh] sm:h-[840px] md:h-auto sm:max-h-[880px] md:max-h-none rounded-none sm:rounded-[40px] md:rounded-[2.5rem] border-none sm:border sm:border-slate-200/50 md:border-slate-200/80 shadow-none sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col justify-between relative overflow-hidden z-10">
         
         {/* Smartphone Upper Bezel Accent (Only visible on sm screen, hidden on md+) */}
         <div className="hidden sm:block md:hidden absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-3xl z-50">
@@ -4017,79 +4017,79 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </div>
+        )}
 
-            {/* Apple UI Package Purchase Modal */}
-            {selectedPurchasePkg && (
-              <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-                <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full text-center shadow-2xl space-y-4 border border-slate-100 relative">
-                  <button 
-                    onClick={() => setSelectedPurchasePkg(null)}
-                    className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+        {/* Apple UI Package Purchase Modal */}
+        {selectedPurchasePkg && (
+          <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full text-center shadow-2xl space-y-4 border border-slate-100 relative">
+              <button 
+                onClick={() => setSelectedPurchasePkg(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all active:scale-95 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
 
-                  <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black shadow-2xs">
-                    🛍️
+              <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black shadow-2xs">
+                🛍️
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-base text-[#1D1D1F] leading-snug">
+                  {selectedPurchasePkg.title}
+                </h3>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <span className="text-xl font-black text-[#007AFF]">
+                    {selectedPurchasePkg.price}
+                  </span>
+                  {selectedPurchasePkg.oldPrice && (
+                    <span className="text-xs text-slate-400 font-bold line-through">
+                      {selectedPurchasePkg.oldPrice}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed pt-1">
+                  {selectedPurchasePkg.desc}
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 text-left space-y-2">
+                <p className="text-[11px] font-bold text-slate-700">পেমেন্ট মাধ্যম নির্বাচন করুন:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white border-2 border-[#007AFF] rounded-xl p-2 text-center text-xs font-bold text-slate-800 shadow-2xs cursor-pointer">
+                    bKash
                   </div>
-
-                  <div className="space-y-1">
-                    <h3 className="font-extrabold text-base text-[#1D1D1F] leading-snug">
-                      {selectedPurchasePkg.title}
-                    </h3>
-                    <div className="flex items-center justify-center gap-2 pt-1">
-                      <span className="text-xl font-black text-[#007AFF]">
-                        {selectedPurchasePkg.price}
-                      </span>
-                      {selectedPurchasePkg.oldPrice && (
-                        <span className="text-xs text-slate-400 font-bold line-through">
-                          {selectedPurchasePkg.oldPrice}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed pt-1">
-                      {selectedPurchasePkg.desc}
-                    </p>
+                  <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
+                    Nagad
                   </div>
-
-                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 text-left space-y-2">
-                    <p className="text-[11px] font-bold text-slate-700">পেমেন্ট মাধ্যম নির্বাচন করুন:</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-white border-2 border-[#007AFF] rounded-xl p-2 text-center text-xs font-bold text-slate-800 shadow-2xs cursor-pointer">
-                        bKash
-                      </div>
-                      <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
-                        Nagad
-                      </div>
-                      <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
-                        Rocket
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-semibold pt-1">
-                      মার্চেন্ট নম্বর: <span className="font-mono text-slate-800 font-bold">01700000000</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => setSelectedPurchasePkg(null)}
-                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
-                    >
-                      বাতিল করুন
-                    </button>
-                    <button
-                      onClick={() => {
-                        alert(`ধন্যবাদ! ${selectedPurchasePkg.title} এর জন্য আপনার রিকোয়েস্ট গ্রহণ করা হয়েছে। দ্রুতই আপনার এক্সেস এক্টিভ করা হবে।`);
-                        setSelectedPurchasePkg(null);
-                      }}
-                      className="flex-1 py-3 bg-[#007AFF] hover:bg-blue-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-                    >
-                      পেমেন্ট সম্পন্ন করুন
-                    </button>
+                  <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
+                    Rocket
                   </div>
                 </div>
+                <div className="text-[10px] text-[#FF6A00] font-bold pt-1">
+                  মার্চেন্ট / বিকাশ নম্বর: <span className="font-mono text-slate-900 font-extrabold">01700000000</span>
+                </div>
               </div>
-            )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setSelectedPurchasePkg(null)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
+                >
+                  বাতিল করুন
+                </button>
+                <button
+                  onClick={() => {
+                    alert(`ধন্যবাদ! ${selectedPurchasePkg.title} এর জন্য আপনার পেমেন্ট অর্ডার গ্রহণ করা হয়েছে।`);
+                    setSelectedPurchasePkg(null);
+                  }}
+                  className="flex-1 py-3 bg-[#007AFF] hover:bg-blue-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                >
+                  পেমেন্ট সম্পন্ন করুন
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
