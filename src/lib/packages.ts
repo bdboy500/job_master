@@ -108,6 +108,9 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
         .order("order", { ascending: true });
 
       if (!error && data && data.length > 0) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
         return data as PackageItem[];
       }
     }
@@ -157,7 +160,20 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
   try {
     const supabase = getSupabase();
     if (supabase) {
-      await supabase.from("packages").upsert(pkg);
+      const cleanPkgPayload = {
+        id: pkg.id,
+        title: pkg.title,
+        desc: pkg.desc,
+        price: pkg.price,
+        oldPrice: pkg.oldPrice || null,
+        badge: pkg.badge || null,
+        category: pkg.category || "all",
+        bg: pkg.bg || "bg-white",
+        border: pkg.border || "border-slate-200/80",
+        order: pkg.order || 1,
+        active: pkg.active !== undefined ? pkg.active : true
+      };
+      await supabase.from("packages").upsert(cleanPkgPayload);
     }
   } catch (err) {
     console.warn("Supabase package save failed:", err);
@@ -201,8 +217,30 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
   window.addEventListener("jobmaster_packages_updated", handleUpdate);
   window.addEventListener("storage", handleUpdate);
 
+  let supabaseChannel: any = null;
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      supabaseChannel = supabase
+        .channel("packages_realtime_sync")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "packages" },
+          () => {
+            fetchPackagesFromDb().then(callback);
+          }
+        )
+        .subscribe();
+    }
+  } catch (err) {
+    console.warn("Packages realtime sub error:", err);
+  }
+
   return () => {
     window.removeEventListener("jobmaster_packages_updated", handleUpdate);
     window.removeEventListener("storage", handleUpdate);
+    if (supabaseChannel) {
+      supabaseChannel.unsubscribe();
+    }
   };
 }

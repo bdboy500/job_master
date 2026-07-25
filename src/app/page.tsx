@@ -42,7 +42,8 @@ import {
   Download,
   ShieldCheck,
   Archive,
-  Filter
+  Filter,
+  Zap
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -326,11 +327,27 @@ export default function Home() {
   // Take Exam Modal ("পরীক্ষা দিন") State
   const [takingExamModal, setTakingExamModal] = useState<ExamPaper | null>(null);
   const [examUserAnswers, setExamUserAnswers] = useState<Record<number, number>>({});
+  const [examInitialTime, setExamInitialTime] = useState<number>(0);
   const [examTimer, setExamTimer] = useState<number>(0);
   const [examSubmitted, setExamSubmitted] = useState<boolean>(false);
   const [examResultSummary, setExamResultSummary] = useState<any | null>(null);
   const [showExamNoticeAlert, setShowExamNoticeAlert] = useState<boolean>(true);
   const [examQuestionsDrawerOpen, setExamQuestionsDrawerOpen] = useState<boolean>(false);
+
+  // Detailed Answer Sheet State
+  const [viewingAnswerSheetData, setViewingAnswerSheetData] = useState<{
+    paper: ExamPaper;
+    summary: any;
+    userAnswers: Record<number, number>;
+  } | null>(null);
+
+  // Desktop Navigation Modals
+  const [showContactModal, setShowContactModal] = useState<boolean>(false);
+  const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
+  const [showSearchModal, setShowSearchModal] = useState<boolean>(false);
+  const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [desktopSearchQuery, setDesktopSearchQuery] = useState<string>("");
 
   // Game/Quiz States
   const [quizStarted, setQuizStarted] = useState<boolean>(false);
@@ -513,11 +530,13 @@ export default function Home() {
       return;
     }
 
+    const duration = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
     setTakingExamModal(paper);
     setExamUserAnswers({});
     setExamSubmitted(false);
     setExamResultSummary(null);
-    setExamTimer(paper.totalDurationSeconds || (paper.questions?.length || 10) * 36);
+    setExamInitialTime(duration);
+    setExamTimer(duration);
     setShowExamNoticeAlert(true);
     setExamQuestionsDrawerOpen(false);
     if (soundEnabled) quizAudio.playClick();
@@ -559,9 +578,15 @@ export default function Home() {
       }
     });
 
+    const skippedCount = totalQuestions - answeredCount;
     const penalty = wrongCount * 0.50; // -0.50 per wrong answer
     const netMarks = Math.max(0, correctCount - penalty);
     const percentage = totalQuestions > 0 ? Math.round((netMarks / totalQuestions) * 100) : 0;
+
+    const timeTakenSecs = Math.max(1, examInitialTime - examTimer);
+    const mins = Math.floor(timeTakenSecs / 60);
+    const secs = timeTakenSecs % 60;
+    const timeTakenFormatted = `${mins > 0 ? `${mins} মি: ` : ""}${secs} সে:`;
 
     setExamSubmitted(true);
     setExamResultSummary({
@@ -569,9 +594,12 @@ export default function Home() {
       answeredCount,
       correctCount,
       wrongCount,
+      skippedCount,
       penalty: penalty.toFixed(2),
       netMarks: netMarks.toFixed(2),
-      percentage
+      percentage,
+      timeTakenFormatted,
+      timeTakenSecs
     });
 
     // Save to test history log
@@ -925,7 +953,7 @@ export default function Home() {
 
   return (
     <PwaProvider>
-      <div className="h-full w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex items-center justify-center p-0 sm:p-6 md:p-8 selection:bg-orange-500 selection:text-white fixed sm:relative inset-0 sm:inset-auto overflow-hidden">
+      <div className="min-h-screen w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex flex-col items-center justify-start p-0 sm:p-4 md:p-6 selection:bg-orange-500 selection:text-white relative overflow-y-auto">
         
         {/* Global PWA Toast & Guide Modals */}
         <InstallPwaPopup />
@@ -937,18 +965,18 @@ export default function Home() {
         <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
         <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
 
-        {/* Primary Smartphone Container Mockup - 100% Edge-to-Edge on Mobile Devices */}
-        <div className="w-full max-w-full sm:max-w-md bg-slate-50 h-full sm:h-[840px] sm:max-h-[880px] rounded-none sm:rounded-[40px] border-none sm:border sm:border-slate-200/50 shadow-none sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col relative overflow-hidden z-10">
+        {/* Primary Container - Responsive full-width on Desktop, Phone Frame on Mobile */}
+        <div className="w-full max-w-full sm:max-w-md md:max-w-5xl lg:max-w-7xl bg-slate-50 h-full sm:h-[840px] md:h-auto sm:max-h-[880px] md:max-h-none rounded-none sm:rounded-[40px] md:rounded-[2.5rem] border-none sm:border sm:border-slate-200/50 md:border-slate-200/80 shadow-none sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col relative overflow-hidden z-10">
         
-        {/* Smartphone Upper Bezel Accent (Only visible on sm+ screen for aesthetics) */}
-        <div className="hidden sm:block absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-3xl z-50">
+        {/* Smartphone Upper Bezel Accent (Only visible on sm screen, hidden on md+) */}
+        <div className="hidden sm:block md:hidden absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-3xl z-50">
           <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-slate-800 rounded-full" />
           <div className="absolute top-1 right-8 w-2 h-2 bg-slate-800 rounded-full" />
         </div>
 
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-5 pt-3 pb-3 sm:pt-8 sm:pb-3.5 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
-          {/* Left side: Hamburger/Back and brand name */}
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
+          {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
           <div className="flex items-center gap-2">
             <button 
               onClick={() => {
@@ -978,7 +1006,7 @@ export default function Home() {
                 }
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative md:hidden"
               id="menu-toggle-button"
             >
               {currentScreen === "course-detail" || currentScreen === "prep-sub" || currentScreen === "quiz" ? (
@@ -1029,37 +1057,105 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Right side: Search shortcut and Bell icon */}
-          <div className="flex items-center gap-2">
+          {/* Center: Apple UI Navigation Menu for Desktop */}
+          <nav className="hidden md:flex bg-slate-100/90 border border-slate-200/70 p-1 rounded-xl items-center gap-1 shadow-inner">
+            <button
+              onClick={() => { setCurrentScreen("home"); if (soundEnabled) quizAudio.playClick(); }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                currentScreen === "home"
+                  ? "bg-white text-[#FF6A00] shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
+            >
+              Home
+            </button>
 
-            <button 
+            <button
+              onClick={() => { setCurrentScreen("profile"); if (soundEnabled) quizAudio.playClick(); }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                currentScreen === "profile"
+                  ? "bg-white text-[#FF6A00] shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
+            >
+              Profile
+            </button>
+
+            <button
+              onClick={() => { setCurrentScreen("packages"); if (soundEnabled) quizAudio.playClick(); }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                currentScreen === "packages"
+                  ? "bg-white text-[#FF6A00] shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
+            >
+              Package
+            </button>
+
+            <button
+              onClick={() => { setShowContactModal(true); if (soundEnabled) quizAudio.playClick(); }}
+              className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all cursor-pointer"
+            >
+              Contact Us
+            </button>
+
+            <button
+              onClick={() => { setShowAboutModal(true); if (soundEnabled) quizAudio.playClick(); }}
+              className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all cursor-pointer"
+            >
+              About Us
+            </button>
+
+            <button
               onClick={() => {
-                attemptExitQuiz(() => setCurrentScreen("courses"));
+                setIsLoggedIn(prev => !prev);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-full active:scale-95 transition-all cursor-pointer"
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                isLoggedIn 
+                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100" 
+                  : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+              }`}
+            >
+              {isLoggedIn ? "Sign Out" : "Sign In"}
+            </button>
+          </nav>
+
+          {/* Right side: Search, Notification, and Settings icons */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button 
+              onClick={() => {
+                setShowSearchModal(true);
+                if (soundEnabled) quizAudio.playClick();
+              }}
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl active:scale-95 transition-all cursor-pointer"
               title="খুঁজুন"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-5 h-5 stroke-[2.2px]" />
             </button>
 
             <button 
               onClick={() => {
-                attemptExitQuiz(() => {
-                  if (currentScreen === "routine") {
-                    setCurrentScreen(previousScreen || "home");
-                  } else {
-                    setPreviousScreen(currentScreen as any);
-                    setCurrentScreen("routine");
-                  }
-                });
+                setShowNotificationModal(true);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-full relative active:scale-95 transition-all cursor-pointer"
-              title="নোটিফিকেশন"
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl relative active:scale-95 transition-all cursor-pointer"
+              title="বিজ্ঞপ্তি"
             >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
+              <Bell className="w-5 h-5 stroke-[2.2px]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full animate-ping" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full" />
+            </button>
+
+            <button 
+              onClick={() => {
+                setShowSettingsModal(true);
+                if (soundEnabled) quizAudio.playClick();
+              }}
+              className="hidden md:block p-2 text-slate-600 hover:bg-slate-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+              title="সেটিংস"
+            >
+              <Settings className="w-5 h-5 stroke-[2.2px]" />
             </button>
           </div>
         </header>
@@ -1204,53 +1300,58 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* General Quiz Game Live Banner (Gradient Orange/Red matching image) - Compact Redesign */}
-              <div className="bg-gradient-to-br from-[#FF6B35] to-[#FF4E00] rounded-3xl p-5 text-white relative overflow-hidden shadow-md shadow-orange-500/15">
-                {/* Subtle background glow */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
-                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-black/10 rounded-full blur-lg pointer-events-none" />
+              {/* General Quiz Game Live Banner - Orange Background with Balanced Layout */}
+              <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-3xl p-5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
+                {/* Subtle background glow effects */}
+                <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/15 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-black/20 rounded-full blur-xl pointer-events-none" />
                 
-                {/* Header elements: Live... on Left, Active Users on Right */}
-                <div className="flex items-center justify-between">
-                  {/* Left corner: Live... */}
-                  <div className="flex items-center gap-1.5 bg-white/15 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-90"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]"></span>
-                    </span>
-                    <span>Live</span>
-                    <span className="inline-flex gap-0.5 ml-0.5 items-end h-1.5 pb-[2px]">
-                      <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                      <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                      <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce"></span>
-                    </span>
-                  </div>
-                  
-                  {/* Right corner: Active Users */}
-                  <div className="flex items-center gap-1.5 bg-black/15 px-3 py-1 rounded-full text-[10px] font-extrabold">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse mr-0.5"></span>
-                    <Users className="w-3 h-3 text-white/95" />
-                    <span>1,420 playing</span>
-                  </div>
-                </div>
+                <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
+                  {/* LEFT SIDE: LIVE Tag, Title, and Subtitle */}
+                  <div className="flex flex-col items-start space-y-1.5 flex-1 min-w-0">
+                    {/* LIVE Indicator Badge */}
+                    <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border border-white/25 shadow-xs text-white">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-90"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]"></span>
+                      </span>
+                      <span>LIVE</span>
+                      <span className="inline-flex gap-0.5 ml-0.5 items-end h-1.5 pb-[2px]">
+                        <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce"></span>
+                      </span>
+                    </div>
 
-                {/* Title and Button cleanly organized to save space */}
-                <div className="mt-4 flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <h3 className="text-lg font-black tracking-tight leading-none">
+                    {/* Title */}
+                    <h3 className="text-lg sm:text-xl font-black tracking-tight leading-tight text-white pt-0.5">
                       Live Quiz Game
                     </h3>
-                    <span className="text-orange-100 text-[10px] font-bold tracking-wide block mt-0.5">
+
+                    {/* Subtitle */}
+                    <p className="text-orange-100 text-xs font-extrabold tracking-wide truncate max-w-full">
                       খেলতে খেলতে শিখুন
-                    </span>
+                    </p>
                   </div>
 
-                  <button 
-                    onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
-                    className="bg-white hover:bg-orange-50 text-[#FF4E00] font-extrabold text-xs px-5 py-2.5 rounded-2xl shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shrink-0"
-                  >
-                    Start Quiz
-                  </button>
+                  {/* RIGHT SIDE: 1,420 playing badge (Full White) & Start Quiz button */}
+                  <div className="flex flex-col items-end justify-center space-y-2 shrink-0">
+                    {/* 1,420 playing - Full White Badge (Matching LIVE badge styling) */}
+                    <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-extrabold text-white border border-white/25 shadow-xs">
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                      <Users className="w-3.5 h-3.5 text-white" />
+                      <span className="text-white">1,420 playing</span>
+                    </div>
+
+                    {/* Start Quiz CTA button */}
+                    <button 
+                      onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
+                      className="bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
+                    >
+                      <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00]" />
+                      <span>Start Quiz</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2013,9 +2114,9 @@ export default function Home() {
 
                               {/* Marks & Duration */}
                               <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
-                                <span>Total marks: {paper.totalMarks || paper.questions?.length || 10}</span>
+                                <span>Marks: {paper.totalMarks || paper.questions?.length || 10}</span>
                                 <span>•</span>
-                                <span>Duration: {durationMins} mins (৩৬ সে/প্রশ্ন)</span>
+                                <span>Duration: {durationMins} mins</span>
                               </div>
 
                               {/* Title & Topic */}
@@ -3896,8 +3997,12 @@ export default function Home() {
                     <button
                       onClick={() => {
                         const paper = takingExamModal;
+                        setViewingAnswerSheetData({
+                          paper,
+                          summary: examResultSummary,
+                          userAnswers: { ...examUserAnswers }
+                        });
                         setTakingExamModal(null);
-                        handleOpenViewPaper(paper);
                       }}
                       className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-md shadow-emerald-500/20"
                     >
@@ -3986,6 +4091,419 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* ANSWER SHEET / DETAILED RESULT CARD MODAL                  */}
+        {/* ========================================================= */}
+        {viewingAnswerSheetData && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/80 backdrop-blur-md overflow-y-auto animate-fade-in p-4 sm:p-6 text-left">
+            <div className="max-w-3xl mx-auto bg-slate-50 border border-slate-200/80 rounded-[2.5rem] shadow-2xl overflow-hidden my-4 sm:my-8 space-y-6 pb-12">
+              {/* Top Header */}
+              <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setViewingAnswerSheetData(null)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                    title="বন্ধ করুন"
+                  >
+                    <ArrowLeft className="w-5 h-5 stroke-[2.5px]" />
+                  </button>
+                  <div>
+                    <h2 className="font-black text-base text-slate-900 leading-snug">
+                      উত্তরপত্র ও রেজাল্ট কার্ড
+                    </h2>
+                    <p className="text-xs text-slate-500 font-bold">
+                      {viewingAnswerSheetData.paper.title}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewingAnswerSheetData(null)}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </header>
+
+              <main className="px-5 sm:px-8 space-y-6">
+                {/* RESULT CARD SUMMARY */}
+                <div className="bg-white border border-slate-200/80 rounded-[2rem] p-6 shadow-2xs space-y-5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-orange-100 text-[#FF6A00] rounded-2xl flex items-center justify-center font-black">
+                        <Award className="w-6 h-6 stroke-[2.5px]" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-[#FF6A00] bg-orange-50 px-2.5 py-1 rounded-full">
+                          Result Card
+                        </span>
+                        <h3 className="text-lg font-black text-slate-900 mt-1">
+                          আপনার পরীক্ষার ফলাফল
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 font-bold block">প্রাপ্ত নম্বর</span>
+                      <span className="text-2xl font-black text-[#FF6A00]">
+                        {viewingAnswerSheetData.summary.netMarks} <span className="text-xs font-extrabold text-slate-400">/ {viewingAnswerSheetData.summary.totalQuestions}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Detailed Metric Badges Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-bold">
+                    {/* Score */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 space-y-1">
+                      <span className="text-slate-400 text-[11px]">Score (স্কোর)</span>
+                      <p className="text-base font-black text-slate-900">
+                        {viewingAnswerSheetData.summary.netMarks}
+                      </p>
+                    </div>
+
+                    {/* Percentage */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 space-y-1">
+                      <span className="text-slate-400 text-[11px]">Percentage</span>
+                      <p className="text-base font-black text-purple-600">
+                        {viewingAnswerSheetData.summary.percentage}%
+                      </p>
+                    </div>
+
+                    {/* Time Taken */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 space-y-1">
+                      <span className="text-slate-400 text-[11px]">Time Taken</span>
+                      <p className="text-base font-black text-sky-600">
+                        {viewingAnswerSheetData.summary.timeTakenFormatted}
+                      </p>
+                    </div>
+
+                    {/* Right Answers */}
+                    <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-3.5 space-y-1">
+                      <div className="flex items-center justify-between text-emerald-800">
+                        <span className="text-[11px]">সঠিক উত্তর</span>
+                        <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                      </div>
+                      <p className="text-lg font-black text-emerald-800">
+                        {viewingAnswerSheetData.summary.correctCount} টি
+                      </p>
+                    </div>
+
+                    {/* Wrong Answers */}
+                    <div className="bg-rose-50/90 border border-rose-200/90 rounded-2xl p-3.5 space-y-1">
+                      <div className="flex items-center justify-between text-rose-800">
+                        <span className="text-[11px]">ভুল উত্তর</span>
+                        <X className="w-4 h-4 text-rose-600 stroke-[3]" />
+                      </div>
+                      <p className="text-lg font-black text-rose-800">
+                        {viewingAnswerSheetData.summary.wrongCount} টি
+                      </p>
+                    </div>
+
+                    {/* Skipped Answers */}
+                    <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span className="text-[11px]">স্কিপড (এড়িয়ে গেছেন)</span>
+                        <ChevronRight className="w-4 h-4 text-slate-500 stroke-[3]" />
+                      </div>
+                      <p className="text-lg font-black text-slate-700">
+                        {viewingAnswerSheetData.summary.skippedCount} টি
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Negative Marking Explanation Banner */}
+                  <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 font-extrabold flex items-center justify-between">
+                    <span>⚠️ ভুল উত্তরের জন্য কাটা মার্ক (Negative Marks):</span>
+                    <span className="text-rose-600 font-black text-sm">
+                      -{viewingAnswerSheetData.summary.penalty}
+                    </span>
+                  </div>
+                </div>
+
+                {/* QUESTION & ANSWER LIST SECTION */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
+                    <span>📋 প্রশ্ন ও বিস্তারিত উত্তর সমাধান</span>
+                    <span className="text-xs text-slate-400 font-bold">({viewingAnswerSheetData.paper.questions.length} টি)</span>
+                  </h3>
+
+                  {viewingAnswerSheetData.paper.questions.map((q, qIdx) => {
+                    const userChoice = viewingAnswerSheetData.userAnswers[qIdx];
+                    const correctChoice = q.correctIndex;
+                    const isCorrect = userChoice === correctChoice;
+                    const isSkipped = userChoice === undefined;
+                    const isWrong = !isSkipped && !isCorrect;
+
+                    const optionLetters = ["ক", "খ", "গ", "ঘ"];
+
+                    return (
+                      <div 
+                        key={qIdx} 
+                        className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5 ${
+                          isCorrect 
+                            ? "border-emerald-200/80" 
+                            : isWrong 
+                            ? "border-rose-200/80" 
+                            : "border-slate-200/80"
+                        }`}
+                      >
+                        {/* Header with question & status pill */}
+                        <div className="flex items-start justify-between gap-3">
+                          <h4 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed">
+                            <span className="text-[#FF6A00] mr-1.5">{qIdx + 1})</span>
+                            {q.question}
+                          </h4>
+
+                          {/* Status Badge */}
+                          {isCorrect && (
+                            <span className="bg-emerald-50 border border-emerald-300 text-emerald-700 font-black text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                              <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
+                              <span>সঠিক উত্তর</span>
+                            </span>
+                          )}
+                          {isWrong && (
+                            <span className="bg-rose-50 border border-rose-300 text-rose-700 font-black text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                              <X className="w-3.5 h-3.5 text-rose-600 stroke-[3]" />
+                              <span>ভুল উত্তর</span>
+                            </span>
+                          )}
+                          {isSkipped && (
+                            <span className="bg-slate-100 border border-slate-300 text-slate-700 font-black text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                              <ChevronRight className="w-3.5 h-3.5 text-slate-500 stroke-[3]" />
+                              <span>স্কিপড</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Options Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {(q.options || []).map((opt, optIdx) => {
+                            const isThisCorrectOpt = optIdx === correctChoice;
+                            const isThisUserSelected = userChoice === optIdx;
+
+                            let optBg = "bg-slate-50 border-slate-200/80 text-slate-700";
+                            let badgeBg = "bg-white border border-slate-300 text-slate-600";
+
+                            if (isThisCorrectOpt) {
+                              // Correct option is ALWAYS GREEN (whether chosen, wrong or skipped)
+                              optBg = "bg-emerald-50/90 border-2 border-emerald-500 text-emerald-950 font-black shadow-2xs";
+                              badgeBg = "bg-emerald-600 text-white";
+                            } else if (isThisUserSelected && !isThisCorrectOpt) {
+                              // User selected wrong option is RED
+                              optBg = "bg-rose-50/90 border-2 border-rose-500 text-rose-950 font-black shadow-2xs";
+                              badgeBg = "bg-rose-600 text-white";
+                            }
+
+                            return (
+                              <div 
+                                key={optIdx}
+                                className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2.5 ${optBg}`}
+                              >
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${badgeBg}`}>
+                                  {optionLetters[optIdx] || optIdx + 1}
+                                </span>
+                                <span className="leading-tight flex-1">{opt}</span>
+                                {isThisCorrectOpt && <Check className="w-4 h-4 text-emerald-600 ml-auto shrink-0 stroke-[3]" />}
+                                {isThisUserSelected && !isThisCorrectOpt && <X className="w-4 h-4 text-rose-600 ml-auto shrink-0 stroke-[3]" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Explanation */}
+                        <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 space-y-1">
+                          <div className="font-extrabold text-[#FF6A00] flex items-center gap-1">
+                            📌 <span>ব্যাখ্যা ও সমাধান:</span>
+                          </div>
+                          <p className="text-slate-600 font-semibold leading-relaxed">
+                            {q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। বিসিএস ও পিএসসি স্ট্যান্ডার্ড বিষয়ভিত্তিক পর্যালোচনার ভিত্তিতে সমাধান প্রদান করা হয়েছে।`}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </main>
+            </div>
+          </div>
+        )}
+
+        {/* DESKTOP MODALS */}
+        {/* Contact Us Modal */}
+        {showContactModal && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setShowContactModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 text-[#FF6A00] rounded-xl flex items-center justify-center font-black">
+                  📞
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">Contact Us (যোগাযোগ)</h3>
+                  <p className="text-xs text-slate-500 font-semibold">Job Master সাপোর্ট সেন্টার</p>
+                </div>
+              </div>
+              <div className="space-y-3 pt-2 text-xs font-bold text-slate-700">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <span>📧 ইমেইল সাপোর্ট:</span>
+                  <span className="font-mono text-[#FF6A00]">support@jobmaster.app</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <span>📱 হেল্পলাইন:</span>
+                  <span className="font-mono text-[#FF6A00]">+880 1700-000000</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <span>🌐 ফেসবুক পেজ:</span>
+                  <span className="text-blue-600">fb.com/jobmasterapp</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="w-full py-3 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs rounded-xl cursor-pointer"
+              >
+                ঠিক আছে
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* About Us Modal */}
+        {showAboutModal && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setShowAboutModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 text-[#FF6A00] rounded-xl flex items-center justify-center font-black">
+                  LM
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">About Us (আমাদের সম্পর্কে)</h3>
+                  <p className="text-xs text-slate-500 font-semibold">Job Master Version 2.5.0</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 font-semibold leading-relaxed">
+                Job Master হলো বাংলাদেশের চাকরি প্রার্থীদের জন্য সবচেয়ে সমৃদ্ধ ও বিশ্বস্ত ডিজিটাল লার্নিং প্ল্যাটফর্ম। বিসিএস, ব্যাংক জব, প্রাইমারি শিক্ষক নিয়োগ ও অন্যান্য সরকারি চাকরির জন্য রিয়েল-টাইম মডেল টেস্ট ও বিষয়ভিত্তিক প্রস্তুতি নিশ্চিত করাই আমাদের মূল লক্ষ্য।
+              </p>
+              <button
+                onClick={() => setShowAboutModal(false)}
+                className="w-full py-3 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs rounded-xl cursor-pointer"
+              >
+                বন্ধ করুন
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Search Modal */}
+        {showSearchModal && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-lg w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setShowSearchModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="font-black text-base text-slate-900">🔍 খুঁজুন (Search Exams & Topics)</h3>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="পরীক্ষার নাম বা বিষয় লিখুন..."
+                  value={desktopSearchQuery}
+                  onChange={(e) => setDesktopSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                />
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {examPapers
+                  .filter(p => !desktopSearchQuery || p.title.toLowerCase().includes(desktopSearchQuery.toLowerCase()))
+                  .slice(0, 5)
+                  .map((p) => (
+                    <div 
+                      key={p.id}
+                      onClick={() => {
+                        setShowSearchModal(false);
+                        handleOpenTakeExam(p);
+                      }}
+                      className="p-3 bg-slate-50 hover:bg-orange-50 rounded-xl border border-slate-100 flex items-center justify-between cursor-pointer transition-all"
+                    >
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800">{p.title}</h4>
+                        <span className="text-[10px] text-slate-400 font-bold">{p.course} • {p.examType}</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification Modal */}
+        {showNotificationModal && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setShowNotificationModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-[#FF6A00]" />
+                <h3 className="font-black text-base text-slate-900">বিজ্ঞপ্তি (Notifications)</h3>
+              </div>
+              <div className="space-y-2 text-xs font-bold text-slate-700">
+                <div className="p-3 bg-orange-50 border border-orange-200/80 rounded-xl space-y-1">
+                  <span className="text-[10px] text-[#FF6A00] font-black uppercase">নতুন আপডেট</span>
+                  <p className="text-slate-800">বিসিএস প্রিলিমিনারি ৪৫তম ও ৪৬তম স্পেশাল মডেল টেস্ট যুক্ত করা হয়েছে!</p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
+                  <span className="text-[10px] text-slate-400 font-black uppercase">গতকাল</span>
+                  <p className="text-slate-700">সাপ্তাহিক লাইভ কুইজ প্রতিযোগিতার ফল প্রকাশিত হয়েছে।</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Modal */}
+        {showSettingsModal && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setShowSettingsModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-[#FF6A00]" />
+                <h3 className="font-black text-base text-slate-900">সেটিংস (Settings)</h3>
+              </div>
+              <div className="space-y-3 pt-2 text-xs font-bold">
+                <div className="p-3.5 bg-slate-50 rounded-xl flex items-center justify-between">
+                  <span>🔊 সাউন্ড ইফেক্ট:</span>
+                  <button 
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    className={`px-3 py-1.5 rounded-lg font-black ${soundEnabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}
+                  >
+                    {soundEnabled ? "চালু" : "বন্ধ"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
