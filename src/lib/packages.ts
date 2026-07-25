@@ -97,8 +97,26 @@ export const DEFAULT_PACKAGES: PackageItem[] = [
 ];
 
 const STORAGE_KEY = "jobmaster_packages_v2";
+const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_packages_v2";
 
 export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
+  // 1. Try Cloud Store for worldwide live updates
+  try {
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        return data as PackageItem[];
+      }
+    }
+  } catch (err) {
+    console.warn("Cloud packages fetch warning:", err);
+  }
+
+  // 2. Try Supabase
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -118,6 +136,7 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
     console.warn("Supabase packages fetch failed, using local storage fallback:", err);
   }
 
+  // 3. Fallback to localStorage
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -130,7 +149,6 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
         console.error("Error parsing stored packages:", e);
       }
     }
-    // Save defaults to localStorage for persistence
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PACKAGES));
   }
 
@@ -152,11 +170,24 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
   // Sort by order or creation
   updatedPackages.sort((a, b) => (a.order || 99) - (b.order || 99));
 
+  // Save to LocalStorage immediately
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPackages));
     window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
   }
 
+  // Sync to Cloud Store so ALL users in the world get the update
+  try {
+    await fetch(CLOUD_KV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedPackages)
+    });
+  } catch (err) {
+    console.warn("Cloud package sync failed:", err);
+  }
+
+  // Sync to Supabase
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -191,6 +222,18 @@ export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
     window.dispatchEvent(new CustomEvent("jobmaster_packages_updated", { detail: updatedPackages }));
   }
 
+  // Sync to Cloud Store
+  try {
+    await fetch(CLOUD_KV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedPackages)
+    });
+  } catch (err) {
+    console.warn("Cloud package delete sync failed:", err);
+  }
+
+  // Sync to Supabase
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -217,6 +260,13 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
   window.addEventListener("jobmaster_packages_updated", handleUpdate);
   window.addEventListener("storage", handleUpdate);
 
+  const handleVisibility = () => {
+    if (document.visibilityState === "visible") {
+      fetchPackagesFromDb().then(callback).catch(() => {});
+    }
+  };
+  window.addEventListener("visibilitychange", handleVisibility);
+
   let supabaseChannel: any = null;
   try {
     const supabase = getSupabase();
@@ -239,6 +289,7 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
   return () => {
     window.removeEventListener("jobmaster_packages_updated", handleUpdate);
     window.removeEventListener("storage", handleUpdate);
+    window.removeEventListener("visibilitychange", handleVisibility);
     if (supabaseChannel) {
       supabaseChannel.unsubscribe();
     }
