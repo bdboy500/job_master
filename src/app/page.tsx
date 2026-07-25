@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Play, 
   RotateCcw, 
@@ -11,6 +11,8 @@ import {
   AlertTriangle, 
   AlertCircle,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   HelpCircle,
   Menu,
   Search,
@@ -336,6 +338,9 @@ export default function Home() {
   const [showExamSubmitConfirmModal, setShowExamSubmitConfirmModal] = useState<boolean>(false);
 
   // Detailed Answer Sheet State
+  const answerSheetScrollRef = useRef<HTMLDivElement>(null);
+  const [showAnswerSheetScrollTop, setShowAnswerSheetScrollTop] = useState<boolean>(false);
+  const [expandedExplanations, setExpandedExplanations] = useState<Record<number, boolean>>({});
   const [viewingAnswerSheetData, setViewingAnswerSheetData] = useState<{
     paper: ExamPaper;
     summary: any;
@@ -4161,8 +4166,12 @@ export default function Home() {
         {/* ANSWER SHEET / DETAILED RESULT CARD MODAL                  */}
         {/* ========================================================= */}
         {viewingAnswerSheetData && (
-          <div className="fixed inset-0 z-[130] bg-slate-900/80 backdrop-blur-md overflow-y-auto animate-fade-in p-4 sm:p-6 text-left">
-            <div className="max-w-3xl mx-auto bg-slate-50 border border-slate-200/80 rounded-[2.5rem] shadow-2xl overflow-hidden my-4 sm:my-8 space-y-6 pb-12">
+          <div 
+            ref={answerSheetScrollRef}
+            onScroll={(e) => setShowAnswerSheetScrollTop(e.currentTarget.scrollTop > 200)}
+            className="fixed inset-0 z-[130] bg-slate-900/80 backdrop-blur-md overflow-y-auto animate-fade-in p-4 sm:p-6 text-left"
+          >
+            <div className="max-w-3xl mx-auto bg-slate-50 border border-slate-200/80 rounded-[2.5rem] shadow-2xl overflow-hidden my-4 sm:my-8 space-y-6 pb-12 relative">
               {/* Top Header */}
               <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -4266,7 +4275,7 @@ export default function Home() {
                     {/* Skipped Answers */}
                     <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3.5 space-y-1">
                       <div className="flex items-center justify-between text-slate-700">
-                        <span className="text-[11px]">স্কিপড (এড়িয়ে গেছেন)</span>
+                        <span className="text-[11px]">এড়িয়ে গেছেন</span>
                         <ChevronRight className="w-4 h-4 text-slate-500 stroke-[3]" />
                       </div>
                       <p className="text-lg font-black text-slate-700">
@@ -4334,7 +4343,7 @@ export default function Home() {
                           {isSkipped && (
                             <span className="bg-slate-100 border border-slate-300 text-slate-700 font-black text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
                               <ChevronRight className="w-3.5 h-3.5 text-slate-500 stroke-[3]" />
-                              <span>স্কিপড</span>
+                              <span>এড়িয়ে গেছেন</span>
                             </span>
                           )}
                         </div>
@@ -4374,20 +4383,65 @@ export default function Home() {
                           })}
                         </div>
 
-                        {/* Explanation */}
-                        <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 space-y-1">
-                          <div className="font-extrabold text-[#FF6A00] flex items-center gap-1">
-                            📌 <span>ব্যাখ্যা ও সমাধান:</span>
-                          </div>
-                          <p className="text-slate-600 font-semibold leading-relaxed">
-                            {q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। বিসিএস ও পিএসসি স্ট্যান্ডার্ড বিষয়ভিত্তিক পর্যালোচনার ভিত্তিতে সমাধান প্রদান করা হয়েছে।`}
-                          </p>
+                        {/* Explanation Toggle Button & Collapsible Body */}
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedExplanations(prev => ({
+                                ...prev,
+                                [qIdx]: !prev[qIdx]
+                              }));
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] border border-orange-200/80 rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>{expandedExplanations[qIdx] ? "ব্যাখ্যা লুকান" : "ব্যাখ্যা দেখুন"}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedExplanations[qIdx] ? "rotate-180" : ""}`} />
+                          </button>
+
+                          {expandedExplanations[qIdx] && (
+                            <div className="mt-2.5 p-3.5 bg-slate-50 border border-orange-100 rounded-xl text-xs text-slate-800 space-y-1.5 animate-fade-in">
+                              <div className="font-extrabold text-[#FF6A00] flex items-center gap-1">
+                                📌 <span>ব্যাখ্যা ও সমাধান:</span>
+                              </div>
+                              <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-line">
+                                {q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। বিসিএস ও পিএসসি স্ট্যান্ডার্ড বিষয়ভিত্তিক পর্যালোচনার ভিত্তিতে সমাধান প্রদান করা হয়েছে।`}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Bottom Exit Button */}
+                <div className="pt-8 pb-4 flex justify-center border-t border-slate-200/80">
+                  <button
+                    onClick={() => setViewingAnswerSheetData(null)}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-slate-900/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                    <span>উত্তরপত্র বন্ধ করুন (Exit Answer Sheet)</span>
+                  </button>
+                </div>
               </main>
+
+              {/* Floating Scroll to Top Arrow Button */}
+              {showAnswerSheetScrollTop && (
+                <button
+                  onClick={() => {
+                    if (answerSheetScrollRef.current) {
+                      answerSheetScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
+                  className="fixed bottom-6 right-6 z-[140] w-12 h-12 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all animate-bounce cursor-pointer active:scale-90"
+                  title="উপরে যান (Scroll to Top)"
+                >
+                  <ChevronUp className="w-6 h-6 stroke-[3]" />
+                </button>
+              )}
             </div>
           </div>
         )}

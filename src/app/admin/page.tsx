@@ -1367,14 +1367,18 @@ export default function AdminPage() {
                         {/* Explanation */}
                         <div className="space-y-1">
                           <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                            বিশ্লেষণ বা ব্যাখ্যা (Explanation - Optional)
+                            বিশ্লেষণ বা ব্যাখ্যা (Explanation - Multi-line auto-expand)
                           </label>
-                          <input 
-                            type="text"
-                            placeholder="যেমন: মেঘনা নদী বাংলাদেশের দীর্ঘতম ও বৃহত্তম নদী।"
+                          <textarea 
+                            rows={3}
+                            placeholder="যেমন: মেঘনা নদী বাংলাদেশের দীর্ঘতম ও বৃহত্তম নদী।&#10;প্রয়োজনে এন্টার চেপে নতুন লাইনে বিস্তারিত ব্যাখ্যা লিখুন..."
                             value={newExplanation}
-                            onChange={(e) => setNewExplanation(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                            onChange={(e) => {
+                              setNewExplanation(e.target.value);
+                              e.target.style.height = "auto";
+                              e.target.style.height = `${e.target.scrollHeight}px`;
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 resize-y min-h-[90px] leading-relaxed"
                           />
                         </div>
                       </div>
@@ -2714,14 +2718,18 @@ export default function AdminPage() {
                   {/* Explanation */}
                   <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                      বিশ্লেষণ বা ব্যাখ্যা (Explanation - Optional)
+                      বিশ্লেষণ বা ব্যাখ্যা (Explanation - Multi-line auto-expand)
                     </label>
-                    <input 
-                      type="text"
-                      placeholder="যেমন: মেঘনা নদী বাংলাদেশের দীর্ঘতম ও বৃহত্তম নদী।"
+                    <textarea 
+                      rows={3}
+                      placeholder="যেমন: মেঘনা নদী বাংলাদেশের দীর্ঘতম ও বৃহত্তম নদী।&#10;প্রয়োজনে এন্টার চেপে নতুন লাইনে বিস্তারিত ব্যাখ্যা লিখুন..."
                       value={editExplanation}
-                      onChange={(e) => setEditExplanation(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                      onChange={(e) => {
+                        setEditExplanation(e.target.value);
+                        e.target.style.height = "auto";
+                        e.target.style.height = `${e.target.scrollHeight}px`;
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 resize-y min-h-[90px] leading-relaxed"
                     />
                   </div>
                 </div>
