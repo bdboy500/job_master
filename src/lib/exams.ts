@@ -18,6 +18,36 @@ export interface ExamPaper {
   status: "Live" | "Upcoming" | "Completed" | "Archive";
   questions: Question[];
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
+  return [...papers].sort((a, b) => {
+    const statusA = getExamStatus(a);
+    const statusB = getExamStatus(b);
+
+    const statusWeight = { Live: 1, Upcoming: 2, Archive: 3 };
+    const wA = statusWeight[statusA] || 4;
+    const wB = statusWeight[statusB] || 4;
+
+    if (wA !== wB) {
+      return wA - wB; // Live (1) before Upcoming (2) before Archive (3)
+    }
+
+    if (statusA === "Upcoming") {
+      // For upcoming exams: sort by earliest startDateTime / date first
+      const timeA = a.startDateTime ? new Date(a.startDateTime).getTime() : new Date(a.examDate || 0).getTime();
+      const timeB = b.startDateTime ? new Date(b.startDateTime).getTime() : new Date(b.examDate || 0).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+        return timeA - timeB; // Earliest upcoming date first
+      }
+    }
+
+    // Default tie-breaker or Live/Archive sorting: newest updated/created first
+    const updatedA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const updatedB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return updatedB - updatedA;
+  });
 }
 
 export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive" {
@@ -157,6 +187,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
           let questionsArr: Question[] = [];
           let startDT: string | undefined = item.startDateTime || item.start_date_time || item.startDate;
           let endDT: string | undefined = item.endDateTime || item.end_date_time || item.endDate;
+          let createdAt: string | undefined = item.createdAt || item.created_at;
+          let updatedAt: string | undefined = item.updatedAt || item.updated_at;
           
           if (typeof item.questions === "string") {
             try {
@@ -167,6 +199,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
                 questionsArr = parsed.questions || [];
                 startDT = parsed.startDateTime || startDT;
                 endDT = parsed.endDateTime || endDT;
+                createdAt = parsed.createdAt || createdAt;
+                updatedAt = parsed.updatedAt || updatedAt;
               }
             } catch (e) {
               questionsArr = [];
@@ -177,6 +211,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
             questionsArr = item.questions.questions || [];
             startDT = item.questions.startDateTime || startDT;
             endDT = item.questions.endDateTime || endDT;
+            createdAt = item.questions.createdAt || createdAt;
+            updatedAt = item.questions.updatedAt || updatedAt;
           }
 
           return {
@@ -194,8 +230,17 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
             startDateTime: startDT,
             endDateTime: endDT,
             status: item.status || "Live",
-            questions: questionsArr
+            questions: questionsArr,
+            createdAt: createdAt || new Date().toISOString(),
+            updatedAt: updatedAt || createdAt || new Date().toISOString()
           };
+        });
+
+        // Sort parsedSupabaseData by updatedAt / createdAt descending (most recently updated/created first)
+        parsedSupabaseData.sort((a, b) => {
+          const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return timeB - timeA;
         });
 
         // Supabase is the source of truth
@@ -210,6 +255,11 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
   }
 
   if (localPapers && localPapers.length > 0) {
+    localPapers.sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
     return localPapers;
   }
 
@@ -220,6 +270,12 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
 }
 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
+  const paperWithTimestamps: ExamPaper = {
+    ...paper,
+    createdAt: paper.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
   let currentPapers: ExamPaper[] = [];
   if (typeof window !== "undefined") {
     const cached = localStorage.getItem("job_master_exam_papers");
@@ -227,15 +283,11 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
       try { currentPapers = JSON.parse(cached); } catch (e) {}
     }
   }
-  const index = currentPapers.findIndex(p => p.id === paper.id);
   
-  let updatedPapers: ExamPaper[];
-  if (index >= 0) {
-    updatedPapers = [...currentPapers];
-    updatedPapers[index] = paper;
-  } else {
-    updatedPapers = [paper, ...currentPapers];
-  }
+  // Remove existing paper with same ID if exists
+  const filtered = currentPapers.filter(p => p.id !== paperWithTimestamps.id);
+  // Put updated or newly created paper at the VERY TOP
+  const updatedPapers = [paperWithTimestamps, ...filtered];
 
   if (typeof window !== "undefined") {
     localStorage.setItem("job_master_exam_papers", JSON.stringify(updatedPapers));
@@ -246,24 +298,26 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
     const supabase = getSupabase();
     if (supabase) {
       const questionsData = JSON.stringify({
-        questions: paper.questions || [],
-        startDateTime: paper.startDateTime,
-        endDateTime: paper.endDateTime
+        questions: paperWithTimestamps.questions || [],
+        startDateTime: paperWithTimestamps.startDateTime,
+        endDateTime: paperWithTimestamps.endDateTime,
+        createdAt: paperWithTimestamps.createdAt,
+        updatedAt: paperWithTimestamps.updatedAt
       });
 
       const payload = {
-        id: paper.id,
-        title: paper.title,
-        course: paper.course,
-        exam_type: paper.examType,
-        subject: paper.subject || "All Subjects",
-        question_count: paper.questionCount,
-        time_per_question: paper.timePerQuestionSeconds,
-        total_duration: paper.totalDurationSeconds,
-        total_marks: paper.totalMarks,
-        topic: paper.topic,
-        exam_date: paper.examDate,
-        status: paper.status,
+        id: paperWithTimestamps.id,
+        title: paperWithTimestamps.title,
+        course: paperWithTimestamps.course,
+        exam_type: paperWithTimestamps.examType,
+        subject: paperWithTimestamps.subject || "All Subjects",
+        question_count: paperWithTimestamps.questionCount,
+        time_per_question: paperWithTimestamps.timePerQuestionSeconds,
+        total_duration: paperWithTimestamps.totalDurationSeconds,
+        total_marks: paperWithTimestamps.totalMarks,
+        topic: paperWithTimestamps.topic,
+        exam_date: paperWithTimestamps.examDate,
+        status: paperWithTimestamps.status,
         questions: questionsData
       };
 

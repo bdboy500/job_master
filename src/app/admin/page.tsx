@@ -128,7 +128,7 @@ export default function AdminPage() {
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Predefined 14 Subjects required for Exam MCQ Hub
+  // Predefined 15 Subjects required for Exam MCQ Hub
   const SUBJECTS = [
     "Bangla Literature",
     "Bangla Grammer",
@@ -143,7 +143,8 @@ export default function AdminPage() {
     "Mathematics (Algebra )",
     "Mathematics (Geometry)",
     "Mental Ability",
-    "Good Governance"
+    "Good Governance",
+    "BCS Health Question"
   ];
 
   // Predefined Courses & Exam Types
@@ -165,7 +166,7 @@ export default function AdminPage() {
     { id: "weekly", name: "সাপ্তাহিক মডেল টেস্ট (Weekly Model Test)" },
     { id: "daily", name: "ডেইলি কুইক টেস্ট (Daily Quick Test)" },
     { id: "subject", name: "বিষয়ভিত্তিক পরীক্ষা (Subject Wise Test)" },
-    { id: "special", name: "স্পেশাল কুইজ (Special Quiz)" }
+    { id: "special", name: "BCS Health Quiz" }
   ];
 
   // ==========================================
@@ -190,6 +191,12 @@ export default function AdminPage() {
   // Search & filter within question bank for adding to paper
   const [paperSearchQuery, setPaperSearchQuery] = useState("");
   const [paperSearchSubject, setPaperSearchSubject] = useState("All");
+
+  useEffect(() => {
+    if (paperExamType !== "special" && paperSearchSubject === "BCS Health Question") {
+      setPaperSearchSubject("All");
+    }
+  }, [paperExamType, paperSearchSubject]);
 
   // ==========================================
   // 1. QUESTIONS STATE & COMPONENT
@@ -407,6 +414,12 @@ export default function AdminPage() {
     // Filter questions by subject if selected
     const availablePool = (questions.length > 0 ? questions : QUIZ_QUESTIONS).map(q => normalizeQuestion(q));
     let available = availablePool;
+
+    // BCS Health Question is only included if paper type is BCS Health Quiz (special)
+    if (paperExamType !== "special") {
+      available = available.filter(q => (q.subject || q.subjectName) !== "BCS Health Question");
+    }
+
     if (paperSearchSubject !== "All") {
       available = available.filter(q => (q.subject || q.subjectName) === paperSearchSubject);
     }
@@ -1910,9 +1923,12 @@ export default function AdminPage() {
                         className="w-full sm:w-48 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
                       >
                         <option value="All">সকল বিষয়</option>
-                        {SUBJECTS.map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
+                        {SUBJECTS
+                          .filter(s => paperExamType === "special" || s !== "BCS Health Question")
+                          .map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))
+                        }
                       </select>
                     </div>
 
@@ -1923,6 +1939,9 @@ export default function AdminPage() {
                         .filter(q => {
                           const qSub = q.subject || q.subjectName || "";
                           const qText = q.question || q.questionText || "";
+                          if (paperExamType !== "special" && qSub === "BCS Health Question") {
+                            return false;
+                          }
                           const matchesSub = paperSearchSubject === "All" || qSub === paperSearchSubject;
                           const matchesText = !paperSearchQuery || qText.toLowerCase().includes(paperSearchQuery.toLowerCase());
                           return matchesSub && matchesText;
@@ -2016,11 +2035,18 @@ export default function AdminPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {examPapers.map((paper) => (
-                    <div 
-                      key={paper.id}
-                      className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all"
-                    >
+                  {(() => {
+                    const sortedAdminPapers = [...examPapers].sort((a, b) => {
+                      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                      return timeB - timeA;
+                    });
+
+                    return sortedAdminPapers.map((paper) => (
+                      <div 
+                        key={paper.id}
+                        className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all"
+                      >
                       <div className="space-y-1 text-left">
                         <div className="flex items-center gap-2">
                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
@@ -2078,7 +2104,8 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  ));
+                })()}
 
                   {examPapers.length === 0 && (
                     <div className="p-8 text-center text-xs font-bold text-slate-400">

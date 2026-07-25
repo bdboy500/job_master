@@ -47,7 +47,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus } from "../lib/exams";
+import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages } from "../lib/packages";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
@@ -1864,8 +1864,8 @@ export default function Home() {
                         },
                         ...(isBCSCourse ? [{
                           id: "special", 
-                          title: "BCS Health Special", 
-                          banglaTitle: "🩺 BCS Health Special",
+                          title: "BCS Health Quiz", 
+                          banglaTitle: "🩺 BCS Health Quiz",
                           desc: "বিসিএস স্বাস্থ্য ক্যাডার বিশেষ মডেল টেস্ট",
                           color: "border-rose-200/90 hover:border-rose-400 bg-white",
                           iconBg: "bg-rose-100 text-rose-700",
@@ -1938,7 +1938,7 @@ export default function Home() {
                 <div className="space-y-5">
                   {/* Papers list for this section */}
                   {(() => {
-                    const sectionPapers = examPapers.filter(p => {
+                    const rawSectionPapers = examPapers.filter(p => {
                       const currentStatus = getExamStatus(p);
                       // Show Live and Upcoming exams in section list. Archive papers go to archive tab automatically!
                       if (currentStatus === "Archive") return false;
@@ -1947,6 +1947,8 @@ export default function Home() {
                       }
                       return p.examType === activeExamSection;
                     });
+
+                    const sectionPapers = sortExamPapersForDisplay(rawSectionPapers);
 
                     if (sectionPapers.length === 0) {
                       return (
@@ -1973,7 +1975,7 @@ export default function Home() {
                     const examTypeBadgeMap: Record<string, { label: string; bg: string }> = {
                       daily: { label: "⚡ Daily Quick Test", bg: "bg-amber-50 text-amber-700 border-amber-100" },
                       weekly: { label: "📅 Weekly Model Test", bg: "bg-purple-50 text-purple-700 border-purple-100" },
-                      special: { label: "🩺 BCS Health Special", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+                      special: { label: "🩺 BCS Health Quiz", bg: "bg-rose-50 text-rose-700 border-rose-100" },
                       subject: { label: "📚 Subject Wise Test", bg: "bg-blue-50 text-blue-700 border-blue-100" }
                     };
 
@@ -3417,7 +3419,7 @@ export default function Home() {
                       { id: "daily", label: "⚡ ডেইলি" },
                       { id: "weekly", label: "📅 সাপ্তাহিক" },
                       { id: "subject", label: "📚 বিষয়ভিত্তিক" },
-                      { id: "special", label: "⭐ স্পেশাল" },
+                      { id: "special", label: "🩺 BCS Health Quiz" },
                     ].map((tab) => {
                       const isActive = archiveFilterCategory === tab.id;
                       return (
@@ -3478,7 +3480,7 @@ export default function Home() {
                   daily: "⚡ ডেইলি কুইক টেস্ট",
                   weekly: "📅 সাপ্তাহিক মডেল টেস্ট",
                   subject: "📚 বিষয়ভিত্তিক",
-                  special: "⭐ স্পেশাল"
+                  special: "🩺 BCS Health Quiz"
                 };
 
                 return (
