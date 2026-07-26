@@ -1013,7 +1013,7 @@ export default function Home() {
                 }
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative md:hidden"
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
               {currentScreen === "course-detail" || currentScreen === "prep-sub" || currentScreen === "quiz" ? (
@@ -3288,7 +3288,7 @@ export default function Home() {
 
         {/* Android/iOS App-Style Bottom Navigation Bar (Persistent across all screens including Quiz) */}
         <nav 
-          className="shrink-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-2.5 pb-2 shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 relative touch-none select-none"
+          className="md:hidden shrink-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-2.5 pb-2 shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 relative touch-none select-none"
           id="mobile-bottom-nav"
         >
           {/* Home Tab */}
@@ -4427,22 +4427,22 @@ export default function Home() {
                   </button>
                 </div>
               </main>
-
-              {/* Floating Scroll to Top Arrow Button */}
-              {showAnswerSheetScrollTop && (
-                <button
-                  onClick={() => {
-                    if (answerSheetScrollRef.current) {
-                      answerSheetScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
-                    }
-                  }}
-                  className="fixed bottom-6 right-6 z-[140] w-12 h-12 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all animate-bounce cursor-pointer active:scale-90"
-                  title="উপরে যান (Scroll to Top)"
-                >
-                  <ChevronUp className="w-6 h-6 stroke-[3]" />
-                </button>
-              )}
             </div>
+
+            {/* Floating Scroll to Top Arrow Button - Viewport Fixed Floating Action Button */}
+            {showAnswerSheetScrollTop && (
+              <button
+                onClick={() => {
+                  if (answerSheetScrollRef.current) {
+                    answerSheetScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+                className="fixed bottom-20 sm:bottom-8 right-5 sm:right-8 z-[150] w-12 h-12 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all animate-bounce cursor-pointer active:scale-90"
+                title="উপরে যান (Scroll to Top)"
+              >
+                <ChevronUp className="w-6 h-6 stroke-[3]" />
+              </button>
+            )}
           </div>
         )}
 

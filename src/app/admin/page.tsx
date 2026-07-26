@@ -2624,7 +2624,7 @@ export default function AdminPage() {
         {/* 3. EDIT QUESTION MODAL */}
         {editingQuestion && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto text-left space-y-4 relative animate-fade-in">
+            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto text-left space-y-5 relative animate-fade-in">
               <button 
                 onClick={() => setEditingQuestion(null)}
                 className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-500 hover:text-slate-700 rounded-xl transition-all cursor-pointer"
@@ -2641,7 +2641,7 @@ export default function AdminPage() {
                 </h3>
               </div>
 
-              <form onSubmit={handleUpdateQuestion} className="space-y-4">
+              <form onSubmit={handleUpdateQuestion} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Question Text */}
                   <div className="space-y-1">
@@ -2697,41 +2697,39 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Correct Answer Index Selector */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                      সঠিক উত্তর নির্বাচন (Correct Option Index)
-                    </label>
-                    <select
-                      value={editCorrectOptionIdx}
-                      onChange={(e) => setEditCorrectOptionIdx(parseInt(e.target.value))}
-                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                    >
-                      <option value={0}>অপশন ১ (Option 1)</option>
-                      <option value={1}>অপশন ২ (Option 2)</option>
-                      <option value={2}>অপশন ৩ (Option 3)</option>
-                      <option value={3}>অপশন ৪ (Option 4)</option>
-                    </select>
-                  </div>
+                {/* Correct Answer Index Selector */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                    সঠিক উত্তর নির্বাচন (Correct Option Index)
+                  </label>
+                  <select
+                    value={editCorrectOptionIdx}
+                    onChange={(e) => setEditCorrectOptionIdx(parseInt(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                  >
+                    <option value={0}>অপশন ১ (Option 1)</option>
+                    <option value={1}>অপশন ২ (Option 2)</option>
+                    <option value={2}>অপশন ৩ (Option 3)</option>
+                    <option value={3}>অপশন ৪ (Option 4)</option>
+                  </select>
+                </div>
 
-                  {/* Explanation */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                      বিশ্লেষণ বা ব্যাখ্যা (Explanation - Multi-line auto-expand)
-                    </label>
-                    <textarea 
-                      rows={3}
-                      placeholder="যেমন: মেঘনা নদী বাংলাদেশের দীর্ঘতম ও বৃহত্তম নদী।&#10;প্রয়োজনে এন্টার চেপে নতুন লাইনে বিস্তারিত ব্যাখ্যা লিখুন..."
-                      value={editExplanation}
-                      onChange={(e) => {
-                        setEditExplanation(e.target.value);
-                        e.target.style.height = "auto";
-                        e.target.style.height = `${e.target.scrollHeight}px`;
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 resize-y min-h-[90px] leading-relaxed"
-                    />
-                  </div>
+                {/* Explanation - Full Width across Popup */}
+                <div className="space-y-1 w-full">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                    বিশ্লেষণ বা ব্যাখ্যা (Explanation - Multi-line auto-expand)
+                  </label>
+                  <textarea 
+                    rows={3}
+                    placeholder="যেমন: মেঘনা নদী বাংলাদেশের দীর্ঘতম ও বৃহত্তম নদী।&#10;প্রয়োজনে এন্টার চেপে নতুন লাইনে বিস্তারিত ব্যাখ্যা লিখুন..."
+                    value={editExplanation}
+                    onChange={(e) => {
+                      setEditExplanation(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${e.target.scrollHeight}px`;
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 resize-y min-h-[100px] leading-relaxed"
+                  />
                 </div>
 
                 {/* Action buttons */}
