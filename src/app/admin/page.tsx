@@ -1568,11 +1568,11 @@ export default function AdminPage() {
                                       {subjectLabel}
                                     </span>
                                     <span className="text-xs sm:text-sm font-bold text-slate-800 leading-snug block">
-                                      {questionText}
+                                      <MathRenderer content={questionText} />
                                     </span>
                                     {explanationText && (
                                       <span className="text-[10px] font-semibold text-slate-400 block italic leading-normal">
-                                        ব্যাখ্যা: {explanationText}
+                                        <MathRenderer content={`ব্যাখ্যা: ${explanationText}`} />
                                       </span>
                                     )}
                                   </div>
@@ -1582,20 +1582,21 @@ export default function AdminPage() {
                                     {options.map((opt, oIdx) => (
                                       <span 
                                         key={oIdx} 
-                                        className={`text-[10px] font-semibold px-2 py-1 rounded-lg truncate ${
+                                        className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${
                                           oIdx === correctIdx 
                                             ? "bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold" 
                                             : "bg-slate-50 text-slate-500 border border-transparent"
                                         }`}
                                       >
-                                        {oIdx + 1}. {opt || `অপশন ${oIdx + 1}`}
+                                        <span className="font-extrabold mr-1">{oIdx + 1}.</span>
+                                        <MathRenderer content={opt || `অপশন ${oIdx + 1}`} />
                                       </span>
                                     ))}
                                   </div>
                                 </td>
                                 <td className="p-4">
-                                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg inline-block truncate max-w-[150px]">
-                                    {options[correctIdx] || options[0] || "অপশন ১"}
+                                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg inline-block max-w-[150px]">
+                                    <MathRenderer content={options[correctIdx] || options[0] || "অপশন ১"} />
                                   </span>
                                 </td>
                                 <td className="p-4 text-center">
@@ -2010,7 +2011,7 @@ export default function AdminPage() {
                               <span className="w-5 h-5 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-[10px] font-black shrink-0">
                                 {idx + 1}
                               </span>
-                              <span>{pq.question || pq.questionText}</span>
+                              <MathRenderer content={pq.question || pq.questionText} />
                             </div>
 
                             <button

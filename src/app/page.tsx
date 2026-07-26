@@ -1577,7 +1577,7 @@ export default function Home() {
 
                   {/* Question header */}
                   <h4 className="font-extrabold text-lg text-slate-800 leading-snug">
-                    {(currentQuestion as any).questionText || currentQuestion.question || (currentQuestion as any).title || "Untitled Question"}
+                    <MathRenderer content={(currentQuestion as any).questionText || currentQuestion.question || (currentQuestion as any).title || "Untitled Question"} />
                   </h4>
 
                   {/* Timer meter */}
@@ -1621,7 +1621,7 @@ export default function Home() {
                           disabled={isSubmitted}
                           className={`w-full text-left py-3.5 px-5 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-3 transition-all ${btnStyle} ${!isSubmitted ? "cursor-pointer active:scale-[0.98]" : "cursor-default"}`}
                         >
-                          <span className="leading-normal">{option}</span>
+                          <span className="leading-normal"><MathRenderer content={option} /></span>
                           {indicator}
                         </button>
                       );
@@ -3745,9 +3745,9 @@ export default function Home() {
                       <div key={idx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5">
                         {/* Question header */}
                         <div className="flex items-start justify-between gap-3">
-                          <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed">
-                            <span className="text-[#FF6A00] mr-1.5">{idx + 1})</span>
-                            {qText}
+                          <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
+                            <span className="text-[#FF6A00] shrink-0">{idx + 1})</span>
+                            <span><MathRenderer content={qText} /></span>
                           </h3>
                           {qSubject && (
                             <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md shrink-0">
@@ -3777,7 +3777,7 @@ export default function Home() {
                                 }`}>
                                   {optionLetters[optIdx] || optIdx + 1}
                                 </span>
-                                <span className="leading-tight">{opt}</span>
+                                <span className="leading-tight"><MathRenderer content={opt} /></span>
                                 {showAsCorrect && <Check className="w-4 h-4 text-emerald-600 ml-auto shrink-0" />}
                               </div>
                             );
@@ -3941,9 +3941,9 @@ export default function Home() {
                     </div>
 
                     <div className="flex items-start justify-between gap-2 pt-0.5">
-                      <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed">
-                        <span className="text-[#FF6A00] mr-1.5">{qIdx + 1}.</span>
-                        {q.question}
+                      <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
+                        <span className="text-[#FF6A00] shrink-0">{qIdx + 1}.</span>
+                        <span><MathRenderer content={q.question} /></span>
                       </h3>
                     </div>
 
@@ -3967,7 +3967,7 @@ export default function Home() {
                             }`}>
                               {optionLetters[oIdx] || oIdx + 1}
                             </span>
-                            <span className="leading-tight">{opt}</span>
+                            <span className="leading-tight"><MathRenderer content={opt} /></span>
                           </div>
                         );
                       })}
@@ -4323,9 +4323,9 @@ export default function Home() {
                       >
                         {/* Header with question & status pill */}
                         <div className="flex items-start justify-between gap-3">
-                          <h4 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed">
-                            <span className="text-[#FF6A00] mr-1.5">{qIdx + 1})</span>
-                            {q.question}
+                          <h4 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
+                            <span className="text-[#FF6A00] shrink-0">{qIdx + 1})</span>
+                            <span><MathRenderer content={q.question} /></span>
                           </h4>
 
                           {/* Status Badge */}
@@ -4376,7 +4376,7 @@ export default function Home() {
                                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${badgeBg}`}>
                                   {optionLetters[optIdx] || optIdx + 1}
                                 </span>
-                                <span className="leading-tight flex-1">{opt}</span>
+                                <span className="leading-tight flex-1"><MathRenderer content={opt} /></span>
                                 {isThisCorrectOpt && <Check className="w-4 h-4 text-emerald-600 ml-auto shrink-0 stroke-[3]" />}
                                 {isThisUserSelected && !isThisCorrectOpt && <X className="w-4 h-4 text-rose-600 ml-auto shrink-0 stroke-[3]" />}
                               </div>
