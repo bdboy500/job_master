@@ -965,7 +965,7 @@ export default function Home() {
 
   return (
     <PwaProvider>
-      <div className="min-h-screen h-[100dvh] sm:h-auto w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex flex-col items-center justify-start p-0 sm:p-4 md:p-0 selection:bg-orange-500 selection:text-white relative overflow-hidden sm:overflow-y-auto">
+      <div className="min-h-screen h-[100dvh] w-full bg-slate-50 flex flex-col items-center justify-start p-0 selection:bg-orange-500 selection:text-white relative overflow-hidden sm:overflow-y-auto">
         
         {/* Global PWA Toast & Guide Modals */}
         <InstallPwaPopup />
@@ -977,17 +977,11 @@ export default function Home() {
         <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
         <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
 
-        {/* Primary Container - Adaptive Full Desktop View, Phone Frame on Mobile/Tablet */}
-        <div className="w-full max-w-full sm:max-w-2xl md:max-w-full bg-slate-50 h-[100dvh] sm:h-[880px] md:h-screen md:max-h-screen rounded-none sm:rounded-[32px] md:rounded-none border-none sm:border sm:border-slate-200/50 md:border-none shadow-none sm:shadow-2xl md:shadow-none flex flex-col justify-between relative overflow-hidden z-10">
-        
-        {/* Smartphone Upper Bezel Accent (Only visible on sm screen, hidden on md+) */}
-        <div className="hidden sm:block md:hidden absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-3xl z-50">
-          <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-slate-800 rounded-full" />
-          <div className="absolute top-1 right-8 w-2 h-2 bg-slate-800 rounded-full" />
-        </div>
+        {/* Primary Container - Adaptive Full Desktop & Tablet View */}
+        <div className="w-full max-w-full bg-slate-50 h-[100dvh] md:h-screen md:max-h-screen rounded-none border-none shadow-none flex flex-col justify-between relative overflow-hidden z-10">
 
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-16 lg:px-24 xl:px-36 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-20 lg:px-48 xl:px-72 2xl:px-96 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
           {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
           <div className="flex items-center gap-2">
             <button 
@@ -1174,7 +1168,7 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 overflow-y-auto overscroll-y-auto pb-2 md:pb-0 bg-slate-50/60 relative touch-pan-y md:px-16 lg:px-24 xl:px-36">
+        <div className="flex-1 overflow-y-auto overscroll-y-auto pb-2 md:pb-0 bg-slate-50/60 relative touch-pan-y md:px-20 lg:px-48 xl:px-72 2xl:px-96">
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}

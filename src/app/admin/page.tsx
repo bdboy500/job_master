@@ -246,13 +246,28 @@ export default function AdminPage() {
       setTodayVisitors(getTodayVisitorCount());
     };
     updateVisitorCount();
-    // Refresh every 1 hour (3600000ms) or on focus
+
+    const handleVisitorEvent = (e: any) => {
+      if (e.detail !== undefined) {
+        setTodayVisitors(Number(e.detail));
+      } else {
+        updateVisitorCount();
+      }
+    };
+
+    // Refresh every 1 hour (3600000ms) or on focus or custom storage events
     const interval = setInterval(updateVisitorCount, 3600000);
     const handleFocus = () => updateVisitorCount();
+
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("storage", updateVisitorCount);
+    window.addEventListener("job_master_visitor_updated", handleVisitorEvent);
+
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("storage", updateVisitorCount);
+      window.removeEventListener("job_master_visitor_updated", handleVisitorEvent);
     };
   }, []);
   const [offers, setOffers] = useState<AdminOffer[]>([

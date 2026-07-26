@@ -1,5 +1,7 @@
 "use client";
 
+import { getSupabase } from "./supabase";
+
 export interface DailyVisitorData {
   date: string; // YYYY-MM-DD
   count: number;
@@ -46,6 +48,22 @@ export function recordVisit(): number {
     }
 
     localStorage.setItem("job_master_daily_visitors", JSON.stringify(data));
+
+    // Dispatch custom event for real-time admin listener
+    window.dispatchEvent(new CustomEvent("job_master_visitor_updated", { detail: data.count }));
+
+    // Try background sync with Supabase if table exists
+    try {
+      const supabase = getSupabase();
+      Promise.resolve(
+        supabase
+          .from("site_visits")
+          .upsert({ visit_date: todayStr, visit_count: data.count }, { onConflict: "visit_date" })
+      ).catch(() => {});
+    } catch {
+      // Ignore background supabase error
+    }
+
     return data.count;
   } catch (e) {
     console.warn("Failed to record visitor count:", e);
@@ -87,3 +105,4 @@ export function getTodayVisitorCount(): number {
     return 142;
   }
 }
+
