@@ -37,6 +37,7 @@ import { QUIZ_QUESTIONS, Question } from "../../data";
 import { getSupabase } from "../../lib/supabase";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
+import { getTodayVisitorCount } from "../../lib/visitors";
 
 // Interfaces for local state types
 function formatDisplayDate(dateTimeStr: string): string {
@@ -237,9 +238,23 @@ export default function AdminPage() {
     { id: "u-105", email: "rahima_begum@gmail.com", role: "Student", status: "Active" },
   ]);
 
-  // ==========================================
-  // 3. OFFERS STATE & COMPONENT
-  // ==========================================
+  // Daily Visitor Tracker state
+  const [todayVisitors, setTodayVisitors] = useState<number>(0);
+
+  useEffect(() => {
+    const updateVisitorCount = () => {
+      setTodayVisitors(getTodayVisitorCount());
+    };
+    updateVisitorCount();
+    // Refresh every 1 hour (3600000ms) or on focus
+    const interval = setInterval(updateVisitorCount, 3600000);
+    const handleFocus = () => updateVisitorCount();
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
   const [offers, setOffers] = useState<AdminOffer[]>([
     { 
       id: "o-1", 
@@ -1232,16 +1247,19 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Stat Box 3: Active Banners */}
+            {/* Stat Box 3: Today's Visitors Count (12:00 AM to 11:59 PM) */}
             <div className="bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-purple-600 opacity-5 rounded-full translate-x-4 -translate-y-4"></div>
-              <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center shrink-0">
-                <Megaphone className="w-5 h-5 stroke-[2.2px]" />
+              <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF6A00] opacity-5 rounded-full translate-x-4 -translate-y-4"></div>
+              <div className="w-10 h-10 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center shrink-0">
+                <Eye className="w-5 h-5 stroke-[2.2px]" />
               </div>
               <div className="space-y-0.5 text-left">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">সক্রিয় বিজ্ঞাপন</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">আজকের মোট ভিজিটর</span>
                 <span className="text-base sm:text-lg font-black text-slate-800 leading-none">
-                  {offers.filter(o => o.active).length} টি
+                  {todayVisitors} জন
+                </span>
+                <span className="text-[8px] font-bold text-slate-400 block pt-0.5">
+                  ১২:০০ AM - ১১:৫৯ PM (২৪ ঘন্টা)
                 </span>
               </div>
             </div>

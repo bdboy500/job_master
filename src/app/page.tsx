@@ -55,6 +55,7 @@ import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus,
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages } from "../lib/packages";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
+import { recordVisit } from "../lib/visitors";
 
 // Type definition for routine items
 interface RoutineItem {
@@ -287,10 +288,10 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages" | "search">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<"Bangla" | "English" | "Science" | "Math" | "">("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
@@ -355,6 +356,7 @@ export default function Home() {
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [desktopSearchQuery, setDesktopSearchQuery] = useState<string>("");
+  const [searchCategoryFilter, setSearchCategoryFilter] = useState<"all" | "exams" | "courses" | "subjects" | "questions">("all");
 
   // Game/Quiz States
   const [quizStarted, setQuizStarted] = useState<boolean>(false);
@@ -442,6 +444,8 @@ export default function Home() {
   // Load state from local storage on mount (Safe client-side execution)
   useEffect(() => {
     if (typeof window !== "undefined") {
+      recordVisit();
+
       const savedRoutine = localStorage.getItem("job_master_routine");
       if (savedRoutine) {
         try {
@@ -961,7 +965,7 @@ export default function Home() {
 
   return (
     <PwaProvider>
-      <div className="min-h-screen h-[100dvh] sm:h-auto w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex flex-col items-center justify-start p-0 sm:p-4 md:p-6 selection:bg-orange-500 selection:text-white relative overflow-hidden sm:overflow-y-auto">
+      <div className="min-h-screen h-[100dvh] sm:h-auto w-full bg-slate-50 sm:bg-gradient-to-br sm:from-[#F1F5F9] sm:via-[#E2E8F0] sm:to-[#CBD5E1] flex flex-col items-center justify-start p-0 sm:p-4 md:p-0 selection:bg-orange-500 selection:text-white relative overflow-hidden sm:overflow-y-auto">
         
         {/* Global PWA Toast & Guide Modals */}
         <InstallPwaPopup />
@@ -973,8 +977,8 @@ export default function Home() {
         <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
         <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
 
-        {/* Primary Container - Responsive full-width on Desktop, Phone Frame on Mobile */}
-        <div className="w-full max-w-full sm:max-w-md md:max-w-5xl lg:max-w-7xl bg-slate-50 h-[100dvh] sm:h-[840px] md:h-auto sm:max-h-[880px] md:max-h-none rounded-none sm:rounded-[40px] md:rounded-[2.5rem] border-none sm:border sm:border-slate-200/50 md:border-slate-200/80 shadow-none sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col justify-between relative overflow-hidden z-10">
+        {/* Primary Container - Adaptive Full Desktop View, Phone Frame on Mobile/Tablet */}
+        <div className="w-full max-w-full sm:max-w-2xl md:max-w-full bg-slate-50 h-[100dvh] sm:h-[880px] md:h-screen md:max-h-screen rounded-none sm:rounded-[32px] md:rounded-none border-none sm:border sm:border-slate-200/50 md:border-none shadow-none sm:shadow-2xl md:shadow-none flex flex-col justify-between relative overflow-hidden z-10">
         
         {/* Smartphone Upper Bezel Accent (Only visible on sm screen, hidden on md+) */}
         <div className="hidden sm:block md:hidden absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-6 bg-slate-900 rounded-b-3xl z-50">
@@ -983,7 +987,7 @@ export default function Home() {
         </div>
 
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-16 lg:px-24 xl:px-36 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
           {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
           <div className="flex items-center gap-2">
             <button 
@@ -1133,7 +1137,8 @@ export default function Home() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button 
               onClick={() => {
-                setShowSearchModal(true);
+                setPreviousScreen(currentScreen);
+                setCurrentScreen("search");
                 if (soundEnabled) quizAudio.playClick();
               }}
               className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl active:scale-95 transition-all cursor-pointer"
@@ -1169,7 +1174,7 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 overflow-y-auto overscroll-y-contain pb-2 md:pb-4 bg-slate-50/60 relative">
+        <div className="flex-1 overflow-y-auto overscroll-y-auto pb-2 md:pb-0 bg-slate-50/60 relative touch-pan-y md:px-16 lg:px-24 xl:px-36">
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}
@@ -1311,8 +1316,8 @@ export default function Home() {
               {/* General Quiz Game Live Banner - Orange Background with Balanced Layout */}
               <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-3xl p-5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
                 {/* Subtle background glow effects */}
-                <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/15 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-black/20 rounded-full blur-xl pointer-events-none" />
+                <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-amber-300/20 rounded-full blur-xl pointer-events-none" />
                 
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
                   {/* LEFT SIDE: LIVE Tag, Title, and Subtitle */}
@@ -2734,6 +2739,314 @@ export default function Home() {
             </div>
           )}
 
+          {/* ========================================================= */}
+          {/* 8. SCREEN: FULL SEARCH VIEW                                */}
+          {/* ========================================================= */}
+          {currentScreen === "search" && (() => {
+            const query = desktopSearchQuery.toLowerCase().trim();
+
+            // Filter 1: Exam Papers
+            const matchedExams = examPapers.filter(p => 
+              !query || 
+              p.title.toLowerCase().includes(query) || 
+              p.course.toLowerCase().includes(query) || 
+              p.examType.toLowerCase().includes(query) ||
+              (p.subject && p.subject.toLowerCase().includes(query)) ||
+              (p.topic && p.topic.toLowerCase().includes(query))
+            );
+
+            // Filter 2: Courses
+            const matchedCourses = ALL_COURSES_DATA.filter(c => 
+              !query || 
+              c.title.toLowerCase().includes(query) || 
+              c.desc.toLowerCase().includes(query) ||
+              c.category.toLowerCase().includes(query)
+            );
+
+            // Filter 3: Subjects
+            const allSubjects = [
+              { name: "বাংলা ব্যাকরণ ও সাহিত্য", key: "bangla", icon: "📚", color: "text-red-500 bg-red-50" },
+              { name: "English Language & Literature", key: "english", icon: "🌐", color: "text-blue-500 bg-blue-50" },
+              { name: "গাণিতিক যুক্তি ও মানসিক দক্ষতা", key: "math", icon: "📐", color: "text-emerald-500 bg-emerald-50" },
+              { name: "সাধারণ বিজ্ঞান ও তথ্যপ্রযুক্তি", key: "science", icon: "🧪", color: "text-purple-500 bg-purple-50" },
+              { name: "বাংলাদেশ ও আন্তর্জাতিক বিষয়াবলি", key: "gk", icon: "🗺️", color: "text-orange-500 bg-orange-50" },
+              { name: "কম্পিউটার ও তথ্যপ্রযুক্তি", key: "ict", icon: "💻", color: "text-indigo-500 bg-indigo-50" }
+            ];
+            const matchedSubjects = allSubjects.filter(s => 
+              !query || s.name.toLowerCase().includes(query) || s.key.toLowerCase().includes(query)
+            );
+
+            // Filter 4: Questions Bank
+            const matchedQuestions = QUIZ_QUESTIONS.filter(q => 
+              !query || 
+              q.question.toLowerCase().includes(query) || 
+              q.options.some(opt => opt.toLowerCase().includes(query))
+            );
+
+            return (
+              <div className="p-4 sm:p-6 space-y-5 animate-fade-in text-left pb-16">
+                
+                {/* Top Search Input Box */}
+                <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 shadow-sm space-y-3">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => {
+                        setCurrentScreen(previousScreen || "home");
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer shrink-0"
+                      title="ফিরে যান"
+                    >
+                      <ArrowLeft className="w-5 h-5 stroke-[2.5px]" />
+                    </button>
+
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="পরীক্ষা, কোর্স, বিষয় বা প্রশ্ন খুঁজুন..."
+                        value={desktopSearchQuery}
+                        onChange={(e) => setDesktopSearchQuery(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 rounded-2xl pl-10 pr-10 py-3 text-xs sm:text-sm font-bold text-slate-800 transition-all outline-none"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      {desktopSearchQuery && (
+                        <button 
+                          onClick={() => setDesktopSearchQuery("")}
+                          className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 scrollbar-none">
+                    {[
+                      { id: "all", label: "সকল তথ্য" },
+                      { id: "exams", label: `পরীক্ষা (${matchedExams.length})` },
+                      { id: "courses", label: `কোর্স (${matchedCourses.length})` },
+                      { id: "subjects", label: `বিষয় (${matchedSubjects.length})` },
+                      { id: "questions", label: `প্রশ্ন ব্যাংক (${matchedQuestions.length})` }
+                    ].map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => {
+                          setSearchCategoryFilter(cat.id as any);
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black tracking-wide shrink-0 transition-all cursor-pointer ${
+                          searchCategoryFilter === cat.id
+                            ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Suggested Hot Search Keywords if query empty */}
+                {!query && (
+                  <div className="bg-orange-50/60 border border-orange-100 rounded-3xl p-4 space-y-2.5">
+                    <span className="text-[10px] font-black text-[#FF6A00] uppercase tracking-wider block">🔥 জনপ্রিয় বিষয়গুলো খুঁজুন</span>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "বিসিএস প্রিলি",
+                        "ব্যাংক নিয়োগ স্পেশাল",
+                        "প্রাথমিক শিক্ষক নিয়োগ",
+                        "গণিত স্পেশাল",
+                        "বাংলা ব্যাকরণ",
+                        "ইংরেজি গ্রামার",
+                        "সাধারণ জ্ঞান বাংলাদেশ",
+                        "NTRCA শিক্ষক নিবন্ধন"
+                      ].map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            setDesktopSearchQuery(tag);
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="bg-white hover:bg-orange-100 border border-orange-200/60 text-slate-700 hover:text-[#FF6A00] px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SEARCH RESULTS LISTING */}
+                <div className="space-y-6">
+
+                  {/* 1. EXAM PAPERS RESULTS */}
+                  {(searchCategoryFilter === "all" || searchCategoryFilter === "exams") && matchedExams.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                        <span>📋 প্রশ্নপত্র ও পরীক্ষা ({matchedExams.length})</span>
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {matchedExams.slice(0, 6).map((paper) => (
+                          <div
+                            key={paper.id}
+                            onClick={() => {
+                              handleOpenTakeExam(paper);
+                              if (soundEnabled) quizAudio.playClick();
+                            }}
+                            className="bg-white border border-slate-200 hover:border-orange-300 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3 group"
+                          >
+                            <div className="space-y-1">
+                              <span className="text-[9px] font-black uppercase text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded">
+                                {paper.course.toUpperCase()} • {paper.examType}
+                              </span>
+                              <h5 className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-[#FF6A00] transition-colors leading-snug">
+                                <MathRenderer content={paper.title} />
+                              </h5>
+                              <p className="text-[10px] text-slate-400 font-semibold line-clamp-1">
+                                {paper.topic}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-100">
+                              <span>{paper.questionCount} টি প্রশ্ন</span>
+                              <span className="text-[#FF6A00] font-black flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                পরীক্ষা দিন <ChevronRight className="w-3.5 h-3.5" />
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. COURSES RESULTS */}
+                  {(searchCategoryFilter === "all" || searchCategoryFilter === "courses") && matchedCourses.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        🎓 কোর্স ও প্রোগ্রাম ({matchedCourses.length})
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {matchedCourses.map((course) => (
+                          <div
+                            key={course.id}
+                            onClick={() => {
+                              setSelectedCourseDetail(course);
+                              setActiveExamSection(null);
+                              setPreviousScreen("search");
+                              setCurrentScreen("course-detail");
+                              if (soundEnabled) quizAudio.playClick();
+                            }}
+                            className="bg-white border border-slate-200 hover:border-blue-300 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center gap-3 group"
+                          >
+                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-lg shrink-0">
+                              🎓
+                            </div>
+                            <div className="space-y-0.5 flex-1 min-w-0">
+                              <h5 className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                                {course.title}
+                              </h5>
+                              <p className="text-[10px] text-slate-400 font-medium truncate">
+                                {course.desc}
+                              </p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. SUBJECTS RESULTS */}
+                  {(searchCategoryFilter === "all" || searchCategoryFilter === "subjects") && matchedSubjects.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        📚 প্রস্তুতি বিষয়সমূহ ({matchedSubjects.length})
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {matchedSubjects.map((sub) => (
+                          <div
+                            key={sub.key}
+                            onClick={() => {
+                              setSelectedPrepSubject(sub.key as any);
+                              setPreviousScreen("search");
+                              setCurrentScreen("prep-sub");
+                              if (soundEnabled) quizAudio.playClick();
+                            }}
+                            className="bg-white border border-slate-200 hover:border-emerald-300 rounded-2xl p-3.5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-xl p-2 rounded-xl bg-slate-50">{sub.icon}</span>
+                              <span className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-emerald-600 transition-colors">
+                                {sub.name}
+                              </span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. QUESTIONS BANK RESULTS */}
+                  {(searchCategoryFilter === "all" || searchCategoryFilter === "questions") && matchedQuestions.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        ❓ প্রশ্ন ব্যাংক ম্যাচিং ({matchedQuestions.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {matchedQuestions.slice(0, 10).map((q, idx) => (
+                          <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h5 className="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed">
+                                <span className="font-black text-[#FF6A00] mr-1.5">{idx + 1}.</span>
+                                <MathRenderer content={q.question} />
+                              </h5>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {q.options.map((opt, oIdx) => (
+                                <div 
+                                  key={oIdx} 
+                                  className={`p-2 rounded-xl border text-[11px] font-semibold flex items-center gap-1.5 ${
+                                    oIdx === q.correctIndex 
+                                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 font-extrabold" 
+                                      : "bg-slate-50 border-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  <span className="w-4 h-4 rounded-full bg-slate-200/80 text-[9px] flex items-center justify-center font-bold text-slate-600 shrink-0">
+                                    {String.fromCharCode(2453 + oIdx)}
+                                  </span>
+                                  <MathRenderer content={opt} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* NO RESULTS FOUND STATE */}
+                  {query && matchedExams.length === 0 && matchedCourses.length === 0 && matchedSubjects.length === 0 && matchedQuestions.length === 0 && (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-3">
+                      <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                        🔍
+                      </div>
+                      <h4 className="font-black text-slate-800 text-sm sm:text-base">কোনো ফলাফল পাওয়া যায়নি</h4>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                        "{query}" সম্পর্কিত কোনো তথ্য পাওয়া যায়নি। অনুগ্রহ করে অন্য কীওয়ার্ড দিয়ে চেষ্টা করুন।
+                      </p>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            );
+          })()}
+
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -2869,7 +3182,7 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/60 text-[#FF6A00] font-extrabold text-xs shadow-sm hover:shadow"
+              className="w-full md:hidden flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/60 text-[#FF6A00] font-extrabold text-xs shadow-sm hover:shadow"
               id="drawer-item-install-app"
             >
               <div className="flex items-center gap-3">
@@ -4429,21 +4742,6 @@ export default function Home() {
                 </div>
               </main>
             </div>
-
-            {/* Floating Scroll to Top Arrow Button - Viewport Fixed Floating Action Button */}
-            {showAnswerSheetScrollTop && (
-              <button
-                onClick={() => {
-                  if (answerSheetScrollRef.current) {
-                    answerSheetScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
-                  }
-                }}
-                className="fixed bottom-20 sm:bottom-8 right-5 sm:right-8 z-[150] w-12 h-12 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all animate-bounce cursor-pointer active:scale-90"
-                title="উপরে যান (Scroll to Top)"
-              >
-                <ChevronUp className="w-6 h-6 stroke-[3]" />
-              </button>
-            )}
           </div>
         )}
 
@@ -4519,51 +4817,6 @@ export default function Home() {
               >
                 বন্ধ করুন
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search Modal */}
-        {showSearchModal && (
-          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
-            <div className="bg-white rounded-[2rem] p-6 max-w-lg w-full space-y-4 border border-slate-100 shadow-2xl relative">
-              <button 
-                onClick={() => setShowSearchModal(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <h3 className="font-black text-base text-slate-900">🔍 খুঁজুন (Search Exams & Topics)</h3>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="পরীক্ষার নাম বা বিষয় লিখুন..."
-                  value={desktopSearchQuery}
-                  onChange={(e) => setDesktopSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
-                />
-              </div>
-              <div className="max-h-60 overflow-y-auto space-y-2">
-                {examPapers
-                  .filter(p => !desktopSearchQuery || p.title.toLowerCase().includes(desktopSearchQuery.toLowerCase()))
-                  .slice(0, 5)
-                  .map((p) => (
-                    <div 
-                      key={p.id}
-                      onClick={() => {
-                        setShowSearchModal(false);
-                        handleOpenTakeExam(p);
-                      }}
-                      className="p-3 bg-slate-50 hover:bg-orange-50 rounded-xl border border-slate-100 flex items-center justify-between cursor-pointer transition-all"
-                    >
-                      <div>
-                        <h4 className="text-xs font-black text-slate-800">{p.title}</h4>
-                        <span className="text-[10px] text-slate-400 font-bold">{p.course} • {p.examType}</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  ))}
-              </div>
             </div>
           </div>
         )}
