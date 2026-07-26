@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import MathRenderer from "@/src/components/MathRenderer";
 import { 
   Users, 
   BookOpen, 
@@ -2730,6 +2731,16 @@ export default function AdminPage() {
                     }}
                     className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 resize-y min-h-[100px] leading-relaxed"
                   />
+                  
+                  {/* Live Math / Markdown Preview */}
+                  {editExplanation && (
+                    <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1">
+                      <span className="text-[10px] font-extrabold text-[#FF6A00] uppercase block">
+                        📐 লাইভ গাণিতিক সংকেত প্রাকদর্শন (Live Math Preview):
+                      </span>
+                      <MathRenderer content={editExplanation} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons */}

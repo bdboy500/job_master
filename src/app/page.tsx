@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import MathRenderer from "@/src/components/MathRenderer";
 import { 
   Play, 
   RotateCcw, 
@@ -3842,7 +3843,7 @@ export default function Home() {
                         {isExpRevealed && (
                           <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-semibold space-y-1 animate-fade-in">
                             <div className="font-extrabold text-emerald-700">📌 ব্যাখ্যা ও রেফারেন্স:</div>
-                            <p>{q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। এই বিষয়ের আরও বিস্তারিত তথ্য আমাদের প্রশ্ন ব্যাংকে দেওয়া আছে।`}</p>
+                            <MathRenderer content={q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। এই বিষয়ের আরও বিস্তারিত তথ্য আমাদের প্রশ্ন ব্যাংকে দেওয়া আছে।`} />
                           </div>
                         )}
                       </div>
@@ -4405,9 +4406,9 @@ export default function Home() {
                               <div className="font-extrabold text-[#FF6A00] flex items-center gap-1">
                                 📌 <span>ব্যাখ্যা ও সমাধান:</span>
                               </div>
-                              <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-line">
-                                {q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। বিসিএস ও পিএসসি স্ট্যান্ডার্ড বিষয়ভিত্তিক পর্যালোচনার ভিত্তিতে সমাধান প্রদান করা হয়েছে।`}
-                              </p>
+                              <div className="text-slate-700 font-medium leading-relaxed">
+                                <MathRenderer content={q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। বিসিএস ও পিএসসি স্ট্যান্ডার্ড বিষয়ভিত্তিক পর্যালোচনার ভিত্তিতে সমাধান প্রদান করা হয়েছে।`} />
+                              </div>
                             </div>
                           )}
                         </div>
