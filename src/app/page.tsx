@@ -314,11 +314,12 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages" | "search">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-all-subjects" | "packages" | "search">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "packages" | "search">("home");
-  const [selectedPrepSubject, setSelectedPrepSubject] = useState<"Bangla" | "English" | "Science" | "Math" | "">("");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-all-subjects" | "packages" | "search">("home");
+  const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
+  const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
   // Drawer & Overlay States
@@ -344,6 +345,7 @@ export default function Home() {
 
   // Live Exam Carousel & Modal State
   const [activeLiveExamIndex, setActiveLiveExamIndex] = useState<number>(0);
+  const [isLiveTransitioning, setIsLiveTransitioning] = useState<boolean>(true);
   const [selectedLiveExamModal, setSelectedLiveExamModal] = useState<ExamPaper | null>(null);
   const [liveTick, setLiveTick] = useState<number>(0);
 
@@ -536,14 +538,27 @@ export default function Home() {
   // Filter current active live exams
   const liveExamsList = examPapers.filter(p => getExamStatus(p) === "Live");
 
-  // 3-second carousel auto-rotation when multiple live exams exist
+  // 3-second carousel auto-rotation with continuous left-sliding infinite loop
   useEffect(() => {
     if (liveExamsList.length <= 1) return;
     const interval = setInterval(() => {
-      setActiveLiveExamIndex(prev => (prev + 1) % liveExamsList.length);
+      setIsLiveTransitioning(true);
+      setActiveLiveExamIndex(prev => prev + 1);
     }, 3000);
     return () => clearInterval(interval);
   }, [liveExamsList.length]);
+
+  // Seamless reset when reaching the clone item at the end of the carousel
+  useEffect(() => {
+    if (liveExamsList.length <= 1) return;
+    if (activeLiveExamIndex === liveExamsList.length) {
+      const timer = setTimeout(() => {
+        setIsLiveTransitioning(false);
+        setActiveLiveExamIndex(0);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeLiveExamIndex, liveExamsList.length]);
 
   // Timer effect for Taking Exam Modal
   useEffect(() => {
@@ -1266,6 +1281,7 @@ export default function Home() {
                   </div>
                 ) : (
                   (() => {
+                    const displayList = liveExamsList.length > 1 ? [...liveExamsList, liveExamsList[0]] : liveExamsList;
                     const activeIndex = activeLiveExamIndex % liveExamsList.length;
 
                     return (
@@ -1273,16 +1289,19 @@ export default function Home() {
                         {/* Smooth Sliding Carousel Container */}
                         <div className="overflow-hidden rounded-3xl w-full">
                           <div 
-                            className="flex w-full transition-transform duration-500 ease-in-out"
-                            style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+                            className="flex w-full"
+                            style={{ 
+                              transform: `translateX(-${activeLiveExamIndex * 100}%)`,
+                              transition: isLiveTransitioning ? 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+                            }}
                           >
-                            {liveExamsList.map((currentLive, idx) => {
+                            {displayList.map((currentLive, idx) => {
                               const qCount = currentLive.questions?.length || currentLive.questionCount || 10;
                               const mins = Math.ceil((qCount * 36) / 60);
                               const participantCount = ((currentLive.id.length * 17 + qCount * 3) % 150 + 45);
 
                               return (
-                                <div key={currentLive.id || idx} className="w-full shrink-0">
+                                <div key={(currentLive.id || 'live') + '-' + idx} className="w-full shrink-0">
                                   {/* Live Exam Apple UI Card */}
                                   <div 
                                     onClick={() => {
@@ -1348,6 +1367,7 @@ export default function Home() {
                                 key={idx}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  setIsLiveTransitioning(true);
                                   setActiveLiveExamIndex(idx);
                                 }}
                                 className={`transition-all duration-300 cursor-pointer ${
@@ -1560,7 +1580,8 @@ export default function Home() {
                   </h3>
                   <button 
                     onClick={() => {
-                      setCurrentScreen("courses");
+                      setPreviousScreen("home");
+                      setCurrentScreen("prep-all-subjects");
                       if (soundEnabled) quizAudio.playClick();
                     }}
                     className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all"
@@ -1966,15 +1987,108 @@ export default function Home() {
           )}
 
           {/* ========================================================= */}
+          {/* PREPARATION HUB ALL SUBJECTS SCREEN                        */}
+          {/* ========================================================= */}
+          {currentScreen === "prep-all-subjects" && (
+            <div className="p-5 space-y-5 animate-fade-in pb-10">
+              
+              {/* Header with Back Button and Screen Title */}
+              <div className="flex items-center justify-between">
+                <button 
+                  onClick={() => {
+                    setCurrentScreen("home");
+                    if (soundEnabled) quizAudio.playClick();
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>হোম</span>
+                </button>
+
+                <div className="text-right">
+                  <h3 className="font-extrabold text-base text-slate-900 tracking-tight">Preparation Hub</h3>
+                  <p className="text-[10px] font-extrabold text-[#FF6A00] uppercase tracking-wider">সকল বিষয় (All Subjects)</p>
+                </div>
+              </div>
+
+              {/* Search Subject Input */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
+                <input 
+                  type="text" 
+                  placeholder="বিষয় সিলেক্ট বা সার্চ করুন..."
+                  value={prepSubjectSearchQuery}
+                  onChange={(e) => setPrepSubjectSearchQuery(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs focus:outline-none focus:border-orange-500/50 shadow-2xs transition-all"
+                />
+              </div>
+
+              {/* 10 Subjects Grid - Apple UI Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { name: "Bangla", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
+                  { name: "English", bnName: "ইংরেজি", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
+                  { name: "Math", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
+                  { name: "Science", bnName: "বিজ্ঞান", icon: Sparkles, bg: "bg-[#EBF7EE]", text: "text-green-600", sub: "পদার্থ, রসায়ন ও জীব" },
+                  { name: "General Knowledge", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
+                  { name: "Geography", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
+                  { name: "General Science", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
+                  { name: "Technology", bnName: "কম্পিউটার ও তথ্যপ্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
+                  { name: "Mental Ability", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
+                  { name: "Good Governance", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
+                ]
+                .filter(s => s.name.toLowerCase().includes(prepSubjectSearchQuery.toLowerCase()) || s.bnName.includes(prepSubjectSearchQuery))
+                .map((subject, idx) => {
+                  const SubIcon = subject.icon;
+                  return (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        setSelectedPrepSubject(subject.name);
+                        setPreviousScreen("prep-all-subjects");
+                        setCurrentScreen("prep-sub");
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl p-2.5 flex flex-row items-center gap-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left"
+                    >
+                      <div className={`w-10 h-10 ${subject.bg} ${subject.text} rounded-xl flex items-center justify-center shrink-0`}>
+                        <SubIcon className="w-5 h-5 stroke-[2.2px]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-extrabold text-[#334155] tracking-wide block truncate group-hover:text-[#FF6A00] transition-colors">
+                          {subject.name}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 block truncate">
+                          {subject.bnName}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
           {/* PREPARATION HUB SUB-SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub" && (
             <div className="p-5 space-y-5 animate-fade-in pb-10">
               
-              {/* Centered Subject Title */}
-              <div className="flex items-center justify-center pt-1 pb-1">
-                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight text-center">
-                  {selectedPrepSubject} MCQ Practice
+              {/* Back button & Subject Title */}
+              <div className="flex items-center justify-between pt-1 pb-1">
+                <button 
+                  onClick={() => {
+                    setCurrentScreen(previousScreen || "prep-all-subjects");
+                    if (soundEnabled) quizAudio.playClick();
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>পেছনে</span>
+                </button>
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight text-right">
+                  {selectedPrepSubject} Practice
                 </h3>
               </div>
 
@@ -2090,6 +2204,33 @@ export default function Home() {
                       </div>
                       <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
                         <Play className="w-3.5 h-3.5 fill-current text-blue-500" />
+                      </div>
+                    </div>
+                  ))}
+
+                  {!["Bangla", "English", "Science", "Math"].includes(selectedPrepSubject) && [
+                    { name: `${selectedPrepSubject} Module 1`, sub: "অধ্যায়ভিত্তিক মৌলিক কুইজ প্র্যাকটিস", questions: QUIZ_QUESTIONS },
+                    { name: `${selectedPrepSubject} Module 2`, sub: "বিগত বছরের প্রশ্ন ও কুইজ টেস্ট", questions: QUIZ_QUESTIONS }
+                  ].map((sub, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        startQuizFlow(sub.name, sub.sub, sub.questions);
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
+                          <BookOpen className="w-5 h-5 stroke-[2.2px]" />
+                        </div>
+                        <div className="text-left space-y-0.5">
+                          <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
+                          <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
+                        <Play className="w-3.5 h-3.5 fill-current text-orange-500" />
                       </div>
                     </div>
                   ))}
