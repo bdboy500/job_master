@@ -192,13 +192,33 @@ export default function AdminPage() {
   
   // Search & filter within question bank for adding to paper
   const [paperSearchQuery, setPaperSearchQuery] = useState("");
-  const [paperSearchSubject, setPaperSearchSubject] = useState("All");
+  const [paperSearchSubjects, setPaperSearchSubjects] = useState<string[]>(["All"]);
+
+  const togglePaperSearchSubject = (sub: string) => {
+    if (sub === "All") {
+      setPaperSearchSubjects(["All"]);
+      return;
+    }
+    setPaperSearchSubjects(prev => {
+      let next = prev.filter(s => s !== "All");
+      if (next.includes(sub)) {
+        next = next.filter(s => s !== sub);
+      } else {
+        next.push(sub);
+      }
+      if (next.length === 0) return ["All"];
+      return next;
+    });
+  };
 
   useEffect(() => {
-    if (paperExamType !== "special" && paperSearchSubject === "BCS Health Question") {
-      setPaperSearchSubject("All");
+    if (paperExamType !== "special" && paperSearchSubjects.includes("BCS Health Question")) {
+      setPaperSearchSubjects(prev => {
+        const filtered = prev.filter(s => s !== "BCS Health Question");
+        return filtered.length === 0 ? ["All"] : filtered;
+      });
     }
-  }, [paperExamType, paperSearchSubject]);
+  }, [paperExamType, paperSearchSubjects]);
 
   // ==========================================
   // 1. QUESTIONS STATE & COMPONENT
@@ -461,8 +481,8 @@ export default function AdminPage() {
       available = available.filter(q => (q.subject || q.subjectName) !== "BCS Health Question");
     }
 
-    if (paperSearchSubject !== "All") {
-      available = available.filter(q => (q.subject || q.subjectName) === paperSearchSubject);
+    if (!paperSearchSubjects.includes("All") && paperSearchSubjects.length > 0) {
+      available = available.filter(q => paperSearchSubjects.includes(q.subject || q.subjectName));
     }
     
     // Pick required number
@@ -1956,29 +1976,60 @@ export default function AdminPage() {
                       </button>
                     </div>
 
-                    {/* Filter controls */}
-                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                    {/* Filter controls & Multi-subject Selection Chips */}
+                    <div className="space-y-2">
                       <input 
                         type="text"
                         placeholder="প্রশ্ন দিয়ে খুঁজুন..."
                         value={paperSearchQuery}
                         onChange={(e) => setPaperSearchQuery(e.target.value)}
-                        className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
                       />
 
-                      <select
-                        value={paperSearchSubject}
-                        onChange={(e) => setPaperSearchSubject(e.target.value)}
-                        className="w-full sm:w-48 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
-                      >
-                        <option value="All">সকল বিষয়</option>
-                        {SUBJECTS
-                          .filter(s => paperExamType === "special" || s !== "BCS Health Question")
-                          .map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))
-                        }
-                      </select>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pl-0.5">
+                          <span>বিষয় ফিল্টার (একাধিক সাবজেক্ট সিলেক্ট করা যাবে):</span>
+                          <span className="text-[#FF6A00] font-extrabold">
+                            {paperSearchSubjects.includes("All") ? "সকল বিষয়" : `সিলেক্টেড: ${paperSearchSubjects.length} টি বিষয়`}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-32 overflow-y-auto">
+                          <button
+                            type="button"
+                            onClick={() => togglePaperSearchSubject("All")}
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
+                              paperSearchSubjects.includes("All")
+                                ? "bg-purple-600 text-white shadow-2xs"
+                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            🌐 সকল বিষয় (All)
+                          </button>
+
+                          {SUBJECTS
+                            .filter(s => paperExamType === "special" || s !== "BCS Health Question")
+                            .map(s => {
+                              const isSelected = !paperSearchSubjects.includes("All") && paperSearchSubjects.includes(s);
+                              return (
+                                <button
+                                  type="button"
+                                  key={s}
+                                  onClick={() => togglePaperSearchSubject(s)}
+                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                                    isSelected
+                                      ? "bg-[#FF6A00] text-white shadow-2xs"
+                                      : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                  <span>{s}</span>
+                                </button>
+                              );
+                            })
+                          }
+                        </div>
+                      </div>
                     </div>
 
                     {/* Searched Results Box */}
@@ -1991,7 +2042,7 @@ export default function AdminPage() {
                           if (paperExamType !== "special" && qSub === "BCS Health Question") {
                             return false;
                           }
-                          const matchesSub = paperSearchSubject === "All" || qSub === paperSearchSubject;
+                          const matchesSub = paperSearchSubjects.includes("All") || paperSearchSubjects.length === 0 || paperSearchSubjects.includes(qSub);
                           const matchesText = !paperSearchQuery || qText.toLowerCase().includes(paperSearchQuery.toLowerCase());
                           return matchesSub && matchesText;
                         })

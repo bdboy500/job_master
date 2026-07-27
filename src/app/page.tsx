@@ -1781,41 +1781,20 @@ export default function Home() {
           {currentScreen === "prep-sub" && (
             <div className="p-5 space-y-5 animate-fade-in pb-10">
               
-              {/* Back Button & Title */}
-              <div className="flex items-center gap-3">
+              {/* Back Button & Centered Subject Title */}
+              <div className="relative flex items-center justify-center pt-1 pb-1">
                 <button 
                   onClick={() => {
                     setCurrentScreen("home");
                     if (soundEnabled) quizAudio.playClick();
                   }}
-                  className="p-2 bg-white hover:bg-slate-100 rounded-xl text-slate-700 shadow-sm transition-all active:scale-90"
+                  className="absolute left-0 p-2 bg-white hover:bg-slate-100 rounded-xl text-slate-700 shadow-sm transition-all active:scale-90 cursor-pointer"
                 >
                   <ArrowLeft className="w-5 h-5 stroke-[2.5px]" />
                 </button>
-                <div className="space-y-0.5">
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#FF6A00] bg-orange-50 px-2.5 py-0.5 rounded-full">
-                    Preparation Hub
-                  </span>
-                  <h3 className="font-extrabold text-sm text-slate-900 tracking-tight leading-none mt-1">
-                    {selectedPrepSubject === "Bangla" && "বাংলা প্রস্তুতি প্যানেল"}
-                    {selectedPrepSubject === "English" && "English Preparation Panel"}
-                    {selectedPrepSubject === "Science" && "বিজ্ঞান প্রস্তুতি প্যানেল"}
-                    {selectedPrepSubject === "Math" && "গণিত প্রস্তুতি প্যানেল"}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Subject Description Card */}
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-5 shadow-sm space-y-2">
-                <h4 className="text-sm font-black text-slate-800">
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight text-center">
                   {selectedPrepSubject} MCQ Practice
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                  {selectedPrepSubject === "Bangla" && "বাংলা ভাষা ও সাহিত্যের প্রথম ও দ্বিতীয় পত্রের গুরুত্বপূর্ণ নৈর্ব্যক্তিক নিয়ে সাজানো অধ্যায়ভিত্তিক টেস্ট মডিউল।"}
-                  {selectedPrepSubject === "English" && "English Literature & Grammar multiple choice questions designed for high score prep in competitive exams."}
-                  {selectedPrepSubject === "Science" && "পদার্থ, রসায়ন ও জীববিজ্ঞানের বিগত বছরের গুরুত্বপূর্ণ প্রশ্নসমূহ আলাদাভাবে অনুশীলনের মডিউল।"}
-                  {selectedPrepSubject === "Math" && "পাটিগণিত ও বীজগণিতের গুরুত্বপূর্ণ গাণিতিক সমস্যা ও সূত্রাবলীর সঠিক উত্তরসহ এমসিকিউ সমাধান।"}
-                </p>
+                </h3>
               </div>
 
               {/* Sub-subjects grid */}
@@ -1953,15 +1932,6 @@ export default function Home() {
 
                       const allSections = [
                         { 
-                          id: "weekly", 
-                          title: "Weekly Model Test", 
-                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
-                          desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
-                          color: "border-purple-200/90 hover:border-purple-400 bg-white",
-                          iconBg: "bg-purple-100 text-purple-700",
-                          icon: "📅"
-                        },
-                        { 
                           id: "daily", 
                           title: "Daily Quick Test", 
                           banglaTitle: "⚡ ডেইলি কুইক টেস্ট",
@@ -1969,6 +1939,15 @@ export default function Home() {
                           color: "border-amber-200/90 hover:border-amber-400 bg-white",
                           iconBg: "bg-amber-100 text-amber-700",
                           icon: "⚡"
+                        },
+                        { 
+                          id: "weekly", 
+                          title: "Weekly Model Test", 
+                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
+                          desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
+                          color: "border-purple-200/90 hover:border-purple-400 bg-white",
+                          iconBg: "bg-purple-100 text-purple-700",
+                          icon: "📅"
                         },
                         ...(isBCSCourse ? [{
                           id: "special", 
@@ -4239,8 +4218,8 @@ export default function Home() {
                             Answered
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                             Not Answered
                           </span>
                         )}

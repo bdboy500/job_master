@@ -34,16 +34,24 @@ export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
       return wA - wB; // Live (1) before Upcoming (2) before Archive (3)
     }
 
-    if (statusA === "Upcoming") {
-      // For upcoming exams: sort by earliest startDateTime / date first
-      const timeA = a.startDateTime ? new Date(a.startDateTime).getTime() : new Date(a.examDate || 0).getTime();
-      const timeB = b.startDateTime ? new Date(b.startDateTime).getTime() : new Date(b.examDate || 0).getTime();
-      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
-        return timeA - timeB; // Earliest upcoming date first
-      }
+    if (statusA === "Live") {
+      // Live exams: newest live exam on top
+      const timeA = new Date(a.updatedAt || a.createdAt || a.startDateTime || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || b.startDateTime || 0).getTime();
+      return timeB - timeA;
     }
 
-    // Default tie-breaker or Live/Archive sorting: newest updated/created first
+    if (statusA === "Upcoming") {
+      // Upcoming exams: sorted by addition order (oldest added first, remains on top even when edited)
+      const timeA = new Date(a.createdAt || a.startDateTime || 0).getTime();
+      const timeB = new Date(b.createdAt || b.startDateTime || 0).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return a.id.localeCompare(b.id);
+    }
+
+    // Default or Archive sorting: newest updated/created first
     const updatedA = new Date(a.updatedAt || a.createdAt || 0).getTime();
     const updatedB = new Date(b.updatedAt || b.createdAt || 0).getTime();
     return updatedB - updatedA;
