@@ -57,6 +57,24 @@ function formatDisplayDate(dateTimeStr: string): string {
   }
 }
 
+function getNowLocalDateTimeStr(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function getTodayEndDateTimeStr(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T23:59`;
+}
+
 function normalizeQuestion(q: any): Question {
   if (!q) {
     return {
@@ -527,6 +545,8 @@ export default function AdminPage() {
 
     if (paperStatus === "Live") {
       finalStatus = "Live";
+      finalStartDT = paperStartDateTime || getNowLocalDateTimeStr();
+      finalEndDT = paperEndDateTime || getTodayEndDateTimeStr();
     } else if (paperStatus === "Archive" || paperStatus === "Completed") {
       finalStatus = "Archive";
     } else {
@@ -1811,7 +1831,17 @@ export default function AdminPage() {
                         />
                         <select
                           value={paperStatus}
-                          onChange={(e) => setPaperStatus(e.target.value as any)}
+                          onChange={(e) => {
+                            const newStatus = e.target.value as any;
+                            setPaperStatus(newStatus);
+                            if (newStatus === "Live") {
+                              const nowLocal = getNowLocalDateTimeStr();
+                              const todayEnd = getTodayEndDateTimeStr();
+                              setPaperStartDateTime(nowLocal);
+                              setPaperEndDateTime(todayEnd);
+                              setPaperDate(formatDisplayDate(nowLocal));
+                            }
+                          }}
                           className="bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-3 text-xs font-bold focus:outline-none text-slate-800 cursor-pointer shrink-0"
                         >
                           <option value="Upcoming">Upcoming (আসন্ন)</option>
@@ -1822,26 +1852,30 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Row 2.5: START & END DATE & TIME PICKER (CALENDAR) - Only for Upcoming */}
-                  {paperStatus === "Upcoming" && (
+                  {/* Row 2.5: START & END DATE & TIME PICKER (CALENDAR) - For Upcoming and Live */}
+                  {(paperStatus === "Upcoming" || paperStatus === "Live") && (
                     <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl space-y-3.5">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                           📅 <span>পরীক্ষার সময়কাল নির্ধারণ (Start & End Date/Time Calendar) *</span>
                         </label>
-                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                          আসন্ন পরীক্ষার সময়সূচি নির্ধারণ
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                          paperStatus === "Live" ? "text-emerald-700 bg-emerald-100" : "text-purple-700 bg-purple-100"
+                        }`}>
+                          {paperStatus === "Live" ? "🔴 লাইভ পরীক্ষার সময়সূচি নির্ধারণ" : "📅 আসন্ন পরীক্ষার সময়সূচি নির্ধারণ"}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
-                            কখন থেকে শুরু হবে (Start Date & Time)
+                            {paperStatus === "Live" ? "পরীক্ষা শুরুর সময় (আজকের তারিখ ও সময়)" : "কখন থেকে শুরু হবে (Start Date & Time)"}
                           </label>
                           <input 
                             type="datetime-local"
                             value={paperStartDateTime}
+                            min={paperStatus === "Live" ? getNowLocalDateTimeStr() : undefined}
+                            max={paperStatus === "Live" ? getTodayEndDateTimeStr() : undefined}
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperStartDateTime(val);
@@ -1852,6 +1886,11 @@ export default function AdminPage() {
                             className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs"
                             required
                           />
+                          {paperStatus === "Live" && (
+                            <p className="text-[10px] font-bold text-amber-700 pl-1 pt-0.5">
+                              * শুরুর তারিখ আজকের তারিখই থাকবে। আজকের রাতের ১১:৫৯ মিনিটের মধ্যের সময় সিলেক্ট করা যাবে।
+                            </p>
+                          )}
                         </div>
 
                         <div className="space-y-1">
@@ -1861,43 +1900,70 @@ export default function AdminPage() {
                           <input 
                             type="datetime-local"
                             value={paperEndDateTime}
+                            min={paperStartDateTime || getNowLocalDateTimeStr()}
                             onChange={(e) => setPaperEndDateTime(e.target.value)}
                             className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs"
                             required
                           />
+                          {paperStatus === "Live" && (
+                            <p className="text-[10px] font-bold text-purple-700 pl-1 pt-0.5">
+                              * লাইভ মেয়াদ শেষে পরীক্ষাটি স্বয়ংক্রিয়ভাবে সংশ্লিষ্ট বিষয়ের আর্কাইভে চলে যাবে।
+                            </p>
+                          )}
                         </div>
                       </div>
 
                       {/* Quick Presets */}
                       <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold text-slate-600 pt-1">
-                        <span className="text-slate-400">দ্রুত সময় সেট করুন:</span>
+                        <span className="text-slate-400">দ্রুত সময় সেট করুন:</span>
                         <button
                           type="button"
                           onClick={() => {
-                            const today = new Date().toISOString().split("T")[0];
-                            const startVal = `${today}T06:00`;
-                            setPaperStartDateTime(startVal);
-                            setPaperEndDateTime(`${today}T23:59`);
-                            setPaperDate(formatDisplayDate(startVal));
+                            const nowLocal = getNowLocalDateTimeStr();
+                            const todayEnd = getTodayEndDateTimeStr();
+                            setPaperStartDateTime(nowLocal);
+                            setPaperEndDateTime(todayEnd);
+                            setPaperDate(formatDisplayDate(nowLocal));
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
-                          ⚡ আজকের লাইভ মক (সকাল ৬:০০ - রাত ১১:৫৯)
+                          ⚡ আজকের লাইভ মক (এখন থেকে - রাত ১১:৫৯)
                         </button>
                         <button
                           type="button"
                           onClick={() => {
                             const now = new Date();
-                            const start = new Date(now.getTime() - 24*3600*1000).toISOString().split("T")[0];
-                            const end = new Date(now.getTime() + 3*24*3600*1000).toISOString().split("T")[0];
-                            const startVal = `${start}T00:00`;
-                            setPaperStartDateTime(startVal);
-                            setPaperEndDateTime(`${end}T23:59`);
-                            setPaperDate(formatDisplayDate(startVal));
+                            const nowLocal = getNowLocalDateTimeStr();
+                            const future = new Date(now.getTime() + 3 * 24 * 3600 * 1000);
+                            const year = future.getFullYear();
+                            const month = String(future.getMonth() + 1).padStart(2, '0');
+                            const day = String(future.getDate()).padStart(2, '0');
+                            const endVal = `${year}-${month}-${day}T23:59`;
+                            setPaperStartDateTime(nowLocal);
+                            setPaperEndDateTime(endVal);
+                            setPaperDate(formatDisplayDate(nowLocal));
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
                           📅 ৩ দিনের লাইভ এক্সাম
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const now = new Date();
+                            const nowLocal = getNowLocalDateTimeStr();
+                            const future = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+                            const year = future.getFullYear();
+                            const month = String(future.getMonth() + 1).padStart(2, '0');
+                            const day = String(future.getDate()).padStart(2, '0');
+                            const endVal = `${year}-${month}-${day}T23:59`;
+                            setPaperStartDateTime(nowLocal);
+                            setPaperEndDateTime(endVal);
+                            setPaperDate(formatDisplayDate(nowLocal));
+                          }}
+                          className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
+                        >
+                          🗓️ ৭ দিনের লাইভ এক্সাম
                         </button>
                       </div>
 

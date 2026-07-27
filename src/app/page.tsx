@@ -75,6 +75,32 @@ interface TakenTest {
   percentage: number;
 }
 
+// Live Exam Elapsed Time Formatter
+function formatLiveElapsed(startDateTime?: string, createdAt?: string): string {
+  const startMs = startDateTime 
+    ? new Date(startDateTime).getTime() 
+    : (createdAt ? new Date(createdAt).getTime() : Date.now());
+  const nowMs = Date.now();
+  const diffMs = Math.max(0, nowMs - startMs);
+  const totalSecs = Math.floor(diffMs / 1000);
+
+  if (totalSecs < 86400) {
+    const hours = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const hStr = String(hours).padStart(2, '0');
+    const mStr = String(mins).padStart(2, '0');
+    const sStr = String(secs).padStart(2, '0');
+    return `${hStr}:${mStr}:${sStr}`;
+  } else {
+    const days = Math.floor(totalSecs / 86400);
+    const remSecs = totalSecs % 86400;
+    const hours = Math.floor(remSecs / 3600);
+    const mins = Math.floor((remSecs % 3600) / 60);
+    return `${days} দিন ${hours} ঘণ্টা ${mins} মিনিট`;
+  }
+}
+
 // Extra mock question databases for other test subjects
 const BANGLA_1ST_QUESTIONS: Question[] = [
   {
@@ -316,6 +342,11 @@ export default function Home() {
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
+  // Live Exam Carousel & Modal State
+  const [activeLiveExamIndex, setActiveLiveExamIndex] = useState<number>(0);
+  const [selectedLiveExamModal, setSelectedLiveExamModal] = useState<ExamPaper | null>(null);
+  const [liveTick, setLiveTick] = useState<number>(0);
+
   // Quick Tools Archive Modal State
   const [archiveModalOpen, setArchiveModalOpen] = useState<boolean>(false);
   const [archiveFilterCourse, setArchiveFilterCourse] = useState<string>("all");
@@ -493,6 +524,26 @@ export default function Home() {
       };
     }
   }, []);
+
+  // 1-second interval tick for live exam elapsed timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveTick(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Filter current active live exams
+  const liveExamsList = examPapers.filter(p => getExamStatus(p) === "Live");
+
+  // 3-second carousel auto-rotation when multiple live exams exist
+  useEffect(() => {
+    if (liveExamsList.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveLiveExamIndex(prev => (prev + 1) % liveExamsList.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [liveExamsList.length]);
 
   // Timer effect for Taking Exam Modal
   useEffect(() => {
@@ -1176,6 +1227,131 @@ export default function Home() {
           {currentScreen === "home" && (
             <div className="p-5 space-y-6 animate-fade-in">
               
+              {/* ========================================================= */}
+              {/* LIVE EXAM SECTION (লাইভ পরীক্ষা)                         */}
+              {/* ========================================================= */}
+              <div className="space-y-3">
+                {/* Header Row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
+                      লাইভ পরীক্ষা
+                    </h3>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setCurrentScreen("courses");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>সম্মিলিত রুটিন/আর্কাইভ</span>
+                    <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </button>
+                </div>
+
+                {/* Live Exam Card / Carousel */}
+                {liveExamsList.length === 0 ? (
+                  /* Empty state card */
+                  <div className="bg-white border border-slate-100 rounded-3xl p-6 text-center space-y-2 shadow-2xs">
+                    <div className="w-11 h-11 bg-orange-50 rounded-2xl mx-auto flex items-center justify-center text-[#FF6A00]">
+                      <Zap className="w-5 h-5 stroke-[2.2px]" />
+                    </div>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-800">এই মুহূর্তে কোন লাইভ এক্সাম নেই</p>
+                    <p className="text-[11px] text-slate-400 font-semibold">নতুন লাইভ পরীক্ষা শুরু হলে এখানে তথ্য দেখতে পাবেন।</p>
+                  </div>
+                ) : (
+                  (() => {
+                    const activeIndex = activeLiveExamIndex % liveExamsList.length;
+                    const currentLive = liveExamsList[activeIndex] || liveExamsList[0];
+                    const qCount = currentLive.questions?.length || currentLive.questionCount || 10;
+                    const mins = Math.ceil((qCount * 36) / 60);
+                    const participantCount = ((currentLive.id.length * 17 + qCount * 3) % 150 + 45);
+
+                    return (
+                      <div className="space-y-3">
+                        {/* Live Exam Apple UI Card */}
+                        <div 
+                          onClick={() => {
+                            setSelectedLiveExamModal(currentLive);
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] relative"
+                        >
+                          {/* Top Banner Strip */}
+                          <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-4 py-2.5 flex items-center justify-between text-white shadow-2xs">
+                            <span className="text-xs font-black tracking-wide flex items-center gap-1.5">
+                              <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
+                              For All Job
+                            </span>
+                            <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                              Live Now
+                            </span>
+                          </div>
+
+                          {/* Card Content */}
+                          <div className="p-4 sm:p-5 space-y-3">
+                            <div>
+                              <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
+                                {currentLive.title}
+                              </h4>
+                              <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
+                                <span>প্রশ্ন {qCount} টি</span>
+                                <span className="text-slate-300">•</span>
+                                <span>{mins} মিনিট</span>
+                              </p>
+                            </div>
+
+                            {/* Footer Row: Live Timer & Participant Count */}
+                            <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
+                              {/* Live Timer */}
+                              <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100/80">
+                                <span className="relative flex h-2 w-2 shrink-0">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                </span>
+                                <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt)}</span>
+                              </div>
+
+                              {/* Participant Count */}
+                              <div className="text-slate-400 text-[11px] font-bold tracking-tight">
+                                {participantCount} Already participated
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Orange Dot Indicators */}
+                        {liveExamsList.length > 1 && (
+                          <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                            {liveExamsList.map((_, idx) => (
+                              <button
+                                key={idx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveLiveExamIndex(idx);
+                                }}
+                                className={`transition-all duration-300 cursor-pointer ${
+                                  idx === activeIndex
+                                    ? "w-6 h-2 bg-[#FF6A00] rounded-full shadow-2xs"
+                                    : "w-2 h-2 bg-orange-200 hover:bg-orange-300 rounded-full"
+                                }`}
+                                title={`Live Exam ${idx + 1}`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
               {/* Our Course Section */}
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
@@ -1781,17 +1957,8 @@ export default function Home() {
           {currentScreen === "prep-sub" && (
             <div className="p-5 space-y-5 animate-fade-in pb-10">
               
-              {/* Back Button & Centered Subject Title */}
-              <div className="relative flex items-center justify-center pt-1 pb-1">
-                <button 
-                  onClick={() => {
-                    setCurrentScreen("home");
-                    if (soundEnabled) quizAudio.playClick();
-                  }}
-                  className="absolute left-0 p-2 bg-white hover:bg-slate-100 rounded-xl text-slate-700 shadow-sm transition-all active:scale-90 cursor-pointer"
-                >
-                  <ArrowLeft className="w-5 h-5 stroke-[2.5px]" />
-                </button>
+              {/* Centered Subject Title */}
+              <div className="flex items-center justify-center pt-1 pb-1">
                 <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight text-center">
                   {selectedPrepSubject} MCQ Practice
                 </h3>
@@ -4846,6 +5013,95 @@ export default function Home() {
                     {soundEnabled ? "চালু" : "বন্ধ"}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Exam Details Apple UI Modal */}
+        {selectedLiveExamModal && (
+          <div className="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-100 relative animate-scale-up">
+              
+              {/* Top Badge & Close button */}
+              <div className="flex items-center justify-between">
+                <span className="bg-orange-100 text-[#FF6A00] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#FF6A00] animate-ping"></span>
+                  🔴 লাইভ পরীক্ষা বিবরণ
+                </span>
+                <button 
+                  onClick={() => setSelectedLiveExamModal(null)}
+                  className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-full transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Exam Title & Course */}
+              <div className="space-y-1">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+                  {selectedLiveExamModal.title}
+                </h3>
+                <p className="text-xs font-extrabold text-[#FF6A00]">
+                  For All Job Exam
+                </p>
+              </div>
+
+              {/* Specs Grid */}
+              <div className="grid grid-cols-2 gap-2.5 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-extrabold text-slate-700">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4 text-orange-500 shrink-0" />
+                  <span>প্রশ্ন: {selectedLiveExamModal.questions?.length || selectedLiveExamModal.questionCount || 10} টি</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4 text-purple-500 shrink-0" />
+                  <span>সময়: {Math.ceil(((selectedLiveExamModal.questions?.length || selectedLiveExamModal.questionCount || 10) * 36) / 60)} মিনিট</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>মোট নম্বর: {selectedLiveExamModal.totalMarks || selectedLiveExamModal.questions?.length || 10}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>নেগেটিভ মার্কস: ০.৫০</span>
+                </div>
+              </div>
+
+              {selectedLiveExamModal.topic && (
+                <div className="p-3 bg-orange-50/70 border border-orange-100 rounded-2xl text-xs font-semibold text-slate-700 space-y-0.5">
+                  <span className="font-black text-[#FF6A00] block text-[11px]">সিলেবাস / বিষয়বস্তু:</span>
+                  <p>{selectedLiveExamModal.topic}</p>
+                </div>
+              )}
+
+              {/* Live Running Timer Box */}
+              <div className="p-3 bg-rose-50/80 border border-rose-100 rounded-2xl flex items-center justify-between text-xs font-bold text-rose-700">
+                <span>লাইভ সময়সীমা চলছে:</span>
+                <span className="font-black text-rose-600 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {formatLiveElapsed(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt)}
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => setSelectedLiveExamModal(null)}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-2xl text-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  বাতিল করুন
+                </button>
+                <button
+                  onClick={() => {
+                    const paperToTake = selectedLiveExamModal;
+                    setSelectedLiveExamModal(null);
+                    handleOpenTakeExam(paperToTake);
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-[#FF6A00] to-[#FF5500] hover:from-[#FF5500] hover:to-[#E54800] text-white font-extrabold rounded-2xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  পরীক্ষা শুরু করুন
+                </button>
               </div>
             </div>
           </div>
