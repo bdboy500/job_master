@@ -1239,7 +1239,7 @@ export default function Home() {
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                     </span>
                     <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
-                      লাইভ পরীক্ষা
+                      Live Exam (লাইভ পরীক্ষা)
                     </h3>
                   </div>
                   <button 
@@ -1249,7 +1249,7 @@ export default function Home() {
                     }}
                     className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    <span>সম্মিলিত রুটিন/আর্কাইভ</span>
+                    <span>সব রুটিন</span>
                     <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
                 </div>
@@ -1267,62 +1267,76 @@ export default function Home() {
                 ) : (
                   (() => {
                     const activeIndex = activeLiveExamIndex % liveExamsList.length;
-                    const currentLive = liveExamsList[activeIndex] || liveExamsList[0];
-                    const qCount = currentLive.questions?.length || currentLive.questionCount || 10;
-                    const mins = Math.ceil((qCount * 36) / 60);
-                    const participantCount = ((currentLive.id.length * 17 + qCount * 3) % 150 + 45);
 
                     return (
-                      <div className="space-y-3">
-                        {/* Live Exam Apple UI Card */}
-                        <div 
-                          onClick={() => {
-                            setSelectedLiveExamModal(currentLive);
-                            if (soundEnabled) quizAudio.playClick();
-                          }}
-                          className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] relative"
-                        >
-                          {/* Top Banner Strip */}
-                          <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-4 py-2.5 flex items-center justify-between text-white shadow-2xs">
-                            <span className="text-xs font-black tracking-wide flex items-center gap-1.5">
-                              <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
-                              For All Job
-                            </span>
-                            <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                              Live Now
-                            </span>
-                          </div>
+                      <div className="space-y-2.5">
+                        {/* Smooth Sliding Carousel Container */}
+                        <div className="overflow-hidden rounded-3xl w-full">
+                          <div 
+                            className="flex w-full transition-transform duration-500 ease-in-out"
+                            style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+                          >
+                            {liveExamsList.map((currentLive, idx) => {
+                              const qCount = currentLive.questions?.length || currentLive.questionCount || 10;
+                              const mins = Math.ceil((qCount * 36) / 60);
+                              const participantCount = ((currentLive.id.length * 17 + qCount * 3) % 150 + 45);
 
-                          {/* Card Content */}
-                          <div className="p-4 sm:p-5 space-y-3">
-                            <div>
-                              <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
-                                {currentLive.title}
-                              </h4>
-                              <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
-                                <span>প্রশ্ন {qCount} টি</span>
-                                <span className="text-slate-300">•</span>
-                                <span>{mins} মিনিট</span>
-                              </p>
-                            </div>
+                              return (
+                                <div key={currentLive.id || idx} className="w-full shrink-0">
+                                  {/* Live Exam Apple UI Card */}
+                                  <div 
+                                    onClick={() => {
+                                      setSelectedLiveExamModal(currentLive);
+                                      if (soundEnabled) quizAudio.playClick();
+                                    }}
+                                    className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] relative"
+                                  >
+                                    {/* Top Banner Strip */}
+                                    <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-4 py-2.5 flex items-center justify-between text-white shadow-2xs">
+                                      <span className="text-xs font-black tracking-wide flex items-center gap-1.5">
+                                        <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
+                                        For All Job
+                                      </span>
+                                      <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                        Live Now
+                                      </span>
+                                    </div>
 
-                            {/* Footer Row: Live Timer & Participant Count */}
-                            <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
-                              {/* Live Timer */}
-                              <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100/80">
-                                <span className="relative flex h-2 w-2 shrink-0">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                                </span>
-                                <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt)}</span>
-                              </div>
+                                    {/* Card Content */}
+                                    <div className="p-4 sm:p-5 space-y-3">
+                                      <div>
+                                        <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
+                                          {currentLive.title}
+                                        </h4>
+                                        <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
+                                          <span>প্রশ্ন {qCount} টি</span>
+                                          <span className="text-slate-300">•</span>
+                                          <span>{mins} মিনিট</span>
+                                        </p>
+                                      </div>
 
-                              {/* Participant Count */}
-                              <div className="text-slate-400 text-[11px] font-bold tracking-tight">
-                                {participantCount} Already participated
-                              </div>
-                            </div>
+                                      {/* Footer Row: Live Timer & Participant Count */}
+                                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
+                                        {/* Live Timer */}
+                                        <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100/80">
+                                          <span className="relative flex h-2 w-2 shrink-0">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                          </span>
+                                          <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt)}</span>
+                                        </div>
+
+                                        {/* Participant Count */}
+                                        <div className="text-slate-400 text-[11px] font-bold tracking-tight">
+                                          {participantCount} Already participated
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -1353,7 +1367,7 @@ export default function Home() {
               </div>
 
               {/* Our Course Section */}
-              <div className="space-y-3.5">
+              <div className="space-y-3.5 -mt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
