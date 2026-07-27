@@ -291,10 +291,34 @@ const ALGEBRA_QUESTIONS: Question[] = [
   }
 ];
 
+const GEOMETRY_QUESTIONS: Question[] = [
+  {
+    id: 1028,
+    question: "ত্রিভুজের তিন কোণের সমষ্টি কত ডিগ্রি?",
+    options: ["৯০°", "১৮০°", "৩৬০°", "২৭০°"],
+    correctIndex: 1,
+    explanation: "যেকোনো ত্রিভুজের তিন কোণের সমষ্টি সর্বদা ১৮০ ডিগ্রি (বা ২ সমকোণ)।"
+  },
+  {
+    id: 1029,
+    question: "বৃত্তের ব্যাস ব্যাসার্ধের কত গুণ?",
+    options: ["সমান", "দ্বিগুণ", "তিনগুণ", "অর্ধেক"],
+    correctIndex: 1,
+    explanation: "বৃত্তের কেন্দ্রগামী জ্যা-কে ব্যাস বলে। ব্যাস ব্যাসার্ধের দ্বিগুণ (d = 2r)।"
+  },
+  {
+    id: 1030,
+    question: "সমকোণী ত্রিভুজের অতিভুজের ওপর অঙ্কিত বর্গক্ষেত্রের ক্ষেত্রফল অপর দুই বাহুর ওপর অঙ্কিত বর্গক্ষেত্রদ্বয়ের ক্ষেত্রফলের কীসের সমান?",
+    options: ["সমষ্টির সমান", "অন্তরের সমান", "গুণফলের সমান", "অর্ধেকের সমান"],
+    correctIndex: 0,
+    explanation: "পিথাগোরাসের উপপাদ্য অনুযায়ী: অতিভুজ^২ = লম্ব^২ + ভূমি^২।"
+  }
+];
+
 const BANGLA_QUESTIONS: Question[] = [...BANGLA_1ST_QUESTIONS, ...BANGLA_2ND_QUESTIONS];
 const ENGLISH_QUESTIONS: Question[] = [...ENGLISH_1ST_QUESTIONS, ...ENGLISH_2ND_QUESTIONS];
 const SCIENCE_QUESTIONS: Question[] = [...PHYSICS_QUESTIONS, ...CHEMISTRY_QUESTIONS, ...BIOLOGY_QUESTIONS];
-const MATH_QUESTIONS: Question[] = [...ARITHMETIC_QUESTIONS, ...ALGEBRA_QUESTIONS];
+const MATH_QUESTIONS: Question[] = [...ARITHMETIC_QUESTIONS, ...ALGEBRA_QUESTIONS, ...GEOMETRY_QUESTIONS];
 
 const ALL_COURSES_DATA = [
   { id: "bcs", title: "BCS Preparation Masterclass", desc: "পূর্ণাঙ্গ বিসিএস সিলেবাসের ওপর ভিত্তি করে অধ্যায়ভিত্তিক লাইভ এমসিকিউ ও বিশ্লেষণমূলক লেকচার শীট।", category: "BCS", icon: BookOpen, bg: "bg-[#FFF1E6]", iconColor: "text-orange-600" },
@@ -314,11 +338,12 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-all-subjects" | "packages" | "search">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-all-subjects" | "packages" | "search">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
+  const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[] } | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
@@ -2096,13 +2121,53 @@ export default function Home() {
                 </h3>
               </div>
 
-              {/* Sub-subjects grid */}
-              <div className="space-y-3">
+              {/* Quick Tools Section for Subject View (Requirement 4) */}
+              <div className="space-y-2 pt-1">
                 <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
-                  বিষয়সমূহ সিলেক্ট করুন (Select Subject)
+                  বিষয় কুইক টুলস ও আর্কাইভ (Quick Tools)
+                </h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
+                    { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
+                    { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
+                    { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
+                    { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
+                    { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                    { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
+                    { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                  ].map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        if (item.name === "Routine") setCurrentScreen("routine");
+                        else if (item.name === "Result" || item.name === "Merit List") setCurrentScreen("tests");
+                        else if (item.name === "Archive") {
+                          setArchiveFilterCourse(selectedPrepSubject);
+                          setArchiveModalOpen(true);
+                        }
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="bg-white border border-slate-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center hover:border-orange-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                    >
+                      <span className={`w-8 h-8 rounded-xl ${item.color} flex items-center justify-center text-sm font-black`}>
+                        {item.icon}
+                      </span>
+                      <span className="text-[10px] font-extrabold text-slate-700 truncate w-full">
+                        {item.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sub-subjects grid */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
+                  বিষয়সমূহ সিলেক্ট করুন (Select Sub-Subject)
                 </h4>
 
-                <div className="grid grid-cols-1 gap-3.5">
+                <div className="grid grid-cols-1 gap-3">
                   {(() => {
                     let subSubjectsList: { name: string; sub: string; questions: Question[] }[] = [];
 
@@ -2125,7 +2190,8 @@ export default function Home() {
                     } else if (selectedPrepSubject === "Mathematics" || selectedPrepSubject === "Math") {
                       subSubjectsList = [
                         { name: "Arithmetic (পাটিগণিত)", sub: "মৌলিক সংখ্যা, শতকরা ও লাভ-ক্ষতি", questions: ARITHMETIC_QUESTIONS },
-                        { name: "Algebra (বীজগণিত)", sub: "মান নির্ণয়, সমীকরণ ও লগারিদম", questions: ALGEBRA_QUESTIONS }
+                        { name: "Algebra (বীজগণিত)", sub: "মান নির্ণয়, সমীকরণ ও লগারিদম", questions: ALGEBRA_QUESTIONS },
+                        { name: "Geometry (জ্যামিতি)", sub: "রেখা, কোণ, ত্রিভুজ, চতুর্ভুজ ও বৃত্ত", questions: GEOMETRY_QUESTIONS }
                       ];
                     } else if (selectedPrepSubject === "General Knowledge") {
                       subSubjectsList = [
@@ -2165,14 +2231,18 @@ export default function Home() {
                     }
 
                     return subSubjectsList.map((sub, idx) => {
-                      const customPapers = examPapers.filter(p => {
+                      // Calculate count of specific exam papers for badge
+                      const specificPapersCount = examPapers.filter(p => {
                         const pCourse = (p.course || "").toLowerCase();
-                        const pSub = (p.subSubject || p.subject || "all").toLowerCase();
-                        
-                        const isAllCourse = pCourse === "all_courses" || pCourse === "all";
+                        const pSub = (p.subSubject || p.subject || "").toLowerCase();
+                        const targetSub = sub.name.toLowerCase();
+
+                        // Exclude general all_courses and all subjects (Requirement 3)
+                        if (pCourse === "all_courses" || pCourse === "all") return false;
+                        if (pSub === "all subjects" || pSub === "all") return false;
+
                         const selectedNorm = selectedPrepSubject.toLowerCase();
-                        
-                        const courseMatch = isAllCourse || 
+                        const courseMatch =
                           pCourse === selectedNorm ||
                           (selectedNorm === "mathematics" && (pCourse === "math" || pCourse === "mathematics")) ||
                           (selectedNorm === "general knowledge" && (pCourse === "general_knowledge" || pCourse === "gk")) ||
@@ -2182,77 +2252,257 @@ export default function Home() {
 
                         if (!courseMatch) return false;
 
-                        const isSubAll = pSub === "all" || pSub === "all subjects" || pSub === "all courses" || !pSub;
-                        if (isSubAll) return true;
-
-                        const targetSub = sub.name.toLowerCase();
                         return pSub === targetSub || pSub.includes(targetSub) || targetSub.includes(pSub) ||
                           (pSub.includes("1st") && targetSub.includes("1st")) ||
                           (pSub.includes("2nd") && targetSub.includes("2nd")) ||
                           (pSub.includes("পাটিগণিত") && targetSub.includes("পাটিগণিত")) ||
-                          (pSub.includes("বীজগণিত") && targetSub.includes("বীজগণিত"));
-                      });
+                          (pSub.includes("বীজগণিত") && targetSub.includes("বীজগণিত")) ||
+                          (pSub.includes("জ্যামিতি") && targetSub.includes("জ্যামিতি"));
+                      }).length;
 
                       return (
-                        <div key={idx} className="space-y-2">
-                          <div 
-                            onClick={() => {
-                              startQuizFlow(sub.name, sub.sub, sub.questions);
-                              if (soundEnabled) quizAudio.playClick();
-                            }}
-                            className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-                          >
-                            <div className="flex items-center gap-3.5">
-                              <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
-                                <BookOpen className="w-5 h-5 stroke-[2.2px]" />
-                              </div>
-                              <div className="text-left space-y-0.5">
-                                <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
-                                <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
-                              </div>
+                        <div 
+                          key={idx}
+                          onClick={() => {
+                            setSelectedPrepSubSubject(sub);
+                            setPreviousScreen("prep-sub");
+                            setCurrentScreen("prep-sub-detail");
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-xs cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#FF6A00] group-hover:text-white transition-colors">
+                              <BookOpen className="w-5.5 h-5.5 stroke-[2.2px]" />
                             </div>
-                            <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
-                              <Play className="w-3.5 h-3.5 fill-current text-orange-500" />
+                            <div className="text-left space-y-0.5 truncate">
+                              <h5 className="text-xs sm:text-sm font-black text-slate-800 leading-snug group-hover:text-[#FF6A00] transition-colors truncate">
+                                {sub.name}
+                              </h5>
+                              <p className="text-[10px] font-bold text-slate-400 truncate">{sub.sub}</p>
                             </div>
                           </div>
 
-                          {/* Custom Published Exam Papers from Admin for this Sub-Subject */}
-                          {customPapers.length > 0 && (
-                            <div className="ml-3 pl-3 space-y-1.5 border-l-2 border-[#FF6A00]/40">
-                              <p className="text-[10px] font-black uppercase tracking-wider text-[#FF6A00] flex items-center gap-1 text-left">
-                                <span>📌 এডমিন কর্তৃক যুক্তকৃত প্রশ্নপত্র ({customPapers.length} টি)</span>
-                              </p>
-                              {customPapers.map(paper => (
-                                <div 
-                                  key={paper.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedLiveExamModal(paper);
-                                    if (soundEnabled) quizAudio.playClick();
-                                  }}
-                                  className="bg-orange-50/60 hover:bg-orange-100/70 border border-orange-200/80 rounded-2xl p-2.5 flex items-center justify-between cursor-pointer transition-all active:scale-[0.98]"
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0 text-left">
-                                    <span className="w-2 h-2 rounded-full bg-[#FF6A00] shrink-0 animate-pulse" />
-                                    <div className="truncate">
-                                      <h6 className="text-xs font-black text-slate-900 truncate">{paper.title}</h6>
-                                      <p className="text-[10px] font-bold text-slate-500">
-                                        {paper.questionCount}টি প্রশ্ন • {Math.round(paper.totalDurationSeconds / 60)} মিনিট • {paper.status}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <button className="bg-[#FF6A00] text-white text-[10px] font-extrabold px-3 py-1 rounded-xl shrink-0 hover:bg-[#e05d00] transition-colors shadow-2xs cursor-pointer">
-                                    পরীক্ষা দিন
-                                  </button>
-                                </div>
-                              ))}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {specificPapersCount > 0 ? (
+                              <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                                {specificPapersCount}টি প্রশ্নপত্র
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
+                                ভেতরে দেখুন
+                              </span>
+                            )}
+                            <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors">
+                              <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
                             </div>
-                          )}
+                          </div>
                         </div>
                       );
                     });
                   })()}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* PREPARATION HUB SUB-SUBJECT DETAIL SCREEN (Requirement 2, 3, 4) */}
+          {/* ========================================================= */}
+          {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
+            <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
+              
+              {/* Back button & Sub-Subject Header */}
+              <div className="flex items-center justify-between pt-1 pb-1">
+                <button 
+                  onClick={() => {
+                    setCurrentScreen("prep-sub");
+                    if (soundEnabled) quizAudio.playClick();
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>পেছনে</span>
+                </button>
+                <div className="text-right min-w-0">
+                  <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight truncate">
+                    {selectedPrepSubSubject.name}
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-400 truncate">
+                    {selectedPrepSubject} • {selectedPrepSubSubject.sub}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sub-Subject Quick Tools (Requirement 4) */}
+              <div className="space-y-2 pt-1">
+                <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
+                  কুইক টুলস ও আর্কাইভ (Quick Tools)
+                </h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
+                    { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
+                    { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
+                    { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
+                    { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
+                    { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                    { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
+                    { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                  ].map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        if (item.name === "Routine") setCurrentScreen("routine");
+                        else if (item.name === "Result" || item.name === "Merit List") setCurrentScreen("tests");
+                        else if (item.name === "Archive") {
+                          setArchiveFilterCourse(selectedPrepSubject);
+                          setArchiveModalOpen(true);
+                        }
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="bg-white border border-slate-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center hover:border-orange-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                    >
+                      <span className={`w-8 h-8 rounded-xl ${item.color} flex items-center justify-center text-sm font-black`}>
+                        {item.icon}
+                      </span>
+                      <span className="text-[10px] font-extrabold text-slate-700 truncate w-full">
+                        {item.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Published Exam Papers List for this Sub-Subject (Requirement 2 & 3) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
+                    প্রকাশিত প্রশ্নপত্র ও পরীক্ষা (Published Exams)
+                  </h4>
+                  <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-full">
+                    {selectedPrepSubSubject.name}
+                  </span>
+                </div>
+
+                {(() => {
+                  // Requirement 3: Strictly filter out weekly/daily general all-subject tests
+                  const subPapers = examPapers.filter(paper => {
+                    const pCourse = (paper.course || "").toLowerCase();
+                    const pSubject = (paper.subject || "").toLowerCase();
+                    const pSubSubject = (paper.subSubject || "").toLowerCase();
+
+                    // Requirement 3: Exclude general model tests or all-courses tests
+                    if (pCourse === "all_courses" || pCourse === "all") return false;
+                    if (pSubject === "all subjects" || pSubject === "all") return false;
+                    if (pSubSubject === "all subjects" || pSubSubject === "all") return false;
+
+                    // Match Course/Subject
+                    const selectedNorm = selectedPrepSubject.toLowerCase();
+                    const courseMatch =
+                      pCourse === selectedNorm ||
+                      (selectedNorm === "mathematics" && (pCourse === "math" || pCourse === "mathematics")) ||
+                      (selectedNorm === "general knowledge" && (pCourse === "general_knowledge" || pCourse === "gk")) ||
+                      (selectedNorm === "general science" && (pCourse === "general_science" || pCourse === "gen_science")) ||
+                      (selectedNorm === "mental ability" && (pCourse === "mental_ability" || pCourse === "mental")) ||
+                      (selectedNorm === "good governance" && (pCourse === "good_governance" || pCourse === "governance"));
+
+                    if (!courseMatch) return false;
+
+                    // Match SubSubject
+                    const targetSub = selectedPrepSubSubject.name.toLowerCase();
+                    const isSubMatch = 
+                      pSubSubject === targetSub ||
+                      pSubject === targetSub ||
+                      pSubSubject.includes(targetSub) ||
+                      targetSub.includes(pSubSubject) ||
+                      (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
+                      (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
+                      (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
+                      (targetSub.includes("বীজগণিত") && (pSubSubject.includes("বীজগণিত") || pSubject.includes("বীজগণিত") || pSubSubject.includes("algebra"))) ||
+                      (targetSub.includes("জ্যামিতি") && (pSubSubject.includes("জ্যামিতি") || pSubject.includes("জ্যামিতি") || pSubSubject.includes("geometry")));
+
+                    return isSubMatch;
+                  });
+
+                  if (subPapers.length === 0) {
+                    return (
+                      <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
+                        <div className="w-12 h-12 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
+                          📚
+                        </div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-800">
+                          কোনো প্রশ্নপত্র যুক্ত হয়নি
+                        </h3>
+                        <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
+                          এই সাব-সাবজেক্টের ({selectedPrepSubSubject.name}) জন্য এখনো কোনো প্রশ্নপত্র প্রকাশিত হয়নি। এডমিন প্যানেল থেকে এই বিষয় ও সাব-সাবজেক্টের প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {subPapers.map(paper => {
+                        const computedStatus = getExamStatus(paper);
+                        const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
+                        const durationMins = Math.floor(totalSec / 60);
+
+                        return (
+                          <div 
+                            key={paper.id} 
+                            className="bg-white border border-slate-200/80 hover:border-orange-200 rounded-[2rem] p-4.5 shadow-2xs space-y-3 transition-all"
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                                computedStatus === "Live" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                computedStatus === "Upcoming" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                "bg-slate-100 text-slate-600"
+                              }`}>
+                                {computedStatus === "Live" ? "🟢 Live Exam" : computedStatus === "Upcoming" ? "⏳ Upcoming" : "📂 Archived"}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400">
+                                {paper.questionCount}টি প্রশ্ন • {durationMins} মিনিট • {paper.totalMarks} মার্কস
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h5 className="text-sm font-black text-slate-900 leading-snug">
+                                <MathRenderer content={paper.title} />
+                              </h5>
+                              {paper.topic && (
+                                <p className="text-xs font-bold text-slate-500 line-clamp-2">
+                                  {paper.topic}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedLiveExamModal(paper);
+                                  if (soundEnabled) quizAudio.playClick();
+                                }}
+                                className="flex-1 py-2 bg-[#FF6A00] hover:bg-[#e05d00] text-white text-xs font-black rounded-xl transition-all shadow-2xs active:scale-95 cursor-pointer text-center"
+                              >
+                                পরীক্ষা দিন
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setViewingPaperModal(paper);
+                                  if (soundEnabled) quizAudio.playClick();
+                                }}
+                                className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 text-xs font-black rounded-xl transition-all active:scale-95 cursor-pointer"
+                              >
+                                প্রশ্নপত্র
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

@@ -202,12 +202,14 @@ export default function AdminPage() {
     mathematics: [
       { id: "all", name: "সকল গণিত পার্ট (All Mathematics Parts)" },
       { id: "Arithmetic (পাটিগণিত)", name: "Arithmetic (পাটিগণিত)" },
-      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" }
+      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" },
+      { id: "Geometry (জ্যামিতি)", name: "Geometry (জ্যামিতি)" }
     ],
     math: [
       { id: "all", name: "সকল গণিত পার্ট (All Mathematics Parts)" },
       { id: "Arithmetic (পাটিগণিত)", name: "Arithmetic (পাটিগণিত)" },
-      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" }
+      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" },
+      { id: "Geometry (জ্যামিতি)", name: "Geometry (জ্যামিতি)" }
     ],
     science: [
       { id: "all", name: "সকল বিজ্ঞান শাখা (All Science Branches)" },
