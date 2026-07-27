@@ -339,6 +339,7 @@ export default function Home() {
 
   // Dynamic Exam Papers & Packages State
   const [examPapers, setExamPapers] = useState<ExamPaper[]>([]);
+  const [isExamsLoading, setIsExamsLoading] = useState<boolean>(true);
   const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
@@ -503,12 +504,18 @@ export default function Home() {
       }
 
       // Fetch dynamic published exam papers & subscribe to real-time changes
-      fetchExamPapersFromDb().then(papers => {
-        setExamPapers(papers);
-      });
+      fetchExamPapersFromDb()
+        .then(papers => {
+          setExamPapers(papers);
+          setIsExamsLoading(false);
+        })
+        .catch(() => {
+          setIsExamsLoading(false);
+        });
 
       const unsubscribe = subscribeToExamPapers((updatedPapers) => {
         setExamPapers(updatedPapers);
+        setIsExamsLoading(false);
       });
 
       // Fetch dynamic packages & subscribe
@@ -1130,7 +1137,7 @@ export default function Home() {
           </div>
 
           {/* Center: Apple UI Navigation Menu for Desktop */}
-          <nav className="hidden md:flex bg-slate-100/90 border border-slate-200/70 p-1 rounded-xl items-center gap-1 shadow-inner">
+          <nav className="hidden xl:flex bg-slate-100/90 border border-slate-200/70 p-1 rounded-xl items-center gap-1 shadow-inner">
             <button
               onClick={() => { setCurrentScreen("home"); if (soundEnabled) quizAudio.playClick(); }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
@@ -1269,8 +1276,26 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* Live Exam Card / Carousel */}
-                {liveExamsList.length === 0 ? (
+                {/* Live Exam Card / Carousel / Skeleton Loader */}
+                {isExamsLoading ? (
+                  /* Skeleton Screen animation while checking server */
+                  <div className="bg-white border border-slate-100/90 rounded-3xl p-5 shadow-2xs space-y-3.5 animate-pulse">
+                    {/* Top badge skeleton */}
+                    <div className="h-3.5 bg-slate-200/80 rounded-full w-36" />
+                    
+                    {/* Title & subtitle skeleton */}
+                    <div className="space-y-2 pt-1">
+                      <div className="h-4.5 bg-slate-200/80 rounded-lg w-3/4" />
+                      <div className="h-3.5 bg-slate-200/80 rounded-md w-1/3" />
+                    </div>
+                    
+                    {/* Bottom info bar skeleton */}
+                    <div className="flex items-center gap-2 pt-1.5">
+                      <div className="w-4 h-4 bg-slate-200/80 rounded-sm" />
+                      <div className="h-3.5 bg-slate-200/80 rounded-md w-28" />
+                    </div>
+                  </div>
+                ) : liveExamsList.length === 0 ? (
                   /* Empty state card */
                   <div className="bg-white border border-slate-100 rounded-3xl p-6 text-center space-y-2 shadow-2xs">
                     <div className="w-11 h-11 bg-orange-50 rounded-2xl mx-auto flex items-center justify-center text-[#FF6A00]">
@@ -1546,7 +1571,7 @@ export default function Home() {
                     </h3>
 
                     {/* Subtitle */}
-                    <p className="text-orange-100 text-xs font-extrabold tracking-wide truncate max-w-full">
+                    <p className="text-white text-xs font-extrabold tracking-wide truncate max-w-full">
                       খেলতে খেলতে শিখুন
                     </p>
                   </div>
