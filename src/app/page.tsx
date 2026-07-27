@@ -304,7 +304,7 @@ const ALL_COURSES_DATA = [
   { id: "psc", title: "PSC Non-Cadre Mock Series", desc: "বাংলাদেশ সরকারী কর্ম কমিশন (PSC) আয়োজিত বিভিন্ন গ্রেডের ও নন-ক্যাডার পদের জন্য সুপার মক টেস্ট।", category: "Other", icon: FileText, bg: "bg-[#FCE7F3]", iconColor: "text-rose-600" },
   { id: "all_job", title: "All Job Exams Universal Pack", desc: "সকল সরকারী ও স্বায়ত্তশাসিত প্রতিষ্ঠানের ৩য় ও ৪র্থ শ্রেণীর চাকরি পরীক্ষার সাধারণ জ্ঞান ও আইকিউ প্যাকেজ।", category: "All", icon: Briefcase, bg: "bg-[#E0F2FE]", iconColor: "text-sky-600" },
   { id: "bangla_english", title: "Bangla & English Literature Mastery", desc: "বাংলা ব্যাকরণ ও সাহিত্য, ইংরেজি গ্রামার এবং লিটারেচার পাসের জন্য প্রফেশনাল শর্ট টেকনিক কোর্স।", category: "Bangla", icon: BookOpen, bg: "bg-[#F1F5F9]", iconColor: "text-slate-700" },
-  { id: "math_science", title: "Quantitative Aptitude & General Science", desc: "জ্যামিতি, বীজগণিত, পাটিগণিত এবং দৈনন্দিন বিজ্ঞান বিষয়ের সবচেয়ে সহজ সমাধান কৌশল ও পরীক্ষা।", category: "Math", icon: Calculator, bg: "bg-[#E0F2FE]", iconColor: "text-blue-600" },
+  { id: "math_science", title: "Quantitative Aptitude & General Science", desc: "জ্যামিতি, বীজগণিত, পাটিগণিত এবং দৈনন্দিন বিজ্ঞান বিষয়ের সবচেয়ে সহজ সমাধান কৌশল ও পরীক্ষা।", category: "Mathematics", icon: Calculator, bg: "bg-[#E0F2FE]", iconColor: "text-blue-600" },
   { id: "office", title: "Office Assistant Preparation", desc: "সরকারি দপ্তর ও পরিদপ্তরে অফিস সহকারী ও কম্পিউটার অপারেটর পদের জন্য বিশেষ সিলেবাস কুইজ।", category: "Other", icon: FileText, bg: "bg-[#EBF7EE]", iconColor: "text-green-600" },
   { id: "private", title: "Private Job & Corporate Prep", desc: "প্রথম সারির বেসরকারি ব্যাংক, এনজিও ও মাল্টিন্যাショナル কোম্পানির নিয়োগ পরীক্ষার প্রিপারেশন মডিউল।", category: "Other", icon: Briefcase, bg: "bg-[#FFF1E6]", iconColor: "text-orange-600" },
   { id: "defense", title: "Defense & Police SI Prep", desc: "পুলিশ সাব-ইন্সপেক্টর, সার্জেন্ট ও সশস্ত্র বাহিনীর নিয়োগ পরীক্ষার সাধারণ জ্ঞান এবং ভাইভা প্রস্তুতি।", category: "Other", icon: Award, bg: "bg-[#E6F0FA]", iconColor: "text-blue-600" },
@@ -462,7 +462,7 @@ export default function Home() {
   // Custom User Routine State (persisted inside localStorage if client-side)
   const [routineTasks, setRoutineTasks] = useState<RoutineItem[]>([
     { id: "r1", title: "BCS Bangla Literature - ৫টি গুরুত্বপূর্ণ প্রশ্ন পড়ুন।", completed: false, category: "Bangla" },
-    { id: "r2", title: "Bank Quantitative Mock Exam - ১টি ম্যাথ সেট সমাধান করুন।", completed: true, category: "Math" },
+    { id: "r2", title: "Bank Quantitative Mock Exam - ১টি ম্যাথ সেট সমাধান করুন।", completed: true, category: "Mathematics" },
     { id: "r3", title: "Primary School Pedagogy Notes - ১০টি নিয়ম রিভিশন দিন।", completed: false, category: "Primary" },
     { id: "r4", title: "Daily General Knowledge - ১০টি সাম্প্রতিক আন্তর্জাতিক বিষয়াবলী মনে রাখুন।", completed: false, category: "GK" },
     { id: "r5", title: "English Vocabulary Flashcards - ২০টি নতুন শব্দ শিখুন।", completed: false, category: "English" }
@@ -472,7 +472,7 @@ export default function Home() {
 
   // Test History State (persisted inside localStorage)
   const [takenTests, setTakenTests] = useState<TakenTest[]>([
-    { id: "t1", name: "Math Practice #12", score: 18, total: 20, time: "2h ago", percentage: 90 }
+    { id: "t1", name: "Mathematics Practice #12", score: 18, total: 20, time: "2h ago", percentage: 90 }
   ]);
 
   // Load state from local storage on mount (Safe client-side execution)
@@ -1177,27 +1177,6 @@ export default function Home() {
             >
               Contact Us
             </button>
-
-            <button
-              onClick={() => { setShowAboutModal(true); if (soundEnabled) quizAudio.playClick(); }}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all cursor-pointer"
-            >
-              About Us
-            </button>
-
-            <button
-              onClick={() => {
-                setIsLoggedIn(prev => !prev);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                isLoggedIn 
-                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100" 
-                  : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-              }`}
-            >
-              {isLoggedIn ? "Sign Out" : "Sign In"}
-            </button>
           </nav>
 
           {/* Right side: Search, Notification, and Settings icons */}
@@ -1648,10 +1627,10 @@ export default function Home() {
                     <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">English</span>
                   </div>
 
-                  {/* Preparation Hub Item 3: Math */}
+                  {/* Preparation Hub Item 3: Mathematics */}
                   <div 
                     onClick={() => {
-                      setSelectedPrepSubject("Math");
+                      setSelectedPrepSubject("Mathematics");
                       setPreviousScreen("home");
                       setCurrentScreen("prep-sub");
                       if (soundEnabled) quizAudio.playClick();
@@ -1661,7 +1640,7 @@ export default function Home() {
                     <div className="w-11 h-11 bg-[#E6F0FA] rounded-xl flex items-center justify-center text-blue-600 shrink-0">
                       <Calculator className="w-5.5 h-5.5 stroke-[2.2px]" />
                     </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Math</span>
+                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Mathematics</span>
                   </div>
 
                   {/* Preparation Hub Item 4: Science */}
@@ -1941,7 +1920,7 @@ export default function Home() {
 
               {/* Categories scroll row */}
               <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
-                {["All", "BCS", "Bank", "Teachers", "Math", "Bangla", "Other"].map((cat) => (
+                {["All", "BCS", "Bank", "Teachers", "Mathematics", "Bangla", "Other"].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCourseCategory(cat)}
@@ -2053,7 +2032,7 @@ export default function Home() {
                 {[
                   { name: "Bangla", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
                   { name: "English", bnName: "ইংরেজি", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
-                  { name: "Math", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
+                  { name: "Mathematics", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
                   { name: "Science", bnName: "বিজ্ঞান", icon: Sparkles, bg: "bg-[#EBF7EE]", text: "text-green-600", sub: "পদার্থ, রসায়ন ও জীব" },
                   { name: "General Knowledge", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
                   { name: "Geography", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
@@ -2123,142 +2102,156 @@ export default function Home() {
                   বিষয়সমূহ সিলেক্ট করুন (Select Subject)
                 </h4>
 
-                <div className="grid grid-cols-1 gap-3">
-                  {selectedPrepSubject === "Bangla" && [
-                    { name: "Bangla 1st Paper", sub: "বাংলা সাহিত্য ও গল্প-কবিতা", questions: BANGLA_1ST_QUESTIONS },
-                    { name: "Bangla 2nd Paper", sub: "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব", questions: BANGLA_2ND_QUESTIONS }
-                  ].map((sub, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                        startQuizFlow(sub.name, sub.sub, sub.questions);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
-                          <BookOpen className="w-5 h-5 stroke-[2.2px]" />
-                        </div>
-                        <div className="text-left space-y-0.5">
-                          <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
-                          <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
-                        <Play className="w-3.5 h-3.5 fill-current text-orange-500" />
-                      </div>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 gap-3.5">
+                  {(() => {
+                    let subSubjectsList: { name: string; sub: string; questions: Question[] }[] = [];
 
-                  {selectedPrepSubject === "English" && [
-                    { name: "English 1st Paper", sub: "English Literature & Reading", questions: ENGLISH_1ST_QUESTIONS },
-                    { name: "English 2nd Paper", sub: "English Grammar & Vocabulary", questions: ENGLISH_2ND_QUESTIONS }
-                  ].map((sub, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                        startQuizFlow(sub.name, sub.sub, sub.questions);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
-                          <Globe className="w-5 h-5 stroke-[2.2px]" />
-                        </div>
-                        <div className="text-left space-y-0.5">
-                          <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
-                          <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
-                        <Play className="w-3.5 h-3.5 fill-current text-purple-500" />
-                      </div>
-                    </div>
-                  ))}
+                    if (selectedPrepSubject === "Bangla") {
+                      subSubjectsList = [
+                        { name: "Bangla 1st Paper", sub: "বাংলা সাহিত্য ও গল্প-কবিতা", questions: BANGLA_1ST_QUESTIONS },
+                        { name: "Bangla 2nd Paper", sub: "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব", questions: BANGLA_2ND_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "English") {
+                      subSubjectsList = [
+                        { name: "English 1st Paper", sub: "English Literature & Reading", questions: ENGLISH_1ST_QUESTIONS },
+                        { name: "English 2nd Paper", sub: "English Grammar & Vocabulary", questions: ENGLISH_2ND_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "Science") {
+                      subSubjectsList = [
+                        { name: "Physics", sub: "পদার্থবিজ্ঞান ও গতিবিদ্যার সূত্রাবলী", questions: PHYSICS_QUESTIONS },
+                        { name: "Chemistry", sub: "রসায়ন তত্ত্ব ও পর্যায় সারণি", questions: CHEMISTRY_QUESTIONS },
+                        { name: "Biology", sub: "জীববিজ্ঞান ও মানবদেহের কার্যাবলী", questions: BIOLOGY_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "Mathematics" || selectedPrepSubject === "Math") {
+                      subSubjectsList = [
+                        { name: "Arithmetic (পাটিগণিত)", sub: "মৌলিক সংখ্যা, শতকরা ও লাভ-ক্ষতি", questions: ARITHMETIC_QUESTIONS },
+                        { name: "Algebra (বীজগণিত)", sub: "মান নির্ণয়, সমীকরণ ও লগারিদম", questions: ALGEBRA_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "General Knowledge") {
+                      subSubjectsList = [
+                        { name: "Bangladesh Affairs", sub: "বাংলাদেশ বিষয়াবলী ও ইতিহাস", questions: QUIZ_QUESTIONS },
+                        { name: "International Affairs", sub: "আন্তর্জাতিক বিষয়াবলী ও সংস্থা", questions: QUIZ_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "Geography") {
+                      subSubjectsList = [
+                        { name: "Environment & Geography", sub: "পরিবেশ ও ভূ-প্রকৃতি", questions: QUIZ_QUESTIONS },
+                        { name: "Disaster Management", sub: "দুর্যোগ ব্যবস্থাপনা", questions: QUIZ_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "General Science") {
+                      subSubjectsList = [
+                        { name: "Daily Science", sub: "দৈনন্দিন বিজ্ঞান", questions: QUIZ_QUESTIONS },
+                        { name: "General Medical", sub: "সাধারণ চিকিৎসা", questions: QUIZ_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "Technology") {
+                      subSubjectsList = [
+                        { name: "Computer Basics", sub: "কম্পিউটার শিক্ষা", questions: QUIZ_QUESTIONS },
+                        { name: "ICT & Technology", sub: "তথ্যপ্রযুক্তি", questions: QUIZ_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "Mental Ability") {
+                      subSubjectsList = [
+                        { name: "Mathematical Logic", sub: "গাণিতিক যুক্তি", questions: QUIZ_QUESTIONS },
+                        { name: "Mental Skills", sub: "মনস্তাত্ত্বিক দক্ষতা", questions: QUIZ_QUESTIONS }
+                      ];
+                    } else if (selectedPrepSubject === "Good Governance") {
+                      subSubjectsList = [
+                        { name: "Ethics & Values", sub: "নৈতিকতা ও মূল্যবোধ", questions: QUIZ_QUESTIONS },
+                        { name: "Good Governance", sub: "সুশাসন", questions: QUIZ_QUESTIONS }
+                      ];
+                    } else {
+                      subSubjectsList = [
+                        { name: `${selectedPrepSubject} Module 1`, sub: "অধ্যায়ভিত্তিক মৌলিক কুইজ প্র্যাকটিস", questions: QUIZ_QUESTIONS },
+                        { name: `${selectedPrepSubject} Module 2`, sub: "বিগত বছরের প্রশ্ন ও কুইজ টেস্ট", questions: QUIZ_QUESTIONS }
+                      ];
+                    }
 
-                  {selectedPrepSubject === "Science" && [
-                    { name: "Physics", sub: "পদার্থবিজ্ঞান ও গতিবিদ্যার সূত্রাবলী", questions: PHYSICS_QUESTIONS },
-                    { name: "Chemistry", sub: "রসায়ন তত্ত্ব ও পর্যায় সারণি", questions: CHEMISTRY_QUESTIONS },
-                    { name: "Biology", sub: "জীববিজ্ঞান ও মানবদেহের কার্যাবলী", questions: BIOLOGY_QUESTIONS }
-                  ].map((sub, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                        startQuizFlow(sub.name, sub.sub, sub.questions);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shrink-0">
-                          <Sparkles className="w-5 h-5 stroke-[2.2px]" />
-                        </div>
-                        <div className="text-left space-y-0.5">
-                          <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
-                          <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
-                        <Play className="w-3.5 h-3.5 fill-current text-green-500" />
-                      </div>
-                    </div>
-                  ))}
+                    return subSubjectsList.map((sub, idx) => {
+                      const customPapers = examPapers.filter(p => {
+                        const pCourse = (p.course || "").toLowerCase();
+                        const pSub = (p.subSubject || p.subject || "all").toLowerCase();
+                        
+                        const isAllCourse = pCourse === "all_courses" || pCourse === "all";
+                        const selectedNorm = selectedPrepSubject.toLowerCase();
+                        
+                        const courseMatch = isAllCourse || 
+                          pCourse === selectedNorm ||
+                          (selectedNorm === "mathematics" && (pCourse === "math" || pCourse === "mathematics")) ||
+                          (selectedNorm === "general knowledge" && (pCourse === "general_knowledge" || pCourse === "gk")) ||
+                          (selectedNorm === "general science" && (pCourse === "general_science" || pCourse === "gen_science")) ||
+                          (selectedNorm === "mental ability" && (pCourse === "mental_ability" || pCourse === "mental")) ||
+                          (selectedNorm === "good governance" && (pCourse === "good_governance" || pCourse === "governance"));
 
-                  {selectedPrepSubject === "Math" && [
-                    { name: "Arithmetic (পাটিগণিত)", sub: "মৌলিক সংখ্যা, শতকরা ও লাভ-ক্ষতি", questions: ARITHMETIC_QUESTIONS },
-                    { name: "Algebra (বীজগণিত)", sub: "মান নির্ণয়, সমীকরণ ও লগারিদম", questions: ALGEBRA_QUESTIONS }
-                  ].map((sub, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                        startQuizFlow(sub.name, sub.sub, sub.questions);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
-                          <Calculator className="w-5 h-5 stroke-[2.2px]" />
-                        </div>
-                        <div className="text-left space-y-0.5">
-                          <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
-                          <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
-                        <Play className="w-3.5 h-3.5 fill-current text-blue-500" />
-                      </div>
-                    </div>
-                  ))}
+                        if (!courseMatch) return false;
 
-                  {!["Bangla", "English", "Science", "Math"].includes(selectedPrepSubject) && [
-                    { name: `${selectedPrepSubject} Module 1`, sub: "অধ্যায়ভিত্তিক মৌলিক কুইজ প্র্যাকটিস", questions: QUIZ_QUESTIONS },
-                    { name: `${selectedPrepSubject} Module 2`, sub: "বিগত বছরের প্রশ্ন ও কুইজ টেস্ট", questions: QUIZ_QUESTIONS }
-                  ].map((sub, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                        startQuizFlow(sub.name, sub.sub, sub.questions);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
-                          <BookOpen className="w-5 h-5 stroke-[2.2px]" />
+                        const isSubAll = pSub === "all" || pSub === "all subjects" || pSub === "all courses" || !pSub;
+                        if (isSubAll) return true;
+
+                        const targetSub = sub.name.toLowerCase();
+                        return pSub === targetSub || pSub.includes(targetSub) || targetSub.includes(pSub) ||
+                          (pSub.includes("1st") && targetSub.includes("1st")) ||
+                          (pSub.includes("2nd") && targetSub.includes("2nd")) ||
+                          (pSub.includes("পাটিগণিত") && targetSub.includes("পাটিগণিত")) ||
+                          (pSub.includes("বীজগণিত") && targetSub.includes("বীজগণিত"));
+                      });
+
+                      return (
+                        <div key={idx} className="space-y-2">
+                          <div 
+                            onClick={() => {
+                              startQuizFlow(sub.name, sub.sub, sub.questions);
+                              if (soundEnabled) quizAudio.playClick();
+                            }}
+                            className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
+                                <BookOpen className="w-5 h-5 stroke-[2.2px]" />
+                              </div>
+                              <div className="text-left space-y-0.5">
+                                <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
+                                <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
+                              <Play className="w-3.5 h-3.5 fill-current text-orange-500" />
+                            </div>
+                          </div>
+
+                          {/* Custom Published Exam Papers from Admin for this Sub-Subject */}
+                          {customPapers.length > 0 && (
+                            <div className="ml-3 pl-3 space-y-1.5 border-l-2 border-[#FF6A00]/40">
+                              <p className="text-[10px] font-black uppercase tracking-wider text-[#FF6A00] flex items-center gap-1 text-left">
+                                <span>📌 এডমিন কর্তৃক যুক্তকৃত প্রশ্নপত্র ({customPapers.length} টি)</span>
+                              </p>
+                              {customPapers.map(paper => (
+                                <div 
+                                  key={paper.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedLiveExamModal(paper);
+                                    if (soundEnabled) quizAudio.playClick();
+                                  }}
+                                  className="bg-orange-50/60 hover:bg-orange-100/70 border border-orange-200/80 rounded-2xl p-2.5 flex items-center justify-between cursor-pointer transition-all active:scale-[0.98]"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 text-left">
+                                    <span className="w-2 h-2 rounded-full bg-[#FF6A00] shrink-0 animate-pulse" />
+                                    <div className="truncate">
+                                      <h6 className="text-xs font-black text-slate-900 truncate">{paper.title}</h6>
+                                      <p className="text-[10px] font-bold text-slate-500">
+                                        {paper.questionCount}টি প্রশ্ন • {Math.round(paper.totalDurationSeconds / 60)} মিনিট • {paper.status}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button className="bg-[#FF6A00] text-white text-[10px] font-extrabold px-3 py-1 rounded-xl shrink-0 hover:bg-[#e05d00] transition-colors shadow-2xs cursor-pointer">
+                                    পরীক্ষা দিন
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-left space-y-0.5">
-                          <h5 className="text-xs font-black text-slate-800 leading-snug">{sub.name}</h5>
-                          <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-xl text-slate-400">
-                        <Play className="w-3.5 h-3.5 fill-current text-orange-500" />
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </div>
@@ -2577,7 +2570,7 @@ export default function Home() {
                     className="px-2.5 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 focus:outline-none"
                   >
                     <option value="GK">GK</option>
-                    <option value="Math">Math</option>
+                    <option value="Mathematics">Mathematics</option>
                     <option value="Bangla">Bangla</option>
                     <option value="English">English</option>
                     <option value="Primary">Primary</option>
@@ -2751,13 +2744,13 @@ export default function Home() {
                         <Calculator className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-slate-800 leading-snug">Math Practice Series #12</h4>
+                        <h4 className="text-xs font-black text-slate-800 leading-snug">Mathematics Practice Series #12</h4>
                         <p className="text-[9px] font-bold text-slate-400 mt-0.5">3 Questions • Equations & Geometry</p>
                       </div>
                     </div>
                     
                     <button 
-                      onClick={() => startQuizFlow("Math practice #12", "Equations & Geometry", MATH_QUESTIONS)}
+                      onClick={() => startQuizFlow("Mathematics practice #12", "Equations & Geometry", MATH_QUESTIONS)}
                       className="p-1.5 hover:bg-slate-50 text-blue-600 rounded-lg active:scale-90 transition-all cursor-pointer"
                     >
                       <Play className="w-4 h-4 fill-current" />

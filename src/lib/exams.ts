@@ -4,7 +4,8 @@ import { Question, QUIZ_QUESTIONS } from "../data";
 export interface ExamPaper {
   id: string;
   title: string;
-  course: string; // "bcs", "bank", "primary", "ntrca", "psc", "all_job", "bangla", "english", "math", "science"
+  course: string; // "all_courses", "bcs", "bank", "primary", "ntrca", "psc", "all_job", "bangla", "english", "mathematics", "science", etc.
+  subSubject?: string; // "all", "Bangla 1st Paper", "Bangla 2nd Paper", "Physics", "Arithmetic (পাটিগণিত)", etc.
   examType: "weekly" | "daily" | "subject" | "special";
   subject?: string;
   questionCount: number;
@@ -227,6 +228,7 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
             id: item.id,
             title: item.title,
             course: item.course,
+            subSubject: item.subSubject || item.sub_subject || item.subject,
             examType: item.examType || item.exam_type || "weekly",
             subject: item.subject,
             questionCount: item.questionCount || item.question_count || (Array.isArray(questionsArr) ? questionsArr.length : 10),
@@ -307,6 +309,7 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
     if (supabase) {
       const questionsData = JSON.stringify({
         questions: paperWithTimestamps.questions || [],
+        subSubject: paperWithTimestamps.subSubject,
         startDateTime: paperWithTimestamps.startDateTime,
         endDateTime: paperWithTimestamps.endDateTime,
         createdAt: paperWithTimestamps.createdAt,
@@ -318,7 +321,7 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
         title: paperWithTimestamps.title,
         course: paperWithTimestamps.course,
         exam_type: paperWithTimestamps.examType,
-        subject: paperWithTimestamps.subject || "All Subjects",
+        subject: paperWithTimestamps.subSubject || paperWithTimestamps.subject || "All Subjects",
         question_count: paperWithTimestamps.questionCount,
         time_per_question: paperWithTimestamps.timePerQuestionSeconds,
         total_duration: paperWithTimestamps.totalDurationSeconds,

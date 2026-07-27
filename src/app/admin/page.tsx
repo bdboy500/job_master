@@ -178,9 +178,74 @@ export default function AdminPage() {
     { id: "all_job", name: "All Job Special (সকল জব প্রস্তুতি)" },
     { id: "bangla", name: "Bangla Subject (বাংলা বিষয়)" },
     { id: "english", name: "English Subject (ইংরেজি বিষয়)" },
-    { id: "math", name: "Math Subject (গণিত বিষয়)" },
-    { id: "science", name: "Science Subject (বিজ্ঞান বিষয়)" }
+    { id: "mathematics", name: "Mathematics Subject (গণিত বিষয়)" },
+    { id: "science", name: "Science Subject (বিজ্ঞান বিষয়)" },
+    { id: "general_knowledge", name: "General Knowledge (সাধারণ জ্ঞান)" },
+    { id: "geography", name: "Geography (ভূগোল)" },
+    { id: "general_science", name: "General Science (সাধারণ বিজ্ঞান)" },
+    { id: "technology", name: "Technology (কম্পিউটার ও তথ্যপ্রযুক্তি)" },
+    { id: "mental_ability", name: "Mental Ability (মানসিক দক্ষতা)" },
+    { id: "good_governance", name: "Good Governance (নৈতিকতা ও সুশাসন)" }
   ];
+
+  const SUB_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {
+    bangla: [
+      { id: "all", name: "সকল বিষয় / পেপার (All Papers)" },
+      { id: "Bangla 1st Paper", name: "Bangla 1st Paper (বাংলা ১ম পত্র)" },
+      { id: "Bangla 2nd Paper", name: "Bangla 2nd Paper (বাংলা ২য় পত্র)" }
+    ],
+    english: [
+      { id: "all", name: "সকল বিষয় / পেপার (All Papers)" },
+      { id: "English 1st Paper", name: "English 1st Paper (English Literature)" },
+      { id: "English 2nd Paper", name: "English 2nd Paper (English Grammar)" }
+    ],
+    mathematics: [
+      { id: "all", name: "সকল গণিত পার্ট (All Mathematics Parts)" },
+      { id: "Arithmetic (পাটিগণিত)", name: "Arithmetic (পাটিগণিত)" },
+      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" }
+    ],
+    math: [
+      { id: "all", name: "সকল গণিত পার্ট (All Mathematics Parts)" },
+      { id: "Arithmetic (পাটিগণিত)", name: "Arithmetic (পাটিগণিত)" },
+      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" }
+    ],
+    science: [
+      { id: "all", name: "সকল বিজ্ঞান শাখা (All Science Branches)" },
+      { id: "Physics", name: "Physics (পদার্থবিজ্ঞান)" },
+      { id: "Chemistry", name: "Chemistry (রসায়ন)" },
+      { id: "Biology", name: "Biology (জীববিজ্ঞান)" }
+    ],
+    general_knowledge: [
+      { id: "all", name: "সকল সাধারণ জ্ঞান বিষয় (All GK Subjects)" },
+      { id: "Bangladesh Affairs", name: "Bangladesh Affairs (বাংলাদেশ বিষয়াবলী)" },
+      { id: "International Affairs", name: "International Affairs (আন্তর্জাতিক বিষয়াবলী)" }
+    ],
+    geography: [
+      { id: "all", name: "সকল ভূগোল অধ্যায় (All Geography Modules)" },
+      { id: "Environment & Geography", name: "Environment & Geography (পরিবেশ ও ভূ-প্রকৃতি)" },
+      { id: "Disaster Management", name: "Disaster Management (দুর্যোগ ব্যবস্থাপনা)" }
+    ],
+    general_science: [
+      { id: "all", name: "সকল সাধারণ বিজ্ঞান অধ্যায়" },
+      { id: "Daily Science", name: "Daily Science (দৈনন্দিন বিজ্ঞান)" },
+      { id: "General Medical", name: "General Medical (সাধারণ চিকিৎসা)" }
+    ],
+    technology: [
+      { id: "all", name: "সকল তথ্যপ্রযুক্তি অধ্যায়" },
+      { id: "Computer Basics", name: "Computer Basics (কম্পিউটার শিক্ষা)" },
+      { id: "ICT & Technology", name: "ICT & Technology (তথ্যপ্রযুক্তি)" }
+    ],
+    mental_ability: [
+      { id: "all", name: "সকল মানসিক দক্ষতা অধ্যায়" },
+      { id: "Mathematical Logic", name: "Mathematical Logic (গাণিতিক যুক্তি)" },
+      { id: "Mental Skills", name: "Mental Skills (মনস্তাত্ত্বিক দক্ষতা)" }
+    ],
+    good_governance: [
+      { id: "all", name: "সকল নৈতিকতা ও সুশাসন অধ্যায়" },
+      { id: "Ethics & Values", name: "Ethics & Values (নৈতিকতা ও মূল্যবোধ)" },
+      { id: "Good Governance", name: "Good Governance (সুশাসন)" }
+    ]
+  };
 
   const EXAM_TYPES = [
     { id: "weekly", name: "সাপ্তাহিক মডেল টেস্ট (Weekly Model Test)" },
@@ -198,6 +263,7 @@ export default function AdminPage() {
   // Form states for creating/editing paper
   const [paperTitle, setPaperTitle] = useState("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
   const [paperCourse, setPaperCourse] = useState("bcs");
+  const [paperSubSubject, setPaperSubSubject] = useState("all");
   const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
   const [paperTopic, setPaperTopic] = useState('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
@@ -560,8 +626,9 @@ export default function AdminPage() {
       id: editingPaperId || `exam-${Date.now()}`,
       title: paperTitle.trim(),
       course: paperCourse,
+      subSubject: paperSubSubject,
       examType: paperExamType,
-      subject: paperSubject,
+      subject: paperSubSubject !== "all" ? paperSubSubject : paperSubject,
       questionCount: normalizedPaperQuestions.length,
       timePerQuestionSeconds: 36,
       totalDurationSeconds: totalSeconds,
@@ -581,6 +648,7 @@ export default function AdminPage() {
       triggerNotification("success", editingPaperId ? "প্রশ্ন পত্র সফলভাবে আপডেট করা হয়েছে!" : "প্রশ্ন পত্র সফলভাবে পাবলিশ করা হয়েছে!");
       // Reset form
       setEditingPaperId(null);
+      setPaperSubSubject("all");
       setPaperQuestions([]);
     } else {
       triggerNotification("error", "প্রশ্ন পত্র লোকাল সেভ হয়েছে কিন্তু সার্ভারে সেভ করতে সমস্যা হয়েছে।");
@@ -591,6 +659,7 @@ export default function AdminPage() {
     setEditingPaperId(paper.id);
     setPaperTitle(paper.title);
     setPaperCourse(paper.course);
+    setPaperSubSubject(paper.subSubject || "all");
     setPaperExamType(paper.examType);
     setPaperSubject(paper.subject || "All Subjects");
     setPaperTopic(paper.topic);
@@ -1777,7 +1846,11 @@ export default function AdminPage() {
                       </label>
                       <select
                         value={paperCourse}
-                        onChange={(e) => setPaperCourse(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPaperCourse(val);
+                          setPaperSubSubject("all");
+                        }}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                       >
                         {COURSES.map(c => (
@@ -1785,6 +1858,24 @@ export default function AdminPage() {
                         ))}
                       </select>
                     </div>
+
+                    {/* Secondary box for Sub-Subject / Paper */}
+                    {SUB_SUBJECTS_MAP[paperCourse] && (
+                      <div className="space-y-1.5 animate-fade-in md:col-span-2">
+                        <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1 flex items-center gap-1">
+                          <span>২.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *</span>
+                        </label>
+                        <select
+                          value={paperSubSubject}
+                          onChange={(e) => setPaperSubSubject(e.target.value)}
+                          className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                        >
+                          {SUB_SUBJECTS_MAP[paperCourse].map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Row 2: Exam Type & Topic */}
