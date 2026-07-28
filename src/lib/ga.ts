@@ -23,6 +23,30 @@ let cachedAnalyticsData: AnalyticsDataResponse | null = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 30000; // 30 seconds
 
+function cleanPrivateKey(rawKey: string | undefined): string {
+  if (!rawKey) return "";
+  let key = rawKey.trim().replace(/^["']|["']$/g, "");
+  key = key.replace(/\\n/g, "\n");
+
+  if (!key.includes("-----BEGIN PRIVATE KEY-----")) {
+    return key;
+  }
+
+  const header = "-----BEGIN PRIVATE KEY-----";
+  const footer = "-----END PRIVATE KEY-----";
+
+  const startIdx = key.indexOf(header) + header.length;
+  const endIdx = key.indexOf(footer);
+
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const body = key.substring(startIdx, endIdx).replace(/\s+/g, "");
+    const formattedBody = body.match(/.{1,64}/g)?.join("\n") || body;
+    return header + "\n" + formattedBody + "\n" + footer + "\n";
+  }
+
+  return key;
+}
+
 export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
   const now = Date.now();
   if (cachedAnalyticsData && now - lastCacheTime < CACHE_TTL_MS) {
@@ -31,12 +55,7 @@ export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
 
   const propertyId = process.env.GA_PROPERTY_ID;
   const clientEmail = process.env.GA_CLIENT_EMAIL;
-  let privateKey = process.env.GA_PRIVATE_KEY;
-
-  if (privateKey) {
-    // Handle escaped newlines in environment variable strings
-    privateKey = privateKey.replace(/\\n/g, "\n");
-  }
+  let privateKey = cleanPrivateKey(process.env.GA_PRIVATE_KEY);
 
   // Check if credentials are present or placeholder
   const isPlaceholderKey =
