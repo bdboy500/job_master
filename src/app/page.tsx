@@ -364,7 +364,25 @@ export default function Home() {
   const [profileEmail, setProfileEmail] = useState<string>("mobileseba247@gmail.com");
   const [profilePhone, setProfilePhone] = useState<string>("01712345678");
   const [profileId, setProfileId] = useState<string>("284710");
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string>("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80");
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string>("");
+  const profileFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (dataUrl) {
+          setProfileAvatarUrl(dataUrl);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("job_master_user_avatar", dataUrl);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   
@@ -541,6 +559,11 @@ export default function Home() {
       const savedSound = localStorage.getItem("job_master_sound");
       if (savedSound !== null) {
         setSoundEnabled(savedSound === "true");
+      }
+
+      const savedAvatar = localStorage.getItem("job_master_user_avatar");
+      if (savedAvatar) {
+        setProfileAvatarUrl(savedAvatar);
       }
 
       // Fetch dynamic published exam papers & subscribe to real-time changes
@@ -3031,40 +3054,73 @@ export default function Home() {
           {currentScreen === "profile" && (
             <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
               
-              {/* Avatar identity card (Pic 1 design) */}
-              <div className="flex flex-col items-center justify-center pt-2 pb-1 text-center">
-                {/* Avatar image container with edit icon badge */}
-                <div className="relative group">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-orange-100 p-0.5 shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center">
-                    <img 
-                      src={profileAvatarUrl} 
-                      alt={profileName}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  </div>
-                  <button 
+              {/* Avatar identity card (Horizontal Left-to-Right layout, clean white card) */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs flex items-center gap-4">
+                {/* Avatar image container (Left side) */}
+                <div className="relative shrink-0">
+                  <div 
                     onClick={() => {
-                      setIsEditProfileOpen(true);
+                      profileFileInputRef.current?.click();
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shadow-md hover:bg-[#e05d00] transition-transform active:scale-90 border-2 border-white cursor-pointer"
-                    title="Edit Profile"
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-2 ring-orange-100/80 p-0.5 shadow-2xs overflow-hidden bg-slate-100 flex items-center justify-center cursor-pointer group hover:opacity-90 transition-opacity"
+                    title="Click to upload profile photo"
                   >
-                    <Pencil className="w-4 h-4 stroke-[2.5]" />
+                    {profileAvatarUrl ? (
+                      <img 
+                        src={profileAvatarUrl} 
+                        alt={profileName}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
+                        <svg className="w-9 h-9 sm:w-11 sm:h-11 fill-current" viewBox="0 0 24 24">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upload/Edit Pencil Badge Button */}
+                  <button 
+                    onClick={() => {
+                      profileFileInputRef.current?.click();
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="absolute -bottom-1 -right-1 w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shadow-md hover:bg-[#e05d00] transition-transform active:scale-90 border-2 border-white cursor-pointer"
+                    title="Upload Photo"
+                  >
+                    <Pencil className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
                 </div>
 
-                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-3.5 tracking-tight">
-                  {profileName}
-                </h3>
+                {/* Hidden File Input for Device Upload */}
+                <input 
+                  type="file" 
+                  ref={profileFileInputRef} 
+                  accept="image/*" 
+                  onChange={handleProfileImageUpload} 
+                  className="hidden" 
+                />
 
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="bg-orange-100/90 text-[#FF6A00] font-black text-[10px] tracking-wide uppercase px-3 py-0.5 rounded-full border border-orange-200/80 shadow-2xs">
-                    PRO MEMBER
-                  </span>
-                  <span className="text-xs font-extrabold text-slate-400">
-                    ID: {profileId}
-                  </span>
+                {/* User details (Right side) */}
+                <div className="space-y-1 min-w-0 flex-1 text-left">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">
+                    {profileName}
+                  </h3>
+
+                  <p className="text-xs font-semibold text-slate-500 truncate leading-tight">
+                    {profileEmail}
+                  </p>
+
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="bg-orange-100/90 text-[#FF6A00] font-black text-[9px] sm:text-[10px] tracking-wide uppercase px-2.5 py-0.5 rounded-full border border-orange-200/80 shadow-2xs shrink-0">
+                      PRO MEMBER
+                    </span>
+                    <span className="text-[11px] font-extrabold text-slate-400 truncate">
+                      ID: {profileId}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -5433,6 +5489,42 @@ export default function Home() {
               </div>
 
               <div className="space-y-3 pt-1 text-xs">
+                {/* Photo Upload Box */}
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                    {profileAvatarUrl ? (
+                      <img src={profileAvatarUrl} alt={profileName} className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-7 h-7 text-slate-300 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => profileFileInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-extrabold rounded-lg text-[11px] cursor-pointer active:scale-95 transition-all text-center"
+                    >
+                      {profileAvatarUrl ? "Change Photo" : "Upload Photo"}
+                    </button>
+                    {profileAvatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileAvatarUrl("");
+                          if (typeof window !== "undefined") {
+                            localStorage.removeItem("job_master_user_avatar");
+                          }
+                        }}
+                        className="text-[10px] font-extrabold text-red-500 hover:underline text-left cursor-pointer"
+                      >
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Full Name</label>
                   <input 
