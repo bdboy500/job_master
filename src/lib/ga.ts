@@ -25,30 +25,20 @@ const CACHE_TTL_MS = 30000; // 30 seconds
 
 function cleanEnvValue(val: string | undefined): string {
   if (!val) return "";
-  let s = val.trim();
-  while (
-    (s.startsWith('"') && s.endsWith('"')) ||
-    (s.startsWith("'") && s.endsWith("'")) ||
-    (s.startsWith('\\"') && s.endsWith('\\"'))
-  ) {
-    if (s.startsWith('\\"')) {
-      s = s.slice(2, -2).trim();
-    } else {
-      s = s.slice(1, -1).trim();
-    }
-  }
-  return s;
+  return val.replace(/["'\\]/g, "").trim();
 }
 
 function cleanPrivateKey(rawKey: string | undefined): string {
   if (!rawKey) return "";
   
-  // Clean quotes and replace escaped newlines
-  let key = rawKey.replace(/"/g, "").replace(/\\n/g, "\n").trim();
-
-  if (key.startsWith("'") && key.endsWith("'")) {
-    key = key.slice(1, -1).trim();
-  }
+  // Clean all quotes, escaped quotes, and convert literal \n to actual newlines
+  let key = rawKey
+    .replace(/\\"/g, "")
+    .replace(/\\'/g, "")
+    .replace(/"/g, "")
+    .replace(/'/g, "")
+    .replace(/\\n/g, "\n")
+    .trim();
 
   if (!key.includes("-----BEGIN PRIVATE KEY-----")) {
     return key;
@@ -77,7 +67,9 @@ export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
 
   const propertyId = cleanEnvValue(process.env.GA_PROPERTY_ID);
   const clientEmail = cleanEnvValue(process.env.GA_CLIENT_EMAIL);
-  let privateKey = cleanPrivateKey(process.env.GA_PRIVATE_KEY);
+  const privateKey = process.env.GA_PRIVATE_KEY
+    ? process.env.GA_PRIVATE_KEY.replace(/"/g, "").replace(/\\n/g, "\n")
+    : undefined;
 
   // Check if credentials are present or placeholder
   const isPlaceholderKey =
