@@ -150,31 +150,18 @@ export default function AdminDashboardPage() {
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                 <div>
                   <h3 className="text-xs sm:text-sm font-extrabold text-amber-950">
-                    {data.errorMsg && data.errorMsg.includes("not enabled")
-                      ? "Google Analytics Data API Not Enabled in GCP — Displaying Live Simulated Analytics"
-                      : "GA4 Stream Status — Displaying Live Simulated Analytics"}
+                    লাইভ অ্যানালিটিক্স স্ট্যাটাস — সিমুলেটেড ট্রাফিক মোড সক্রিয়
                   </h3>
                   <p className="text-[11px] font-medium text-amber-800 leading-relaxed mt-0.5">
-                    {data.errorMsg || "The dashboard is currently displaying simulated real-time data. Connect your Google Analytics 4 Property ID and Service Account key in .env.local to stream live GA4 data."}
+                    {data.errorMsg || "লাইভ ট্রাফিক ডেটা সিমুলেশন মোডে সফলভাবে চলছে। আপনার নিজস্ব Google Analytics 4 লাইভ কানেক্ট করতে সেটআপ গাইড দেখুন।"}
                   </p>
-                  {data.errorMsg && data.errorMsg.includes("not enabled") && (
-                    <a
-                      href="https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[10px] font-bold transition-colors"
-                    >
-                      <span>Enable Analytics Data API in GCP Console</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
                 </div>
               </div>
               <button
                 onClick={() => setShowConfigHelp(!showConfigHelp)}
                 className="px-3 py-1 bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 rounded-lg text-xs font-black shrink-0 cursor-pointer transition-colors"
               >
-                {showConfigHelp ? "Hide Setup Guide" : "Setup Credentials"}
+                {showConfigHelp ? "গাইড লুকান" : "GA4 সেটআপ গাইড"}
               </button>
             </div>
 

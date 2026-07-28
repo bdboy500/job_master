@@ -38,10 +38,21 @@ export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
     privateKey = privateKey.replace(/\\n/g, "\n");
   }
 
-  // Check if credentials are present
-  if (!propertyId || !clientEmail || !privateKey) {
+  // Check if credentials are present or placeholder
+  const isPlaceholderKey =
+    !propertyId ||
+    !clientEmail ||
+    !privateKey ||
+    propertyId === "123456789" ||
+    propertyId.includes("YOUR_GA4") ||
+    clientEmail.includes("your-project") ||
+    clientEmail.includes("your-service-account") ||
+    !privateKey.includes("-----BEGIN PRIVATE KEY-----") ||
+    privateKey.includes("...\n...");
+
+  if (isPlaceholderKey) {
     const mockData = generateRealisticFallbackData(
-      "GA4 Credentials missing (.env.local missing GA_PROPERTY_ID, GA_CLIENT_EMAIL, or GA_PRIVATE_KEY)"
+      "গুগল অ্যানালিটিক্স (GA4) কাস্টম ক্রেডেনশিয়াল যুক্ত করা হয়নি। নিচে লাইভ সিমুলেটেড ট্রাফিক অ্যানালিটিক্স প্রদর্শিত হচ্ছে।"
     );
     cachedAnalyticsData = mockData;
     lastCacheTime = now;
@@ -152,17 +163,17 @@ export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
     return result;
   } catch (err: any) {
     const errorString = err?.message || String(err);
+    let userFriendlyError = "Google Analytics API Error: " + errorString;
+
     if (errorString.includes("PERMISSION_DENIED") || errorString.includes("analyticsdata.googleapis.com")) {
-      console.warn("GA4 Data API is disabled or permission denied. Serving fallback analytics.");
-    } else {
-      console.warn("GA4 Data API notice:", errorString);
+      userFriendlyError = "Google Analytics Data API GCP কনসোলে এনাবল করা হয়নি বা পারমিশন ইস্যু রয়েছে।";
+    } else if (errorString.includes("UNAUTHENTICATED") || errorString.includes("invalid authentication credentials")) {
+      userFriendlyError = "Google Analytics Service Account-এর ইমেইল বা প্রাইভেট-কি সঠিক নয় (Unauthenticated)।";
     }
 
-    const mockData = generateRealisticFallbackData(
-      errorString.includes("PERMISSION_DENIED")
-        ? "Google Analytics Data API is not enabled in your Google Cloud Project or permission was denied. Please enable the Analytics Data API in GCP Console."
-        : `GA4 API Notice: ${errorString}`
-    );
+    console.warn("GA4 Data API notice:", errorString);
+
+    const mockData = generateRealisticFallbackData(userFriendlyError);
     cachedAnalyticsData = mockData;
     lastCacheTime = now;
     return mockData;
