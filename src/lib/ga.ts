@@ -42,23 +42,13 @@ function cleanEnvValue(val: string | undefined): string {
 
 function cleanPrivateKey(rawKey: string | undefined): string {
   if (!rawKey) return "";
-  let key = rawKey.trim();
+  
+  // Clean quotes and replace escaped newlines
+  let key = rawKey.replace(/"/g, "").replace(/\\n/g, "\n").trim();
 
-  // Strip wrapping outer quotes repeatedly
-  while (
-    (key.startsWith('"') && key.endsWith('"')) ||
-    (key.startsWith("'") && key.endsWith("'")) ||
-    (key.startsWith('\\"') && key.endsWith('\\"'))
-  ) {
-    if (key.startsWith('\\"')) {
-      key = key.slice(2, -2).trim();
-    } else {
-      key = key.slice(1, -1).trim();
-    }
+  if (key.startsWith("'") && key.endsWith("'")) {
+    key = key.slice(1, -1).trim();
   }
-
-  // Convert literal \n sequence to actual newline
-  key = key.replace(/\\n/g, "\n");
 
   if (!key.includes("-----BEGIN PRIVATE KEY-----")) {
     return key;
