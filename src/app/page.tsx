@@ -1256,11 +1256,17 @@ export default function Home() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button 
               onClick={() => {
-                setPreviousScreen(currentScreen);
-                setCurrentScreen("search");
+                if (currentScreen === "search") {
+                  setCurrentScreen(previousScreen || "home");
+                } else {
+                  setPreviousScreen(currentScreen);
+                  setCurrentScreen("search");
+                }
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl active:scale-95 transition-all cursor-pointer"
+              className={`p-2 rounded-xl active:scale-95 transition-all cursor-pointer ${
+                currentScreen === "search" ? "bg-orange-50 text-[#FF6A00]" : "text-slate-600 hover:bg-slate-100"
+              }`}
               title="খুঁজুন"
             >
               <Search className="w-5 h-5 stroke-[2.2px]" />
@@ -1268,10 +1274,12 @@ export default function Home() {
 
             <button 
               onClick={() => {
-                setShowNotificationModal(true);
+                setShowNotificationModal(prev => !prev);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl relative active:scale-95 transition-all cursor-pointer"
+              className={`p-2 rounded-xl relative active:scale-95 transition-all cursor-pointer ${
+                showNotificationModal ? "bg-orange-50 text-[#FF6A00]" : "text-slate-600 hover:bg-slate-100"
+              }`}
               title="বিজ্ঞপ্তি"
             >
               <Bell className="w-5 h-5 stroke-[2.2px]" />
@@ -3113,13 +3121,11 @@ export default function Home() {
               {/* Menu Options List ABOVE Personal Information (Ref Pic 2 & Pic 3) */}
               <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs divide-y divide-slate-100 overflow-hidden">
                 {[
-                  { title: "Dashboard", icon: LayoutGrid, iconColor: "text-[#FF6A00] bg-orange-50", action: () => setCurrentScreen("home") },
-                  { title: "My Courses", icon: BookOpen, iconColor: "text-blue-600 bg-blue-50", action: () => setCurrentScreen("courses") },
-                  { title: "Mock Test History", icon: ClipboardList, iconColor: "text-indigo-600 bg-indigo-50", action: () => setCurrentScreen("tests") },
-                  { title: "Study Routine", icon: Calendar, iconColor: "text-emerald-600 bg-emerald-50", action: () => setCurrentScreen("routine") },
-                  { title: "Current Affairs", icon: Newspaper, iconColor: "text-amber-600 bg-amber-50", action: () => setCurrentScreen("prep-all-subjects") },
-                  { title: "Downloads", icon: Download, iconColor: "text-purple-600 bg-purple-50", action: () => { setArchiveFilterCourse("all"); setArchiveModalOpen(true); } },
-                  { title: "Performance Analytics", icon: TrendingUp, iconColor: "text-rose-600 bg-rose-50", action: () => setCurrentScreen("tests") },
+                  { title: "Dashboard", icon: LayoutGrid, iconColor: "text-[#FF6A00] bg-orange-50", action: () => {} },
+                  { title: "My Courses", icon: BookOpen, iconColor: "text-blue-600 bg-blue-50", action: () => {} },
+                  { title: "Study Routine", icon: Calendar, iconColor: "text-emerald-600 bg-emerald-50", action: () => {} },
+                  { title: "Downloads", icon: Download, iconColor: "text-purple-600 bg-purple-50", action: () => {} },
+                  { title: "Performance Analytics", icon: TrendingUp, iconColor: "text-rose-600 bg-rose-50", action: () => {} },
                 ].map((item, idx) => {
                   const IconComp = item.icon;
                   return (
@@ -3129,7 +3135,7 @@ export default function Home() {
                         item.action();
                         if (soundEnabled) quizAudio.playClick();
                       }}
-                      className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer text-left"
+                      className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer text-left active:bg-slate-100"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-9 h-9 rounded-xl ${item.iconColor} flex items-center justify-center shrink-0`}>
