@@ -30,7 +30,8 @@ import {
   RefreshCw,
   Archive,
   Package,
-  Tag
+  Tag,
+  BarChart3
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -1264,6 +1265,15 @@ export default function AdminPage() {
             <h3 className="hidden md:block text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2.5 py-2">
               ম্যানেজমেন্ট ড্যাশবোর্ড
             </h3>
+
+            {/* Dashboard / Analytics Link Button */}
+            <Link
+              href="/admin/dashboard"
+              className="flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-2xs mb-1 cursor-pointer"
+            >
+              <BarChart3 className="w-4 h-4 text-white shrink-0" />
+              <span>ট্রাফিক ড্যাশবোর্ড (Live)</span>
+            </Link>
 
             {/* Tab Button 1: Questions */}
             <button
