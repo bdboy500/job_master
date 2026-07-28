@@ -170,6 +170,23 @@ export const DEFAULT_EXAM_PAPERS: ExamPaper[] = [
   }
 ];
 
+export function getCachedExamPapers(): ExamPaper[] {
+  if (typeof window !== "undefined") {
+    const cached = localStorage.getItem("job_master_exam_papers");
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error("Failed parsing cached exam papers:", e);
+      }
+    }
+  }
+  return DEFAULT_EXAM_PAPERS;
+}
+
 export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
   let localPapers: ExamPaper[] = [];
   if (typeof window !== "undefined") {
@@ -177,7 +194,7 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           localPapers = parsed;
         }
       } catch (e) {
@@ -189,9 +206,15 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
   try {
     const supabase = getSupabase();
     if (supabase) {
-      const { data, error } = await supabase.from("exam_papers").select("*");
+      // Race Supabase select with a 2500ms timeout to prevent hanging on desktop/slow networks
+      const supabasePromise = supabase.from("exam_papers").select("*");
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
+      );
+
+      const { data, error } = await Promise.race([supabasePromise, timeoutPromise]);
       
-      if (!error && data) {
+      if (!error && data && Array.isArray(data) && data.length > 0) {
         const parsedSupabaseData: ExamPaper[] = data.map((item: any) => {
           let questionsArr: Question[] = [];
           let startDT: string | undefined = item.startDateTime || item.start_date_time || item.startDate;

@@ -99,6 +99,19 @@ export const DEFAULT_PACKAGES: PackageItem[] = [
 const STORAGE_KEY = "jobmaster_packages_v2";
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_packages_v2";
 
+export function getCachedPackages(): PackageItem[] {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+  }
+  return DEFAULT_PACKAGES;
+}
+
 export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
   // 1. Primary: Try Supabase Server
   try {

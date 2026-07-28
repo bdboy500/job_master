@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
 import { 
   Play, 
@@ -57,8 +57,8 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay } from "../lib/exams";
-import { PackageItem, fetchPackagesFromDb, subscribeToPackages } from "../lib/packages";
+import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
+import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import { recordVisit } from "../lib/visitors";
@@ -395,10 +395,10 @@ export default function Home() {
   const [activeQuizTitle, setActiveQuizTitle] = useState<string>("General Quiz Game");
   const [activeQuizSubtitle, setActiveQuizSubtitle] = useState<string>("45th BCS International Affairs");
 
-  // Dynamic Exam Papers & Packages State
-  const [examPapers, setExamPapers] = useState<ExamPaper[]>([]);
-  const [isExamsLoading, setIsExamsLoading] = useState<boolean>(true);
-  const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
+  // Dynamic Exam Papers & Packages State (Initialized synchronously with cached/default data for instant 0ms display)
+  const [examPapers, setExamPapers] = useState<ExamPaper[]>(DEFAULT_EXAM_PAPERS);
+  const [isExamsLoading, setIsExamsLoading] = useState<boolean>(false);
+  const [packagesList, setPackagesList] = useState<PackageItem[]>(DEFAULT_PACKAGES);
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
@@ -566,10 +566,24 @@ export default function Home() {
         setProfileAvatarUrl(savedAvatar);
       }
 
-      // Fetch dynamic published exam papers & subscribe to real-time changes
+      // Synchronously load cached exam papers & packages for instant 0ms rendering
+      const cachedExams = getCachedExamPapers();
+      if (cachedExams && cachedExams.length > 0) {
+        setExamPapers(cachedExams);
+        setIsExamsLoading(false);
+      }
+
+      const cachedPkgs = getCachedPackages();
+      if (cachedPkgs && cachedPkgs.length > 0) {
+        setPackagesList(cachedPkgs);
+      }
+
+      // Background fetch dynamic published exam papers & subscribe to real-time changes (SWR pattern)
       fetchExamPapersFromDb()
         .then(papers => {
-          setExamPapers(papers);
+          if (papers && papers.length > 0) {
+            setExamPapers(papers);
+          }
           setIsExamsLoading(false);
         })
         .catch(() => {
@@ -577,17 +591,23 @@ export default function Home() {
         });
 
       const unsubscribe = subscribeToExamPapers((updatedPapers) => {
-        setExamPapers(updatedPapers);
+        if (updatedPapers && updatedPapers.length > 0) {
+          setExamPapers(updatedPapers);
+        }
         setIsExamsLoading(false);
       });
 
       // Fetch dynamic packages & subscribe
       fetchPackagesFromDb().then(pkgs => {
-        setPackagesList(pkgs);
+        if (pkgs && pkgs.length > 0) {
+          setPackagesList(pkgs);
+        }
       });
 
       const unsubPkgs = subscribeToPackages((updatedPkgs) => {
-        setPackagesList(updatedPkgs);
+        if (updatedPkgs && updatedPkgs.length > 0) {
+          setPackagesList(updatedPkgs);
+        }
       });
 
       return () => {
@@ -605,8 +625,11 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter current active live exams
-  const liveExamsList = examPapers.filter(p => getExamStatus(p) === "Live");
+  // Memoized current active live exams (instant 0ms filtering & sorting)
+  const liveExamsList = useMemo(() => {
+    const lives = examPapers.filter(p => getExamStatus(p) === "Live");
+    return sortExamPapersForDisplay(lives);
+  }, [examPapers, liveTick]);
 
   // 3-second carousel auto-rotation with continuous left-sliding infinite loop
   useEffect(() => {
