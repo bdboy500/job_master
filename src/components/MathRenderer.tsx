@@ -16,21 +16,26 @@ interface MathRendererProps {
  */
 function preprocessMath(text: string): string {
   if (!text) return "";
-  return text
+  const mathProcessed = text
     .replace(/\\\[([\s\S]*?)\\\]/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`)
     .replace(/\\\(([\s\S]*?)\\\)/g, (_, math) => `$${math.trim()}$`);
+
+  // Ensure single line breaks are preserved as hard line breaks in Markdown
+  return mathProcessed
+    .replace(/\r\n/g, "\n")
+    .replace(/(?<!\n)\n(?!\n)/g, "  \n");
 }
 
 export const MathRenderer: React.FC<MathRendererProps> = ({ content, className = "" }) => {
   const processedContent = preprocessMath(content);
 
   return (
-    <div className={`markdown-math-content text-slate-800 leading-relaxed ${className}`}>
+    <div className={`markdown-math-content text-slate-800 leading-relaxed whitespace-pre-wrap break-words ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
-          p: ({ children }) => <span className="inline-block my-0.5">{children}</span>,
+          p: ({ children }) => <span className="block my-1 leading-relaxed whitespace-pre-wrap break-words">{children}</span>,
           code: ({ children, className: codeClassName }) => (
             <code className={`bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded font-mono text-xs ${codeClassName || ""}`}>
               {children}

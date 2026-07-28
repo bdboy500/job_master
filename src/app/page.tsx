@@ -1946,6 +1946,19 @@ export default function Home() {
                     })}
                   </div>
 
+                  {/* Explanation box on submit */}
+                  {isSubmitted && currentQuestion && (
+                    <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs text-slate-800 space-y-1.5 animate-fade-in text-left">
+                      <div className="font-extrabold text-amber-800 flex items-center gap-1.5">
+                        <span>📌</span>
+                        <span>ব্যাখ্যা ও সমাধান:</span>
+                      </div>
+                      <div className="text-slate-700 font-medium leading-relaxed">
+                        <MathRenderer content={currentQuestion.explanation || `সঠিক উত্তর: ${currentQuestion.options[currentQuestion.correctIndex]}`} />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action row */}
                   <div className="pt-2">
                     <button
@@ -4878,32 +4891,27 @@ export default function Home() {
                 const selectedOpt = examUserAnswers[qIdx];
 
                 return (
-                  <div key={qIdx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-2.5">
-                    {/* Top status bar with Answered / Not Answered indicator on right */}
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                        প্রশ্ন {qIdx + 1}
-                      </span>
-                      <div>
+                  <div key={qIdx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3 text-left">
+                    {/* Real Question Text with Answered / Not Answered status on top-right */}
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5 flex-1 min-w-0">
+                        <span className="text-[#FF6A00] shrink-0 font-extrabold">{qIdx + 1}.</span>
+                        <span className="min-w-0 flex-1 break-words"><MathRenderer content={q.question} /></span>
+                      </h3>
+
+                      <div className="shrink-0 pt-0.5">
                         {selectedOpt !== undefined ? (
-                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/90 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight shadow-2xs">
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/90 px-2.5 py-1 rounded-full text-[10px] font-black tracking-tight shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Answered
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight">
+                          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full text-[10px] font-black tracking-tight">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                             Not Answered
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    <div className="flex items-start justify-between gap-2 pt-0.5">
-                      <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
-                        <span className="text-[#FF6A00] shrink-0">{qIdx + 1}.</span>
-                        <span><MathRenderer content={q.question} /></span>
-                      </h3>
                     </div>
 
                     {/* Choices */}
