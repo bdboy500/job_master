@@ -23,9 +23,41 @@ let cachedAnalyticsData: AnalyticsDataResponse | null = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 30000; // 30 seconds
 
+function cleanEnvValue(val: string | undefined): string {
+  if (!val) return "";
+  let s = val.trim();
+  while (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'")) ||
+    (s.startsWith('\\"') && s.endsWith('\\"'))
+  ) {
+    if (s.startsWith('\\"')) {
+      s = s.slice(2, -2).trim();
+    } else {
+      s = s.slice(1, -1).trim();
+    }
+  }
+  return s;
+}
+
 function cleanPrivateKey(rawKey: string | undefined): string {
   if (!rawKey) return "";
-  let key = rawKey.trim().replace(/^["']|["']$/g, "");
+  let key = rawKey.trim();
+
+  // Strip wrapping outer quotes repeatedly
+  while (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'")) ||
+    (key.startsWith('\\"') && key.endsWith('\\"'))
+  ) {
+    if (key.startsWith('\\"')) {
+      key = key.slice(2, -2).trim();
+    } else {
+      key = key.slice(1, -1).trim();
+    }
+  }
+
+  // Convert literal \n sequence to actual newline
   key = key.replace(/\\n/g, "\n");
 
   if (!key.includes("-----BEGIN PRIVATE KEY-----")) {
@@ -53,8 +85,8 @@ export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
     return cachedAnalyticsData;
   }
 
-  const propertyId = process.env.GA_PROPERTY_ID;
-  const clientEmail = process.env.GA_CLIENT_EMAIL;
+  const propertyId = cleanEnvValue(process.env.GA_PROPERTY_ID);
+  const clientEmail = cleanEnvValue(process.env.GA_CLIENT_EMAIL);
   let privateKey = cleanPrivateKey(process.env.GA_PRIVATE_KEY);
 
   // Check if credentials are present or placeholder
