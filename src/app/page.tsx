@@ -46,7 +46,13 @@ import {
   ShieldCheck,
   Archive,
   Filter,
-  Zap
+  Zap,
+  LayoutGrid,
+  Newspaper,
+  TrendingUp,
+  User,
+  Lock,
+  Pencil
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -352,6 +358,15 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const [selectedLanguage, setSelectedLanguage] = useState<"BN" | "EN">("BN");
   const [activeDrawerModal, setActiveDrawerModal] = useState<"none" | "package" | "bookstore" | "language" | "settings" | "ourapps" | "contact">("none");
+  
+  // User Profile States
+  const [profileName, setProfileName] = useState<string>("Tanvir Hossain");
+  const [profileEmail, setProfileEmail] = useState<string>("mobileseba247@gmail.com");
+  const [profilePhone, setProfilePhone] = useState<string>("01712345678");
+  const [profileId, setProfileId] = useState<string>("284710");
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string>("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80");
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   
   // Database & Loaded Questions State
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -1102,9 +1117,18 @@ export default function Home() {
                     setDrawerOpen(false);
                     setCurrentScreen("home");
                   }
-                } else if (currentScreen === "prep-sub") {
+                } else if (currentScreen === "prep-all-subjects") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
+                } else if (currentScreen === "prep-sub") {
+                  setDrawerOpen(false);
+                  setCurrentScreen("prep-all-subjects");
+                } else if (currentScreen === "prep-sub-detail") {
+                  setDrawerOpen(false);
+                  setCurrentScreen("prep-sub");
+                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "packages" || currentScreen === "profile") {
+                  setDrawerOpen(false);
+                  setCurrentScreen(previousScreen || "home");
                 } else {
                   setDrawerOpen(!drawerOpen);
                 }
@@ -1113,7 +1137,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "course-detail" || currentScreen === "prep-sub" || currentScreen === "quiz" ? (
+              {currentScreen === "course-detail" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -1140,13 +1164,25 @@ export default function Home() {
                     <>
                       {selectedCourseDetail.title.split(" ")[0]} <span className="text-[#FF6A00]">{selectedCourseDetail.title.split(" ").slice(1).join(" ")}</span>
                     </>
+                  ) : currentScreen === "prep-all-subjects" ? (
+                    <>
+                      Preparation <span className="text-[#FF6A00]">Hub</span>
+                    </>
                   ) : currentScreen === "prep-sub" ? (
                     <>
                       {selectedPrepSubject} <span className="text-[#FF6A00]">Hub</span>
                     </>
+                  ) : currentScreen === "prep-sub-detail" && selectedPrepSubSubject ? (
+                    <>
+                      {selectedPrepSubSubject.name.split(" ")[0]} <span className="text-[#FF6A00]">{selectedPrepSubSubject.name.split(" ").slice(1).join(" ")}</span>
+                    </>
                   ) : currentScreen === "quiz" ? (
                     <>
                       Quiz <span className="text-[#FF6A00]">Master</span>
+                    </>
+                  ) : currentScreen === "profile" ? (
+                    <>
+                      Profile
                     </>
                   ) : (
                     <>
@@ -1155,7 +1191,19 @@ export default function Home() {
                   )}
                 </span>
                 <span className="text-[8px] font-bold tracking-[0.08em] text-[#94A3B8] uppercase mt-0.5">
-                  {currentScreen === "course-detail" && selectedCourseDetail ? `${selectedCourseDetail.category} Course Details` : currentScreen === "prep-sub" ? `Select ${selectedPrepSubject} Subject` : currentScreen === "quiz" ? (activeQuizSubtitle || "Live Exam") : "চাকরি এখন হাতের মুঠোয়!"}
+                  {currentScreen === "course-detail" && selectedCourseDetail 
+                    ? `${selectedCourseDetail.category} Course Details` 
+                    : currentScreen === "prep-all-subjects" 
+                    ? "সকল বিষয় (ALL SUBJECTS)" 
+                    : currentScreen === "prep-sub" 
+                    ? `SELECT ${selectedPrepSubject} SUBJECT` 
+                    : currentScreen === "prep-sub-detail" && selectedPrepSubSubject 
+                    ? `${selectedPrepSubject} • ${selectedPrepSubSubject.sub}` 
+                    : currentScreen === "quiz" 
+                    ? (activeQuizSubtitle || "Live Exam") 
+                    : currentScreen === "profile"
+                    ? "STUDENT ACCOUNT & STATS"
+                    : "চাকরি এখন হাতের মুঠোয়!"}
                 </span>
               </div>
             </button>
@@ -2019,37 +2067,15 @@ export default function Home() {
           {/* PREPARATION HUB ALL SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-all-subjects" && (
-            <div className="p-5 space-y-5 animate-fade-in pb-10">
+            <div className="p-5 space-y-4 animate-fade-in pb-10 text-left">
               
-              {/* Header with Back Button and Screen Title */}
-              <div className="flex items-center justify-between">
-                <button 
-                  onClick={() => {
-                    setCurrentScreen("home");
-                    if (soundEnabled) quizAudio.playClick();
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>হোম</span>
-                </button>
-
-                <div className="text-right">
-                  <h3 className="font-extrabold text-base text-slate-900 tracking-tight">Preparation Hub</h3>
-                  <p className="text-[10px] font-extrabold text-[#FF6A00] uppercase tracking-wider">সকল বিষয় (All Subjects)</p>
-                </div>
-              </div>
-
-              {/* Search Subject Input */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-                <input 
-                  type="text" 
-                  placeholder="বিষয় সিলেক্ট বা সার্চ করুন..."
-                  value={prepSubjectSearchQuery}
-                  onChange={(e) => setPrepSubjectSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs focus:outline-none focus:border-orange-500/50 shadow-2xs transition-all"
-                />
+              <div className="pt-1 pb-1">
+                <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
+                  বিষয়সমূহ সিলেক্ট করুন (Select Subject)
+                </h3>
+                <p className="text-xs font-extrabold text-slate-400">
+                  নিচের যেকোনো বিষয় সিলেক্ট করে কুইজ ও প্রশ্নপত্র প্র্যাকটিস করুন
+                </p>
               </div>
 
               {/* 10 Subjects Grid - Apple UI Cards */}
@@ -2102,23 +2128,15 @@ export default function Home() {
           {/* PREPARATION HUB SUB-SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub" && (
-            <div className="p-5 space-y-5 animate-fade-in pb-10">
+            <div className="p-5 space-y-4 animate-fade-in pb-10 text-left">
               
-              {/* Back button & Subject Title */}
-              <div className="flex items-center justify-between pt-1 pb-1">
-                <button 
-                  onClick={() => {
-                    setCurrentScreen(previousScreen || "prep-all-subjects");
-                    if (soundEnabled) quizAudio.playClick();
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>পেছনে</span>
-                </button>
-                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight text-right">
+              <div className="pt-1 pb-1">
+                <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
                   {selectedPrepSubject} Practice
                 </h3>
+                <p className="text-xs font-extrabold text-slate-400">
+                  নিচের যেকোনো সাব-সাবজেক্ট সিলেক্ট করে পরীক্ষা ও প্রশ্নপত্র দেখুন
+                </p>
               </div>
 
               {/* Sub-subjects grid */}
@@ -2272,159 +2290,17 @@ export default function Home() {
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
             <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
               
-              {/* Back button & Sub-Subject Header */}
-              <div className="flex items-center justify-between pt-1 pb-1">
-                <button 
-                  onClick={() => {
-                    setCurrentScreen("prep-sub");
-                    if (soundEnabled) quizAudio.playClick();
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>পেছনে</span>
-                </button>
-                <div className="text-right min-w-0">
-                  <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight truncate">
-                    {selectedPrepSubSubject.name}
-                  </h3>
-                  <p className="text-[10px] font-bold text-slate-400 truncate">
-                    {selectedPrepSubject} • {selectedPrepSubSubject.sub}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
-                    প্রকাশিত প্রশ্নপত্র ও পরীক্ষা (Published Exams)
-                  </h4>
-                  <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-full">
-                    {selectedPrepSubSubject.name}
-                  </span>
-                </div>
-
-                {(() => {
-                  // Requirement 3: Strictly filter out weekly/daily general all-subject tests
-                  const subPapers = examPapers.filter(paper => {
-                    const pCourse = (paper.course || "").toLowerCase();
-                    const pSubject = (paper.subject || "").toLowerCase();
-                    const pSubSubject = (paper.subSubject || "").toLowerCase();
-
-                    // Requirement 3: Exclude general model tests or all-courses tests
-                    if (pCourse === "all_courses" || pCourse === "all") return false;
-                    if (pSubject === "all subjects" || pSubject === "all") return false;
-                    if (pSubSubject === "all subjects" || pSubSubject === "all") return false;
-
-                    // Match Course/Subject
-                    const selectedNorm = selectedPrepSubject.toLowerCase();
-                    const courseMatch =
-                      pCourse === selectedNorm ||
-                      (selectedNorm === "mathematics" && (pCourse === "math" || pCourse === "mathematics")) ||
-                      (selectedNorm === "general knowledge" && (pCourse === "general_knowledge" || pCourse === "gk")) ||
-                      (selectedNorm === "general science" && (pCourse === "general_science" || pCourse === "gen_science")) ||
-                      (selectedNorm === "mental ability" && (pCourse === "mental_ability" || pCourse === "mental")) ||
-                      (selectedNorm === "good governance" && (pCourse === "good_governance" || pCourse === "governance"));
-
-                    if (!courseMatch) return false;
-
-                    // Match SubSubject
-                    const targetSub = selectedPrepSubSubject.name.toLowerCase();
-                    const isSubMatch = 
-                      pSubSubject === targetSub ||
-                      pSubject === targetSub ||
-                      pSubSubject.includes(targetSub) ||
-                      targetSub.includes(pSubSubject) ||
-                      (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
-                      (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
-                      (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
-                      (targetSub.includes("বীজগণিত") && (pSubSubject.includes("বীজগণিত") || pSubject.includes("বীজগণিত") || pSubSubject.includes("algebra"))) ||
-                      (targetSub.includes("জ্যামিতি") && (pSubSubject.includes("জ্যামিতি") || pSubject.includes("জ্যামিতি") || pSubSubject.includes("geometry")));
-
-                    return isSubMatch;
-                  });
-
-                  if (subPapers.length === 0) {
-                    return (
-                      <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
-                        <div className="w-12 h-12 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                          📚
-                        </div>
-                        <h3 className="text-sm sm:text-base font-black text-slate-800">
-                          কোনো প্রশ্নপত্র যুক্ত হয়নি
-                        </h3>
-                        <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
-                          এই সাব-সাবজেক্টের ({selectedPrepSubSubject.name}) জন্য এখনো কোনো প্রশ্নপত্র প্রকাশিত হয়নি। এডমিন প্যানেল থেকে এই বিষয় ও সাব-সাবজেক্টের প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-3">
-                      {subPapers.map(paper => {
-                        const computedStatus = getExamStatus(paper);
-                        const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
-                        const durationMins = Math.floor(totalSec / 60);
-
-                        return (
-                          <div 
-                            key={paper.id} 
-                            className="bg-white border border-slate-200/80 hover:border-orange-200 rounded-[2rem] p-4.5 shadow-2xs space-y-3 transition-all"
-                          >
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                                computedStatus === "Live" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                                computedStatus === "Upcoming" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                                "bg-slate-100 text-slate-600"
-                              }`}>
-                                {computedStatus === "Live" ? "🟢 Live Exam" : computedStatus === "Upcoming" ? "⏳ Upcoming" : "📂 Archived"}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400">
-                                {paper.questionCount}টি প্রশ্ন • {durationMins} মিনিট • {paper.totalMarks} মার্কস
-                              </span>
-                            </div>
-
-                            <div className="space-y-1">
-                              <h5 className="text-sm font-black text-slate-900 leading-snug">
-                                <MathRenderer content={paper.title} />
-                              </h5>
-                              {paper.topic && (
-                                <p className="text-xs font-bold text-slate-500 line-clamp-2">
-                                  {paper.topic}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                onClick={() => {
-                                  setSelectedLiveExamModal(paper);
-                                  if (soundEnabled) quizAudio.playClick();
-                                }}
-                                className="flex-1 py-2 bg-[#FF6A00] hover:bg-[#e05d00] text-white text-xs font-black rounded-xl transition-all shadow-2xs active:scale-95 cursor-pointer text-center"
-                              >
-                                পরীক্ষা দিন
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setViewingPaperModal(paper);
-                                  if (soundEnabled) quizAudio.playClick();
-                                }}
-                                className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 text-xs font-black rounded-xl transition-all active:scale-95 cursor-pointer"
-                              >
-                                প্রশ্নপত্র
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+              {/* Sub-Subject Banner Header */}
+              <div className="pt-1 pb-1">
+                <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
+                  {selectedPrepSubSubject.name}
+                </h3>
+                <p className="text-xs font-extrabold text-slate-400">
+                  {selectedPrepSubject} • {selectedPrepSubSubject.sub}
+                </p>
               </div>
 
-              {/* Published Exam Papers List for this Sub-Subject (Requirement 2 & 3) */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
                     প্রকাশিত প্রশ্নপত্র ও পরীক্ষা (Published Exams)
@@ -3142,120 +3018,176 @@ export default function Home() {
           )}
 
           {/* ========================================================= */}
-          {/* 6. SCREEN: PROFILE / STUDENT DATA                         */}
+          {/* 6. SCREEN: PROFILE / STUDENT DATA (Apple UI Style)         */}
           {/* ========================================================= */}
           {currentScreen === "profile" && (
-            <div className="p-5 space-y-5 animate-fade-in">
-              <div className="space-y-1">
-                <h3 className="font-extrabold text-lg text-slate-900 tracking-tight">Student profile</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Configure study stats & integrations</p>
-              </div>
-
-              {/* Avatar identity card */}
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-5 shadow-sm flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF4E00] flex items-center justify-center text-white font-black text-2xl shadow-md">
-                  {isLoggedIn ? "M" : "G"}
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+              
+              {/* Avatar identity card (Pic 1 design) */}
+              <div className="flex flex-col items-center justify-center pt-2 pb-1 text-center">
+                {/* Avatar image container with edit icon badge */}
+                <div className="relative group">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-orange-100 p-0.5 shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center">
+                    <img 
+                      src={profileAvatarUrl} 
+                      alt={profileName}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setIsEditProfileOpen(true);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shadow-md hover:bg-[#e05d00] transition-transform active:scale-90 border-2 border-white cursor-pointer"
+                    title="Edit Profile"
+                  >
+                    <Pencil className="w-4 h-4 stroke-[2.5]" />
+                  </button>
                 </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-black text-slate-800 leading-none">{isLoggedIn ? "mobileseba247" : "Guest User"}</h4>
-                  <p className="text-[11px] text-slate-400 font-medium">{isLoggedIn ? "mobileseba247@gmail.com" : "guest@jobmaster.com"}</p>
-                  <span className={`inline-block text-[8px] font-bold px-2 py-0.5 rounded uppercase mt-1 ${
-                    isLoggedIn ? "bg-[#EBF7EE] text-green-600" : "bg-slate-100 text-slate-500"
-                  }`}>
-                    {isLoggedIn ? "Premium Subscriber" : "Guest Account"}
+
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-3.5 tracking-tight">
+                  {profileName}
+                </h3>
+
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="bg-orange-100/90 text-[#FF6A00] font-black text-[10px] tracking-wide uppercase px-3 py-0.5 rounded-full border border-orange-200/80 shadow-2xs">
+                    PRO MEMBER
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-400">
+                    ID: {profileId}
                   </span>
                 </div>
               </div>
 
-              {/* Interactive Performance statistics grids */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
-                  <Flame className="w-5 h-5 text-orange-500 mb-2" />
+              {/* Three Stat Cards (Pic 1 & 2 design) */}
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+                {/* Card 1: TEST TAKEN */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-center shadow-2xs space-y-1">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                    TEST TAKEN
+                  </span>
+                  <h4 className="text-lg sm:text-2xl font-black text-[#FF6A00] tracking-tight">
+                    {takenTests.length > 0 ? takenTests.length : 128}
+                  </h4>
                   <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">STUDY STREAK</p>
-                    <h4 className="text-base font-black text-slate-800">5 Days Active</h4>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
-                  <Award className="w-5 h-5 text-yellow-500 mb-2" />
-                  <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">TOTAL POINTS</p>
-                    <h4 className="text-base font-black text-slate-800">1,240 XP</h4>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
-                  <ClipboardList className="w-5 h-5 text-blue-500 mb-2" />
-                  <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">COMPLETED TEST</p>
-                    <h4 className="text-base font-black text-slate-800">{takenTests.length} Mock</h4>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
-                  <Timer className="w-5 h-5 text-green-500 mb-2" />
-                  <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">ACCURACY RATE</p>
-                    <h4 className="text-base font-black text-slate-800">
-                      {takenTests.length > 0 
-                        ? Math.round(takenTests.reduce((acc, t) => acc + t.percentage, 0) / takenTests.length) 
-                        : 90}%
-                    </h4>
-                  </div>
-                </div>
-              </div>
-
-              {/* Toggle switch row for Sound Effects */}
-              <div className="bg-white border border-slate-100 rounded-3xl p-4.5 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-100 rounded-xl text-slate-600">
-                    {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800 leading-none">Sound Effects</h5>
-                    <p className="text-[9px] font-bold text-slate-400 mt-1">Play click, correct and error tunes</p>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => {
-                    setSoundEnabled(!soundEnabled);
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("job_master_sound", String(!soundEnabled));
-                    }
-                  }}
-                  className={`w-11 h-6 rounded-full p-1 transition-all ${
-                    soundEnabled ? "bg-[#FF6A00]" : "bg-slate-300"
-                  }`}
-                >
-                  <div className={`w-4 h-4 bg-white rounded-full transition-all transform ${
-                    soundEnabled ? "translate-x-5" : "translate-x-0"
-                  }`} />
-                </button>
-              </div>
-
-              {/* Core Database / Sync status report */}
-              <div className="bg-slate-100 rounded-3xl p-5 space-y-3 text-slate-600">
-                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Integrations diagnostics</span>
-                
-                <div className="space-y-2.5 text-xs font-semibold">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Supabase Connection</span>
-                    <span className="text-green-600 font-extrabold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Healthy
+                    <span className="inline-block bg-emerald-50 text-emerald-600 border border-emerald-200/80 font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full">
+                      +5%
                     </span>
                   </div>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Questions Sync Status</span>
-                    <span className="text-slate-700">{isUsingFallback ? "Offline Fallback (Active)" : "Supabase Table (Synchronized)"}</span>
+                {/* Card 2: AVG SCORE */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-center shadow-2xs space-y-1">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                    AVG SCORE
+                  </span>
+                  <h4 className="text-lg sm:text-2xl font-black text-[#FF6A00] tracking-tight">
+                    {takenTests.length > 0 
+                      ? `${Math.round(takenTests.reduce((acc, t) => acc + t.percentage, 0) / takenTests.length)}%`
+                      : "82%"}
+                  </h4>
+                  <div>
+                    <span className="inline-block bg-emerald-50 text-emerald-600 border border-emerald-200/80 font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full">
+                      +2%
+                    </span>
                   </div>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Local Cache Database</span>
-                    <span className="text-green-600 font-extrabold">Active</span>
+                {/* Card 3: GLOBAL RANK */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-center shadow-2xs space-y-1">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block truncate">
+                    GLOBAL RANK
+                  </span>
+                  <h4 className="text-lg sm:text-2xl font-black text-[#FF6A00] tracking-tight">
+                    15D
+                  </h4>
+                  <div>
+                    <span className="inline-block bg-emerald-50 text-emerald-600 border border-emerald-200/80 font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full">
+                      +3%
+                    </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Menu Options List ABOVE Personal Information (Ref Pic 2 & Pic 3) */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                {[
+                  { title: "Dashboard", icon: LayoutGrid, iconColor: "text-[#FF6A00] bg-orange-50", action: () => setCurrentScreen("home") },
+                  { title: "My Courses", icon: BookOpen, iconColor: "text-blue-600 bg-blue-50", action: () => setCurrentScreen("courses") },
+                  { title: "Mock Test History", icon: ClipboardList, iconColor: "text-indigo-600 bg-indigo-50", action: () => setCurrentScreen("tests") },
+                  { title: "Study Routine", icon: Calendar, iconColor: "text-emerald-600 bg-emerald-50", action: () => setCurrentScreen("routine") },
+                  { title: "Current Affairs", icon: Newspaper, iconColor: "text-amber-600 bg-amber-50", action: () => setCurrentScreen("prep-all-subjects") },
+                  { title: "Downloads", icon: Download, iconColor: "text-purple-600 bg-purple-50", action: () => { setArchiveFilterCourse("all"); setArchiveModalOpen(true); } },
+                  { title: "Performance Analytics", icon: TrendingUp, iconColor: "text-rose-600 bg-rose-50", action: () => setCurrentScreen("tests") },
+                ].map((item, idx) => {
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        item.action();
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl ${item.iconColor} flex items-center justify-center shrink-0`}>
+                          <IconComp className="w-4.5 h-4.5 stroke-[2.2]" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#FF6A00] transition-colors truncate">
+                          {item.title}
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#FF6A00] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* PERSONAL INFORMATION Section (Ref Pic 1) */}
+              <div className="space-y-2 pt-1">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-1">
+                  PERSONAL INFORMATION
+                </h4>
+                <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs divide-y divide-slate-100 overflow-hidden">
+                  {/* Edit Profile */}
+                  <button
+                    onClick={() => {
+                      setIsEditProfileOpen(true);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#FF6A00] flex items-center justify-center shrink-0">
+                        <User className="w-4.5 h-4.5 stroke-[2.2]" />
+                      </div>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#FF6A00] transition-colors truncate">
+                        Edit Profile
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#FF6A00] group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </button>
+
+                  {/* Change Password */}
+                  <button
+                    onClick={() => {
+                      setIsChangePasswordOpen(true);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                        <Lock className="w-4.5 h-4.5 stroke-[2.2]" />
+                      </div>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#FF6A00] transition-colors truncate">
+                        Change Password
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#FF6A00] group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </button>
                 </div>
               </div>
 
@@ -5469,6 +5401,130 @@ export default function Home() {
               >
                 বন্ধ করুন
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Profile Modal */}
+        {isEditProfileOpen && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setIsEditProfileOpen(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-orange-50 text-[#FF6A00] rounded-xl">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">Edit Profile</h3>
+                  <p className="text-[10px] font-extrabold text-slate-400">আপডেট করুন আপনার তথ্য</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-1 text-xs">
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Full Name</label>
+                  <input 
+                    type="text" 
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Email Address</label>
+                  <input 
+                    type="email" 
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Student ID</label>
+                  <input 
+                    type="text" 
+                    value={profileId}
+                    onChange={(e) => setProfileId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setIsEditProfileOpen(false);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-extrabold rounded-xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Change Password Modal */}
+        {isChangePasswordOpen && (
+          <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
+              <button 
+                onClick={() => setIsChangePasswordOpen(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">Change Password</h3>
+                  <p className="text-[10px] font-extrabold text-slate-400">নতুন পাসওয়ার্ড সেটিং</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-1 text-xs">
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Current Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">New Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setIsChangePasswordOpen(false);
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-extrabold rounded-xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
