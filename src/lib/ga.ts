@@ -65,10 +65,10 @@ export async function getGA4AnalyticsData(): Promise<AnalyticsDataResponse> {
     return cachedAnalyticsData;
   }
 
-  const propertyId = cleanEnvValue(process.env.GA_PROPERTY_ID);
+  const propertyId = cleanEnvValue(process.env.GA_PROPERTY_ID) || "547479827";
   const clientEmail = cleanEnvValue(process.env.GA_CLIENT_EMAIL);
   const privateKey = process.env.GA_PRIVATE_KEY
-    ? process.env.GA_PRIVATE_KEY.replace(/"/g, "").replace(/\\n/g, "\n")
+    ? cleanPrivateKey(process.env.GA_PRIVATE_KEY.replace(/"/g, "").replace(/\\n/g, "\n"))
     : undefined;
 
   // Check if credentials are present or placeholder
