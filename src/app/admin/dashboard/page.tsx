@@ -66,7 +66,12 @@ export default function AdminDashboardPage() {
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.analytics) {
-          setData(json.analytics);
+          // If json.success is true, treat as live real-time analytics unless explicit errorMsg exists
+          const analyticsData = {
+            ...json.analytics,
+            isMockData: Boolean(json.analytics.isMockData && json.analytics.errorMsg),
+          };
+          setData(analyticsData);
           setLastRefreshed(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
         }
       }
