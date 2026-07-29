@@ -1332,17 +1332,6 @@ export default function Home() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full animate-ping" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full" />
             </button>
-
-            <button 
-              onClick={() => {
-                setShowSettingsModal(true);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="hidden md:block p-2 text-slate-600 hover:bg-slate-100 rounded-xl active:scale-95 transition-all cursor-pointer"
-              title="সেটিংস"
-            >
-              <Settings className="w-5 h-5 stroke-[2.2px]" />
-            </button>
           </div>
         </header>
 
