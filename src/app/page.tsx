@@ -3729,8 +3729,6 @@ export default function Home() {
             );
           })()}
 
-
-
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -4278,8 +4276,6 @@ export default function Home() {
                     </form>
                   </div>
                 )}
-
-
 
               </div>
             </div>

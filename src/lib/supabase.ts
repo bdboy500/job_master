@@ -12,16 +12,8 @@ export function getSupabase(): SupabaseClient {
   }
 
   // Get env vars or set clean fallbacks
-  let rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  let rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!rawUrl || rawUrl.includes("your-project") || rawUrl.includes("example")) {
-    rawUrl = "https://cqwssqcpxrwkivrrmuou.supabase.co";
-  }
-
-  if (!rawKey || rawKey === "your-anon-key" || rawKey.includes("your-")) {
-    rawKey = "sb_publishable_LmhA6lMdI1LwZ4SnCaiPMg_0Fu5Saze";
-  }
+  let rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://cqwssqcpxrwkivrrmuou.supabase.co";
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_LmhA6lMdI1LwZ4SnCaiPMg_0Fu5Saze";
 
   // Clean and sanitize the base URL safely using regex
   const supabaseUrl = rawUrl.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
