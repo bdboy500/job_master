@@ -1,6 +1,5 @@
-const CACHE_NAME = 'job-master-pwa-v1';
+const CACHE_NAME = 'job-master-pwa-v2';
 const urlsToCache = [
-  '/',
   '/icon-192.png',
   '/icon-512.png',
   '/icon.svg',
@@ -34,6 +33,21 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (event.request.url.includes('/api/')) return;
+
+  // Network-first for navigation (HTML page requests) so Vercel updates reflect immediately
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cached) => cached || caches.match('/'));
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request).catch(() => {
       return caches.match(event.request);
