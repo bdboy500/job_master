@@ -344,10 +344,10 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[] } | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
@@ -408,10 +408,11 @@ export default function Home() {
   const [selectedLiveExamModal, setSelectedLiveExamModal] = useState<ExamPaper | null>(null);
   const [liveTick, setLiveTick] = useState<number>(0);
 
-  // Quick Tools Archive Modal State
+  // Quick Tools Archive & Modal State
   const [archiveModalOpen, setArchiveModalOpen] = useState<boolean>(false);
   const [archiveFilterCourse, setArchiveFilterCourse] = useState<string>("all");
   const [archiveFilterCategory, setArchiveFilterCategory] = useState<string>("all");
+  const [quickToolModal, setQuickToolModal] = useState<{ name: string; icon: string } | null>(null);
   
   // View Question Paper Modal ("প্রশ্নপত্র") State
   const [viewingPaperModal, setViewingPaperModal] = useState<ExamPaper | null>(null);
@@ -518,20 +519,12 @@ export default function Home() {
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
   // Custom User Routine State (persisted inside localStorage if client-side)
-  const [routineTasks, setRoutineTasks] = useState<RoutineItem[]>([
-    { id: "r1", title: "BCS Bangla Literature - ৫টি গুরুত্বপূর্ণ প্রশ্ন পড়ুন।", completed: false, category: "Bangla" },
-    { id: "r2", title: "Bank Quantitative Mock Exam - ১টি ম্যাথ সেট সমাধান করুন।", completed: true, category: "Mathematics" },
-    { id: "r3", title: "Primary School Pedagogy Notes - ১০টি নিয়ম রিভিশন দিন।", completed: false, category: "Primary" },
-    { id: "r4", title: "Daily General Knowledge - ১০টি সাম্প্রতিক আন্তর্জাতিক বিষয়াবলী মনে রাখুন।", completed: false, category: "GK" },
-    { id: "r5", title: "English Vocabulary Flashcards - ২০টি নতুন শব্দ শিখুন।", completed: false, category: "English" }
-  ]);
+  const [routineTasks, setRoutineTasks] = useState<RoutineItem[]>([]);
   const [newRoutineText, setNewRoutineText] = useState<string>("");
   const [newRoutineCategory, setNewRoutineCategory] = useState<string>("GK");
 
   // Test History State (persisted inside localStorage)
-  const [takenTests, setTakenTests] = useState<TakenTest[]>([
-    { id: "t1", name: "Mathematics Practice #12", score: 18, total: 20, time: "2h ago", percentage: 90 }
-  ]);
+  const [takenTests, setTakenTests] = useState<TakenTest[]>([]);
 
   // Load state from local storage on mount (Safe client-side execution)
   useEffect(() => {
@@ -1172,7 +1165,7 @@ export default function Home() {
                 } else if (currentScreen === "prep-sub-detail") {
                   setDrawerOpen(false);
                   setCurrentScreen("prep-sub");
-                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "packages" || currentScreen === "profile") {
+                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "packages" || currentScreen === "profile" || currentScreen === "notice") {
                   setDrawerOpen(false);
                   setCurrentScreen(previousScreen || "home");
                 } else {
@@ -1183,7 +1176,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "course-detail" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" ? (
+              {currentScreen === "course-detail" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "notice" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -1230,13 +1223,17 @@ export default function Home() {
                     <>
                       Profile
                     </>
+                  ) : currentScreen === "notice" ? (
+                    <>
+                      Notice <span className="text-[#FF6A00]">Board</span>
+                    </>
                   ) : (
                     <>
                       Job <span className="text-[#FF6A00]">Master</span>
                     </>
                   )}
                 </span>
-                <span className="text-[8px] font-bold tracking-[0.08em] text-[#94A3B8] uppercase mt-0.5">
+                <span className="text-[10px] sm:text-xs font-bold tracking-[0.05em] text-[#94A3B8] uppercase mt-0.5">
                   {currentScreen === "course-detail" && selectedCourseDetail 
                     ? `${selectedCourseDetail.category} Course Details` 
                     : currentScreen === "prep-all-subjects" 
@@ -1249,7 +1246,9 @@ export default function Home() {
                     ? (activeQuizSubtitle || "Live Exam") 
                     : currentScreen === "profile"
                     ? "STUDENT ACCOUNT & STATS"
-                    : "চাকরি এখন হাতের মুঠোয়!"}
+                    : currentScreen === "notice"
+                    ? "NOTICES & ANNOUNCEMENTS"
+                    : "চাকরি আপনার হাতে"}
                 </span>
               </div>
             </button>
@@ -1315,18 +1314,23 @@ export default function Home() {
               }`}
               title="খুঁজুন"
             >
-              <Search className="w-5 h-5 stroke-[2.2px]" />
+              <Search className="w-[#1E293B] h-5 stroke-[2.2px]" />
             </button>
 
             <button 
               onClick={() => {
-                setShowNotificationModal(prev => !prev);
+                if (currentScreen === "notice") {
+                  setCurrentScreen(previousScreen || "home");
+                } else {
+                  setPreviousScreen(currentScreen);
+                  setCurrentScreen("notice");
+                }
                 if (soundEnabled) quizAudio.playClick();
               }}
               className={`p-2 rounded-xl relative active:scale-95 transition-all cursor-pointer ${
-                showNotificationModal ? "bg-orange-50 text-[#FF6A00]" : "text-slate-600 hover:bg-slate-100"
+                currentScreen === "notice" ? "bg-orange-50 text-[#FF6A00]" : "text-slate-600 hover:bg-slate-100"
               }`}
-              title="বিজ্ঞপ্তি"
+              title="নোটিশ ও বিজ্ঞপ্তি"
             >
               <Bell className="w-5 h-5 stroke-[2.2px]" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full animate-ping" />
@@ -1620,11 +1624,8 @@ export default function Home() {
                   {/* Grid Item 6: All Job */}
                   <div 
                     onClick={() => {
-                      const course = ALL_COURSES_DATA.find(c => c.id === "all_job");
-                      setSelectedCourseDetail(course);
-                      setActiveExamSection(null);
                       setPreviousScreen("home");
-                      setCurrentScreen("course-detail");
+                      setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
                     className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
@@ -2186,19 +2187,10 @@ export default function Home() {
           {currentScreen === "prep-sub" && (
             <div className="p-5 space-y-4 animate-fade-in pb-10 text-left">
               
-              <div className="pt-1 pb-1">
-                <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
-                  {selectedPrepSubject} Practice
-                </h3>
-                <p className="text-xs font-extrabold text-slate-400">
-                  নিচের যেকোনো সাব-সাবজেক্ট সিলেক্ট করে পরীক্ষা ও প্রশ্নপত্র দেখুন
-                </p>
-              </div>
-
               {/* Sub-subjects grid */}
-              <div className="space-y-3 pt-1">
-                <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
-                  বিষয়সমূহ সিলেক্ট করুন (Select Sub-Subject)
+              <div className="space-y-3 pt-2">
+                <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
+                  বিষয় সিলেক্ট করুন
                 </h4>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -2346,24 +2338,11 @@ export default function Home() {
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
             <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
               
-              {/* Sub-Subject Banner Header */}
-              <div className="pt-1 pb-1">
-                <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
-                  {selectedPrepSubSubject.name}
-                </h3>
-                <p className="text-xs font-extrabold text-slate-400">
-                  {selectedPrepSubject} • {selectedPrepSubSubject.sub}
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
-                    প্রকাশিত প্রশ্নপত্র ও পরীক্ষা (Published Exams)
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-center">
+                  <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
+                    প্রকাশিত প্রশ্নপত্র ও পরীক্ষা
                   </h4>
-                  <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-full">
-                    {selectedPrepSubSubject.name}
-                  </span>
                 </div>
 
                 {(() => {
@@ -2493,23 +2472,27 @@ export default function Home() {
                 </h4>
                 <div className="grid grid-cols-4 gap-2">
                   {[
-                    { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
-                    { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
                     { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
-                    { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
+                    { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
+                    { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
                     { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
+                    { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                    { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
                     { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
                     { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
-                    { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
                   ].map((item, idx) => (
                     <button
                       key={idx}
                       onClick={() => {
-                        if (item.name === "Routine") setCurrentScreen("routine");
-                        else if (item.name === "Result" || item.name === "Merit List") setCurrentScreen("tests");
-                        else if (item.name === "Archive") {
+                        if (item.name === "Archive") {
                           setArchiveFilterCourse(selectedPrepSubject);
                           setArchiveModalOpen(true);
+                        } else if (item.name === "Routine") {
+                          setCurrentScreen("routine");
+                        } else if (item.name === "Result" || item.name === "Merit List") {
+                          setCurrentScreen("tests");
+                        } else {
+                          setQuickToolModal({ name: item.name, icon: item.icon });
                         }
                         if (soundEnabled) quizAudio.playClick();
                       }}
@@ -2731,7 +2714,10 @@ export default function Home() {
                               {/* Action Buttons: Take Exam & Question Paper */}
                               <div className="grid grid-cols-2 gap-3 pt-1">
                                 <button
-                                  onClick={() => handleOpenTakeExam(paper)}
+                                  onClick={() => {
+                                    setSelectedLiveExamModal(paper);
+                                    if (soundEnabled) quizAudio.playClick();
+                                  }}
                                   className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <span>📝 পরীক্ষা দিন</span>
@@ -2759,24 +2745,28 @@ export default function Home() {
 
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
-                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
                         { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
-                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
+                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
+                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
                         { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
+                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
                         { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
                         { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
-                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
                       ].map((item, idx) => (
                         <button
                           key={idx}
                           onClick={() => {
-                            if (item.name === "Routine") setCurrentScreen("routine");
-                            else if (item.name === "Result" || item.name === "Merit List") setCurrentScreen("tests");
-                            else if (item.name === "Archive") {
+                            if (item.name === "Archive") {
                               setArchiveFilterCourse(selectedCourseDetail.id);
                               setArchiveFilterCategory(activeExamSection);
                               setArchiveModalOpen(true);
+                            } else if (item.name === "Routine") {
+                              setCurrentScreen("routine");
+                            } else if (item.name === "Result" || item.name === "Merit List") {
+                              setCurrentScreen("tests");
+                            } else {
+                              setQuickToolModal({ name: item.name, icon: item.icon });
                             }
                             if (soundEnabled) quizAudio.playClick();
                           }}
@@ -3068,6 +3058,93 @@ export default function Home() {
                     </button>
                   </div>
 
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* NOTICE BOARD / NOTIFICATIONS SCREEN                       */}
+          {/* ========================================================= */}
+          {currentScreen === "notice" && (
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+              
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-center text-[#FF6A00] shrink-0">
+                    <Bell className="w-5 h-5 stroke-[2.2px]" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-800">
+                      Notice & Notifications
+                    </h3>
+                    <p className="text-xs font-semibold text-slate-400">
+                      সকল নোটিশ, নোটিফিকেশন ও গুরুত্বপূর্ণ আপডেট
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* List of Notices */}
+              <div className="space-y-3 pt-1">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-orange-200 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2.5 py-0.5 rounded-full uppercase border border-orange-200">
+                      🔔 স্পেশাল আপডেট
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">আজ, ১০:৩০ AM</span>
+                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900 leading-snug">
+                    বিসিএস প্রিলিমিনারি ৪৫তম ও ৪৬তম স্পেশাল মডেল টেস্ট যুক্ত করা হয়েছে!
+                  </h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    সকল চাকরি প্রত্যাশীদের সুবিধার্থে বিসিএস ক্যাডার পরীক্ষার সিলেবাস ভিত্তিক সম্পূর্ণ নতুন বিষয়ভিত্তিক মক টেস্ট এবং ব্যাখ্যাসহ উত্তরপত্র যুক্ত করা হয়েছে। এখনই প্রস্তুতি নিন।
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-blue-200 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full uppercase border border-blue-200">
+                      🏆 ফল প্রকাশ
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">গতকাল, ৮:০০ PM</span>
+                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900 leading-snug">
+                    সাপ্তাহিক লাইভ কুইজ প্রতিযোগিতার মেধা তালিকা ও ফল প্রকাশ
+                  </h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    গতকালের লাইভ কুইজ প্রতিযোগিতায় অংশগ্রহণকারী সকল পরীক্ষার্থীর মেধা তালিকা এবং সঠিক উত্তরপত্র ‘Result’ ট্যাবে আপডেট করা হয়েছে।
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-purple-200 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full uppercase border border-purple-200">
+                      📅 রুটিন আপডেট
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">২৫ জুলাই, ২০২৬</span>
+                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900 leading-snug">
+                    ব্যাংক নিয়োগ ও শিক্ষক নিবন্ধন মক টেস্ট সময়সূচী
+                  </h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    প্রতিদিনের লাইভ কুইজ সকাল ৯:০০ টা থেকে শুরু হয়ে রাত ১১:০০ টা পর্যন্ত চালু থাকে। আপনার পছন্দের বিষয় নির্বাচন করে অংশ নিন।
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-green-200 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-green-600 bg-green-50 px-2.5 py-0.5 rounded-full uppercase border border-green-200">
+                      ✨ নতুন ফিচার
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">২০ জুলাই, ২০২৬</span>
+                  </div>
+                  <h4 className="font-extrabold text-sm text-slate-900 leading-snug">
+                    ডেইলি রুটিন ট্র্যাকার ও সাবজেক্ট ওয়াইজ টেস্ট মডিউল
+                  </h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    পড়ার অভ্যাস বজায় রাখতে এবং নিয়মিত মূল্যায়ন করতে হোম স্ক্রিনের 'Routine' এবং 'Preparation Hub' অপশন ব্যবহার করুন।
+                  </p>
                 </div>
               </div>
             </div>
@@ -4429,6 +4506,42 @@ export default function Home() {
                   Yes
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Generic Quick Tool Placeholder Modal */}
+        {quickToolModal && (
+          <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
+            <div className="bg-white border border-slate-200 rounded-[2rem] max-w-sm w-full p-6 shadow-2xl space-y-4 relative">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">{quickToolModal.icon}</span>
+                  <h3 className="font-extrabold text-slate-900 text-base">{quickToolModal.name}</h3>
+                </div>
+                <button 
+                  onClick={() => setQuickToolModal(null)}
+                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="py-8 text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 mx-auto flex items-center justify-center text-xl text-slate-400">
+                  {quickToolModal.icon}
+                </div>
+                <p className="text-xs font-bold text-slate-500">
+                  কোন তথ্য পাওয়া যায়নি। শীঘ্রই আপডেট করা হবে।
+                </p>
+              </div>
+
+              <button
+                onClick={() => setQuickToolModal(null)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                বন্ধ করুন
+              </button>
             </div>
           </div>
         )}
