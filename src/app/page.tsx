@@ -62,7 +62,6 @@ import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import { recordVisit } from "../lib/visitors";
-import FooterVisitorStats from "@/src/components/FooterVisitorStats";
 
 // Type definition for routine items
 interface RoutineItem {
@@ -3730,10 +3729,7 @@ export default function Home() {
             );
           })()}
 
-          {/* Footer Live Visitor Analytics Bar - Placed at the very bottom of scrollable content */}
-          <div className="w-full mt-8">
-            <FooterVisitorStats />
-          </div>
+
 
         </div>
 
@@ -4283,8 +4279,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* Footer Live Visitor Analytics Bar */}
-                <FooterVisitorStats />
+
 
               </div>
             </div>

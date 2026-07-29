@@ -9,7 +9,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google-analytics/data": "^6.1.0",
     "@google/genai": "^2.4.0",
     "@next/third-parties": "^16.2.12",
     "@supabase/supabase-js": "^2.110.3",
