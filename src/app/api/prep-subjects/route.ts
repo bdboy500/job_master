@@ -35,7 +35,19 @@ function saveToFileCache(prepSubjects: PrepSubjectItem[]) {
 
 export async function GET() {
   try {
-    // 1. Try Supabase
+    // 1. Try Memory Cache (updated instantly when POST is called)
+    if (memoryPrepCache && memoryPrepCache.length > 0) {
+      return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" });
+    }
+
+    // 2. Try File Cache
+    const fileCached = loadFromFileCache();
+    if (fileCached && fileCached.length > 0) {
+      memoryPrepCache = fileCached;
+      return NextResponse.json({ prepSubjects: fileCached, source: "file" });
+    }
+
+    // 3. Try Supabase if memory & file cache are empty
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -68,18 +80,9 @@ export async function GET() {
       console.warn("Supabase prep query note:", sbErr);
     }
 
-    // 2. Fallback to memory / file cache
-    if (memoryPrepCache && memoryPrepCache.length > 0) {
-      return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" });
-    }
-
-    const fileCached = loadFromFileCache();
-    if (fileCached && fileCached.length > 0) {
-      memoryPrepCache = fileCached;
-      return NextResponse.json({ prepSubjects: fileCached, source: "file" });
-    }
-
-    // 3. Fallback to default prep subjects
+    // 4. Fallback to default prep subjects
+    memoryPrepCache = DEFAULT_PREP_SUBJECTS;
+    saveToFileCache(DEFAULT_PREP_SUBJECTS);
     return NextResponse.json({ prepSubjects: DEFAULT_PREP_SUBJECTS, source: "default" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch prep subjects" }, { status: 500 });
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     const sorted = [...prepSubjects].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update in-memory & file cache immediately
+    // Update in-memory & file cache immediately (single source of truth)
     memoryPrepCache = sorted;
     saveToFileCache(sorted);
 

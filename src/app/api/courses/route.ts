@@ -35,7 +35,19 @@ function saveToFileCache(courses: CourseItem[]) {
 
 export async function GET() {
   try {
-    // 1. Try Supabase
+    // 1. Try Memory Cache (updated instantly when POST is called)
+    if (memoryCoursesCache && memoryCoursesCache.length > 0) {
+      return NextResponse.json({ courses: memoryCoursesCache, source: "memory" });
+    }
+
+    // 2. Try File Cache
+    const fileCached = loadFromFileCache();
+    if (fileCached && fileCached.length > 0) {
+      memoryCoursesCache = fileCached;
+      return NextResponse.json({ courses: fileCached, source: "file" });
+    }
+
+    // 3. Try Supabase if memory & file cache are empty
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -69,18 +81,9 @@ export async function GET() {
       console.warn("Supabase courses query note:", sbErr);
     }
 
-    // 2. Fallback to memory / file cache
-    if (memoryCoursesCache && memoryCoursesCache.length > 0) {
-      return NextResponse.json({ courses: memoryCoursesCache, source: "memory" });
-    }
-
-    const fileCached = loadFromFileCache();
-    if (fileCached && fileCached.length > 0) {
-      memoryCoursesCache = fileCached;
-      return NextResponse.json({ courses: fileCached, source: "file" });
-    }
-
-    // 3. Fallback to default courses
+    // 4. Fallback to default courses
+    memoryCoursesCache = DEFAULT_COURSES;
+    saveToFileCache(DEFAULT_COURSES);
     return NextResponse.json({ courses: DEFAULT_COURSES, source: "default" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch courses" }, { status: 500 });
@@ -98,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     const sorted = [...courses].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update in-memory & file cache immediately
+    // Update in-memory & file cache immediately (single source of truth)
     memoryCoursesCache = sorted;
     saveToFileCache(sorted);
 
