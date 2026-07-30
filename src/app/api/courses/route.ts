@@ -7,6 +7,7 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 const CACHE_FILE = path.join("/tmp", "jobmaster_courses_cache.json");
+const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_courses_v2";
 
 let memoryCoursesCache: CourseItem[] | null = null;
 
@@ -33,21 +34,56 @@ function saveToFileCache(courses: CourseItem[]) {
   }
 }
 
+async function loadFromKvStore(): Promise<CourseItem[] | null> {
+  try {
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn("Error reading courses from KV store:", e);
+  }
+  return null;
+}
+
+async function saveToKvStore(courses: CourseItem[]) {
+  try {
+    await fetch(CLOUD_KV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(courses)
+    });
+  } catch (e) {
+    console.warn("Error writing courses to KV store:", e);
+  }
+}
+
 export async function GET() {
   try {
-    // 1. Try Memory Cache (updated instantly when POST is called)
+    // Layer 1: Memory Cache (instant within process)
     if (memoryCoursesCache && memoryCoursesCache.length > 0) {
       return NextResponse.json({ courses: memoryCoursesCache, source: "memory" });
     }
 
-    // 2. Try File Cache
+    // Layer 2: File Cache (/tmp directory)
     const fileCached = loadFromFileCache();
     if (fileCached && fileCached.length > 0) {
       memoryCoursesCache = fileCached;
       return NextResponse.json({ courses: fileCached, source: "file" });
     }
 
-    // 3. Try Supabase if memory & file cache are empty
+    // Layer 3: Cloud KV Store (global persistent backup)
+    const kvCached = await loadFromKvStore();
+    if (kvCached && kvCached.length > 0) {
+      memoryCoursesCache = kvCached;
+      saveToFileCache(kvCached);
+      return NextResponse.json({ courses: kvCached, source: "kv" });
+    }
+
+    // Layer 4: Supabase Database Table
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -74,6 +110,7 @@ export async function GET() {
 
           memoryCoursesCache = mapped;
           saveToFileCache(mapped);
+          saveToKvStore(mapped);
           return NextResponse.json({ courses: mapped, source: "supabase" });
         }
       }
@@ -81,9 +118,7 @@ export async function GET() {
       console.warn("Supabase courses query note:", sbErr);
     }
 
-    // 4. Fallback to default courses
-    memoryCoursesCache = DEFAULT_COURSES;
-    saveToFileCache(DEFAULT_COURSES);
+    // Layer 5: Fallback to default courses
     return NextResponse.json({ courses: DEFAULT_COURSES, source: "default" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch courses" }, { status: 500 });
@@ -101,9 +136,10 @@ export async function POST(req: NextRequest) {
 
     const sorted = [...courses].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update in-memory & file cache immediately (single source of truth)
+    // Update Memory & File Cache & Cloud KV Store immediately (single source of truth)
     memoryCoursesCache = sorted;
     saveToFileCache(sorted);
+    saveToKvStore(sorted);
 
     // Try persisting to Supabase if table exists
     try {
@@ -122,6 +158,13 @@ export async function POST(req: NextRequest) {
           subSubjects: JSON.stringify(c.subSubjects || []),
           active: c.active !== false
         }));
+
+        // Remove deleted courses from Supabase
+        const currentIds = sorted.map(c => c.id);
+        if (currentIds.length > 0) {
+          const formattedIds = currentIds.map(id => `'${id}'`).join(",");
+          await supabase.from("app_courses").delete().not("id", "in", `(${formattedIds})`);
+        }
 
         await supabase.from("app_courses").upsert(payload, { onConflict: "id" });
       }

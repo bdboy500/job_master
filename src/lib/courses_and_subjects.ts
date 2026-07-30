@@ -469,35 +469,7 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
     console.warn("API courses fetch note:", e);
   }
 
-  // 2. Try Supabase directly as fallback
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase.from("app_courses").select("*").order("serial", { ascending: true });
-      if (!error && data && data.length > 0) {
-        const mapped: CourseItem[] = data.map((item: any) => ({
-          id: String(item.id),
-          name: String(item.name || ""),
-          title: String(item.title || ""),
-          desc: String(item.desc || ""),
-          category: String(item.category || "Other"),
-          icon: String(item.icon || "BookOpen"),
-          bg: String(item.bg || "bg-[#FFF1E6]"),
-          iconColor: String(item.iconColor || "text-orange-600"),
-          serial: Number(item.serial) || 1,
-          subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.subSubjects || []),
-          active: item.active !== false
-        }));
-        mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(COURSES_KEY, JSON.stringify(mapped));
-        }
-        return mapped;
-      }
-    }
-  } catch (e) {}
-
-  // 3. Fallback to Local Storage / Default
+  // 2. Fallback to Local Storage / Default
   return getCachedCourses();
 }
 
@@ -509,7 +481,7 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
     window.dispatchEvent(new CustomEvent("jobmaster_courses_updated", { detail: sorted }));
   }
 
-  // Send to Server API Route (/api/courses)
+  // 1. Send to Server API Route (/api/courses)
   try {
     await fetch("/api/courses", {
       method: "POST",
@@ -520,7 +492,16 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
     console.warn("API courses save note:", e);
   }
 
-  // Try Supabase directly as well
+  // 2. Direct sync to Cloud KV store
+  try {
+    await fetch(CLOUD_COURSES_KV, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sorted)
+    });
+  } catch (e) {}
+
+  // 3. Try Supabase directly as well
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -537,6 +518,13 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
         subSubjects: JSON.stringify(c.subSubjects || []),
         active: c.active !== false
       }));
+
+      const currentIds = sorted.map(c => c.id);
+      if (currentIds.length > 0) {
+        const formattedIds = currentIds.map(id => `'${id}'`).join(",");
+        await supabase.from("app_courses").delete().not("id", "in", `(${formattedIds})`);
+      }
+
       await supabase.from("app_courses").upsert(payload, { onConflict: "id" });
     }
   } catch (e) {}
@@ -564,34 +552,7 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
     console.warn("API prep-subjects fetch note:", e);
   }
 
-  // 2. Try Supabase directly as fallback
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase.from("app_prep_subjects").select("*").order("serial", { ascending: true });
-      if (!error && data && data.length > 0) {
-        const mapped: PrepSubjectItem[] = data.map((item: any) => ({
-          id: String(item.id),
-          name: String(item.name || ""),
-          bnName: String(item.bnName || item.bn_name || ""),
-          icon: String(item.icon || "BookOpen"),
-          bg: String(item.bg || "bg-[#FFF1E6]"),
-          text: String(item.text || "text-orange-600"),
-          sub: String(item.sub || ""),
-          serial: Number(item.serial) || 1,
-          subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.subSubjects || []),
-          active: item.active !== false
-        }));
-        mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(PREP_KEY, JSON.stringify(mapped));
-        }
-        return mapped;
-      }
-    }
-  } catch (e) {}
-
-  // 3. Fallback to Local Storage / Default
+  // 2. Fallback to Local Storage / Default
   return getCachedPrepSubjects();
 }
 
@@ -603,7 +564,7 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
     window.dispatchEvent(new CustomEvent("jobmaster_prep_subjects_updated", { detail: sorted }));
   }
 
-  // Send to Server API Route (/api/prep-subjects)
+  // 1. Send to Server API Route (/api/prep-subjects)
   try {
     await fetch("/api/prep-subjects", {
       method: "POST",
@@ -614,7 +575,16 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
     console.warn("API prep-subjects save note:", e);
   }
 
-  // Try Supabase directly as well
+  // 2. Direct sync to Cloud KV store
+  try {
+    await fetch(CLOUD_PREP_KV, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sorted)
+    });
+  } catch (e) {}
+
+  // 3. Try Supabase directly as well
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -630,6 +600,13 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
         subSubjects: JSON.stringify(s.subSubjects || []),
         active: s.active !== false
       }));
+
+      const currentIds = sorted.map(s => s.id);
+      if (currentIds.length > 0) {
+        const formattedIds = currentIds.map(id => `'${id}'`).join(",");
+        await supabase.from("app_prep_subjects").delete().not("id", "in", `(${formattedIds})`);
+      }
+
       await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
     }
   } catch (e) {}
@@ -659,25 +636,20 @@ export function subscribeToCoursesAndPrep(
   window.addEventListener("storage", handleCourses);
   window.addEventListener("storage", handlePrep);
 
-  // Re-fetch when tab is focused
-  const handleFocus = () => {
-    fetchCoursesFromDb().then(onCourses);
-    fetchPrepSubjectsFromDb().then(onPrep);
+  // Re-fetch when tab becomes visible or focused
+  const handleVisibility = () => {
+    if (document.visibilityState === "visible") {
+      fetchCoursesFromDb().then(onCourses);
+      fetchPrepSubjectsFromDb().then(onPrep);
+    }
   };
-  window.addEventListener("focus", handleFocus);
-
-  // Periodic polling interval (every 10 seconds) to ensure all users receive Admin updates live
-  const intervalId = setInterval(() => {
-    fetchCoursesFromDb().then(onCourses);
-    fetchPrepSubjectsFromDb().then(onPrep);
-  }, 10000);
+  window.addEventListener("visibilitychange", handleVisibility);
 
   return () => {
     window.removeEventListener("jobmaster_courses_updated", handleCourses);
     window.removeEventListener("jobmaster_prep_subjects_updated", handlePrep);
     window.removeEventListener("storage", handleCourses);
     window.removeEventListener("storage", handlePrep);
-    window.removeEventListener("focus", handleFocus);
-    clearInterval(intervalId);
+    window.removeEventListener("visibilitychange", handleVisibility);
   };
 }

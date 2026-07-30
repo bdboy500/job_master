@@ -7,6 +7,7 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 const CACHE_FILE = path.join("/tmp", "jobmaster_prep_subjects_cache.json");
+const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_prep_subjects_v2";
 
 let memoryPrepCache: PrepSubjectItem[] | null = null;
 
@@ -33,21 +34,56 @@ function saveToFileCache(prepSubjects: PrepSubjectItem[]) {
   }
 }
 
+async function loadFromKvStore(): Promise<PrepSubjectItem[] | null> {
+  try {
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn("Error reading prep subjects from KV store:", e);
+  }
+  return null;
+}
+
+async function saveToKvStore(prepSubjects: PrepSubjectItem[]) {
+  try {
+    await fetch(CLOUD_KV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prepSubjects)
+    });
+  } catch (e) {
+    console.warn("Error writing prep subjects to KV store:", e);
+  }
+}
+
 export async function GET() {
   try {
-    // 1. Try Memory Cache (updated instantly when POST is called)
+    // Layer 1: Memory Cache (instant within process)
     if (memoryPrepCache && memoryPrepCache.length > 0) {
       return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" });
     }
 
-    // 2. Try File Cache
+    // Layer 2: File Cache (/tmp directory)
     const fileCached = loadFromFileCache();
     if (fileCached && fileCached.length > 0) {
       memoryPrepCache = fileCached;
       return NextResponse.json({ prepSubjects: fileCached, source: "file" });
     }
 
-    // 3. Try Supabase if memory & file cache are empty
+    // Layer 3: Cloud KV Store (global persistent backup)
+    const kvCached = await loadFromKvStore();
+    if (kvCached && kvCached.length > 0) {
+      memoryPrepCache = kvCached;
+      saveToFileCache(kvCached);
+      return NextResponse.json({ prepSubjects: kvCached, source: "kv" });
+    }
+
+    // Layer 4: Supabase Database Table
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -73,6 +109,7 @@ export async function GET() {
 
           memoryPrepCache = mapped;
           saveToFileCache(mapped);
+          saveToKvStore(mapped);
           return NextResponse.json({ prepSubjects: mapped, source: "supabase" });
         }
       }
@@ -80,9 +117,7 @@ export async function GET() {
       console.warn("Supabase prep query note:", sbErr);
     }
 
-    // 4. Fallback to default prep subjects
-    memoryPrepCache = DEFAULT_PREP_SUBJECTS;
-    saveToFileCache(DEFAULT_PREP_SUBJECTS);
+    // Layer 5: Fallback to default prep subjects
     return NextResponse.json({ prepSubjects: DEFAULT_PREP_SUBJECTS, source: "default" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch prep subjects" }, { status: 500 });
@@ -100,9 +135,10 @@ export async function POST(req: NextRequest) {
 
     const sorted = [...prepSubjects].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update in-memory & file cache immediately (single source of truth)
+    // Update Memory & File Cache & Cloud KV Store immediately (single source of truth)
     memoryPrepCache = sorted;
     saveToFileCache(sorted);
+    saveToKvStore(sorted);
 
     // Try persisting to Supabase if table exists
     try {
@@ -120,6 +156,13 @@ export async function POST(req: NextRequest) {
           subSubjects: JSON.stringify(s.subSubjects || []),
           active: s.active !== false
         }));
+
+        // Remove deleted prep subjects from Supabase
+        const currentIds = sorted.map(s => s.id);
+        if (currentIds.length > 0) {
+          const formattedIds = currentIds.map(id => `'${id}'`).join(",");
+          await supabase.from("app_prep_subjects").delete().not("id", "in", `(${formattedIds})`);
+        }
 
         await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
       }
