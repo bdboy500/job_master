@@ -59,6 +59,7 @@ import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
+import { CourseItem, PrepSubjectItem, getCachedCourses, getCachedPrepSubjects, fetchCoursesFromDb, fetchPrepSubjectsFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import { recordVisit } from "../lib/visitors";
@@ -344,7 +345,7 @@ export default function Home() {
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[] } | null>(null);
+  const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
@@ -394,6 +395,8 @@ export default function Home() {
   const [examPapers, setExamPapers] = useState<ExamPaper[]>(DEFAULT_EXAM_PAPERS);
   const [isExamsLoading, setIsExamsLoading] = useState<boolean>(false);
   const [packagesList, setPackagesList] = useState<PackageItem[]>(DEFAULT_PACKAGES);
+  const [coursesList, setCoursesList] = useState<CourseItem[]>([]);
+  const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>([]);
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
@@ -566,6 +569,16 @@ export default function Home() {
         setPackagesList(cachedPkgs);
       }
 
+      const cachedCourses = getCachedCourses();
+      if (cachedCourses && cachedCourses.length > 0) {
+        setCoursesList(cachedCourses);
+      }
+
+      const cachedPrep = getCachedPrepSubjects();
+      if (cachedPrep && cachedPrep.length > 0) {
+        setPrepSubjectsList(cachedPrep);
+      }
+
       // Background fetch dynamic published exam papers & subscribe to real-time changes (SWR pattern)
       fetchExamPapersFromDb()
         .then(papers => {
@@ -598,9 +611,27 @@ export default function Home() {
         }
       });
 
+      // Fetch dynamic courses & prep subjects & subscribe
+      fetchCoursesFromDb().then(courses => {
+        if (courses && courses.length > 0) {
+          setCoursesList(courses);
+        }
+      });
+      fetchPrepSubjectsFromDb().then(prep => {
+        if (prep && prep.length > 0) {
+          setPrepSubjectsList(prep);
+        }
+      });
+
+      const unsubCoursesPrep = subscribeToCoursesAndPrep(
+        (updatedCourses) => setCoursesList(updatedCourses),
+        (updatedPrep) => setPrepSubjectsList(updatedPrep)
+      );
+
       return () => {
         if (unsubscribe) unsubscribe();
         if (unsubPkgs) unsubPkgs();
+        if (unsubCoursesPrep) unsubCoursesPrep();
       };
     }
   }, []);
@@ -1102,15 +1133,69 @@ export default function Home() {
   const completedRoutineCount = routineTasks.filter(r => r.completed).length;
   const routinePercentage = routineTasks.length > 0 ? Math.round((completedRoutineCount / routineTasks.length) * 100) : 0;
 
+  const ICON_MAP: Record<string, any> = useMemo(() => ({
+    BookOpen,
+    Calculator,
+    Globe,
+    GraduationCap,
+    FileText,
+    Briefcase,
+    Users,
+    Award,
+    ShieldCheck,
+    Zap,
+    HelpCircle,
+    Sparkles,
+    Newspaper,
+    TrendingUp,
+    LayoutGrid
+  }), []);
+
+  const allCoursesData = useMemo(() => {
+    if (coursesList && coursesList.length > 0) {
+      return coursesList.map(c => ({
+        ...c,
+        icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
+      }));
+    }
+    return ALL_COURSES_DATA;
+  }, [coursesList, ICON_MAP]);
+
+  const DEFAULT_PREP_SUBJECTS = useMemo(() => [
+    { name: "Bangla", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
+    { name: "English", bnName: "ইংরেজি", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
+    { name: "Mathematics", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
+    { name: "Science", bnName: "বিজ্ঞান", icon: Sparkles, bg: "bg-[#EBF7EE]", text: "text-green-600", sub: "পদার্থ, রসায়ন ও জীব" },
+    { name: "General Knowledge", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
+    { name: "Geography", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
+    { name: "General Science", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
+    { name: "Technology", bnName: "কম্পিউটার ও তথ্যপ্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
+    { name: "Mental Ability", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
+    { name: "Good Governance", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
+  ], []);
+
+  const allPrepSubjectsData = useMemo(() => {
+    if (prepSubjectsList && prepSubjectsList.length > 0) {
+      return prepSubjectsList.map(s => ({
+        ...s,
+        icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
+        text: s.text || (s as any).iconColor || "text-orange-600"
+      }));
+    }
+    return DEFAULT_PREP_SUBJECTS;
+  }, [prepSubjectsList, ICON_MAP, DEFAULT_PREP_SUBJECTS]);
+
   // Search filter for courses
-  const filteredCoursesList = ALL_COURSES_DATA.filter(course => {
-    const query = coursesSearchQuery.toLowerCase();
-    const matchesSearch = !query || 
-                          (course.name && course.name.toLowerCase().includes(query)) ||
-                          course.title.toLowerCase().includes(query) || 
-                          course.desc.toLowerCase().includes(query);
-    return matchesSearch;
-  });
+  const filteredCoursesList = useMemo(() => {
+    return allCoursesData.filter(course => {
+      const query = coursesSearchQuery.toLowerCase();
+      const matchesSearch = !query || 
+                            (course.name && course.name.toLowerCase().includes(query)) ||
+                            (course.title && course.title.toLowerCase().includes(query)) || 
+                            (course.desc && course.desc.toLowerCase().includes(query));
+      return matchesSearch;
+    });
+  }, [allCoursesData, coursesSearchQuery]);
 
   return (
     <PwaProvider>
@@ -1536,97 +1621,31 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* 6 Grid Icons according to Screenshot - Horizontal layout for compactness */}
+                {/* Dynamic Course Grid on Home Screen */}
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Grid Item 1: BCS */}
-                  <div 
-                    onClick={() => {
-                      const course = ALL_COURSES_DATA.find(c => c.id === "bcs");
-                      setSelectedCourseDetail(course);
-                      setActiveExamSection(null);
-                      setPreviousScreen("home");
-                      setCurrentScreen("course-detail");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#FFF1E6] rounded-xl flex items-center justify-center text-orange-600 shrink-0">
-                      <BookOpen className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">BCS</span>
-                  </div>
-
-                  {/* Grid Item 2: Bank */}
-                  <div 
-                    onClick={() => {
-                      const course = ALL_COURSES_DATA.find(c => c.id === "bank");
-                      setSelectedCourseDetail(course);
-                      setActiveExamSection(null);
-                      setPreviousScreen("home");
-                      setCurrentScreen("course-detail");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#E6F0FA] rounded-xl flex items-center justify-center text-blue-600 shrink-0">
-                      <Calculator className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Bank</span>
-                  </div>
-
-                  {/* Grid Item 3: Primary */}
-                  <div 
-                    onClick={() => {
-                      const course = ALL_COURSES_DATA.find(c => c.id === "primary");
-                      setSelectedCourseDetail(course);
-                      setActiveExamSection(null);
-                      setPreviousScreen("home");
-                      setCurrentScreen("course-detail");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#EBF7EE] rounded-xl flex items-center justify-center text-green-600 shrink-0">
-                      <Globe className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Primary</span>
-                  </div>
-
-                  {/* Grid Item 4: NTRCA */}
-                  <div 
-                    onClick={() => {
-                      const course = ALL_COURSES_DATA.find(c => c.id === "ntrca");
-                      setSelectedCourseDetail(course);
-                      setActiveExamSection(null);
-                      setPreviousScreen("home");
-                      setCurrentScreen("course-detail");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#F3E8FF] rounded-xl flex items-center justify-center text-purple-600 shrink-0">
-                      <GraduationCap className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">NTRCA</span>
-                  </div>
-
-                  {/* Grid Item 5: PSC */}
-                  <div 
-                    onClick={() => {
-                      const course = ALL_COURSES_DATA.find(c => c.id === "psc");
-                      setSelectedCourseDetail(course);
-                      setActiveExamSection(null);
-                      setPreviousScreen("home");
-                      setCurrentScreen("course-detail");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#FCE7F3] rounded-xl flex items-center justify-center text-rose-600 shrink-0">
-                      <FileText className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">PSC</span>
-                  </div>
+                  {allCoursesData.slice(0, 5).map((course) => {
+                    const CourseIcon = course.icon || BookOpen;
+                    return (
+                      <div 
+                        key={course.id}
+                        onClick={() => {
+                          setSelectedCourseDetail(course);
+                          setActiveExamSection(null);
+                          setPreviousScreen("home");
+                          setCurrentScreen("course-detail");
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                      >
+                        <div className={`w-11 h-11 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
+                          <CourseIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
+                        </div>
+                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                          {course.name || course.title}
+                        </span>
+                      </div>
+                    );
+                  })}
 
                   {/* Grid Item 6: All Job */}
                   <div 
@@ -1719,69 +1738,28 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Preparation Hub Item 1: Bangla */}
-                  <div 
-                    onClick={() => {
-                      setSelectedPrepSubject("Bangla");
-                      setPreviousScreen("home");
-                      setCurrentScreen("prep-sub");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#FFF1E6] rounded-xl flex items-center justify-center text-orange-600 shrink-0">
-                      <BookOpen className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Bangla</span>
-                  </div>
-
-                  {/* Preparation Hub Item 2: English */}
-                  <div 
-                    onClick={() => {
-                      setSelectedPrepSubject("English");
-                      setPreviousScreen("home");
-                      setCurrentScreen("prep-sub");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#F3E8FF] rounded-xl flex items-center justify-center text-purple-600 shrink-0">
-                      <Globe className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">English</span>
-                  </div>
-
-                  {/* Preparation Hub Item 3: Mathematics */}
-                  <div 
-                    onClick={() => {
-                      setSelectedPrepSubject("Mathematics");
-                      setPreviousScreen("home");
-                      setCurrentScreen("prep-sub");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#E6F0FA] rounded-xl flex items-center justify-center text-blue-600 shrink-0">
-                      <Calculator className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Mathematics</span>
-                  </div>
-
-                  {/* Preparation Hub Item 4: Science */}
-                  <div 
-                    onClick={() => {
-                      setSelectedPrepSubject("Science");
-                      setPreviousScreen("home");
-                      setCurrentScreen("prep-sub");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
-                  >
-                    <div className="w-11 h-11 bg-[#EBF7EE] rounded-xl flex items-center justify-center text-green-600 shrink-0">
-                      <Sparkles className="w-5.5 h-5.5 stroke-[2.2px]" />
-                    </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">Science</span>
-                  </div>
+                  {allPrepSubjectsData.slice(0, 4).map((subject, idx) => {
+                    const SubIcon = subject.icon || BookOpen;
+                    return (
+                      <div 
+                        key={subject.id || idx}
+                        onClick={() => {
+                          setSelectedPrepSubject(subject.name);
+                          setPreviousScreen("home");
+                          setCurrentScreen("prep-sub");
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                      >
+                        <div className={`w-11 h-11 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
+                          <SubIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
+                        </div>
+                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                          {subject.name}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2094,23 +2072,12 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* 10 Subjects Grid - Apple UI Cards */}
+              {/* Subjects Grid - Apple UI Cards */}
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  { name: "Bangla", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
-                  { name: "English", bnName: "ইংরেজি", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
-                  { name: "Mathematics", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
-                  { name: "Science", bnName: "বিজ্ঞান", icon: Sparkles, bg: "bg-[#EBF7EE]", text: "text-green-600", sub: "পদার্থ, রসায়ন ও জীব" },
-                  { name: "General Knowledge", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
-                  { name: "Geography", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
-                  { name: "General Science", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
-                  { name: "Technology", bnName: "কম্পিউটার ও তথ্যপ্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
-                  { name: "Mental Ability", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
-                  { name: "Good Governance", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
-                ]
-                .filter(s => s.name.toLowerCase().includes(prepSubjectSearchQuery.toLowerCase()) || s.bnName.includes(prepSubjectSearchQuery))
+                {allPrepSubjectsData
+                .filter(s => s.name.toLowerCase().includes(prepSubjectSearchQuery.toLowerCase()) || (s.bnName && s.bnName.includes(prepSubjectSearchQuery)))
                 .map((subject, idx) => {
-                  const SubIcon = subject.icon;
+                  const SubIcon = subject.icon || BookOpen;
                   return (
                     <div 
                       key={idx}
@@ -2154,9 +2121,22 @@ export default function Home() {
 
                 <div className="grid grid-cols-1 gap-3">
                   {(() => {
-                    let subSubjectsList: { name: string; sub: string; questions: Question[] }[] = [];
+                    let subSubjectsList: { name: string; sub: string; questions: Question[]; subCategories2?: any[] }[] = [];
 
-                    if (selectedPrepSubject === "Bangla") {
+                    const dbMatch = prepSubjectsList.find(s => 
+                      s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                      (s.bnName && s.bnName === selectedPrepSubject) || 
+                      s.id === selectedPrepSubject
+                    );
+
+                    if (dbMatch && dbMatch.subSubjects && dbMatch.subSubjects.length > 0) {
+                      subSubjectsList = dbMatch.subSubjects.map(sub => ({
+                        name: sub.name,
+                        sub: sub.sub || "অধ্যায় ভিত্তিক প্রস্তুতি",
+                        questions: QUIZ_QUESTIONS,
+                        subCategories2: sub.subCategories2 || []
+                      }));
+                    } else if (selectedPrepSubject === "Bangla") {
                       subSubjectsList = [
                         { name: "Bangla 1st Paper", sub: "বাংলা সাহিত্য ও গল্প-কবিতা", questions: BANGLA_1ST_QUESTIONS },
                         { name: "Bangla 2nd Paper", sub: "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব", questions: BANGLA_2ND_QUESTIONS }
@@ -2297,6 +2277,26 @@ export default function Home() {
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
             <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
               
+              {/* If subCategories2 exist, render Level 3 sub-categories */}
+              {selectedPrepSubSubject.subCategories2 && selectedPrepSubSubject.subCategories2.length > 0 && (
+                <div className="space-y-2 bg-orange-50/50 border border-orange-100 rounded-2xl p-3.5">
+                  <h5 className="text-xs font-black text-orange-800 tracking-wide">
+                    উপ-ক্যাটাগরি সমূহ (Sub-Categories):
+                  </h5>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {selectedPrepSubSubject.subCategories2.map((sc2: any, scIdx: number) => (
+                      <div 
+                        key={sc2.id || scIdx}
+                        className="bg-white border border-orange-200 text-orange-900 rounded-xl px-3 py-1.5 text-xs font-extrabold shadow-2xs flex flex-col"
+                      >
+                        <span>{sc2.name}</span>
+                        {sc2.sub && <span className="text-[10px] font-medium text-slate-500">{sc2.sub}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-center">
                   <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">

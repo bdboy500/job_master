@@ -30,7 +30,17 @@ import {
   RefreshCw,
   Archive,
   Package,
-  Tag
+  Tag,
+  ArrowUp,
+  ArrowDown,
+  Layers,
+  Grid,
+  ChevronRight,
+  Briefcase,
+  Zap,
+  Globe,
+  Calculator,
+  GraduationCap
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -38,6 +48,19 @@ import { getSupabase } from "../../lib/supabase";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { getTodayVisitorCount } from "../../lib/visitors";
+import { 
+  CourseItem, 
+  PrepSubjectItem, 
+  SubCategoryItem, 
+  SubCategory2Item,
+  getCachedCourses, 
+  getCachedPrepSubjects, 
+  fetchCoursesFromDb, 
+  fetchPrepSubjectsFromDb, 
+  saveCoursesToDb, 
+  savePrepSubjectsToDb, 
+  subscribeToCoursesAndPrep 
+} from "../../lib/courses_and_subjects";
 
 // Interfaces for local state types
 function formatDisplayDate(dateTimeStr: string): string {
@@ -131,7 +154,7 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub">("questions");
 
   // Packages Management State
   const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
@@ -144,6 +167,33 @@ export default function AdminPage() {
   const [pkgFormCategory, setPkgFormCategory] = useState<"all" | "course">("all");
   const [pkgFormOrder, setPkgFormOrder] = useState<number>(1);
   const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
+
+  // Our Courses Management State
+  const [coursesList, setCoursesList] = useState<CourseItem[]>(getCachedCourses());
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [courseFormSerial, setCourseFormSerial] = useState<number>(1);
+  const [courseFormId, setCourseFormId] = useState<string>("");
+  const [courseFormName, setCourseFormName] = useState<string>("");
+  const [courseFormTitle, setCourseFormTitle] = useState<string>("");
+  const [courseFormDesc, setCourseFormDesc] = useState<string>("");
+  const [courseFormCategory, setCourseFormCategory] = useState<string>("BCS");
+  const [courseFormIcon, setCourseFormIcon] = useState<string>("BookOpen");
+  const [courseFormBg, setCourseFormBg] = useState<string>("bg-[#FFF1E6]");
+  const [courseFormIconColor, setCourseFormIconColor] = useState<string>("text-orange-600");
+  const [courseFormSubSubjects, setCourseFormSubSubjects] = useState<SubCategoryItem[]>([]);
+
+  // Preparation Hub Management State
+  const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>(getCachedPrepSubjects());
+  const [editingPrepId, setEditingPrepId] = useState<string | null>(null);
+  const [prepFormSerial, setPrepFormSerial] = useState<number>(1);
+  const [prepFormId, setPrepFormId] = useState<string>("");
+  const [prepFormName, setPrepFormName] = useState<string>("");
+  const [prepFormBnName, setPrepFormBnName] = useState<string>("");
+  const [prepFormSub, setPrepFormSub] = useState<string>("");
+  const [prepFormIcon, setPrepFormIcon] = useState<string>("BookOpen");
+  const [prepFormBg, setPrepFormBg] = useState<string>("bg-[#FFF1E6]");
+  const [prepFormText, setPrepFormText] = useState<string>("text-orange-600");
+  const [prepFormSubSubjects, setPrepFormSubSubjects] = useState<SubCategoryItem[]>([]);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -167,87 +217,44 @@ export default function AdminPage() {
     "BCS Health Question"
   ];
 
-  // Predefined Courses & Exam Types
+  // Dynamic Courses & Exam Types list
   const COURSES = [
     { id: "all_courses", name: "🌐 সকল কোর্স (All Courses - সব কোর্সে দেখাবে)" },
-    { id: "bcs", name: "BCS Course (বিসিএস কোর্স)" },
-    { id: "bank", name: "Bank Jobs (ব্যাংক নিয়োগ)" },
-    { id: "primary", name: "Primary Teacher (প্রাথমিক শিক্ষক)" },
-    { id: "ntrca", name: "NTRCA Exam (এনটিআরসিএ)" },
-    { id: "psc", name: "PSC Exams (পিএসসি পরীক্ষা)" },
-    { id: "all_job", name: "All Job Special (সকল জব প্রস্তুতি)" },
-    { id: "bangla", name: "Bangla Subject (বাংলা বিষয়)" },
-    { id: "english", name: "English Subject (ইংরেজি বিষয়)" },
-    { id: "mathematics", name: "Mathematics Subject (গণিত বিষয়)" },
-    { id: "science", name: "Science Subject (বিজ্ঞান বিষয়)" },
-    { id: "general_knowledge", name: "General Knowledge (সাধারণ জ্ঞান)" },
-    { id: "geography", name: "Geography (ভূগোল)" },
-    { id: "general_science", name: "General Science (সাধারণ বিজ্ঞান)" },
-    { id: "technology", name: "Technology (কম্পিউটার ও তথ্যপ্রযুক্তি)" },
-    { id: "mental_ability", name: "Mental Ability (মানসিক দক্ষতা)" },
-    { id: "good_governance", name: "Good Governance (নৈতিকতা ও সুশাসন)" }
+    ...coursesList.map(c => ({
+      id: c.id,
+      name: `${c.name} (${c.title})`
+    })),
+    { id: "all_job", name: "All Job Special (সকল জব প্রস্তুতি)" }
   ];
 
+  // Dynamic Sub Subjects Map from dynamic Preparation Subjects and Courses
   const SUB_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {
-    bangla: [
-      { id: "all", name: "সকল বিষয় / পেপার (All Papers)" },
-      { id: "Bangla 1st Paper", name: "Bangla 1st Paper (বাংলা ১ম পত্র)" },
-      { id: "Bangla 2nd Paper", name: "Bangla 2nd Paper (বাংলা ২য় পত্র)" }
-    ],
-    english: [
-      { id: "all", name: "সকল বিষয় / পেপার (All Papers)" },
-      { id: "English 1st Paper", name: "English 1st Paper (English Literature)" },
-      { id: "English 2nd Paper", name: "English 2nd Paper (English Grammar)" }
-    ],
-    mathematics: [
-      { id: "all", name: "সকল গণিত পার্ট (All Mathematics Parts)" },
-      { id: "Arithmetic (পাটিগণিত)", name: "Arithmetic (পাটিগণিত)" },
-      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" },
-      { id: "Geometry (জ্যামিতি)", name: "Geometry (জ্যামিতি)" }
-    ],
-    math: [
-      { id: "all", name: "সকল গণিত পার্ট (All Mathematics Parts)" },
-      { id: "Arithmetic (পাটিগণিত)", name: "Arithmetic (পাটিগণিত)" },
-      { id: "Algebra (বীজগণিত)", name: "Algebra (বীজগণিত)" },
-      { id: "Geometry (জ্যামিতি)", name: "Geometry (জ্যামিতি)" }
-    ],
-    science: [
-      { id: "all", name: "সকল বিজ্ঞান শাখা (All Science Branches)" },
-      { id: "Physics", name: "Physics (পদার্থবিজ্ঞান)" },
-      { id: "Chemistry", name: "Chemistry (রসায়ন)" },
-      { id: "Biology", name: "Biology (জীববিজ্ঞান)" }
-    ],
-    general_knowledge: [
-      { id: "all", name: "সকল সাধারণ জ্ঞান বিষয় (All GK Subjects)" },
-      { id: "Bangladesh Affairs", name: "Bangladesh Affairs (বাংলাদেশ বিষয়াবলী)" },
-      { id: "International Affairs", name: "International Affairs (আন্তর্জাতিক বিষয়াবলী)" }
-    ],
-    geography: [
-      { id: "all", name: "সকল ভূগোল অধ্যায় (All Geography Modules)" },
-      { id: "Environment & Geography", name: "Environment & Geography (পরিবেশ ও ভূ-প্রকৃতি)" },
-      { id: "Disaster Management", name: "Disaster Management (দুর্যোগ ব্যবস্থাপনা)" }
-    ],
-    general_science: [
-      { id: "all", name: "সকল সাধারণ বিজ্ঞান অধ্যায়" },
-      { id: "Daily Science", name: "Daily Science (দৈনন্দিন বিজ্ঞান)" },
-      { id: "General Medical", name: "General Medical (সাধারণ চিকিৎসা)" }
-    ],
-    technology: [
-      { id: "all", name: "সকল তথ্যপ্রযুক্তি অধ্যায়" },
-      { id: "Computer Basics", name: "Computer Basics (কম্পিউটার শিক্ষা)" },
-      { id: "ICT & Technology", name: "ICT & Technology (তথ্যপ্রযুক্তি)" }
-    ],
-    mental_ability: [
-      { id: "all", name: "সকল মানসিক দক্ষতা অধ্যায়" },
-      { id: "Mathematical Logic", name: "Mathematical Logic (গাণিতিক যুক্তি)" },
-      { id: "Mental Skills", name: "Mental Skills (মনস্তাত্ত্বিক দক্ষতা)" }
-    ],
-    good_governance: [
-      { id: "all", name: "সকল নৈতিকতা ও সুশাসন অধ্যায়" },
-      { id: "Ethics & Values", name: "Ethics & Values (নৈতিকতা ও মূল্যবোধ)" },
-      { id: "Good Governance", name: "Good Governance (সুশাসন)" }
-    ]
+    all_courses: [{ id: "all", name: "সকল বিষয় / পেপার (All Papers)" }]
   };
+
+  prepSubjectsList.forEach(subject => {
+    const key = subject.name.toLowerCase();
+    const subs: { id: string; name: string }[] = [{ id: "all", name: "সকল বিষয় / পেপার (All Papers)" }];
+    (subject.subSubjects || []).forEach(sub => {
+      subs.push({ id: sub.name, name: `${sub.name} (${sub.sub || ""})` });
+      (sub.subCategories2 || []).forEach(sub2 => {
+        subs.push({ id: sub2.name, name: `└─ ${sub2.name}` });
+      });
+    });
+    SUB_SUBJECTS_MAP[key] = subs;
+    if (key === "mathematics") SUB_SUBJECTS_MAP["math"] = subs;
+  });
+
+  coursesList.forEach(course => {
+    const key = course.id.toLowerCase();
+    if (!SUB_SUBJECTS_MAP[key]) {
+      const subs: { id: string; name: string }[] = [{ id: "all", name: "সকল সেকশন (All Sections)" }];
+      (course.subSubjects || []).forEach(sub => {
+        subs.push({ id: sub.name, name: `${sub.name} (${sub.sub || ""})` });
+      });
+      SUB_SUBJECTS_MAP[key] = subs;
+    }
+  });
 
   const EXAM_TYPES = [
     { id: "weekly", name: "সাপ্তাহিক মডেল টেস্ট (Weekly Model Test)" },
@@ -428,9 +435,20 @@ export default function AdminPage() {
       setPkgFormOrder(pkgs.length + 1);
     });
     const unsubPkgs = subscribeToPackages(setPackagesList);
+
+    // Fetch courses & prep subjects & subscribe
+    fetchCoursesFromDb().then((courses) => {
+      setCoursesList(courses);
+    });
+    fetchPrepSubjectsFromDb().then((prep) => {
+      setPrepSubjectsList(prep);
+    });
+    const unsubCoursesPrep = subscribeToCoursesAndPrep(setCoursesList, setPrepSubjectsList);
+
     return () => {
       unsubExams();
       unsubPkgs();
+      unsubCoursesPrep();
     };
   }, []);
 
@@ -540,6 +558,179 @@ export default function AdminPage() {
         handleCancelPkgEdit();
       }
     }
+  };
+
+  // --- OUR COURSES HANDLERS ---
+  const handleEditCourse = (course: CourseItem) => {
+    setEditingCourseId(course.id);
+    setCourseFormSerial(course.serial || 1);
+    setCourseFormId(course.id);
+    setCourseFormName(course.name);
+    setCourseFormTitle(course.title);
+    setCourseFormDesc(course.desc);
+    setCourseFormCategory(course.category || "BCS");
+    setCourseFormIcon(course.icon || "BookOpen");
+    setCourseFormBg(course.bg || "bg-[#FFF1E6]");
+    setCourseFormIconColor(course.iconColor || "text-orange-600");
+    setCourseFormSubSubjects(course.subSubjects ? JSON.parse(JSON.stringify(course.subSubjects)) : []);
+  };
+
+  const handleCancelCourseEdit = () => {
+    setEditingCourseId(null);
+    setCourseFormSerial(coursesList.length + 1);
+    setCourseFormId("");
+    setCourseFormName("");
+    setCourseFormTitle("");
+    setCourseFormDesc("");
+    setCourseFormCategory("BCS");
+    setCourseFormIcon("BookOpen");
+    setCourseFormBg("bg-[#FFF1E6]");
+    setCourseFormIconColor("text-orange-600");
+    setCourseFormSubSubjects([]);
+  };
+
+  const handleSaveCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseFormName.trim() || !courseFormTitle.trim()) {
+      triggerNotification("error", "কোর্সের নাম এবং টাইটেল দেওয়া বাধ্যতামূলক।");
+      return;
+    }
+    const cId = courseFormId.trim() || courseFormName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+
+    const newCourse: CourseItem = {
+      id: editingCourseId || cId,
+      name: courseFormName.trim(),
+      title: courseFormTitle.trim(),
+      desc: courseFormDesc.trim(),
+      category: courseFormCategory,
+      icon: courseFormIcon,
+      bg: courseFormBg,
+      iconColor: courseFormIconColor,
+      serial: Number(courseFormSerial) || 1,
+      subSubjects: courseFormSubSubjects
+    };
+
+    let updatedList = [...coursesList];
+    if (editingCourseId) {
+      const idx = updatedList.findIndex(c => c.id === editingCourseId);
+      if (idx >= 0) updatedList[idx] = newCourse;
+      else updatedList.push(newCourse);
+    } else {
+      updatedList.push(newCourse);
+    }
+
+    updatedList.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    setCoursesList(updatedList);
+    await saveCoursesToDb(updatedList);
+    triggerNotification("success", "কোর্স সফলভাবে সার্ভারে আপডেট করা হয়েছে!");
+    handleCancelCourseEdit();
+  };
+
+  const handleDeleteCourse = async (id: string, name: string) => {
+    if (!confirm(`আপনি কি নিশ্চিত যে "${name}" কোর্সটি ডিলিট করতে চান?`)) return;
+    const updated = coursesList.filter(c => c.id !== id);
+    setCoursesList(updated);
+    await saveCoursesToDb(updated);
+    triggerNotification("success", "কোর্স সফলভাবে ডিলিট করা হয়েছে।");
+    if (editingCourseId === id) handleCancelCourseEdit();
+  };
+
+  const handleMoveCourseSerial = async (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= coursesList.length) return;
+    const newList = [...coursesList];
+    const temp = newList[index];
+    newList[index] = newList[targetIdx];
+    newList[targetIdx] = temp;
+    newList.forEach((item, idx) => { item.serial = idx + 1; });
+    setCoursesList(newList);
+    await saveCoursesToDb(newList);
+    triggerNotification("success", "কোর্স সিরিয়াল আপডেট করা হয়েছে!");
+  };
+
+  // --- PREPARATION HUB HANDLERS ---
+  const handleEditPrep = (prep: PrepSubjectItem) => {
+    setEditingPrepId(prep.id);
+    setPrepFormSerial(prep.serial || 1);
+    setPrepFormId(prep.id);
+    setPrepFormName(prep.name);
+    setPrepFormBnName(prep.bnName);
+    setPrepFormSub(prep.sub || "");
+    setPrepFormIcon(prep.icon || "BookOpen");
+    setPrepFormBg(prep.bg || "bg-[#FFF1E6]");
+    setPrepFormText(prep.text || "text-orange-600");
+    setPrepFormSubSubjects(prep.subSubjects ? JSON.parse(JSON.stringify(prep.subSubjects)) : []);
+  };
+
+  const handleCancelPrepEdit = () => {
+    setEditingPrepId(null);
+    setPrepFormSerial(prepSubjectsList.length + 1);
+    setPrepFormId("");
+    setPrepFormName("");
+    setPrepFormBnName("");
+    setPrepFormSub("");
+    setPrepFormIcon("BookOpen");
+    setPrepFormBg("bg-[#FFF1E6]");
+    setPrepFormText("text-orange-600");
+    setPrepFormSubSubjects([]);
+  };
+
+  const handleSavePrep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prepFormName.trim() || !prepFormBnName.trim()) {
+      triggerNotification("error", "সাবজেক্টের ইংরেজি ও বাংলা নাম দেওয়া বাধ্যতামূলক।");
+      return;
+    }
+    const pId = prepFormId.trim() || `prep_${prepFormName.toLowerCase().replace(/\s+/g, "_")}`;
+
+    const newPrep: PrepSubjectItem = {
+      id: editingPrepId || pId,
+      name: prepFormName.trim(),
+      bnName: prepFormBnName.trim(),
+      sub: prepFormSub.trim(),
+      icon: prepFormIcon,
+      bg: prepFormBg,
+      text: prepFormText,
+      serial: Number(prepFormSerial) || 1,
+      subSubjects: prepFormSubSubjects
+    };
+
+    let updatedList = [...prepSubjectsList];
+    if (editingPrepId) {
+      const idx = updatedList.findIndex(p => p.id === editingPrepId);
+      if (idx >= 0) updatedList[idx] = newPrep;
+      else updatedList.push(newPrep);
+    } else {
+      updatedList.push(newPrep);
+    }
+
+    updatedList.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    setPrepSubjectsList(updatedList);
+    await savePrepSubjectsToDb(updatedList);
+    triggerNotification("success", "প্রিপারেশন সাবজেক্ট সফলভাবে সার্ভারে আপডেট হয়েছে!");
+    handleCancelPrepEdit();
+  };
+
+  const handleDeletePrep = async (id: string, name: string) => {
+    if (!confirm(`আপনি কি নিশ্চিত যে "${name}" প্রিপারেশন সাবজেক্টটি ডিলিট করতে চান?`)) return;
+    const updated = prepSubjectsList.filter(p => p.id !== id);
+    setPrepSubjectsList(updated);
+    await savePrepSubjectsToDb(updated);
+    triggerNotification("success", "সাবজেক্ট ডিলিট করা হয়েছে।");
+    if (editingPrepId === id) handleCancelPrepEdit();
+  };
+
+  const handleMovePrepSerial = async (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= prepSubjectsList.length) return;
+    const newList = [...prepSubjectsList];
+    const temp = newList[index];
+    newList[index] = newList[targetIdx];
+    newList[targetIdx] = temp;
+    newList.forEach((item, idx) => { item.serial = idx + 1; });
+    setPrepSubjectsList(newList);
+    await savePrepSubjectsToDb(newList);
+    triggerNotification("success", "সাবজেক্ট সিরিয়াল আপডেট করা হয়েছে!");
   };
 
   // Exam Paper Builder handlers
@@ -1328,6 +1519,32 @@ export default function AdminPage() {
             >
               <Package className="w-4 h-4" />
               <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
+            </button>
+
+            {/* Tab Button 6: Our Courses Management */}
+            <button
+              onClick={() => setActiveTab("courses")}
+              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+                activeTab === "courses"
+                  ? "bg-orange-50 text-[#FF6A00]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+              <span>কোর্সসমূহ ({coursesList.length})</span>
+            </button>
+
+            {/* Tab Button 7: Preparation Hub Management */}
+            <button
+              onClick={() => setActiveTab("prep_hub")}
+              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+                activeTab === "prep_hub"
+                  ? "bg-orange-50 text-[#FF6A00]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
             </button>
           </div>
 
@@ -2858,6 +3075,688 @@ export default function AdminPage() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW F: OUR COURSES MANAGEMENT                             */}
+          {/* ========================================================= */}
+          {activeTab === "courses" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fade-in text-left">
+              
+              {/* Left Column: Add/Edit Course Form */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0">
+                        <Compass className="w-4 h-4 stroke-[2.5px]" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                          {editingCourseId ? "কোর্স এডিট করুন" : "নতুন কোর্স যোগ করুন"}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold">
+                          {editingCourseId ? "কোর্সের তথ্য সংশোধন করুন" : "হোম পেজে 'Our Courses' এ প্রদর্শনের জন্য"}
+                        </p>
+                      </div>
+                    </div>
+                    {editingCourseId && (
+                      <button
+                        onClick={handleCancelCourseEdit}
+                        className="text-[10px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg cursor-pointer"
+                      >
+                        বাতিল
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSaveCourse} className="space-y-3.5">
+                    {/* Serial Order & ID */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          সিরিয়াল (Serial) *
+                        </label>
+                        <input 
+                          type="number"
+                          min={1}
+                          value={courseFormSerial}
+                          onChange={(e) => setCourseFormSerial(parseInt(e.target.value) || 1)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2 text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          কোর্স আইডি (ID)
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="যেমন: office_assistant"
+                          value={courseFormId}
+                          onChange={(e) => setCourseFormId(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2 text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Name */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        কোর্সের নাম (Course Short Name) *
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="যেমন: অফিস সহায়ক (Office Assistant)"
+                        value={courseFormName}
+                        onChange={(e) => setCourseFormName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                        required
+                      />
+                    </div>
+
+                    {/* Title */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        কোর্স ফুল টাইটেল (Title) *
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="যেমন: অফিস সহকারী ও কম্পিউটার অপারেটর স্পেশাল কোর্স"
+                        value={courseFormTitle}
+                        onChange={(e) => setCourseFormTitle(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                        required
+                      />
+                    </div>
+
+                    {/* Category & Icon */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ক্যাটাগরি (Category)
+                        </label>
+                        <select
+                          value={courseFormCategory}
+                          onChange={(e) => setCourseFormCategory(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="BCS">BCS</option>
+                          <option value="Bank">Bank Jobs</option>
+                          <option value="Teachers">Teachers / NTRCA</option>
+                          <option value="Government Job">Government Job</option>
+                          <option value="Other">Other / অন্যান্য</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          আইকন (Icon)
+                        </label>
+                        <select
+                          value={courseFormIcon}
+                          onChange={(e) => setCourseFormIcon(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="BookOpen">📖 BookOpen</option>
+                          <option value="Calculator">🧮 Calculator</option>
+                          <option value="Globe">🌐 Globe</option>
+                          <option value="GraduationCap">🎓 GraduationCap</option>
+                          <option value="FileText">📄 FileText</option>
+                          <option value="Briefcase">💼 Briefcase</option>
+                          <option value="Users">👥 Users</option>
+                          <option value="Shield">🛡️ Shield</option>
+                          <option value="Zap">⚡ Zap</option>
+                          <option value="Award">🏆 Award</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Colors */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ব্যাকগ্রাউন্ড কালার Class
+                        </label>
+                        <select
+                          value={courseFormBg}
+                          onChange={(e) => setCourseFormBg(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="bg-[#FFF1E6]">Orange Tint (bg-[#FFF1E6])</option>
+                          <option value="bg-[#E6F0FA]">Blue Tint (bg-[#E6F0FA])</option>
+                          <option value="bg-[#EBF7EE]">Green Tint (bg-[#EBF7EE])</option>
+                          <option value="bg-[#F3E8FF]">Purple Tint (bg-[#F3E8FF])</option>
+                          <option value="bg-[#FCE7F3]">Rose Tint (bg-[#FCE7F3])</option>
+                          <option value="bg-[#FEF3C7]">Amber Tint (bg-[#FEF3C7])</option>
+                          <option value="bg-[#DCFCE7]">Emerald Tint (bg-[#DCFCE7])</option>
+                          <option value="bg-[#E0F2FE]">Sky Tint (bg-[#E0F2FE])</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          আইকন কালার Class
+                        </label>
+                        <select
+                          value={courseFormIconColor}
+                          onChange={(e) => setCourseFormIconColor(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="text-orange-600">Orange (text-orange-600)</option>
+                          <option value="text-blue-600">Blue (text-blue-600)</option>
+                          <option value="text-green-600">Green (text-green-600)</option>
+                          <option value="text-purple-600">Purple (text-purple-600)</option>
+                          <option value="text-rose-600">Rose (text-rose-600)</option>
+                          <option value="text-amber-600">Amber (text-amber-600)</option>
+                          <option value="text-emerald-600">Emerald (text-emerald-600)</option>
+                          <option value="text-sky-600">Sky (text-sky-600)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        বিস্তারিত বিবরণ (Description)
+                      </label>
+                      <textarea 
+                        rows={2}
+                        placeholder="যেমন: সরকারি দপ্তর ও পরিদপ্তরে অফিস সহকারী ও কম্পিউটার অপারেটর পদের জন্য..."
+                        value={courseFormDesc}
+                        onChange={(e) => setCourseFormDesc(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all text-slate-800 resize-none"
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      className="w-full py-3 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                    >
+                      <Check className="w-4 h-4 stroke-[3px]" />
+                      <span>{editingCourseId ? "কোর্স আপডেট করুন" : "কোর্স সেভ করুন"}</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: Courses List & Re-ordering */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                      কোর্স লিস্ট ও সিরিয়াল কন্ট্রোল ({coursesList.length})
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      উপরে/নিচে নিয়ে সিরিয়াল ঠিক করুন
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {coursesList.length === 0 ? (
+                      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                        কোনো কোর্স যুক্ত নেই। বামপাশের ফর্ম পূরণ করে যোগ করুন।
+                      </div>
+                    ) : (
+                      coursesList.map((course, idx) => (
+                        <div 
+                          key={course.id}
+                          className={`bg-white border ${
+                            editingCourseId === course.id ? "border-[#FF6A00] ring-2 ring-[#FF6A00]/10" : "border-slate-100"
+                          } rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-3`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Serial re-ordering controls */}
+                            <div className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 border border-slate-100 rounded-xl p-1 shrink-0">
+                              <button
+                                onClick={() => handleMoveCourseSerial(idx, "up")}
+                                disabled={idx === 0}
+                                className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                title="উপরে সরান"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
+                              </button>
+                              <span className="text-[10px] font-mono font-black text-slate-700">
+                                #{course.serial || idx + 1}
+                              </span>
+                              <button
+                                onClick={() => handleMoveCourseSerial(idx, "down")}
+                                disabled={idx === coursesList.length - 1}
+                                className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                title="নিচে সরান"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5 stroke-[2.5px]" />
+                              </button>
+                            </div>
+
+                            {/* Course Icon & Details */}
+                            <div className={`w-10 h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
+                              <Compass className="w-5 h-5 stroke-[2.2px]" />
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-xs text-slate-900">
+                                  {course.name}
+                                </span>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                  {course.category}
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-medium text-slate-500 line-clamp-1">
+                                {course.title}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleEditCourse(course)}
+                              className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>এডিট</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCourse(course.id, course.name)}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW G: PREPARATION HUB & SUB-CATEGORIES MANAGEMENT       */}
+          {/* ========================================================= */}
+          {activeTab === "prep_hub" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fade-in text-left">
+              
+              {/* Left Column: Add/Edit Prep Subject & Multi-Level Sub-Categories Form */}
+              <div className="lg:col-span-6 space-y-6">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                        <BookOpen className="w-4 h-4 stroke-[2.5px]" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                          {editingPrepId ? "প্রিপারেশন সাবজেক্ট এডিট করুন" : "নতুন প্রিপারেশন সাবজেক্ট যোগ করুন"}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold">
+                          {editingPrepId ? "সাবজেক্ট ও সাব-ক্যাটাগরি আপডেট করুন" : "হোম পেজে Preparation Hub এ দেখাবে"}
+                        </p>
+                      </div>
+                    </div>
+                    {editingPrepId && (
+                      <button
+                        onClick={handleCancelPrepEdit}
+                        className="text-[10px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg cursor-pointer"
+                      >
+                        বাতিল
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSavePrep} className="space-y-4">
+                    {/* Serial Order & ID */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          সিরিয়াল (Serial) *
+                        </label>
+                        <input 
+                          type="number"
+                          min={1}
+                          value={prepFormSerial}
+                          onChange={(e) => setPrepFormSerial(parseInt(e.target.value) || 1)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3.5 py-2 text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          সাবজেক্ট আইডি (ID)
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="যেমন: prep_bangla"
+                          value={prepFormId}
+                          onChange={(e) => setPrepFormId(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3.5 py-2 text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    {/* English & Bangla Name */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ইংরেজি নাম (e.g. Bangla) *
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="Bangla"
+                          value={prepFormName}
+                          onChange={(e) => setPrepFormName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          বাংলা নাম (e.g. বাংলা) *
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="বাংলা"
+                          value={prepFormBnName}
+                          onChange={(e) => setPrepFormBnName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sub-title */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        ছোট বিবরণ / সাব-টাইটেল (Sub-title)
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="যেমন: সাহিত্য ও ব্যাকরণ"
+                        value={prepFormSub}
+                        onChange={(e) => setPrepFormSub(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-800"
+                      />
+                    </div>
+
+                    {/* MULTI-LEVEL SUB-CATEGORY EDITOR (Level 2 & Level 3) */}
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-purple-600" />
+                            <span>সাব-ক্যাটাগরি ও সাব-টপিকসমূহ (Level 2 & Level 3)</span>
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-bold">
+                            লেভেল ২: সাব-ক্যাটাগরি, লেভেল ৩: সাব-ক্যাটাগরি ২ (যেমন: ধ্বনি ও বর্ণ)
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSub: SubCategoryItem = {
+                              id: `sub_${Date.now()}`,
+                              name: "নতুন সাব-ক্যাটাগরি",
+                              sub: "সংক্ষিপ্ত তথ্য",
+                              serial: prepFormSubSubjects.length + 1,
+                              subCategories2: []
+                            };
+                            setPrepFormSubSubjects([...prepFormSubSubjects, newSub]);
+                          }}
+                          className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-extrabold text-[11px] rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3px]" />
+                          <span>+ সাব-ক্যাটাগরি</span>
+                        </button>
+                      </div>
+
+                      {/* List of Level 2 Sub-Categories */}
+                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                        {prepFormSubSubjects.length === 0 ? (
+                          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs">
+                            কোনো সাব-ক্যাটাগরি যুক্ত হয়নি। '+ সাব-ক্যাটাগরি' বাটনে ক্লিক করে যোগ করুন।
+                          </div>
+                        ) : (
+                          prepFormSubSubjects.map((subItem, sIdx) => (
+                            <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
+                              {/* Level 2 Sub-Category Header & Controls */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                  Level 2 #{sIdx + 1}
+                                </span>
+                                <input 
+                                  type="text"
+                                  placeholder="সাব-ক্যাটাগরির নাম (e.g. Bangla 1st Paper)"
+                                  value={subItem.name}
+                                  onChange={(e) => {
+                                    const updated = [...prepFormSubSubjects];
+                                    updated[sIdx].name = e.target.value;
+                                    setPrepFormSubSubjects(updated);
+                                  }}
+                                  className="flex-1 bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = prepFormSubSubjects.filter((_, i) => i !== sIdx);
+                                    setPrepFormSubSubjects(updated);
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
+                                  title="মুছে ফেলুন"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {/* Level 2 Sub-text */}
+                              <input 
+                                type="text"
+                                placeholder="বিবরণ / সাব-টাইটেল (e.g. বাংলা সাহিত্য)"
+                                value={subItem.sub || ""}
+                                onChange={(e) => {
+                                  const updated = [...prepFormSubSubjects];
+                                  updated[sIdx].sub = e.target.value;
+                                  setPrepFormSubSubjects(updated);
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs text-slate-600"
+                              />
+
+                              {/* Level 3 Sub-Categories 2 (Sub-sub-categories) Manager */}
+                              <div className="bg-white border border-slate-200/60 rounded-xl p-2.5 space-y-2">
+                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                  <span>🏷️ সাব-ক্যাটাগরি ২ / টপিকসমূহ (Level 3 Topics):</span>
+                                  <span className="text-[10px] text-purple-600 font-bold">
+                                    {(subItem.subCategories2 || []).length}টি টপিক
+                                  </span>
+                                </div>
+
+                                {/* Tags list for Level 3 */}
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(subItem.subCategories2 || []).map((sub2, sub2Idx) => (
+                                    <span 
+                                      key={sub2.id || sub2Idx}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-xs font-bold"
+                                    >
+                                      <span>{sub2.name}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = [...prepFormSubSubjects];
+                                          updated[sIdx].subCategories2 = (updated[sIdx].subCategories2 || []).filter((_, i) => i !== sub2Idx);
+                                          setPrepFormSubSubjects(updated);
+                                        }}
+                                        className="hover:text-rose-600 text-purple-400 p-0.5 cursor-pointer"
+                                      >
+                                        <X className="w-3 h-3 stroke-[3px]" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+
+                                {/* Add Level 3 item form */}
+                                <div className="flex items-center gap-2 pt-1">
+                                  <input 
+                                    type="text"
+                                    id={`input_sub2_${sIdx}`}
+                                    placeholder="নতুন টপিক যোগ করুন (যেমন: ধ্বনি ও বর্ণ)"
+                                    className="flex-1 bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-lg px-2.5 py-1 text-xs text-slate-800"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        const input = e.currentTarget;
+                                        if (input.value.trim()) {
+                                          const updated = [...prepFormSubSubjects];
+                                          if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                          updated[sIdx].subCategories2!.push({
+                                            id: `sub2_${Date.now()}_${Math.random()}`,
+                                            name: input.value.trim(),
+                                            serial: updated[sIdx].subCategories2!.length + 1
+                                          });
+                                          setPrepFormSubSubjects(updated);
+                                          input.value = "";
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const input = document.getElementById(`input_sub2_${sIdx}`) as HTMLInputElement;
+                                      if (input && input.value.trim()) {
+                                        const updated = [...prepFormSubSubjects];
+                                        if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                        updated[sIdx].subCategories2!.push({
+                                          id: `sub2_${Date.now()}_${Math.random()}`,
+                                          name: input.value.trim(),
+                                          serial: updated[sIdx].subCategories2!.length + 1
+                                        });
+                                        setPrepFormSubSubjects(updated);
+                                        input.value = "";
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-all cursor-pointer"
+                                  >
+                                    + যোগ করুন
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/20 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                    >
+                      <Check className="w-4 h-4 stroke-[3px]" />
+                      <span>{editingPrepId ? "প্রিপারেশন সাবজেক্ট আপডেট করুন" : "সাবজেক্ট সার্ভারে সেভ করুন"}</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: Prep Subjects List & Re-ordering */}
+              <div className="lg:col-span-6 space-y-4">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                      প্রিপারেশন সাবজেক্টস ({prepSubjectsList.length})
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      সিরিয়াল অর্ডার কন্ট্রোল
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {prepSubjectsList.length === 0 ? (
+                      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                        কোনো প্রিপারেশন সাবজেক্ট নেই। বামপাশের ফর্ম থেকে যুক্ত করুন।
+                      </div>
+                    ) : (
+                      prepSubjectsList.map((prep, idx) => {
+                        const totalSub2Count = (prep.subSubjects || []).reduce((acc, sub) => acc + (sub.subCategories2?.length || 0), 0);
+                        return (
+                          <div 
+                            key={prep.id}
+                            className={`bg-white border ${
+                              editingPrepId === prep.id ? "border-purple-600 ring-2 ring-purple-600/10" : "border-slate-100"
+                            } rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-3`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* Serial re-ordering controls */}
+                              <div className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 border border-slate-100 rounded-xl p-1 shrink-0">
+                                <button
+                                  onClick={() => handleMovePrepSerial(idx, "up")}
+                                  disabled={idx === 0}
+                                  className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                  title="উপরে সরান"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
+                                </button>
+                                <span className="text-[10px] font-mono font-black text-slate-700">
+                                  #{prep.serial || idx + 1}
+                                </span>
+                                <button
+                                  onClick={() => handleMovePrepSerial(idx, "down")}
+                                  disabled={idx === prepSubjectsList.length - 1}
+                                  className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                  title="নিচে সরান"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 stroke-[2.5px]" />
+                                </button>
+                              </div>
+
+                              {/* Subject Icon & Title */}
+                              <div className={`w-10 h-10 ${prep.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${prep.text || "text-purple-600"} shrink-0 font-extrabold`}>
+                                <BookOpen className="w-5 h-5 stroke-[2.2px]" />
+                              </div>
+
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-extrabold text-xs text-slate-900">
+                                    {prep.bnName} ({prep.name})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                                  <span>Level 2: {(prep.subSubjects || []).length}টি</span>
+                                  <span>•</span>
+                                  <span>Level 3: {totalSub2Count}টি টপিক</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleEditPrep(prep)}
+                                className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>এডিট</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeletePrep(prep.id, prep.bnName)}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
 
