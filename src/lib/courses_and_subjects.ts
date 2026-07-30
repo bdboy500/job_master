@@ -451,7 +451,25 @@ export function getCachedPrepSubjects(): PrepSubjectItem[] {
 
 // Global fetcher & sync methods for Courses
 export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
-  // 1. Try Supabase
+  // 1. Try Server API Route (/api/courses)
+  try {
+    const res = await fetch("/api/courses", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      const courses: CourseItem[] = data.courses || [];
+      if (Array.isArray(courses) && courses.length > 0) {
+        courses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+        }
+        return courses;
+      }
+    }
+  } catch (e) {
+    console.warn("API courses fetch note:", e);
+  }
+
+  // 2. Try Supabase directly as fallback
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -477,23 +495,6 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
         return mapped;
       }
     }
-  } catch (e) {
-    console.warn("Supabase courses fetch note:", e);
-  }
-
-  // 2. Try KV
-  try {
-    const res = await fetch(CLOUD_COURSES_KV, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        data.sort((a: CourseItem, b: CourseItem) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(COURSES_KEY, JSON.stringify(data));
-        }
-        return data;
-      }
-    }
   } catch (e) {}
 
   // 3. Fallback to Local Storage / Default
@@ -508,7 +509,18 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
     window.dispatchEvent(new CustomEvent("jobmaster_courses_updated", { detail: sorted }));
   }
 
-  // Try Supabase
+  // Send to Server API Route (/api/courses)
+  try {
+    await fetch("/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sorted)
+    });
+  } catch (e) {
+    console.warn("API courses save note:", e);
+  }
+
+  // Try Supabase directly as well
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -529,21 +541,30 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
     }
   } catch (e) {}
 
-  // Sync to KV
-  try {
-    await fetch(CLOUD_COURSES_KV, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sorted)
-    });
-  } catch (e) {}
-
   return sorted;
 }
 
 // Global fetcher & sync methods for Prep Subjects
 export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
-  // 1. Try Supabase
+  // 1. Try Server API Route (/api/prep-subjects)
+  try {
+    const res = await fetch("/api/prep-subjects", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      const prepSubjects: PrepSubjectItem[] = data.prepSubjects || [];
+      if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
+        prepSubjects.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(PREP_KEY, JSON.stringify(prepSubjects));
+        }
+        return prepSubjects;
+      }
+    }
+  } catch (e) {
+    console.warn("API prep-subjects fetch note:", e);
+  }
+
+  // 2. Try Supabase directly as fallback
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -568,26 +589,9 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
         return mapped;
       }
     }
-  } catch (e) {
-    console.warn("Supabase prep subjects fetch note:", e);
-  }
-
-  // 2. Try KV
-  try {
-    const res = await fetch(CLOUD_PREP_KV, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        data.sort((a: PrepSubjectItem, b: PrepSubjectItem) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(PREP_KEY, JSON.stringify(data));
-        }
-        return data;
-      }
-    }
   } catch (e) {}
 
-  // 3. Fallback
+  // 3. Fallback to Local Storage / Default
   return getCachedPrepSubjects();
 }
 
@@ -599,7 +603,18 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
     window.dispatchEvent(new CustomEvent("jobmaster_prep_subjects_updated", { detail: sorted }));
   }
 
-  // Try Supabase
+  // Send to Server API Route (/api/prep-subjects)
+  try {
+    await fetch("/api/prep-subjects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sorted)
+    });
+  } catch (e) {
+    console.warn("API prep-subjects save note:", e);
+  }
+
+  // Try Supabase directly as well
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -617,15 +632,6 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
       }));
       await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
     }
-  } catch (e) {}
-
-  // Sync to KV
-  try {
-    await fetch(CLOUD_PREP_KV, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sorted)
-    });
   } catch (e) {}
 
   return sorted;
@@ -653,10 +659,25 @@ export function subscribeToCoursesAndPrep(
   window.addEventListener("storage", handleCourses);
   window.addEventListener("storage", handlePrep);
 
+  // Re-fetch when tab is focused
+  const handleFocus = () => {
+    fetchCoursesFromDb().then(onCourses);
+    fetchPrepSubjectsFromDb().then(onPrep);
+  };
+  window.addEventListener("focus", handleFocus);
+
+  // Periodic polling interval (every 10 seconds) to ensure all users receive Admin updates live
+  const intervalId = setInterval(() => {
+    fetchCoursesFromDb().then(onCourses);
+    fetchPrepSubjectsFromDb().then(onPrep);
+  }, 10000);
+
   return () => {
     window.removeEventListener("jobmaster_courses_updated", handleCourses);
     window.removeEventListener("jobmaster_prep_subjects_updated", handlePrep);
     window.removeEventListener("storage", handleCourses);
     window.removeEventListener("storage", handlePrep);
+    window.removeEventListener("focus", handleFocus);
+    clearInterval(intervalId);
   };
 }
