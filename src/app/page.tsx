@@ -1151,11 +1151,16 @@ export default function Home() {
                     setActiveExamSection(null);
                   } else {
                     setDrawerOpen(false);
-                    setCurrentScreen(previousScreen || "home");
+                    const dest = previousScreen || "home";
+                    setCurrentScreen(dest);
+                    if (dest === "courses") {
+                      setPreviousScreen("home");
+                    }
                   }
                 } else if (currentScreen === "courses") {
                   setDrawerOpen(false);
-                  setCurrentScreen(previousScreen || "home");
+                  setCurrentScreen("home");
+                  setPreviousScreen("home");
                 } else if (currentScreen === "prep-all-subjects") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
@@ -1365,6 +1370,7 @@ export default function Home() {
                   </div>
                   <button 
                     onClick={() => {
+                      setPreviousScreen("home");
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
@@ -1520,6 +1526,7 @@ export default function Home() {
                   </div>
                   <button 
                     onClick={() => {
+                      setPreviousScreen("home");
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
