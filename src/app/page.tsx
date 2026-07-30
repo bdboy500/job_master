@@ -1151,8 +1151,11 @@ export default function Home() {
                     setActiveExamSection(null);
                   } else {
                     setDrawerOpen(false);
-                    setCurrentScreen("home");
+                    setCurrentScreen(previousScreen || "home");
                   }
+                } else if (currentScreen === "courses") {
+                  setDrawerOpen(false);
+                  setCurrentScreen(previousScreen || "home");
                 } else if (currentScreen === "prep-all-subjects") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
@@ -1173,7 +1176,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "course-detail" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "notice" ? (
+              {currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "notice" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -1904,7 +1907,7 @@ export default function Home() {
                   </div>
 
                   {/* Question header */}
-                  <h4 className="font-extrabold text-lg text-slate-800 leading-snug">
+                  <h4 className="font-extrabold text-base sm:text-lg md:text-xl text-slate-800 leading-relaxed">
                     <MathRenderer content={(currentQuestion as any).questionText || currentQuestion.question || (currentQuestion as any).title || "Untitled Question"} />
                   </h4>
 
@@ -1922,7 +1925,7 @@ export default function Home() {
                       const isSelected = selectedOptionIndex === index;
                       const isCorrectOption = index === currentQuestion.correctIndex;
                       
-                      let btnStyle = "border border-slate-100 text-slate-600 bg-slate-50/50 hover:bg-slate-100/50";
+                      let btnStyle = "border border-slate-100 text-slate-700 bg-slate-50/50 hover:bg-slate-100/50";
                       let indicator = null;
 
                       if (isSubmitted) {
@@ -1947,7 +1950,7 @@ export default function Home() {
                           key={index}
                           onClick={() => handleSelectOption(index)}
                           disabled={isSubmitted}
-                          className={`w-full text-left py-3.5 px-5 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-3 transition-all ${btnStyle} ${!isSubmitted ? "cursor-pointer active:scale-[0.98]" : "cursor-default"}`}
+                          className={`w-full text-left py-3.5 px-5 rounded-2xl text-sm sm:text-base flex items-center justify-between gap-3 transition-all ${btnStyle} ${!isSubmitted ? "cursor-pointer active:scale-[0.98]" : "cursor-default"}`}
                         >
                           <span className="leading-normal"><MathRenderer content={option} /></span>
                           {indicator}
@@ -2027,26 +2030,11 @@ export default function Home() {
           {/* 3. SCREEN: COURSES SCREEN                                 */}
           {/* ========================================================= */}
           {currentScreen === "courses" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
-              <div className="pt-1 pb-1">
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12">
+              <div className="pt-1 pb-1 text-center">
                 <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
                   আমাদের কোর্সসমূহ (Our Courses)
                 </h3>
-                <p className="text-xs font-bold text-slate-400">
-                  যেকোনো একটি সাবজেক্ট বা কোর্স সিলেক্ট করে পরীক্ষা দিন
-                </p>
-              </div>
-
-              {/* Search Course input */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-                <input 
-                  type="text" 
-                  placeholder="কোর্স বা বিষয় খুঁজুন..."
-                  value={coursesSearchQuery}
-                  onChange={(e) => setCoursesSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs focus:outline-none focus:border-orange-500/50 shadow-2xs transition-all"
-                />
               </div>
 
               {/* 8 Course Subjects Grid - Styled exactly like Home Screen & Preparation Hub cards */}
@@ -3367,7 +3355,7 @@ export default function Home() {
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                        <p className="text-[11px] sm:text-xs font-light text-slate-500 leading-relaxed">
                           {pkg.desc}
                         </p>
                       </div>
@@ -3418,7 +3406,7 @@ export default function Home() {
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                          <p className="text-[11px] sm:text-xs font-light text-slate-500 leading-relaxed">
                             {pkg.desc}
                           </p>
                         </div>
@@ -4806,7 +4794,7 @@ export default function Home() {
                       <div key={idx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5">
                         {/* Question header */}
                         <div className="flex items-start justify-between gap-3">
-                          <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
+                          <h3 className="text-sm sm:text-base font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
                             <span className="text-[#FF6A00] shrink-0">{idx + 1})</span>
                             <span><MathRenderer content={qText} /></span>
                           </h3>
@@ -4827,13 +4815,13 @@ export default function Home() {
                             return (
                               <div 
                                 key={optIdx}
-                                className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2.5 ${
+                                className={`p-2.5 rounded-xl border text-sm font-bold transition-all flex items-center gap-2.5 ${
                                   showAsCorrect 
                                     ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold" 
                                     : "bg-slate-50 border-slate-200/80 text-slate-700"
                                 }`}
                               >
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
                                   showAsCorrect ? "bg-emerald-600 text-white" : "bg-white border border-slate-300 text-slate-600"
                                 }`}>
                                   {optionLetters[optIdx] || optIdx + 1}
@@ -4983,7 +4971,7 @@ export default function Home() {
                   <div key={qIdx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3 text-left">
                     {/* Real Question Text with Answered / Not Answered status on top-right */}
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5 flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-black text-slate-800 leading-relaxed flex items-start gap-1.5 flex-1 min-w-0">
                         <span className="text-[#FF6A00] shrink-0 font-extrabold">{qIdx + 1}.</span>
                         <span className="min-w-0 flex-1 break-words"><MathRenderer content={q.question} /></span>
                       </h3>
@@ -5012,13 +5000,13 @@ export default function Home() {
                           <div
                             key={oIdx}
                             onClick={() => handleOptionSelectExam(qIdx, oIdx)}
-                            className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-2.5 ${
+                            className={`p-3 rounded-xl border text-sm font-bold transition-all cursor-pointer flex items-center gap-2.5 ${
                               isChoiceSelected
                                 ? "bg-sky-100 border-2 border-sky-400 text-sky-950 font-black shadow-2xs"
                                 : "bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-slate-100"
                             }`}
                           >
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
                               isChoiceSelected ? "bg-sky-500 text-white" : "bg-white border border-slate-300 text-slate-600"
                             }`}>
                               {optionLetters[oIdx] || oIdx + 1}
@@ -5175,7 +5163,7 @@ export default function Home() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed pt-1">
+                <p className="text-xs text-slate-500 font-light leading-relaxed pt-1">
                   {selectedPurchasePkg.desc}
                 </p>
               </div>
@@ -5379,7 +5367,7 @@ export default function Home() {
                       >
                         {/* Header with question & status pill */}
                         <div className="flex items-start justify-between gap-3">
-                          <h4 className="text-xs sm:text-sm font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
+                          <h4 className="text-sm sm:text-base font-black text-slate-800 leading-relaxed flex items-start gap-1.5">
                             <span className="text-[#FF6A00] shrink-0">{qIdx + 1})</span>
                             <span><MathRenderer content={q.question} /></span>
                           </h4>
@@ -5427,9 +5415,9 @@ export default function Home() {
                             return (
                               <div 
                                 key={optIdx}
-                                className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2.5 ${optBg}`}
+                                className={`p-2.5 rounded-xl border text-sm font-bold transition-all flex items-center gap-2.5 ${optBg}`}
                               >
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${badgeBg}`}>
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${badgeBg}`}>
                                   {optionLetters[optIdx] || optIdx + 1}
                                 </span>
                                 <span className="leading-tight flex-1"><MathRenderer content={opt} /></span>
