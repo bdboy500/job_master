@@ -1,0 +1,70 @@
+[
+  {
+    "id": "prep-bangla",
+    "name": "Bangla",
+    "bnName": "বাংলা",
+    "icon": "BookOpen",
+    "bg": "bg-[#FFF1E6]",
+    "text": "text-orange-600",
+    "sub": "সাহিত্য ও ব্যাকরণ",
+    "serial": 1,
+    "subSubjects": [
+      { 
+        "id": "bangla-1st", 
+        "name": "Bangla 1st Paper", 
+        "sub": "বাংলা সাহিত্য ও গল্প-কবিতা",
+        "serial": 1,
+        "subCategories2": [
+          { "id": "b1-sub2-1", "name": "প্রাচীন ও মধ্যযুগ (চর্যাপদ)", "serial": 1 },
+          { "id": "b1-sub2-2", "name": "আধুনিক যুগ (গল্প ও উপন্যাস)", "serial": 2 },
+          { "id": "b1-sub2-3", "name": "কবিতা ও নাটক", "serial": 3 }
+        ]
+      },
+      { 
+        "id": "bangla-2nd", 
+        "name": "Bangla 2nd Paper", 
+        "sub": "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব",
+        "serial": 2,
+        "subCategories2": [
+          { "id": "b2-sub2-1", "name": "ধ্বনি ও বর্ণ", "serial": 1 },
+          { "id": "b2-sub2-2", "name": "শব্দ ও পদ প্রকরণ", "serial": 2 },
+          { "id": "b2-sub2-3", "name": "সমাস ও কারক", "serial": 3 },
+          { "id": "b2-sub2-4", "name": "সন্ধি ও উপসর্গ", "serial": 4 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "prep-english",
+    "name": "English",
+    "bnName": "ইংরেজি",
+    "icon": "Globe",
+    "bg": "bg-[#F3E8FF]",
+    "text": "text-purple-600",
+    "sub": "Literature & Grammar",
+    "serial": 2,
+    "subSubjects": [
+      { 
+        "id": "eng-1st", 
+        "name": "English 1st Paper", 
+        "sub": "English Literature & Reading",
+        "serial": 1,
+        "subCategories2": [
+          { "id": "e1-sub2-1", "name": "Literary Periods & Authors", "serial": 1 },
+          { "id": "e1-sub2-2", "name": "Famous Books & Quotes", "serial": 2 }
+        ]
+      },
+      { 
+        "id": "eng-2nd", 
+        "name": "English 2nd Paper", 
+        "sub": "Grammar & Vocabulary",
+        "serial": 2,
+        "subCategories2": [
+          { "id": "e2-sub2-1", "name": "Parts of Speech & Tense", "serial": 1 },
+          { "id": "e2-sub2-2", "name": "Prepositions & Idioms", "serial": 2 },
+          { "id": "e2-sub2-3", "name": "Sentence Correction & Voice", "serial": 3 }
+        ]
+      }
+    ]
+  }
+]

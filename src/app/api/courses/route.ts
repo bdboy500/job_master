@@ -6,31 +6,36 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const CACHE_FILE = path.join("/tmp", "jobmaster_courses_cache.json");
+const PROJECT_DATA_FILE = path.join(process.cwd(), "src", "data", "courses_data.json");
+const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_courses_cache.json");
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_courses_v2";
 
 let memoryCoursesCache: CourseItem[] | null = null;
 
-function loadFromFileCache(): CourseItem[] | null {
+function loadFromDiskFile(filePath: string): CourseItem[] | null {
   try {
-    if (fs.existsSync(CACHE_FILE)) {
-      const raw = fs.readFileSync(CACHE_FILE, "utf-8");
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
   } catch (e) {
-    console.warn("Error reading courses file cache:", e);
+    console.warn(`Note reading disk file ${filePath}:`, e);
   }
   return null;
 }
 
-function saveToFileCache(courses: CourseItem[]) {
+function saveToDiskFile(filePath: string, courses: CourseItem[]) {
   try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(courses, null, 2), "utf-8");
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, JSON.stringify(courses, null, 2), "utf-8");
   } catch (e) {
-    console.warn("Error writing courses file cache:", e);
+    // Expected on Vercel read-only filesystem
   }
 }
 
@@ -63,27 +68,7 @@ async function saveToKvStore(courses: CourseItem[]) {
 
 export async function GET() {
   try {
-    // Layer 1: Memory Cache (instant within process)
-    if (memoryCoursesCache && memoryCoursesCache.length > 0) {
-      return NextResponse.json({ courses: memoryCoursesCache, source: "memory" });
-    }
-
-    // Layer 2: File Cache (/tmp directory)
-    const fileCached = loadFromFileCache();
-    if (fileCached && fileCached.length > 0) {
-      memoryCoursesCache = fileCached;
-      return NextResponse.json({ courses: fileCached, source: "file" });
-    }
-
-    // Layer 3: Cloud KV Store (global persistent backup)
-    const kvCached = await loadFromKvStore();
-    if (kvCached && kvCached.length > 0) {
-      memoryCoursesCache = kvCached;
-      saveToFileCache(kvCached);
-      return NextResponse.json({ courses: kvCached, source: "kv" });
-    }
-
-    // Layer 4: Supabase Database Table
+    // 1. Primary DB: Supabase (Vercel + Supabase production architecture)
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -101,16 +86,16 @@ export async function GET() {
             category: String(item.category || "Other"),
             icon: String(item.icon || "BookOpen"),
             bg: String(item.bg || "bg-[#FFF1E6]"),
-            iconColor: String(item.iconColor || "text-orange-600"),
+            iconColor: String(item.iconColor || item.icon_color || "text-orange-600"),
             serial: Number(item.serial) || 1,
-            subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.subSubjects || []),
+            subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.sub_subjects ? (typeof item.sub_subjects === "string" ? JSON.parse(item.sub_subjects) : item.sub_subjects) : (item.subSubjects || [])),
             active: item.active !== false
           }));
           mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
           memoryCoursesCache = mapped;
-          saveToFileCache(mapped);
           saveToKvStore(mapped);
+          saveToDiskFile(TMP_CACHE_FILE, mapped);
           return NextResponse.json({ courses: mapped, source: "supabase" });
         }
       }
@@ -118,8 +103,30 @@ export async function GET() {
       console.warn("Supabase courses query note:", sbErr);
     }
 
-    // Layer 5: Fallback to default courses
-    return NextResponse.json({ courses: DEFAULT_COURSES, source: "default" });
+    // 2. Persistent Backup: Cloud KV Store
+    const kvCached = await loadFromKvStore();
+    if (kvCached && kvCached.length > 0) {
+      memoryCoursesCache = kvCached;
+      saveToDiskFile(TMP_CACHE_FILE, kvCached);
+      return NextResponse.json({ courses: kvCached, source: "kv" });
+    }
+
+    // 3. Memory Cache (Warm Lambda)
+    if (memoryCoursesCache && memoryCoursesCache.length > 0) {
+      return NextResponse.json({ courses: memoryCoursesCache, source: "memory" });
+    }
+
+    // 4. Temporary /tmp Cache
+    const tmpCached = loadFromDiskFile(TMP_CACHE_FILE);
+    if (tmpCached && tmpCached.length > 0) {
+      memoryCoursesCache = tmpCached;
+      return NextResponse.json({ courses: tmpCached, source: "tmp_file" });
+    }
+
+    // 5. Default Fallback
+    const projectCached = loadFromDiskFile(PROJECT_DATA_FILE);
+    const finalFallback = (projectCached && projectCached.length > 0) ? projectCached : DEFAULT_COURSES;
+    return NextResponse.json({ courses: finalFallback, source: "default" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch courses" }, { status: 500 });
   }
@@ -136,12 +143,13 @@ export async function POST(req: NextRequest) {
 
     const sorted = [...courses].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update Memory & File Cache & Cloud KV Store immediately (single source of truth)
+    // Update Memory & Cloud KV Store immediately (single source of truth)
     memoryCoursesCache = sorted;
-    saveToFileCache(sorted);
     saveToKvStore(sorted);
+    saveToDiskFile(TMP_CACHE_FILE, sorted);
+    saveToDiskFile(PROJECT_DATA_FILE, sorted);
 
-    // Try persisting to Supabase if table exists
+    // Persist to Supabase DB (Vercel + Supabase primary persistence)
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -154,16 +162,17 @@ export async function POST(req: NextRequest) {
           icon: c.icon,
           bg: c.bg,
           iconColor: c.iconColor,
+          icon_color: c.iconColor,
           serial: c.serial,
           subSubjects: JSON.stringify(c.subSubjects || []),
+          sub_subjects: JSON.stringify(c.subSubjects || []),
           active: c.active !== false
         }));
 
-        // Remove deleted courses from Supabase
         const currentIds = sorted.map(c => c.id);
         if (currentIds.length > 0) {
-          const formattedIds = currentIds.map(id => `'${id}'`).join(",");
-          await supabase.from("app_courses").delete().not("id", "in", `(${formattedIds})`);
+          const formattedIds = `(${currentIds.map(id => `'${id}'`).join(",")})`;
+          await supabase.from("app_courses").delete().not("id", "in", formattedIds);
         }
 
         await supabase.from("app_courses").upsert(payload, { onConflict: "id" });

@@ -457,6 +457,22 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
     if (res.ok) {
       const data = await res.json();
       const courses: CourseItem[] = data.courses || [];
+      const source = data.source;
+
+      // Fail-safe: If server returned default fallback, but client has custom edited data in localStorage, preserve client's custom data and sync to server
+      if (source === "default" && typeof window !== "undefined") {
+        const localCached = getCachedCourses();
+        if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_COURSES)) {
+          // Re-sync local custom data to server
+          fetch("/api/courses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(localCached)
+          }).catch(() => {});
+          return localCached;
+        }
+      }
+
       if (Array.isArray(courses) && courses.length > 0) {
         courses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         if (typeof window !== "undefined") {
@@ -540,6 +556,22 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
     if (res.ok) {
       const data = await res.json();
       const prepSubjects: PrepSubjectItem[] = data.prepSubjects || [];
+      const source = data.source;
+
+      // Fail-safe: If server returned default fallback, but client has custom edited data in localStorage, preserve client's custom data and sync to server
+      if (source === "default" && typeof window !== "undefined") {
+        const localCached = getCachedPrepSubjects();
+        if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_PREP_SUBJECTS)) {
+          // Re-sync local custom data to server
+          fetch("/api/prep-subjects", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(localCached)
+          }).catch(() => {});
+          return localCached;
+        }
+      }
+
       if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
         prepSubjects.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         if (typeof window !== "undefined") {

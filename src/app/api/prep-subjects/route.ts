@@ -6,31 +6,36 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const CACHE_FILE = path.join("/tmp", "jobmaster_prep_subjects_cache.json");
+const PROJECT_DATA_FILE = path.join(process.cwd(), "src", "data", "prep_subjects_data.json");
+const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_prep_subjects_cache.json");
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_prep_subjects_v2";
 
 let memoryPrepCache: PrepSubjectItem[] | null = null;
 
-function loadFromFileCache(): PrepSubjectItem[] | null {
+function loadFromDiskFile(filePath: string): PrepSubjectItem[] | null {
   try {
-    if (fs.existsSync(CACHE_FILE)) {
-      const raw = fs.readFileSync(CACHE_FILE, "utf-8");
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
   } catch (e) {
-    console.warn("Error reading prep subjects file cache:", e);
+    console.warn(`Note reading disk file ${filePath}:`, e);
   }
   return null;
 }
 
-function saveToFileCache(prepSubjects: PrepSubjectItem[]) {
+function saveToDiskFile(filePath: string, prepSubjects: PrepSubjectItem[]) {
   try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(prepSubjects, null, 2), "utf-8");
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, JSON.stringify(prepSubjects, null, 2), "utf-8");
   } catch (e) {
-    console.warn("Error writing prep subjects file cache:", e);
+    // Expected on Vercel read-only filesystem
   }
 }
 
@@ -63,27 +68,7 @@ async function saveToKvStore(prepSubjects: PrepSubjectItem[]) {
 
 export async function GET() {
   try {
-    // Layer 1: Memory Cache (instant within process)
-    if (memoryPrepCache && memoryPrepCache.length > 0) {
-      return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" });
-    }
-
-    // Layer 2: File Cache (/tmp directory)
-    const fileCached = loadFromFileCache();
-    if (fileCached && fileCached.length > 0) {
-      memoryPrepCache = fileCached;
-      return NextResponse.json({ prepSubjects: fileCached, source: "file" });
-    }
-
-    // Layer 3: Cloud KV Store (global persistent backup)
-    const kvCached = await loadFromKvStore();
-    if (kvCached && kvCached.length > 0) {
-      memoryPrepCache = kvCached;
-      saveToFileCache(kvCached);
-      return NextResponse.json({ prepSubjects: kvCached, source: "kv" });
-    }
-
-    // Layer 4: Supabase Database Table
+    // 1. Primary DB: Supabase (Vercel + Supabase production architecture)
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -102,14 +87,14 @@ export async function GET() {
             text: String(item.text || "text-orange-600"),
             sub: String(item.sub || ""),
             serial: Number(item.serial) || 1,
-            subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.subSubjects || []),
+            subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.sub_subjects ? (typeof item.sub_subjects === "string" ? JSON.parse(item.sub_subjects) : item.sub_subjects) : (item.subSubjects || [])),
             active: item.active !== false
           }));
           mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
           memoryPrepCache = mapped;
-          saveToFileCache(mapped);
           saveToKvStore(mapped);
+          saveToDiskFile(TMP_CACHE_FILE, mapped);
           return NextResponse.json({ prepSubjects: mapped, source: "supabase" });
         }
       }
@@ -117,8 +102,30 @@ export async function GET() {
       console.warn("Supabase prep query note:", sbErr);
     }
 
-    // Layer 5: Fallback to default prep subjects
-    return NextResponse.json({ prepSubjects: DEFAULT_PREP_SUBJECTS, source: "default" });
+    // 2. Persistent Backup: Cloud KV Store
+    const kvCached = await loadFromKvStore();
+    if (kvCached && kvCached.length > 0) {
+      memoryPrepCache = kvCached;
+      saveToDiskFile(TMP_CACHE_FILE, kvCached);
+      return NextResponse.json({ prepSubjects: kvCached, source: "kv" });
+    }
+
+    // 3. Memory Cache (Warm Lambda)
+    if (memoryPrepCache && memoryPrepCache.length > 0) {
+      return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" });
+    }
+
+    // 4. Temporary /tmp Cache
+    const tmpCached = loadFromDiskFile(TMP_CACHE_FILE);
+    if (tmpCached && tmpCached.length > 0) {
+      memoryPrepCache = tmpCached;
+      return NextResponse.json({ prepSubjects: tmpCached, source: "tmp_file" });
+    }
+
+    // 5. Default Fallback
+    const projectCached = loadFromDiskFile(PROJECT_DATA_FILE);
+    const finalFallback = (projectCached && projectCached.length > 0) ? projectCached : DEFAULT_PREP_SUBJECTS;
+    return NextResponse.json({ prepSubjects: finalFallback, source: "default" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch prep subjects" }, { status: 500 });
   }
@@ -135,12 +142,13 @@ export async function POST(req: NextRequest) {
 
     const sorted = [...prepSubjects].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update Memory & File Cache & Cloud KV Store immediately (single source of truth)
+    // Update Memory & Cloud KV Store immediately (single source of truth)
     memoryPrepCache = sorted;
-    saveToFileCache(sorted);
     saveToKvStore(sorted);
+    saveToDiskFile(TMP_CACHE_FILE, sorted);
+    saveToDiskFile(PROJECT_DATA_FILE, sorted);
 
-    // Try persisting to Supabase if table exists
+    // Persist to Supabase DB (Vercel + Supabase primary persistence)
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -148,20 +156,21 @@ export async function POST(req: NextRequest) {
           id: s.id,
           name: s.name,
           bnName: s.bnName,
+          bn_name: s.bnName,
           icon: s.icon,
           bg: s.bg,
           text: s.text,
           sub: s.sub,
           serial: s.serial,
           subSubjects: JSON.stringify(s.subSubjects || []),
+          sub_subjects: JSON.stringify(s.subSubjects || []),
           active: s.active !== false
         }));
 
-        // Remove deleted prep subjects from Supabase
         const currentIds = sorted.map(s => s.id);
         if (currentIds.length > 0) {
-          const formattedIds = currentIds.map(id => `'${id}'`).join(",");
-          await supabase.from("app_prep_subjects").delete().not("id", "in", `(${formattedIds})`);
+          const formattedIds = `(${currentIds.map(id => `'${id}'`).join(",")})`;
+          await supabase.from("app_prep_subjects").delete().not("id", "in", formattedIds);
         }
 
         await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });

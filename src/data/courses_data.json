@@ -1,0 +1,102 @@
+[
+  { 
+    "id": "bcs", 
+    "name": "BCS", 
+    "title": "BCS Preparation Masterclass", 
+    "desc": "পূর্ণাঙ্গ বিসিএস সিলেবাসের ওপর ভিত্তি করে অধ্যায়ভিত্তিক লাইভ এমসিকিউ ও বিশ্লেষণমূলক লেকচার শীট।", 
+    "category": "BCS", 
+    "icon": "BookOpen", 
+    "bg": "bg-[#FFF1E6]", 
+    "iconColor": "text-orange-600",
+    "serial": 1,
+    "subSubjects": [
+      { "id": "bcs-prelim", "name": "BCS Preliminary Full Syllabus", "sub": "সকল বিষয়ভিত্তিক মক টেস্ট" },
+      { "id": "bcs-[#1]", "name": "BCS Model Test Series", "sub": "নিয়মিত মডেল টেস্ট" }
+    ]
+  },
+  { 
+    "id": "bank", 
+    "name": "Bank", 
+    "title": "Bank Job Officer Premium", 
+    "desc": "সরকারি ও বেসরকারি ব্যাংক সিনিয়র অফিসার নিয়োগ পরীক্ষার উপযোগী প্রিপারেশন গাইড এবং শর্টকাট ম্যাথ।", 
+    "category": "Bank", 
+    "icon": "Calculator", 
+    "bg": "bg-[#E6F0FA]", 
+    "iconColor": "text-blue-600",
+    "serial": 2,
+    "subSubjects": [
+      { "id": "bank-off", "name": "Bank Officer Preliminary", "sub": "পাটিগণিত, ইংরেজি ও আইসিটি" }
+    ]
+  },
+  { 
+    "id": "primary", 
+    "name": "Primary", 
+    "title": "Primary School Teacher Prep", 
+    "desc": "প্রাথমিক সহকারী শিক্ষক নিয়োগের বিগত বছরের প্রশ্ন এবং বোর্ড বই ভিত্তিক বিশেষ স্পিড কুইজ মডিউল।", 
+    "category": "Teachers", 
+    "icon": "Globe", 
+    "bg": "bg-[#EBF7EE]", 
+    "iconColor": "text-green-600",
+    "serial": 3,
+    "subSubjects": [
+      { "id": "prim-1", "name": "Primary Teacher Exam Model Test", "sub": "বোর্ড বই ও বিগত বছরের সমাধান" }
+    ]
+  },
+  { 
+    "id": "ntrca", 
+    "name": "NTRCA", 
+    "title": "NTRCA School & College Registration", 
+    "desc": "১৭তম ও ১৮তম শিক্ষক নিবন্ধন পরীক্ষার সর্বশেষ সিলেবাস ভিত্তিক সাধারণ জ্ঞান এবং সাবজেক্ট প্রস্তুতি।", 
+    "category": "Teachers", 
+    "icon": "GraduationCap", 
+    "bg": "bg-[#F3E8FF]", 
+    "iconColor": "text-purple-600",
+    "serial": 4,
+    "subSubjects": [
+      { "id": "ntrca-1", "name": "NTRCA Teacher Registration", "sub": "স্কুল ও কলেজ পর্যায়" }
+    ]
+  },
+  { 
+    "id": "psc", 
+    "name": "PSC", 
+    "title": "PSC Non-Cadre Mock Series", 
+    "desc": "বাংলাদেশ সরকারী কর্ম কমিশন (PSC) আয়োজিত বিভিন্ন গ্রেডের ও নন-ক্যাডার পদের জন্য সুপার মক টেস্ট।", 
+    "category": "Other", 
+    "icon": "FileText", 
+    "bg": "bg-[#FCE7F3]", 
+    "iconColor": "text-rose-600",
+    "serial": 5,
+    "subSubjects": [
+      { "id": "psc-1", "name": "PSC Non-Cadre Exam Prep", "sub": "১০ম থেকে ২০তম গ্রেড" }
+    ]
+  },
+  { 
+    "id": "office_assistant", 
+    "name": "Office Assistant / অফিস সহায়ক", 
+    "title": "অফিস সহায়ক ও কম্পিউটার অপারেটর স্পেশাল কোর্স", 
+    "desc": "বিভিন্ন মন্ত্রণালয় ও অধিদপ্তরের অফিস সহায়ক, কম্পিউটার অপারেটর ও ডাটা এন্ট্রি পদের সম্পূর্ণ প্রস্তুতি।", 
+    "category": "Government Job", 
+    "icon": "Briefcase", 
+    "bg": "bg-[#E0F2FE]", 
+    "iconColor": "text-sky-600",
+    "serial": 6,
+    "subSubjects": [
+      { "id": "off-ast-1", "name": "অফিস সহায়ক পার্ট ১ (বাংলা ও ইংরেজি)", "sub": "মৌলিক ব্যাকরণ ও প্রশ্নব্যাংক" },
+      { "id": "off-ast-2", "name": "অফিস সহায়ক পার্ট ২ (গণিত ও সাধারণ জ্ঞান)", "sub": "পাটিগণিত ও আইসিটি স্পেশাল" }
+    ]
+  },
+  { 
+    "id": "social_service", 
+    "name": "Social Welfare / সমাজ সেবা", 
+    "title": "সমাজসেবা অধিদপ্তর শিক্ষক ও ফিল্ড অফিসার কোর্স", 
+    "desc": "সমাজসেবা অধিদপ্তরের সমাজকর্মী, ফিল্ড অফিসার ও ইউনিয়ন সমাজকর্মী পরীক্ষার বিশেষ সমাধান।", 
+    "category": "Government Job", 
+    "icon": "Users", 
+    "bg": "bg-[#FEF3C7]", 
+    "iconColor": "text-amber-600",
+    "serial": 7,
+    "subSubjects": [
+      { "id": "soc-1", "name": "সমাজসেবা ইউনিয়ন সমাজকর্মী মডেল টেস্ট", "sub": "বিগত বছরের প্রশ্ন ও সিলেবাস" }
+    ]
+  }
+]
