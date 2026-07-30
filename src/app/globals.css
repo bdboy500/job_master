@@ -12,17 +12,18 @@ body {
   background-color: #fafafa;
   color: #171717;
   font-family: var(--font-sans);
-  font-weight: 400;
+  font-weight: 300; /* Hind Siliguri Light 300 for general text */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tone down extreme bolding for clean regular Bengali typography */
-.font-black {
-  font-weight: 700;
+/* Hind Siliguri font weight mappings */
+h1, h2, h3, h4, h5, h6, .font-bold, .font-extrabold, .font-black {
+  font-weight: 700; /* Bold 700 for titles & headings */
 }
-.font-extrabold {
-  font-weight: 600;
+
+.font-light, .font-thin {
+  font-weight: 300; /* Light 300 */
 }
 
 html, body {

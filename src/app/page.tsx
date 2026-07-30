@@ -327,19 +327,14 @@ const SCIENCE_QUESTIONS: Question[] = [...PHYSICS_QUESTIONS, ...CHEMISTRY_QUESTI
 const MATH_QUESTIONS: Question[] = [...ARITHMETIC_QUESTIONS, ...ALGEBRA_QUESTIONS, ...GEOMETRY_QUESTIONS];
 
 const ALL_COURSES_DATA = [
-  { id: "bcs", title: "BCS Preparation Masterclass", desc: "পূর্ণাঙ্গ বিসিএস সিলেবাসের ওপর ভিত্তি করে অধ্যায়ভিত্তিক লাইভ এমসিকিউ ও বিশ্লেষণমূলক লেকচার শীট।", category: "BCS", icon: BookOpen, bg: "bg-[#FFF1E6]", iconColor: "text-orange-600" },
-  { id: "bank", title: "Bank Job Officer Premium", desc: "সরকারি ও বেসরকারি ব্যাংক সিনিয়র অফিসার নিয়োগ পরীক্ষার উপযোগী প্রিপারেশন গাইড এবং শর্টকাট ম্যাথ।", category: "Bank", icon: Calculator, bg: "bg-[#E6F0FA]", iconColor: "text-blue-600" },
-  { id: "primary", title: "Primary School Teacher Prep", desc: "প্রাথমিক সহকারী শিক্ষক নিয়োগের বিগত বছরের প্রশ্ন এবং বোর্ড বই ভিত্তিক বিশেষ স্পিড কুইজ মডিউল।", category: "Teachers", icon: Globe, bg: "bg-[#EBF7EE]", iconColor: "text-green-600" },
-  { id: "ntrca", title: "NTRCA School & College Registration", desc: "১৭তম ও ১৮তম শিক্ষক নিবন্ধন পরীক্ষার সর্বশেষ সিলেবাস ভিত্তিক সাধারণ জ্ঞান এবং সাবজেক্ট প্রস্তুতি।", category: "Teachers", icon: GraduationCap, bg: "bg-[#F3E8FF]", iconColor: "text-purple-600" },
-  { id: "psc", title: "PSC Non-Cadre Mock Series", desc: "বাংলাদেশ সরকারী কর্ম কমিশন (PSC) আয়োজিত বিভিন্ন গ্রেডের ও নন-ক্যাডার পদের জন্য সুপার মক টেস্ট।", category: "Other", icon: FileText, bg: "bg-[#FCE7F3]", iconColor: "text-rose-600" },
-  { id: "all_job", title: "All Job Exams Universal Pack", desc: "সকল সরকারী ও স্বায়ত্তশাসিত প্রতিষ্ঠানের ৩য় ও ৪র্থ শ্রেণীর চাকরি পরীক্ষার সাধারণ জ্ঞান ও আইকিউ প্যাকেজ।", category: "All", icon: Briefcase, bg: "bg-[#E0F2FE]", iconColor: "text-sky-600" },
-  { id: "bangla_english", title: "Bangla & English Literature Mastery", desc: "বাংলা ব্যাকরণ ও সাহিত্য, ইংরেজি গ্রামার এবং লিটারেচার পাসের জন্য প্রফেশনাল শর্ট টেকনিক কোর্স।", category: "Bangla", icon: BookOpen, bg: "bg-[#F1F5F9]", iconColor: "text-slate-700" },
-  { id: "math_science", title: "Quantitative Aptitude & General Science", desc: "জ্যামিতি, বীজগণিত, পাটিগণিত এবং দৈনন্দিন বিজ্ঞান বিষয়ের সবচেয়ে সহজ সমাধান কৌশল ও পরীক্ষা।", category: "Mathematics", icon: Calculator, bg: "bg-[#E0F2FE]", iconColor: "text-blue-600" },
-  { id: "office", title: "Office Assistant Preparation", desc: "সরকারি দপ্তর ও পরিদপ্তরে অফিস সহকারী ও কম্পিউটার অপারেটর পদের জন্য বিশেষ সিলেবাস কুইজ।", category: "Other", icon: FileText, bg: "bg-[#EBF7EE]", iconColor: "text-green-600" },
-  { id: "private", title: "Private Job & Corporate Prep", desc: "প্রথম সারির বেসরকারি ব্যাংক, এনজিও ও মাল্টিন্যাショナル কোম্পানির নিয়োগ পরীক্ষার প্রিপারেশন মডিউল।", category: "Other", icon: Briefcase, bg: "bg-[#FFF1E6]", iconColor: "text-orange-600" },
-  { id: "defense", title: "Defense & Police SI Prep", desc: "পুলিশ সাব-ইন্সপেক্টর, সার্জেন্ট ও সশস্ত্র বাহিনীর নিয়োগ পরীক্ষার সাধারণ জ্ঞান এবং ভাইভা প্রস্তুতি।", category: "Other", icon: Award, bg: "bg-[#E6F0FA]", iconColor: "text-blue-600" },
-  { id: "railway", title: "Railway Recruitment Special", desc: "বাংলাদেশ রেলওয়ের বিভিন্ন ক্যাটাগরির পদের জন্য বিগত ১০ বছরের প্রশ্ন ও সাজেস্টেড স্পিড টেস্ট।", category: "Other", icon: Globe, bg: "bg-[#F3E8FF]", iconColor: "text-purple-600" },
-  { id: "ministry", title: "Ministry Non-Cadre Series", desc: "বিভিন্ন মন্ত্রণালয়ের নন-ক্যাডার ও গ্রেডভিত্তিক পরীক্ষা পাসের সুপার মডেল টেস্ট ও সমাধান।", category: "Other", icon: GraduationCap, bg: "bg-[#FCE7F3]", iconColor: "text-rose-600" }
+  { id: "bcs", name: "BCS", title: "BCS Preparation Masterclass", desc: "পূর্ণাঙ্গ বিসিএস সিলেবাসের ওপর ভিত্তি করে অধ্যায়ভিত্তিক লাইভ এমসিকিউ ও বিশ্লেষণমূলক লেকচার শীট।", category: "BCS", icon: BookOpen, bg: "bg-[#FFF1E6]", iconColor: "text-orange-600" },
+  { id: "bank", name: "Bank", title: "Bank Job Officer Premium", desc: "সরকারি ও বেসরকারি ব্যাংক সিনিয়র অফিসার নিয়োগ পরীক্ষার উপযোগী প্রিপারেশন গাইড এবং শর্টকাট ম্যাথ।", category: "Bank", icon: Calculator, bg: "bg-[#E6F0FA]", iconColor: "text-blue-600" },
+  { id: "primary", name: "Primary", title: "Primary School Teacher Prep", desc: "প্রাথমিক সহকারী শিক্ষক নিয়োগের বিগত বছরের প্রশ্ন এবং বোর্ড বই ভিত্তিক বিশেষ স্পিড কুইজ মডিউল।", category: "Teachers", icon: Globe, bg: "bg-[#EBF7EE]", iconColor: "text-green-600" },
+  { id: "ntrca", name: "NTRCA", title: "NTRCA School & College Registration", desc: "১৭তম ও ১৮তম শিক্ষক নিবন্ধন পরীক্ষার সর্বশেষ সিলেবাস ভিত্তিক সাধারণ জ্ঞান এবং সাবজেক্ট প্রস্তুতি।", category: "Teachers", icon: GraduationCap, bg: "bg-[#F3E8FF]", iconColor: "text-purple-600" },
+  { id: "psc", name: "PSC", title: "PSC Non-Cadre Mock Series", desc: "বাংলাদেশ সরকারী কর্ম কমিশন (PSC) আয়োজিত বিভিন্ন গ্রেডের ও নন-ক্যাডার পদের জন্য সুপার মক টেস্ট।", category: "Other", icon: FileText, bg: "bg-[#FCE7F3]", iconColor: "text-rose-600" },
+  { id: "yuba", name: "যুব উন্নয়ন", title: "Youth Development Officer Prep", desc: "যুব উন্নয়ন অধিদপ্তরের বিভিন্ন পদ ও পরীক্ষার বিষয়ভিত্তিক প্রস্তুতি ও স্পেশাল মক টেস্ট।", category: "Other", icon: Award, bg: "bg-[#E0F2FE]", iconColor: "text-sky-600" },
+  { id: "somaj", name: "সমাজ সেবা", title: "Social Services Dept Prep", desc: "সমাজসেবা অধিদপ্তরের ফিল্ড অফিসার, সমাজকর্মী ও অন্যান্য পদের নিয়োগ পরীক্ষা প্রস্তুতি।", category: "Other", icon: Briefcase, bg: "bg-[#FEF3C7]", iconColor: "text-amber-600" },
+  { id: "office", name: "অফিস সহায়ক", title: "Office Assistant Preparation", desc: "সরকারি দপ্তর ও পরিদপ্তরে অফিস সহকারী ও কম্পিউটার অপারেটর পদের জন্য বিশেষ সিলেবাস কুইজ।", category: "Other", icon: FileText, bg: "bg-[#DCFCE7]", iconColor: "text-emerald-600" }
 ];
 
 export default function Home() {
@@ -1109,10 +1104,12 @@ export default function Home() {
 
   // Search filter for courses
   const filteredCoursesList = ALL_COURSES_DATA.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(coursesSearchQuery.toLowerCase()) || 
-                          course.desc.toLowerCase().includes(coursesSearchQuery.toLowerCase());
-    const matchesCategory = selectedCourseCategory === "All" || course.category === selectedCourseCategory;
-    return matchesSearch && matchesCategory;
+    const query = coursesSearchQuery.toLowerCase();
+    const matchesSearch = !query || 
+                          (course.name && course.name.toLowerCase().includes(query)) ||
+                          course.title.toLowerCase().includes(query) || 
+                          course.desc.toLowerCase().includes(query);
+    return matchesSearch;
   });
 
   return (
@@ -2030,10 +2027,14 @@ export default function Home() {
           {/* 3. SCREEN: COURSES SCREEN                                 */}
           {/* ========================================================= */}
           {currentScreen === "courses" && (
-            <div className="p-5 space-y-5 animate-fade-in">
-              <div className="space-y-1">
-                <h3 className="font-extrabold text-lg text-slate-900 tracking-tight">Job Prep Courses</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Premium Study and Mock Programs</p>
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+              <div className="pt-1 pb-1">
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+                  আমাদের কোর্সসমূহ (Our Courses)
+                </h3>
+                <p className="text-xs font-bold text-slate-400">
+                  যেকোনো একটি সাবজেক্ট বা কোর্স সিলেক্ট করে পরীক্ষা দিন
+                </p>
               </div>
 
               {/* Search Course input */}
@@ -2041,37 +2042,20 @@ export default function Home() {
                 <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
                 <input 
                   type="text" 
-                  placeholder="সিলেবাস বা কোর্স খুঁজুন..."
+                  placeholder="কোর্স বা বিষয় খুঁজুন..."
                   value={coursesSearchQuery}
                   onChange={(e) => setCoursesSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs focus:outline-none focus:border-orange-500/50 shadow-sm transition-all"
+                  className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs focus:outline-none focus:border-orange-500/50 shadow-2xs transition-all"
                 />
               </div>
 
-              {/* Categories scroll row */}
-              <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
-                {["All", "BCS", "Bank", "Teachers", "Mathematics", "Bangla", "Other"].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCourseCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-[10px] font-extrabold tracking-wide shrink-0 transition-all cursor-pointer ${
-                      selectedCourseCategory === cat 
-                        ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/10" 
-                        : "bg-white border border-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {cat === "Teachers" ? "Primary/NTRCA" : cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Course items grid */}
+              {/* 8 Course Subjects Grid - Styled exactly like Home Screen & Preparation Hub cards */}
               {filteredCoursesList.length === 0 ? (
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-8 text-center text-slate-400 text-xs">
-                  কোনো কোর্স পাওয়া যায়নি। অন্য কিছু লিখে খুঁজুন!
+                <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                  কোনো কোর্স পাওয়া যায়নি।
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 pt-1">
                   {filteredCoursesList.map((course) => {
                     const CourseIcon = course.icon;
                     return (
@@ -2084,34 +2068,14 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl p-2.5 flex flex-col justify-between gap-2 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 text-left"
+                        className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-orange-200 transition-all cursor-pointer active:scale-95"
                       >
-                        <div className="flex items-center gap-2 justify-between">
-                          <div className={`w-8 h-8 ${course.bg} ${course.iconColor} rounded-xl flex items-center justify-center shrink-0`}>
-                            <CourseIcon className="w-4 h-4 stroke-[2.2px]" />
-                          </div>
-                          <span className="text-[8px] font-black bg-orange-100/60 text-[#FF6A00] px-1.5 py-0.5 rounded uppercase">
-                            {course.category}
-                          </span>
+                        <div className={`w-11 h-11 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
+                          <CourseIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
                         </div>
-                        
-                        <div className="space-y-1">
-                          <h4 className="text-[11px] font-extrabold text-slate-800 leading-tight line-clamp-2">
-                            {course.title}
-                          </h4>
-                          <p className="text-[9px] text-slate-400 font-semibold line-clamp-2">
-                            {course.desc}
-                          </p>
-                        </div>
-
-                        <div className="border-t border-slate-50 pt-1.5 flex items-center justify-between mt-1">
-                          <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">
-                            Free
-                          </span>
-                          <span className="text-[8px] font-bold text-slate-500 flex items-center gap-0.5">
-                            Enter <ChevronRight className="w-2.5 h-2.5" />
-                          </span>
-                        </div>
+                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                          {course.name || course.title}
+                        </span>
                       </div>
                     );
                   })}
