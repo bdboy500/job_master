@@ -40,7 +40,8 @@ import {
   Zap,
   Globe,
   Calculator,
-  GraduationCap
+  GraduationCap,
+  Sliders
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -48,6 +49,7 @@ import { getSupabase } from "../../lib/supabase";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { getTodayVisitorCount } from "../../lib/visitors";
+import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
 import { 
   CourseItem, 
   PrepSubjectItem, 
@@ -154,7 +156,10 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "switches">("questions");
+
+  // App Settings State (Grid Display Limits)
+  const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
 
   // Packages Management State
   const [packagesList, setPackagesList] = useState<PackageItem[]>([]);
@@ -242,6 +247,7 @@ export default function AdminPage() {
       });
     });
     SUB_SUBJECTS_MAP[key] = subs;
+    SUB_SUBJECTS_MAP[subject.name] = subs;
     if (key === "mathematics") SUB_SUBJECTS_MAP["math"] = subs;
   });
 
@@ -270,9 +276,12 @@ export default function AdminPage() {
   const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
 
   // Form states for creating/editing paper
+  const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub">("our_course");
   const [paperTitle, setPaperTitle] = useState("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
   const [paperCourse, setPaperCourse] = useState("bcs");
   const [paperSubSubject, setPaperSubSubject] = useState("all");
+  const [paperPrepSubjectId, setPaperPrepSubjectId] = useState<string>("Bangla");
+  const [paperPrepSubSubject, setPaperPrepSubSubject] = useState<string>("all");
   const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
   const [paperTopic, setPaperTopic] = useState('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
@@ -436,7 +445,10 @@ export default function AdminPage() {
     });
     const unsubPkgs = subscribeToPackages(setPackagesList);
 
-    // Fetch courses & prep subjects & subscribe
+    // Fetch courses & prep subjects & appSettings & subscribe
+    fetchAppSettingsFromDb().then((s) => {
+      if (s) setAppSettings(s);
+    });
     fetchCoursesFromDb().then((courses) => {
       setCoursesList(courses);
     });
@@ -816,13 +828,17 @@ export default function AdminPage() {
       finalStatus = "Upcoming";
     }
 
+    const targetCourse = paperCategoryType === "prep_hub" ? paperPrepSubjectId : paperCourse;
+    const targetSubSubject = paperCategoryType === "prep_hub" ? paperPrepSubSubject : paperSubSubject;
+
     const newPaper: ExamPaper = {
       id: editingPaperId || `exam-${Date.now()}`,
       title: paperTitle.trim(),
-      course: paperCourse,
-      subSubject: paperSubSubject,
+      course: targetCourse,
+      subSubject: targetSubSubject,
+      categoryType: paperCategoryType,
       examType: paperExamType,
-      subject: paperSubSubject !== "all" ? paperSubSubject : paperSubject,
+      subject: targetSubSubject !== "all" ? targetSubSubject : paperSubject,
       questionCount: normalizedPaperQuestions.length,
       timePerQuestionSeconds: 36,
       totalDurationSeconds: totalSeconds,
@@ -843,6 +859,7 @@ export default function AdminPage() {
       // Reset form
       setEditingPaperId(null);
       setPaperSubSubject("all");
+      setPaperPrepSubSubject("all");
       setPaperQuestions([]);
     } else {
       triggerNotification("error", "প্রশ্ন পত্র লোকাল সেভ হয়েছে কিন্তু সার্ভারে সেভ করতে সমস্যা হয়েছে।");
@@ -852,8 +869,20 @@ export default function AdminPage() {
   const handleEditExamPaper = (paper: ExamPaper) => {
     setEditingPaperId(paper.id);
     setPaperTitle(paper.title);
-    setPaperCourse(paper.course);
-    setPaperSubSubject(paper.subSubject || "all");
+    
+    // Determine if it belongs to Preparation Hub or Our Course
+    const isPrep = paper.categoryType === "prep_hub" || prepSubjectsList.some(s => s.id === paper.course || s.name.toLowerCase() === paper.course.toLowerCase() || (s.bnName && s.bnName === paper.course));
+    
+    if (isPrep) {
+      setPaperCategoryType("prep_hub");
+      setPaperPrepSubjectId(paper.course);
+      setPaperPrepSubSubject(paper.subSubject || "all");
+    } else {
+      setPaperCategoryType("our_course");
+      setPaperCourse(paper.course);
+      setPaperSubSubject(paper.subSubject || "all");
+    }
+
     setPaperExamType(paper.examType);
     setPaperSubject(paper.subject || "All Subjects");
     setPaperTopic(paper.topic);
@@ -1540,6 +1569,19 @@ export default function AdminPage() {
               <BookOpen className="w-4 h-4" />
               <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
             </button>
+
+            {/* Tab Button 8: Control Switches */}
+            <button
+              onClick={() => setActiveTab("switches")}
+              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+                activeTab === "switches"
+                  ? "bg-orange-50 text-[#FF6A00]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>কন্ট্রোল সুইচ (Settings)</span>
+            </button>
           </div>
 
           {/* Infrastructure status - desktop footer */}
@@ -2037,8 +2079,52 @@ export default function AdminPage() {
                 </div>
 
                 <form onSubmit={handlePublishExamPaper} className="space-y-6">
-                  {/* Row 1: Title & Course */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Mode Selector: Our Course vs Preparation Hub */}
+                  <div className="p-4 bg-orange-50/60 border border-orange-200/80 rounded-2xl space-y-2">
+                    <label className="text-[11px] font-black text-slate-700 uppercase block">
+                      প্রশ্নপত্র তৈরির সেকশন সিলেক্ট করুন (Target Section) *
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaperCategoryType("our_course");
+                          if (coursesList.length > 0 && !paperCourse) {
+                            setPaperCourse(coursesList[0].id);
+                          }
+                        }}
+                        className={`py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          paperCategoryType === "our_course"
+                            ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
+                            : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Compass className="w-4 h-4" />
+                        <span>আওয়ার কোর্স (Our Course)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaperCategoryType("prep_hub");
+                          if (prepSubjectsList.length > 0 && !paperPrepSubjectId) {
+                            setPaperPrepSubjectId(prepSubjectsList[0].name);
+                          }
+                        }}
+                        className={`py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          paperCategoryType === "prep_hub"
+                            ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
+                            : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>প্রেপারেশন হাব (Preparation Hub)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 1: Title & Selection */}
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
                         ১. পরীক্ষার নাম (Exam Title) *
@@ -2053,40 +2139,79 @@ export default function AdminPage() {
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ২. কোর্স / ক্যাটাগরি (Course) *
-                      </label>
-                      <select
-                        value={paperCourse}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPaperCourse(val);
-                          setPaperSubSubject("all");
-                        }}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                      >
-                        {COURSES.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {paperCategoryType === "prep_hub" ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                            ২. প্রেপারেশন সাবজেক্ট (Prep Subject) *
+                          </label>
+                          <select
+                            value={paperPrepSubjectId}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPaperPrepSubjectId(val);
+                              setPaperPrepSubSubject("all");
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                          >
+                            {prepSubjectsList.map(s => (
+                              <option key={s.id} value={s.name}>{s.name} ({s.sub || "Subject"})</option>
+                            ))}
+                          </select>
+                        </div>
 
-                    {/* Secondary box for Sub-Subject / Paper */}
-                    {SUB_SUBJECTS_MAP[paperCourse] && (
-                      <div className="space-y-1.5 animate-fade-in md:col-span-2">
-                        <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1 flex items-center gap-1">
-                          <span>২.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *</span>
-                        </label>
-                        <select
-                          value={paperSubSubject}
-                          onChange={(e) => setPaperSubSubject(e.target.value)}
-                          className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                        >
-                          {SUB_SUBJECTS_MAP[paperCourse].map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
+                            ২.১ সাব-সাবজেক্ট / পেপার (Sub-Subject / Paper) *
+                          </label>
+                          <select
+                            value={paperPrepSubSubject}
+                            onChange={(e) => setPaperPrepSubSubject(e.target.value)}
+                            className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                          >
+                            {(SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || SUB_SUBJECTS_MAP[paperPrepSubjectId] || [{ id: "all", name: "সকল বিষয় / পেপার (All Papers)" }]).map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                            ২. কোর্স / ক্যাটাগরি (Course) *
+                          </label>
+                          <select
+                            value={paperCourse}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPaperCourse(val);
+                              setPaperSubSubject("all");
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                          >
+                            {COURSES.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {SUB_SUBJECTS_MAP[paperCourse] && (
+                          <div className="space-y-1.5 animate-fade-in">
+                            <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
+                              ২.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *
+                            </label>
+                            <select
+                              value={paperSubSubject}
+                              onChange={(e) => setPaperSubSubject(e.target.value)}
+                              className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                            >
+                              {SUB_SUBJECTS_MAP[paperCourse].map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3742,6 +3867,121 @@ export default function AdminPage() {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW: CONTROL SWITCHES & HOME LIMITS                       */}
+          {/* ========================================================= */}
+          {activeTab === "switches" && (
+            <div className="space-y-6 animate-fade-in text-left">
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6">
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                    <Sliders className="w-5 h-5 text-[#FF6A00]" />
+                    <span>হোম স্ক্রিন গ্রিড ডিসপ্লে কন্ট্রোল ও সেটিংস (Control Switches)</span>
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 mt-1">
+                    এখানে আপনি হোম স্ক্রিনে বিষয় ও কোর্স কয়টি প্রদর্শিত হবে তা ১ থেকে ১২ টি পর্যন্ত নিমিষেই পরিবর্তন করতে পারবেন।
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Our Course Section Settings */}
+                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                        <Compass className="w-4 h-4 text-[#FF6A00]" />
+                        <span>১. আওয়ার কোর্স (Our Course)</span>
+                      </h4>
+                      <span className="text-xs font-black bg-orange-100 text-[#FF6A00] px-2.5 py-1 rounded-full">
+                        {appSettings.ourCoursesHomeLimit || 5} টি কোর্স
+                      </span>
+                    </div>
+                    
+                    <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                      ইউজার হোম স্ক্রিনের &quot;Our Course&quot; গ্রিডে কয়টি সাবজেক্ট/কোর্স শো করবে সিলেক্ট করুন (১ - ১২ টি):
+                    </p>
+
+                    <div className="grid grid-cols-6 gap-2 pt-1">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, ourCoursesHomeLimit: num }))}
+                          className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            appSettings.ourCoursesHomeLimit === num
+                              ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/20 scale-105"
+                              : "bg-white text-slate-700 border border-slate-200 hover:bg-orange-50 hover:border-orange-300"
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] font-bold text-slate-400 bg-white p-2.5 rounded-xl border border-slate-100">
+                      💡 তথ্য: বর্তমানে হোমে {appSettings.ourCoursesHomeLimit || 5} টি কোর্স কার্ড + ১ টি কমলা রঙের &apos;সকল কোর্স&apos; বাটন প্রদর্শিত হবে।
+                    </p>
+                  </div>
+
+                  {/* Preparation Hub Section Settings */}
+                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-[#FF6A00]" />
+                        <span>২. প্রেপারেশন হাব (Preparation Hub)</span>
+                      </h4>
+                      <span className="text-xs font-black bg-orange-100 text-[#FF6A00] px-2.5 py-1 rounded-full">
+                        {appSettings.prepHubHomeLimit || 4} টি বিষয়
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                      ইউজার হোম স্ক্রিনের &quot;Preparation Hub&quot; গ্রিডে কয়টি বিষয় শো করবে সিলেক্ট করুন (১ - ১২ টি):
+                    </p>
+
+                    <div className="grid grid-cols-6 gap-2 pt-1">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setAppSettings(prev => ({ ...prev, prepHubHomeLimit: num }))}
+                          className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            appSettings.prepHubHomeLimit === num
+                              ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/20 scale-105"
+                              : "bg-white text-slate-700 border border-slate-200 hover:bg-orange-50 hover:border-orange-300"
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] font-bold text-slate-400 bg-white p-2.5 rounded-xl border border-slate-100">
+                      💡 তথ্য: বর্তমানে হোমে {appSettings.prepHubHomeLimit || 4} টি সাবজেক্ট কার্ড প্রদর্শিত হবে।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const success = await saveAppSettingsToDb(appSettings);
+                      if (success) {
+                        triggerNotification("success", "হোম স্ক্রিন গ্রিড ডিসপ্লে সেটিংস সফলভাবে সেভ করা হয়েছে!");
+                      } else {
+                        triggerNotification("error", "সেটিংস সেভ করতে সমস্যা হয়েছে।");
+                      }
+                    }}
+                    className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>সেটিংস সেভ করুন (Save Settings)</span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

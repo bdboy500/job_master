@@ -60,6 +60,7 @@ import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, getCachedCourses, getCachedPrepSubjects, fetchCoursesFromDb, fetchPrepSubjectsFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
+import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import { recordVisit } from "../lib/visitors";
@@ -397,6 +398,7 @@ export default function Home() {
   const [packagesList, setPackagesList] = useState<PackageItem[]>(DEFAULT_PACKAGES);
   const [coursesList, setCoursesList] = useState<CourseItem[]>([]);
   const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>([]);
+  const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
@@ -579,6 +581,10 @@ export default function Home() {
       if (cachedPrep && cachedPrep.length > 0) {
         setPrepSubjectsList(cachedPrep);
       }
+
+      fetchAppSettingsFromDb().then(settings => {
+        if (settings) setAppSettings(settings);
+      });
 
       // Background fetch dynamic published exam papers & subscribe to real-time changes (SWR pattern)
       fetchExamPapersFromDb()
@@ -1623,7 +1629,7 @@ export default function Home() {
 
                 {/* Dynamic Course Grid on Home Screen */}
                 <div className="grid grid-cols-2 gap-3">
-                  {allCoursesData.slice(0, 5).map((course) => {
+                  {allCoursesData.slice(0, appSettings.ourCoursesHomeLimit || 5).map((course) => {
                     const CourseIcon = course.icon || BookOpen;
                     return (
                       <div 
@@ -1647,7 +1653,7 @@ export default function Home() {
                     );
                   })}
 
-                  {/* Grid Item 6: All Job / সকল কোর্স (Orange background, centered icon and text) */}
+                  {/* Grid Item: All Job / সকল কোর্স (Orange background, centered icon and text) */}
                   <div 
                     onClick={() => {
                       setPreviousScreen("home");
@@ -1664,58 +1670,31 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* General Quiz Game Live Banner - Orange Background with Balanced Layout */}
-              <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-3xl p-5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
+              {/* General Quiz Game Live Banner - Clean Layout */}
+              <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-3xl p-4.5 sm:p-5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
                 {/* Subtle background glow effects */}
                 <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/20 rounded-full blur-2xl pointer-events-none" />
                 <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-amber-300/20 rounded-full blur-xl pointer-events-none" />
                 
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
-                  {/* LEFT SIDE: LIVE Tag, Title, and Subtitle */}
-                  <div className="flex flex-col items-start space-y-1.5 flex-1 min-w-0">
-                    {/* LIVE Indicator Badge */}
-                    <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border border-white/25 shadow-xs text-white">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-90"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]"></span>
-                      </span>
-                      <span>LIVE</span>
-                      <span className="inline-flex gap-0.5 ml-0.5 items-end h-1.5 pb-[2px]">
-                        <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                        <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                        <span className="w-[3px] h-[3px] bg-white rounded-full animate-bounce"></span>
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="text-lg sm:text-xl font-black tracking-tight leading-tight text-white pt-0.5">
+                  {/* LEFT SIDE: Title and Subtitle */}
+                  <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-black tracking-tight leading-tight text-white">
                       Live Quiz Game
                     </h3>
-
-                    {/* Subtitle */}
-                    <p className="text-white text-xs font-extrabold tracking-wide truncate max-w-full">
+                    <p className="text-white/95 text-xs sm:text-sm font-extrabold tracking-wide truncate max-w-full">
                       খেলতে খেলতে শিখুন
                     </p>
                   </div>
 
-                  {/* RIGHT SIDE: 1,420 playing badge (Full White) & Start Quiz button */}
-                  <div className="flex flex-col items-end justify-center space-y-2 shrink-0">
-                    {/* 1,420 playing - Full White Badge (Matching LIVE badge styling) */}
-                    <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-extrabold text-white border border-white/25 shadow-xs">
-                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                      <Users className="w-3.5 h-3.5 text-white" />
-                      <span className="text-white">1,420 playing</span>
-                    </div>
-
-                    {/* Start Quiz CTA button */}
-                    <button 
-                      onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
-                      className="bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
-                    >
-                      <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00]" />
-                      <span>Start Quiz</span>
-                    </button>
-                  </div>
+                  {/* RIGHT SIDE: Start Quiz CTA button */}
+                  <button 
+                    onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
+                    className="bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
+                  >
+                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00]" />
+                    <span>Start Quiz</span>
+                  </button>
                 </div>
               </div>
 
@@ -1738,7 +1717,7 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {allPrepSubjectsData.slice(0, 4).map((subject, idx) => {
+                  {allPrepSubjectsData.slice(0, appSettings.prepHubHomeLimit || 4).map((subject, idx) => {
                     const SubIcon = subject.icon || BookOpen;
                     return (
                       <div 
