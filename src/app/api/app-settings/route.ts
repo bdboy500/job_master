@@ -48,9 +48,15 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase();
     if (supabase) {
-      await supabase
+      const { error } = await supabase
         .from("app_config")
-        .upsert({ key: "home_display_settings", value: settings });
+        .upsert(
+          { key: "home_display_settings", value: settings, updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        );
+      if (error) {
+        console.error("Supabase upsert app_config error in POST route:", error);
+      }
     }
 
     // Sync to Cloud KV

@@ -3908,7 +3908,11 @@ export default function AdminPage() {
                         <button
                           key={num}
                           type="button"
-                          onClick={() => setAppSettings(prev => ({ ...prev, ourCoursesHomeLimit: num }))}
+                          onClick={() => {
+                            const newSettings = { ...appSettings, ourCoursesHomeLimit: num };
+                            setAppSettings(newSettings);
+                            saveAppSettingsToDb(newSettings);
+                          }}
                           className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                             appSettings.ourCoursesHomeLimit === num
                               ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/20 scale-105"
@@ -3946,7 +3950,11 @@ export default function AdminPage() {
                         <button
                           key={num}
                           type="button"
-                          onClick={() => setAppSettings(prev => ({ ...prev, prepHubHomeLimit: num }))}
+                          onClick={() => {
+                            const newSettings = { ...appSettings, prepHubHomeLimit: num };
+                            setAppSettings(newSettings);
+                            saveAppSettingsToDb(newSettings);
+                          }}
                           className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                             appSettings.prepHubHomeLimit === num
                               ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/20 scale-105"

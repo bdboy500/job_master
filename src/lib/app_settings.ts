@@ -35,11 +35,38 @@ export function getCachedAppSettings(): AppSettings {
 }
 
 export async function fetchAppSettingsFromDb(): Promise<AppSettings> {
+  const currentLocal = getCachedAppSettings();
+
+  // 1. Try direct Supabase query first
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("app_config")
+        .select("value")
+        .eq("key", "home_display_settings")
+        .maybeSingle();
+
+      if (!error && data && data.value && typeof data.value.ourCoursesHomeLimit === "number") {
+        memorySettingsCache = data.value;
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.value));
+          } catch (e) {}
+        }
+        return data.value;
+      }
+    }
+  } catch (e) {
+    console.warn("Direct Supabase settings fetch error:", e);
+  }
+
+  // 2. Next try API endpoint
   try {
     const res = await fetch("/api/app-settings", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.settings) {
+      if (data && data.settings && typeof data.settings.ourCoursesHomeLimit === "number") {
         memorySettingsCache = data.settings;
         if (typeof window !== "undefined") {
           try {
@@ -52,7 +79,8 @@ export async function fetchAppSettingsFromDb(): Promise<AppSettings> {
   } catch (e) {
     console.warn("Failed to fetch app settings from API:", e);
   }
-  return getCachedAppSettings();
+
+  return currentLocal;
 }
 
 export async function saveAppSettingsToDb(settings: AppSettings): Promise<boolean> {
@@ -63,15 +91,37 @@ export async function saveAppSettingsToDb(settings: AppSettings): Promise<boolea
     } catch (e) {}
   }
 
+  let savedLocallyOrRemote = true;
+
+  // 1. Direct Supabase save
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { error } = await supabase
+        .from("app_config")
+        .upsert(
+          { key: "home_display_settings", value: settings, updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        );
+      if (error) {
+        console.warn("Supabase direct app_config upsert error:", error);
+      }
+    }
+  } catch (e) {
+    console.warn("Direct Supabase save app_settings error:", e);
+  }
+
+  // 2. API endpoint save
   try {
     const res = await fetch("/api/app-settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings)
     });
-    return res.ok;
+    if (!res.ok) savedLocallyOrRemote = false;
   } catch (e) {
     console.warn("Failed to save app settings via API:", e);
-    return false;
   }
+
+  return savedLocallyOrRemote;
 }
