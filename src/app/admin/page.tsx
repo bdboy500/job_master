@@ -653,8 +653,8 @@ export default function AdminPage() {
     setEditingPrepId(prep.id);
     setPrepFormSerial(prep.serial || 1);
     setPrepFormId(prep.id);
-    setPrepFormName(prep.name);
-    setPrepFormBnName(prep.bnName);
+    setPrepFormName(prep.name || prep.bnName || "");
+    setPrepFormBnName(prep.bnName || prep.name || "");
     setPrepFormSub(prep.sub || "");
     setPrepFormIcon(prep.icon || "BookOpen");
     setPrepFormBg(prep.bg || "bg-[#FFF1E6]");
@@ -677,16 +677,17 @@ export default function AdminPage() {
 
   const handleSavePrep = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prepFormName.trim() || !prepFormBnName.trim()) {
-      triggerNotification("error", "সাবজেক্টের ইংরেজি ও বাংলা নাম দেওয়া বাধ্যতামূলক।");
+    const nameVal = prepFormName.trim() || prepFormBnName.trim();
+    if (!nameVal) {
+      triggerNotification("error", "সাবজেক্টের নাম দেওয়া বাধ্যতামূলক।");
       return;
     }
-    const pId = prepFormId.trim() || `prep_${prepFormName.toLowerCase().replace(/\s+/g, "_")}`;
+    const pId = prepFormId.trim() || `prep_${nameVal.toLowerCase().replace(/\s+/g, "_")}`;
 
     const newPrep: PrepSubjectItem = {
       id: editingPrepId || pId,
-      name: prepFormName.trim(),
-      bnName: prepFormBnName.trim(),
+      name: nameVal,
+      bnName: nameVal,
       sub: prepFormSub.trim(),
       icon: prepFormIcon,
       bg: prepFormBg,
@@ -1404,13 +1405,6 @@ export default function AdminPage() {
       {/* Header Container */}
       <header className="bg-white border-b border-slate-100 px-4 sm:px-6 py-4 flex flex-row justify-between items-center shadow-sm shrink-0">
         <div className="flex items-center gap-3">
-          <Link 
-            href="/" 
-            className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-700 transition-all active:scale-95"
-            title="মেইন সাইটে যান"
-          >
-            <ArrowLeft className="w-5 h-5 stroke-[2.2px]" />
-          </Link>
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-black tracking-[0.1em] text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
@@ -3443,34 +3437,22 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* English & Bangla Name */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          ইংরেজি নাম (e.g. Bangla) *
-                        </label>
-                        <input 
-                          type="text"
-                          placeholder="Bangla"
-                          value={prepFormName}
-                          onChange={(e) => setPrepFormName(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          বাংলা নাম (e.g. বাংলা) *
-                        </label>
-                        <input 
-                          type="text"
-                          placeholder="বাংলা"
-                          value={prepFormBnName}
-                          onChange={(e) => setPrepFormBnName(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800"
-                          required
-                        />
-                      </div>
+                    {/* Single Subject Name Field */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        সাবজেক্টের নাম (Subject Name) *
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="যেমন: বাংলা, English, সাধারণ জ্ঞান ইত্যাদি"
+                        value={prepFormName}
+                        onChange={(e) => {
+                          setPrepFormName(e.target.value);
+                          setPrepFormBnName(e.target.value);
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-bold text-slate-800"
+                        required
+                      />
                     </div>
 
                     {/* Sub-title */}

@@ -405,6 +405,7 @@ export default function Home() {
   const [isLiveTransitioning, setIsLiveTransitioning] = useState<boolean>(true);
   const [selectedLiveExamModal, setSelectedLiveExamModal] = useState<ExamPaper | null>(null);
   const [liveTick, setLiveTick] = useState<number>(0);
+  const [isLivePaused, setIsLivePaused] = useState<boolean>(false);
 
   // Quick Tools Archive & Modal State
   const [archiveModalOpen, setArchiveModalOpen] = useState<boolean>(false);
@@ -650,15 +651,15 @@ export default function Home() {
     return sortExamPapersForDisplay(lives);
   }, [examPapers, liveTick]);
 
-  // 3-second carousel auto-rotation with continuous left-sliding infinite loop
+  // 4-second carousel auto-rotation with continuous left-sliding infinite loop
   useEffect(() => {
-    if (liveExamsList.length <= 1) return;
+    if (liveExamsList.length <= 1 || isLivePaused) return;
     const interval = setInterval(() => {
       setIsLiveTransitioning(true);
       setActiveLiveExamIndex(prev => prev + 1);
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [liveExamsList.length]);
+  }, [liveExamsList.length, isLivePaused]);
 
   // Seamless reset when reaching the clone item at the end of the carousel
   useEffect(() => {
@@ -1485,24 +1486,23 @@ export default function Home() {
                       <div className="h-3.5 bg-slate-200/80 rounded-md w-28" />
                     </div>
                   </div>
-                ) : liveExamsList.length === 0 ? (
-                  /* Empty state card */
-                  <div className="bg-white border border-slate-100 rounded-3xl p-6 text-center space-y-2 shadow-2xs">
-                    <div className="w-11 h-11 bg-orange-50 rounded-2xl mx-auto flex items-center justify-center text-[#FF6A00]">
-                      <Zap className="w-5 h-5 stroke-[2.2px]" />
-                    </div>
-                    <p className="text-xs sm:text-sm font-extrabold text-slate-800">এই মুহূর্তে কোন লাইভ এক্সাম নেই</p>
-                    <p className="text-[11px] text-slate-400 font-semibold">নতুন লাইভ পরীক্ষা শুরু হলে এখানে তথ্য দেখতে পাবেন।</p>
-                  </div>
-                ) : (
+                ) : liveExamsList.length === 0 ? null : (
                   (() => {
                     const displayList = liveExamsList.length > 1 ? [...liveExamsList, liveExamsList[0]] : liveExamsList;
                     const activeIndex = activeLiveExamIndex % liveExamsList.length;
 
                     return (
                       <div className="space-y-2.5">
-                        {/* Smooth Sliding Carousel Container */}
-                        <div className="overflow-hidden rounded-3xl w-full">
+                        {/* Smooth Sliding Carousel Container with Tap & Hold Pause */}
+                        <div 
+                          className="overflow-hidden rounded-3xl w-full"
+                          onMouseDown={() => setIsLivePaused(true)}
+                          onMouseUp={() => setIsLivePaused(false)}
+                          onTouchStart={() => setIsLivePaused(true)}
+                          onTouchEnd={() => setIsLivePaused(false)}
+                          onMouseEnter={() => setIsLivePaused(true)}
+                          onMouseLeave={() => setIsLivePaused(false)}
+                        >
                           <div 
                             className="flex w-full"
                             style={{ 
@@ -1617,7 +1617,7 @@ export default function Home() {
                     }}
                     className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all"
                   >
-                    All Course
+                    সকল কোর্স
                   </button>
                 </div>
 
@@ -1631,7 +1631,7 @@ export default function Home() {
                         onClick={() => {
                           setSelectedCourseDetail(course);
                           setActiveExamSection(null);
-                          setPreviousScreen("home");
+                          setPreviousScreen("courses");
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
@@ -1647,19 +1647,19 @@ export default function Home() {
                     );
                   })}
 
-                  {/* Grid Item 6: All Job */}
+                  {/* Grid Item 6: All Job / সকল কোর্স (Orange background, centered icon and text) */}
                   <div 
                     onClick={() => {
                       setPreviousScreen("home");
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl p-3 flex flex-row items-center justify-center gap-2.5 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white"
                   >
-                    <div className="w-11 h-11 bg-[#E0F2FE] rounded-xl flex items-center justify-center text-sky-600 shrink-0">
-                      <Briefcase className="w-5.5 h-5.5 stroke-[2.2px]" />
+                    <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
+                      <Briefcase className="w-4.5 h-4.5 stroke-[2.5px]" />
                     </div>
-                    <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide">All Job</span>
+                    <span className="text-sm sm:text-base font-extrabold text-white tracking-wide">সকল কোর্স</span>
                   </div>
                 </div>
               </div>
@@ -1733,7 +1733,7 @@ export default function Home() {
                     }}
                     className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all"
                   >
-                    View All
+                    সকল বিষয়
                   </button>
                 </div>
 

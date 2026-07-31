@@ -31,8 +31,8 @@ export interface CourseItem {
 
 export interface PrepSubjectItem {
   id: string;
-  name: string; // e.g. "Bangla", "English"
-  bnName: string; // e.g. "বাংলা", "ইংরেজি"
+  name: string; // Subject Name (Bangla / English)
+  bnName?: string; // Optional for backward compatibility
   icon: string;
   bg: string;
   text: string;
