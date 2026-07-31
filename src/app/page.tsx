@@ -341,10 +341,10 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
@@ -1316,6 +1316,10 @@ export default function Home() {
                     <>
                       Quiz <span className="text-[#FF6A00]">Master</span>
                     </>
+                  ) : currentScreen === "all-live-exams" ? (
+                    <>
+                      Live <span className="text-[#FF6A00]">Exams</span>
+                    </>
                   ) : currentScreen === "profile" ? (
                     <>
                       Profile
@@ -1341,6 +1345,8 @@ export default function Home() {
                     ? `${selectedPrepSubject} • ${selectedPrepSubSubject.sub}` 
                     : currentScreen === "quiz" 
                     ? (activeQuizSubtitle || "Live Exam") 
+                    : currentScreen === "all-live-exams"
+                    ? "সকল লাইভ পরীক্ষা (ALL LIVE EXAMS)"
                     : currentScreen === "profile"
                     ? "STUDENT ACCOUNT & STATS"
                     : currentScreen === "notice"
@@ -1463,12 +1469,12 @@ export default function Home() {
                   <button 
                     onClick={() => {
                       setPreviousScreen("home");
-                      setCurrentScreen("courses");
+                      setCurrentScreen("all-live-exams");
                       if (soundEnabled) quizAudio.playClick();
                     }}
                     className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    <span>সব রুটিন</span>
+                    <span>সব পরীক্ষা দেখুন</span>
                     <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
                 </div>
@@ -1646,7 +1652,7 @@ export default function Home() {
                         <div className={`w-9 h-9 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-5 h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-xs sm:text-sm font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -1665,13 +1671,13 @@ export default function Home() {
                     <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
                       <Briefcase className="w-4 h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-xs sm:text-sm font-extrabold text-white tracking-wide">সকল কোর্স</span>
+                    <span className="text-sm sm:text-base font-extrabold text-white tracking-wide">সকল কোর্স</span>
                   </div>
                 </div>
               </div>
 
               {/* General Quiz Game Live Banner - Clean Layout */}
-              <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-3xl p-4.5 sm:p-5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
+              <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-2xl p-4 sm:p-4.5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
                 {/* Subtle background glow effects */}
                 <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/20 rounded-full blur-2xl pointer-events-none" />
                 <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-amber-300/20 rounded-full blur-xl pointer-events-none" />
@@ -1699,7 +1705,7 @@ export default function Home() {
               </div>
 
               {/* Preparation Hub Section */}
-              <div className="space-y-3 -mt-3.5">
+              <div className="space-y-3 -mt-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
                     Preparation Hub
@@ -1987,6 +1993,111 @@ export default function Home() {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* SCREEN: ALL LIVE EXAMS SCREEN                             */}
+          {/* ========================================================= */}
+          {currentScreen === "all-live-exams" && (
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+              <div className="pt-1 pb-1">
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+                  সকল লাইভ পরীক্ষা (Live Exams)
+                </h3>
+                <p className="text-xs font-extrabold text-slate-400">
+                  চলমান সকল লাইভ পরীক্ষা এবং নিয়মিত পরীক্ষা প্যানেল
+                </p>
+              </div>
+
+              {isExamsLoading ? (
+                <div className="bg-white border border-slate-100/90 rounded-3xl p-6 shadow-2xs space-y-3.5 animate-pulse">
+                  <div className="h-4 bg-slate-200/80 rounded-full w-48" />
+                  <div className="h-4 bg-slate-200/80 rounded-lg w-3/4" />
+                  <div className="h-3.5 bg-slate-200/80 rounded-md w-1/2" />
+                </div>
+              ) : liveExamsList.length === 0 ? (
+                <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 sm:p-10 text-center space-y-3 shadow-2xs">
+                  <div className="w-14 h-14 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                    📢
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-800">
+                    এই মুহূর্তে কোনো লাইভ এক্সাম নেই
+                  </h3>
+                  <p className="text-xs sm:text-sm font-extrabold text-slate-400 max-w-xs mx-auto">
+                    নতুন লাইভ এক্সাম চালু হলে তা আপনার ড্যাশবোর্ডে এবং এখানে নোটিফিকেশনের মাধ্যমে সরাসরি আপডেট দেখাবে।
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCurrentScreen("home");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="mt-2 inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    হোম স্ক্রিনে ফিরে যান
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {liveExamsList.map((currentLive, idx) => {
+                    const qCount = currentLive.questions?.length || currentLive.questionCount || 10;
+                    const mins = Math.ceil((qCount * 36) / 60);
+                    const participantCount = ((currentLive.id.length * 17 + qCount * 3) % 150 + 45);
+
+                    return (
+                      <div 
+                        key={currentLive.id || idx}
+                        onClick={() => {
+                          setSelectedLiveExamModal(currentLive);
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] relative"
+                      >
+                        {/* Top Banner Strip */}
+                        <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-4 py-2.5 flex items-center justify-between text-white shadow-2xs">
+                          <span className="text-xs font-black tracking-wide flex items-center gap-1.5">
+                            <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
+                            For All Job
+                          </span>
+                          <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                            Live Now
+                          </span>
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="p-4 sm:p-5 space-y-3">
+                          <div>
+                            <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
+                              {currentLive.title}
+                            </h4>
+                            <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
+                              <span>প্রশ্ন {qCount} টি</span>
+                              <span className="text-slate-300">•</span>
+                              <span>{mins} মিনিট</span>
+                            </p>
+                          </div>
+
+                          {/* Footer Row: Live Timer & Participant Count */}
+                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
+                            <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100/80">
+                              <span className="relative flex h-2 w-2 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                              </span>
+                              <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt)}</span>
+                            </div>
+
+                            <div className="text-slate-400 text-[11px] font-bold tracking-tight">
+                              {participantCount} Already participated
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
