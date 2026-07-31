@@ -1641,12 +1641,12 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                        className="bg-white border border-slate-100 rounded-2xl px-3 py-1.5 sm:py-2 flex flex-row items-center gap-2.5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
                       >
-                        <div className={`w-11 h-11 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
-                          <CourseIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
+                          <CourseIcon className="w-5 h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-xs sm:text-sm font-extrabold text-[#334155] tracking-wide truncate">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -1660,12 +1660,12 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl p-3 flex flex-row items-center justify-center gap-2.5 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white"
+                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl px-3 py-1.5 sm:py-2 flex flex-row items-center justify-center gap-2 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white"
                   >
-                    <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
-                      <Briefcase className="w-4.5 h-4.5 stroke-[2.5px]" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
+                      <Briefcase className="w-4 h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-sm sm:text-base font-extrabold text-white tracking-wide">সকল কোর্স</span>
+                    <span className="text-xs sm:text-sm font-extrabold text-white tracking-wide">সকল কোর্স</span>
                   </div>
                 </div>
               </div>
@@ -1699,7 +1699,7 @@ export default function Home() {
               </div>
 
               {/* Preparation Hub Section */}
-              <div className="space-y-3.5">
+              <div className="space-y-3 -mt-3.5">
                 <div className="flex items-center justify-between">
                   <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
                     Preparation Hub
