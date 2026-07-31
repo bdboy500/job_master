@@ -1647,7 +1647,7 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl px-3 py-2.5 sm:py-3 flex flex-row items-center gap-2.5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                        className="bg-white border border-slate-100 rounded-2xl px-3 py-3.5 sm:py-4 flex flex-row items-center gap-2.5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
                       >
                         <div className={`w-9 h-9 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-5 h-5 stroke-[2.2px]" />
@@ -1666,7 +1666,7 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl px-3 py-2.5 sm:py-3 flex flex-row items-center justify-center gap-2 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white"
+                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl px-3 py-3.5 sm:py-4 flex flex-row items-center justify-center gap-2 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white"
                   >
                     <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
                       <Briefcase className="w-4 h-4 stroke-[2.5px]" />
