@@ -44,7 +44,12 @@ import {
   Sliders,
   Flame,
   Newspaper,
-  TrendingUp
+  TrendingUp,
+  Laptop,
+  Monitor,
+  FlaskConical,
+  Atom,
+  Book
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -91,6 +96,11 @@ function renderPrepIcon(iconName?: string, className = "w-5 h-5 stroke-[2.2px]")
     HelpCircle: HelpCircle,
     Newspaper: Newspaper,
     TrendingUp: TrendingUp,
+    Laptop: Laptop,
+    Monitor: Monitor,
+    FlaskConical: FlaskConical,
+    Atom: Atom,
+    Book: Book,
   };
   const IconComp = (iconName && iconMap[iconName]) || BookOpen;
   return <IconComp className={className} />;
@@ -509,6 +519,19 @@ export default function AdminPage() {
     };
   }, []);
 
+  // Auto-set default serial for new course or new prep subject (Issue 2)
+  useEffect(() => {
+    if (!editingCourseId) {
+      setCourseFormSerial(coursesList.length + 1);
+    }
+  }, [coursesList, editingCourseId]);
+
+  useEffect(() => {
+    if (!editingPrepId) {
+      setPrepFormSerial(prepSubjectsList.length + 1);
+    }
+  }, [prepSubjectsList, editingPrepId]);
+
   const loadExamPapersFromDb = async () => {
     const papers = await fetchExamPapersFromDb();
     setExamPapers(papers);
@@ -655,7 +678,7 @@ export default function AdminPage() {
     const cId = courseFormId.trim() || courseFormName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
 
     const newCourse: CourseItem = {
-      id: editingCourseId || cId,
+      id: cId,
       name: courseFormName.trim(),
       title: courseFormTitle.trim(),
       desc: courseFormDesc.trim(),
@@ -744,7 +767,7 @@ export default function AdminPage() {
     const pId = prepFormId.trim() || `prep_${nameVal.toLowerCase().replace(/\s+/g, "_")}`;
 
     const newPrep: PrepSubjectItem = {
-      id: editingPrepId || pId,
+      id: pId,
       name: nameVal,
       bnName: nameVal,
       sub: prepFormSub.trim(),
@@ -3359,7 +3382,12 @@ export default function AdminPage() {
                         onChange={(e) => setCourseFormIcon(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                       >
-                        <option value="BookOpen">📖 BookOpen</option>
+                        <option value="BookOpen">📖 BookOpen (Open Book)</option>
+                        <option value="Book">📘 Book (Closed Book)</option>
+                        <option value="Laptop">💻 Laptop (Computer)</option>
+                        <option value="Monitor">🖥️ Monitor (Computer)</option>
+                        <option value="FlaskConical">🧪 Flask (Science)</option>
+                        <option value="Atom">⚛️ Atom (Science)</option>
                         <option value="Calculator">🧮 Calculator</option>
                         <option value="Globe">🌐 Globe</option>
                         <option value="GraduationCap">🎓 GraduationCap</option>
@@ -3785,7 +3813,12 @@ export default function AdminPage() {
                           onChange={(e) => setPrepFormIcon(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                         >
-                          <option value="BookOpen">📖 BookOpen</option>
+                          <option value="BookOpen">📖 BookOpen (Open Book)</option>
+                          <option value="Book">📘 Book (Closed Book)</option>
+                          <option value="Laptop">💻 Laptop (Computer)</option>
+                          <option value="Monitor">🖥️ Monitor (Computer)</option>
+                          <option value="FlaskConical">🧪 Flask (Science)</option>
+                          <option value="Atom">⚛️ Atom (Science)</option>
                           <option value="Calculator">🧮 Calculator</option>
                           <option value="Globe">🌐 Globe</option>
                           <option value="GraduationCap">🎓 GraduationCap</option>

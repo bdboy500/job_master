@@ -88,7 +88,8 @@ export async function GET() {
             sub: String(item.sub || ""),
             serial: Number(item.serial) || 1,
             subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.sub_subjects ? (typeof item.sub_subjects === "string" ? JSON.parse(item.sub_subjects) : item.sub_subjects) : (item.subSubjects || [])),
-            active: item.active !== false
+            active: item.active !== false,
+            showQuickTools: item.showQuickTools !== undefined ? (item.showQuickTools !== false && item.showQuickTools !== "false" && item.show_quick_tools !== false && item.show_quick_tools !== "false") : (item.show_quick_tools !== undefined ? (item.show_quick_tools !== false && item.show_quick_tools !== "false") : true)
           }));
           mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
@@ -164,7 +165,9 @@ export async function POST(req: NextRequest) {
           serial: s.serial,
           subSubjects: JSON.stringify(s.subSubjects || []),
           sub_subjects: JSON.stringify(s.subSubjects || []),
-          active: s.active !== false
+          active: s.active !== false,
+          showQuickTools: s.showQuickTools !== false,
+          show_quick_tools: s.showQuickTools !== false
         }));
 
         const currentIds = sorted.map(s => s.id);

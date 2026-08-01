@@ -495,7 +495,9 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
         sub: s.sub,
         serial: s.serial,
         subSubjects: JSON.stringify(s.subSubjects || []),
-        active: s.active !== false
+        active: s.active !== false,
+        showQuickTools: s.showQuickTools !== false,
+        show_quick_tools: s.showQuickTools !== false
       }));
 
       const currentIds = sorted.map(s => s.id);

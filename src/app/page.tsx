@@ -52,7 +52,12 @@ import {
   TrendingUp,
   User,
   Lock,
-  Pencil
+  Pencil,
+  Laptop,
+  Monitor,
+  FlaskConical,
+  Atom,
+  Book
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -348,6 +353,7 @@ export default function Home() {
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
+  const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly">("daily");
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
@@ -1156,7 +1162,12 @@ export default function Home() {
     Sparkles,
     Newspaper,
     TrendingUp,
-    LayoutGrid
+    LayoutGrid,
+    Laptop,
+    Monitor,
+    FlaskConical,
+    Atom,
+    Book
   }), []);
 
   const allCoursesData = useMemo(() => {
@@ -2485,6 +2496,38 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Exam Types Filter Bar for Sub-subject (Daily Quick test, Weekly model test) */}
+              <div className="bg-white border border-slate-200/90 rounded-[2rem] p-4 shadow-2xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
+                    <span>⚡</span>
+                    <span>পরীক্ষার ধরন সিলেক্ট করুন:</span>
+                  </h5>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  {[
+                    { id: "daily", label: "Daily Quick Test", icon: "⚡", color: "border-amber-200 text-amber-700 bg-amber-50/60" },
+                    { id: "weekly", label: "Weekly Model Test", icon: "📅", color: "border-blue-200 text-blue-700 bg-blue-50/60" },
+                  ].map((tab) => {
+                    const active = selectedPrepExamTypeFilter === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSelectedPrepExamTypeFilter(tab.id as any)}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                          active 
+                            ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-2xs scale-[1.02]" 
+                            : `${tab.color} hover:opacity-90`
+                        }`}
+                      >
+                        <span>{tab.icon}</span>
+                        <span className="truncate">{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-center">
                   <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
@@ -2530,6 +2573,23 @@ export default function Home() {
                       (targetSub.includes("জ্যামিতি") && (pSubSubject.includes("জ্যামিতি") || pSubject.includes("জ্যামিতি") || pSubSubject.includes("geometry")));
 
                     return isSubMatch;
+                  });
+
+                  // Filter by Exam Type (Daily Quick Test / Weekly Model Test)
+                  subPapers = subPapers.filter(paper => {
+                    if (selectedPrepExamTypeFilter === "daily") {
+                      return (
+                        paper.examType === "daily" ||
+                        (paper.title && (paper.title.toLowerCase().includes("daily") || paper.title.toLowerCase().includes("ডেইলি")))
+                      );
+                    }
+                    if (selectedPrepExamTypeFilter === "weekly") {
+                      return (
+                        paper.examType === "weekly" ||
+                        (paper.title && (paper.title.toLowerCase().includes("weekly") || paper.title.toLowerCase().includes("সাপ্তাহিক")))
+                      );
+                    }
+                    return true;
                   });
 
                   if (selectedLevel3Topic) {
@@ -2623,48 +2683,60 @@ export default function Home() {
               </div>
 
               {/* Sub-Subject Quick Tools (Requirement 2: Below published question papers) */}
-              <div className="space-y-2 pt-3">
-                <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
-                  কুইক টুলস ও আর্কাইভ (Quick Tools)
-                </h4>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
-                    { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
-                    { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
-                    { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
-                    { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
-                    { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
-                    { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
-                    { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
-                  ].map((item, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        if (item.name === "Archive") {
-                          setArchiveFilterCourse(selectedPrepSubject);
-                          setArchiveModalOpen(true);
-                        } else if (item.name === "Routine") {
-                          setCurrentScreen("routine");
-                        } else if (item.name === "Result" || item.name === "Merit List") {
-                          setCurrentScreen("tests");
-                        } else {
-                          setQuickToolModal({ name: item.name, icon: item.icon });
-                        }
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="bg-white border border-slate-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center hover:border-orange-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      <span className={`w-8 h-8 rounded-xl ${item.color} flex items-center justify-center text-sm font-black`}>
-                        {item.icon}
-                      </span>
-                      <span className="text-[10px] font-extrabold text-slate-700 truncate w-full">
-                        {item.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {(() => {
+                const currentObj: any = allPrepSubjectsData.find((s: any) => 
+                  s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                  (s.bnName && s.bnName.toLowerCase() === selectedPrepSubject.toLowerCase()) || 
+                  s.id === selectedPrepSubject
+                );
+                const shouldShowQT = currentObj ? (currentObj.showQuickTools !== false) : true;
+                if (!shouldShowQT) return null;
+
+                return (
+                  <div className="space-y-2 pt-3">
+                    <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
+                      কুইক টুলস ও আর্কাইভ (Quick Tools)
+                    </h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
+                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
+                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
+                        { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
+                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
+                        { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                        { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (item.name === "Archive") {
+                              setArchiveFilterCourse(selectedPrepSubject);
+                              setArchiveModalOpen(true);
+                            } else if (item.name === "Routine") {
+                              setCurrentScreen("routine");
+                            } else if (item.name === "Result" || item.name === "Merit List") {
+                              setCurrentScreen("tests");
+                            } else {
+                              setQuickToolModal({ name: item.name, icon: item.icon });
+                            }
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="bg-white border border-slate-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center hover:border-orange-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          <span className={`w-8 h-8 rounded-xl ${item.color} flex items-center justify-center text-sm font-black`}>
+                            {item.icon}
+                          </span>
+                          <span className="text-[10px] font-extrabold text-slate-700 truncate w-full">
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
