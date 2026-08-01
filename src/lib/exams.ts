@@ -102,23 +102,6 @@ export const DEFAULT_EXAM_PAPERS: ExamPaper[] = [
     questions: QUIZ_QUESTIONS.slice(0, 20)
   },
   {
-    id: "exam-bcs-health-01",
-    title: "BCS Health Special: মেডিকেল ও স্বাস্থ্য ক্যাডার বিশেষ মডেল টেস্ট",
-    course: "bcs",
-    examType: "special",
-    subject: "Medical Science & Health",
-    questionCount: 15,
-    timePerQuestionSeconds: 36,
-    totalDurationSeconds: 15 * 36,
-    totalMarks: 15,
-    topic: "চিকিৎসাবিজ্ঞান, স্বাস্থ্যনীতি ও মানব শারীরবিদ্যা",
-    examDate: "Sat, Aug 01, 2026",
-    startDateTime: "2026-07-24T00:00",
-    endDateTime: "2026-08-01T23:59",
-    status: "Live",
-    questions: QUIZ_QUESTIONS.slice(0, 15)
-  },
-  {
     id: "exam-bcs-daily-01",
     title: "ডেইলি কুইক টেস্ট: বাংলাদেশ ও আন্তর্জাতিক বিষয়াবলী",
     course: "bcs",

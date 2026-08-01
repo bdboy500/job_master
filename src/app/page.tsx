@@ -2571,8 +2571,6 @@ export default function Home() {
                 <div className="space-y-3">
                   <div className="flex flex-col gap-3">
                     {(() => {
-                      const isBCSCourse = selectedCourseDetail?.id === "bcs";
-
                       const allSections = [
                         { 
                           id: "daily", 
@@ -2592,15 +2590,6 @@ export default function Home() {
                           iconBg: "bg-purple-100 text-purple-700",
                           icon: "📅"
                         },
-                        ...(isBCSCourse ? [{
-                          id: "special", 
-                          title: "BCS Health Quiz", 
-                          banglaTitle: "🩺 BCS Health Quiz",
-                          desc: "বিসিএস স্বাস্থ্য ক্যাডার বিশেষ মডেল টেস্ট",
-                          color: "border-rose-200/90 hover:border-rose-400 bg-white",
-                          iconBg: "bg-rose-100 text-rose-700",
-                          icon: "🩺"
-                        }] : []),
                         { 
                           id: "subject", 
                           title: "Subject Wise Test", 
@@ -4673,7 +4662,6 @@ export default function Home() {
                       { id: "daily", label: "⚡ ডেইলি" },
                       { id: "weekly", label: "📅 সাপ্তাহিক" },
                       { id: "subject", label: "📚 বিষয়ভিত্তিক" },
-                      { id: "special", label: "🩺 BCS Health Quiz" },
                     ].map((tab) => {
                       const isActive = archiveFilterCategory === tab.id;
                       return (

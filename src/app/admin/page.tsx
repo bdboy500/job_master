@@ -233,7 +233,7 @@ export default function AdminPage() {
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Predefined 15 Subjects required for Exam MCQ Hub
+  // Predefined Subjects required for Exam MCQ Hub
   const SUBJECTS = [
     "Bangla Literature",
     "Bangla Grammer",
@@ -248,8 +248,7 @@ export default function AdminPage() {
     "Mathematics (Algebra )",
     "Mathematics (Geometry)",
     "Mental Ability",
-    "Good Governance",
-    "BCS Health Question"
+    "Good Governance"
   ];
 
   // Dynamic Courses & Exam Types list
@@ -309,8 +308,7 @@ export default function AdminPage() {
   const EXAM_TYPES = [
     { id: "weekly", name: "সাপ্তাহিক মডেল টেস্ট (Weekly Model Test)" },
     { id: "daily", name: "ডেইলি কুইক টেস্ট (Daily Quick Test)" },
-    { id: "subject", name: "বিষয়ভিত্তিক পরীক্ষা (Subject Wise Test)" },
-    { id: "special", name: "BCS Health Quiz" }
+    { id: "subject", name: "বিষয়ভিত্তিক পরীক্ষা (Subject Wise Test)" }
   ];
 
   // ==========================================
@@ -3442,6 +3440,149 @@ export default function AdminPage() {
                         onChange={(e) => setCourseFormDesc(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all text-slate-800 resize-none"
                       />
+                    </div>
+
+                    {/* MULTI-LEVEL SUB-CATEGORY EDITOR FOR OUR COURSES (Level 2 & Level 3) */}
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-[#FF6A00]" />
+                            <span>সাব-ক্যাটাগরি ও সাব-টপিকসমূহ (Level 2 & Level 3)</span>
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-bold">
+                            লেভেল ২: সাব-ক্যাটাগরি/পেপার, লেভেল ৩: সাব-টপিকসমূহ
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSub: SubCategoryItem = {
+                              id: `sub_${Date.now()}`,
+                              name: "নতুন সাব-ক্যাটাগরি",
+                              sub: "সংক্ষিপ্ত বিবরণ",
+                              serial: courseFormSubSubjects.length + 1,
+                              subCategories2: []
+                            };
+                            setCourseFormSubSubjects([...courseFormSubSubjects, newSub]);
+                          }}
+                          className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-[11px] rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3px]" />
+                          <span>+ সাব-ক্যাটাগরি</span>
+                        </button>
+                      </div>
+
+                      {/* List of Level 2 Sub-Categories */}
+                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                        {courseFormSubSubjects.length === 0 ? (
+                          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs">
+                            কোনো সাব-ক্যাটাগরি যুক্ত হয়নি। '+ সাব-ক্যাটাগরি' বাটনে ক্লিক করে যোগ করুন।
+                          </div>
+                        ) : (
+                          courseFormSubSubjects.map((subItem, sIdx) => (
+                            <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
+                              {/* Level 2 Sub-Category Header & Controls */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                  Level 2 #{sIdx + 1}
+                                </span>
+                                <input 
+                                  type="text"
+                                  placeholder="সাব-ক্যাটাগরির নাম (e.g. BCS Preliminary)"
+                                  value={subItem.name}
+                                  onChange={(e) => {
+                                    const updated = [...courseFormSubSubjects];
+                                    updated[sIdx].name = e.target.value;
+                                    setCourseFormSubSubjects(updated);
+                                  }}
+                                  className="flex-1 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = courseFormSubSubjects.filter((_, i) => i !== sIdx);
+                                    setCourseFormSubSubjects(updated);
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
+                                  title="মুছে ফেলুন"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {/* Level 2 Sub-text */}
+                              <input 
+                                type="text"
+                                placeholder="বিবরণ / সাব-টাইটেল (e.g. সকল বিষয়ভিত্তিক মক টেস্ট)"
+                                value={subItem.sub || ""}
+                                onChange={(e) => {
+                                  const updated = [...courseFormSubSubjects];
+                                  updated[sIdx].sub = e.target.value;
+                                  setCourseFormSubSubjects(updated);
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700"
+                              />
+
+                              {/* Nested Level 3 Sub-Categories (subCategories2) */}
+                              <div className="pl-3 border-l-2 border-orange-200 space-y-2 pt-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-extrabold text-orange-600">
+                                    লেভেল ৩ টপিকসমূহ:
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...courseFormSubSubjects];
+                                      if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                      updated[sIdx].subCategories2!.push({
+                                        id: `sub2_${Date.now()}`,
+                                        name: "নতুন সাব-টপিক",
+                                        serial: updated[sIdx].subCategories2!.length + 1
+                                      });
+                                      setCourseFormSubSubjects(updated);
+                                    }}
+                                    className="text-[10px] font-bold text-orange-600 hover:text-orange-800 bg-orange-100/60 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>+ সাব-টপিক (Level 3)</span>
+                                  </button>
+                                </div>
+
+                                {(subItem.subCategories2 || []).map((sub2, sub2Idx) => (
+                                  <div key={sub2.id || sub2Idx} className="flex items-center gap-2">
+                                    <span className="text-[9px] font-mono font-bold text-slate-400 shrink-0">
+                                      └─ #{sub2Idx + 1}
+                                    </span>
+                                    <input 
+                                      type="text"
+                                      placeholder="সাব-টপিক ৩ (e.g. বীজগণিত মান নির্ণয়)"
+                                      value={sub2.name}
+                                      onChange={(e) => {
+                                        const updated = [...courseFormSubSubjects];
+                                        updated[sIdx].subCategories2![sub2Idx].name = e.target.value;
+                                        setCourseFormSubSubjects(updated);
+                                      }}
+                                      className="flex-1 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...courseFormSubSubjects];
+                                        updated[sIdx].subCategories2 = updated[sIdx].subCategories2!.filter((_, i) => i !== sub2Idx);
+                                        setCourseFormSubSubjects(updated);
+                                      }}
+                                      className="p-1 text-rose-400 hover:text-rose-600 transition-all shrink-0 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
 
                     {/* Submit Button */}
