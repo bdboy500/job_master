@@ -250,12 +250,13 @@ const CLOUD_COURSES_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_courses
 const CLOUD_PREP_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_prep_subjects_v2";
 
 const HARDCODED_SUB_NAMES = [
-  "full syllabus", "model test series", "bcs preliminary",
+  "full syllabus", "model test series", "model test", "bcs preliminary", "preliminary", "bcs",
   "1st paper", "2nd paper", "arithmetic", "algebra", "geometry",
   "physics", "chemistry", "biology", "bangladesh affairs", "international affairs",
   "environment & geography", "disaster management", "daily science", "general medical",
   "computer basics", "ict & technology", "mathematical logic", "mental skills",
-  "ethics & values", "good governance"
+  "ethics & values", "good governance", "সকল বিষয়ভিত্তিক", "নিয়মিত মডেল টেস্ট",
+  "মডেল টেস্ট", "ফুল সিলেবাস", "সিলেবাস", "প্রিলিমিনারি", "স্পেশাল"
 ];
 
 export function sanitizeSubSubjects<T extends CourseItem | PrepSubjectItem>(items: T[]): T[] {
@@ -264,7 +265,7 @@ export function sanitizeSubSubjects<T extends CourseItem | PrepSubjectItem>(item
       const cleanSub = item.subSubjects.filter((s: any) => {
         if (!s || !s.name) return false;
         const lower = s.name.toLowerCase();
-        return !HARDCODED_SUB_NAMES.some(h => lower.includes(h));
+        return !HARDCODED_SUB_NAMES.some(h => lower.includes(h.toLowerCase()));
       });
       return { ...item, subSubjects: cleanSub };
     }
@@ -285,6 +286,7 @@ export function getCachedCourses(): CourseItem[] {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const sanitized = sanitizeSubSubjects(parsed);
+          localStorage.setItem(COURSES_KEY, JSON.stringify(sanitized));
           return sanitized.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         }
       } catch (e) {}
@@ -301,6 +303,7 @@ export function getCachedPrepSubjects(): PrepSubjectItem[] {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const sanitized = sanitizeSubSubjects(parsed);
+          localStorage.setItem(PREP_KEY, JSON.stringify(sanitized));
           return sanitized.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         }
       } catch (e) {}
