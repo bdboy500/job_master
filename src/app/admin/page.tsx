@@ -41,7 +41,10 @@ import {
   Globe,
   Calculator,
   GraduationCap,
-  Sliders
+  Sliders,
+  Flame,
+  Newspaper,
+  TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -65,6 +68,33 @@ import {
 } from "../../lib/courses_and_subjects";
 
 // Interfaces for local state types
+function renderPrepIcon(iconName?: string, className = "w-5 h-5 stroke-[2.2px]") {
+  const iconMap: Record<string, any> = {
+    BookOpen: BookOpen,
+    Calculator: Calculator,
+    Globe: Globe,
+    GraduationCap: GraduationCap,
+    FileText: FileText,
+    Briefcase: Briefcase,
+    Users: Users,
+    Shield: ShieldCheck,
+    ShieldCheck: ShieldCheck,
+    Zap: Zap,
+    Award: Award,
+    Flame: Flame,
+    Sparkles: Sparkles,
+    Layers: Layers,
+    Grid: Grid,
+    Tag: Tag,
+    Compass: Compass,
+    HelpCircle: HelpCircle,
+    Newspaper: Newspaper,
+    TrendingUp: TrendingUp,
+  };
+  const IconComp = (iconName && iconMap[iconName]) || BookOpen;
+  return <IconComp className={className} />;
+}
+
 function formatDisplayDate(dateTimeStr: string): string {
   if (!dateTimeStr) return "";
   try {
@@ -234,31 +264,45 @@ export default function AdminPage() {
 
   // Dynamic Sub Subjects Map from dynamic Preparation Subjects and Courses
   const SUB_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {
-    all_courses: [{ id: "all", name: "সকল বিষয় / পেপার (All Papers)" }]
+    all_courses: [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
   };
 
   prepSubjectsList.forEach(subject => {
-    const key = subject.name.toLowerCase();
-    const subs: { id: string; name: string }[] = [{ id: "all", name: "সকল বিষয় / পেপার (All Papers)" }];
+    const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
     (subject.subSubjects || []).forEach(sub => {
-      subs.push({ id: sub.name, name: `${sub.name} (${sub.sub || ""})` });
+      subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
       (sub.subCategories2 || []).forEach(sub2 => {
         subs.push({ id: sub2.name, name: `└─ ${sub2.name}` });
       });
     });
-    SUB_SUBJECTS_MAP[key] = subs;
-    SUB_SUBJECTS_MAP[subject.name] = subs;
-    if (key === "mathematics") SUB_SUBJECTS_MAP["math"] = subs;
+
+    if (subject.id) SUB_SUBJECTS_MAP[subject.id] = subs;
+    if (subject.name) {
+      SUB_SUBJECTS_MAP[subject.name] = subs;
+      SUB_SUBJECTS_MAP[subject.name.toLowerCase()] = subs;
+    }
+    if (subject.bnName) {
+      SUB_SUBJECTS_MAP[subject.bnName] = subs;
+      SUB_SUBJECTS_MAP[subject.bnName.toLowerCase()] = subs;
+    }
   });
 
   coursesList.forEach(course => {
-    const key = course.id.toLowerCase();
-    if (!SUB_SUBJECTS_MAP[key]) {
-      const subs: { id: string; name: string }[] = [{ id: "all", name: "সকল সেকশন (All Sections)" }];
-      (course.subSubjects || []).forEach(sub => {
-        subs.push({ id: sub.name, name: `${sub.name} (${sub.sub || ""})` });
+    const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
+    (course.subSubjects || []).forEach(sub => {
+      subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
+      (sub.subCategories2 || []).forEach(sub2 => {
+        subs.push({ id: sub2.name, name: `└─ ${sub2.name}` });
       });
-      SUB_SUBJECTS_MAP[key] = subs;
+    });
+
+    if (course.id) {
+      SUB_SUBJECTS_MAP[course.id] = subs;
+      SUB_SUBJECTS_MAP[course.id.toLowerCase()] = subs;
+    }
+    if (course.name) {
+      SUB_SUBJECTS_MAP[course.name] = subs;
+      SUB_SUBJECTS_MAP[course.name.toLowerCase()] = subs;
     }
   });
 
@@ -1415,7 +1459,7 @@ export default function AdminPage() {
   // RENDER: DASHBOARD COMPONENT
   // ==========================================
   return (
-    <div className="h-screen h-dvh w-full bg-slate-50/50 flex flex-col font-sans selection:bg-[#FF6A00] selection:text-white overflow-hidden">
+    <div className="admin-panel admin-root h-screen h-dvh w-full bg-slate-50/50 flex flex-col font-sans selection:bg-[#FF6A00] selection:text-white overflow-hidden">
       
 
 
@@ -2150,12 +2194,12 @@ export default function AdminPage() {
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperPrepSubjectId(val);
-                              setPaperPrepSubSubject("all");
+                              setPaperPrepSubSubject("none");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
                             {prepSubjectsList.map(s => (
-                              <option key={s.id} value={s.name}>{s.name} ({s.sub || "Subject"})</option>
+                              <option key={s.id} value={s.id}>{s.bnName || s.name} ({s.sub || "Subject"})</option>
                             ))}
                           </select>
                         </div>
@@ -2169,7 +2213,13 @@ export default function AdminPage() {
                             onChange={(e) => setPaperPrepSubSubject(e.target.value)}
                             className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
-                            {(SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || SUB_SUBJECTS_MAP[paperPrepSubjectId] || [{ id: "all", name: "সকল বিষয় / পেপার (All Papers)" }]).map(s => (
+                            {(
+                              SUB_SUBJECTS_MAP[paperPrepSubjectId] || 
+                              SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || 
+                              (prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId) ? 
+                                SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId)!.name] : null) || 
+                              [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
+                            ).map(s => (
                               <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
                           </select>
@@ -2186,7 +2236,7 @@ export default function AdminPage() {
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperCourse(val);
-                              setPaperSubSubject("all");
+                              setPaperSubSubject("none");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
@@ -2196,22 +2246,24 @@ export default function AdminPage() {
                           </select>
                         </div>
 
-                        {SUB_SUBJECTS_MAP[paperCourse] && (
-                          <div className="space-y-1.5 animate-fade-in">
-                            <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                              ২.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *
-                            </label>
-                            <select
-                              value={paperSubSubject}
-                              onChange={(e) => setPaperSubSubject(e.target.value)}
-                              className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                            >
-                              {SUB_SUBJECTS_MAP[paperCourse].map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
+                        <div className="space-y-1.5 animate-fade-in">
+                          <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
+                            ২.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *
+                          </label>
+                          <select
+                            value={paperSubSubject}
+                            onChange={(e) => setPaperSubSubject(e.target.value)}
+                            className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                          >
+                            {(
+                              SUB_SUBJECTS_MAP[paperCourse] || 
+                              SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || 
+                              [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
+                            ).map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -3455,7 +3507,7 @@ export default function AdminPage() {
 
                             {/* Course Icon & Details */}
                             <div className={`w-10 h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
-                              <Compass className="w-5 h-5 stroke-[2.2px]" />
+                              {renderPrepIcon(course.icon, "w-5 h-5 stroke-[2.2px]")}
                             </div>
 
                             <div className="space-y-0.5">
@@ -3592,6 +3644,73 @@ export default function AdminPage() {
                         onChange={(e) => setPrepFormSub(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-800"
                       />
+                    </div>
+
+                    {/* Icon & Theme Color Selection */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          আইকন (Icon) *
+                        </label>
+                        <select
+                          value={prepFormIcon}
+                          onChange={(e) => setPrepFormIcon(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="BookOpen">📖 BookOpen</option>
+                          <option value="Calculator">🧮 Calculator</option>
+                          <option value="Globe">🌐 Globe</option>
+                          <option value="GraduationCap">🎓 GraduationCap</option>
+                          <option value="FileText">📄 FileText</option>
+                          <option value="Briefcase">💼 Briefcase</option>
+                          <option value="Users">👥 Users</option>
+                          <option value="ShieldCheck">🛡️ Shield</option>
+                          <option value="Zap">⚡ Zap</option>
+                          <option value="Award">🏆 Award</option>
+                          <option value="Flame">🔥 Flame</option>
+                          <option value="Sparkles">✨ Sparkles</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ব্যাকগ্রাউন্ড কালার
+                        </label>
+                        <select
+                          value={prepFormBg}
+                          onChange={(e) => setPrepFormBg(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="bg-[#FFF1E6]">Orange Tint</option>
+                          <option value="bg-[#E6F0FA]">Blue Tint</option>
+                          <option value="bg-[#EBF7EE]">Green Tint</option>
+                          <option value="bg-[#F3E8FF]">Purple Tint</option>
+                          <option value="bg-[#FCE7F3]">Rose Tint</option>
+                          <option value="bg-[#FEF3C7]">Amber Tint</option>
+                          <option value="bg-[#DCFCE7]">Emerald Tint</option>
+                          <option value="bg-[#E0F2FE]">Sky Tint</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          আইকন কালার
+                        </label>
+                        <select
+                          value={prepFormText}
+                          onChange={(e) => setPrepFormText(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="text-orange-600">Orange</option>
+                          <option value="text-blue-600">Blue</option>
+                          <option value="text-green-600">Green</option>
+                          <option value="text-purple-600">Purple</option>
+                          <option value="text-rose-600">Rose</option>
+                          <option value="text-amber-600">Amber</option>
+                          <option value="text-emerald-600">Emerald</option>
+                          <option value="text-sky-600">Sky</option>
+                        </select>
+                      </div>
                     </div>
 
                     {/* MULTI-LEVEL SUB-CATEGORY EDITOR (Level 2 & Level 3) */}
@@ -3826,7 +3945,7 @@ export default function AdminPage() {
 
                               {/* Subject Icon & Title */}
                               <div className={`w-10 h-10 ${prep.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${prep.text || "text-purple-600"} shrink-0 font-extrabold`}>
-                                <BookOpen className="w-5 h-5 stroke-[2.2px]" />
+                                {renderPrepIcon(prep.icon, "w-5 h-5 stroke-[2.2px]")}
                               </div>
 
                               <div className="space-y-0.5">
