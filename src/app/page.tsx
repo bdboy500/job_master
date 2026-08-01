@@ -347,6 +347,7 @@ export default function Home() {
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
+  const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   
@@ -2320,38 +2321,55 @@ export default function Home() {
                           key={idx}
                           onClick={() => {
                             setSelectedPrepSubSubject(sub);
+                            setSelectedLevel3Topic(null);
                             setPreviousScreen("prep-sub");
                             setCurrentScreen("prep-sub-detail");
                             if (soundEnabled) quizAudio.playClick();
                           }}
-                          className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 flex items-center justify-between shadow-xs cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group"
+                          className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-[2rem] p-4.5 shadow-xs cursor-pointer hover:shadow-md transition-all active:scale-[0.98] group space-y-2.5"
                         >
-                          <div className="flex items-center gap-3.5 min-w-0">
-                            <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#FF6A00] group-hover:text-white transition-colors">
-                              <BookOpen className="w-5.5 h-5.5 stroke-[2.2px]" />
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className="w-11 h-11 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#FF6A00] group-hover:text-white transition-colors">
+                                <BookOpen className="w-5.5 h-5.5 stroke-[2.2px]" />
+                              </div>
+                              <div className="text-left space-y-0.5 truncate">
+                                <h5 className="text-xs sm:text-sm font-black text-slate-800 leading-snug group-hover:text-[#FF6A00] transition-colors truncate">
+                                  {sub.name}
+                                </h5>
+                                <p className="text-[10px] font-bold text-slate-400 truncate">{sub.sub}</p>
+                              </div>
                             </div>
-                            <div className="text-left space-y-0.5 truncate">
-                              <h5 className="text-xs sm:text-sm font-black text-slate-800 leading-snug group-hover:text-[#FF6A00] transition-colors truncate">
-                                {sub.name}
-                              </h5>
-                              <p className="text-[10px] font-bold text-slate-400 truncate">{sub.sub}</p>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {specificPapersCount > 0 ? (
+                                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                                  {specificPapersCount}টি প্রশ্নপত্র
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
+                                  ভেতরে দেখুন
+                                </span>
+                              )}
+                              <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors">
+                                <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            {specificPapersCount > 0 ? (
-                              <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-                                {specificPapersCount}টি প্রশ্নপত্র
+                          {/* Level 3 Sub-Categories / Topics Badges */}
+                          {sub.subCategories2 && sub.subCategories2.length > 0 && (
+                            <div className="pt-2 border-t border-slate-100/80 flex flex-wrap items-center gap-1.5 text-left">
+                              <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200/80 px-2 py-0.5 rounded-lg shrink-0">
+                                🏷️ লেভেল ৩ ({sub.subCategories2.length}টি টপিক):
                               </span>
-                            ) : (
-                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
-                                ভেতরে দেখুন
-                              </span>
-                            )}
-                            <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors">
-                              <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                              {sub.subCategories2.map((s2: any, s2Idx: number) => (
+                                <span key={s2Idx} className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
+                                  🔹 {s2.name}
+                                </span>
+                              ))}
                             </div>
-                          </div>
+                          )}
                         </div>
                       );
                     });
@@ -2423,16 +2441,60 @@ export default function Home() {
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
             <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
               
+              {/* Level 3 Topics / Sub-categories Bar */}
+              {selectedPrepSubSubject.subCategories2 && selectedPrepSubSubject.subCategories2.length > 0 && (
+                <div className="bg-white border border-slate-200/90 rounded-[2rem] p-4.5 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
+                      <span>🏷️</span>
+                      <span>লেভেল ৩ সাব-ক্যাটাগরি ও টপিকসমূহ:</span>
+                    </h5>
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                      {selectedPrepSubSubject.subCategories2.length}টি টপিক
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <button
+                      onClick={() => setSelectedLevel3Topic(null)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        !selectedLevel3Topic
+                          ? "bg-[#FF6A00] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      সকল টপিক ({selectedPrepSubSubject.subCategories2.length})
+                    </button>
+                    {selectedPrepSubSubject.subCategories2.map((sub2: any, sub2Idx: number) => {
+                      const isSelected = selectedLevel3Topic === sub2.name;
+                      return (
+                        <button
+                          key={sub2.id || sub2Idx}
+                          onClick={() => setSelectedLevel3Topic(isSelected ? null : sub2.name)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? "bg-purple-600 text-white shadow-xs"
+                              : "bg-purple-50 text-purple-800 border border-purple-200/80 hover:bg-purple-100"
+                          }`}
+                        >
+                          <span>🔹</span>
+                          <span>{sub2.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-center">
                   <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
-                    প্রকাশিত প্রশ্নপত্র ও পরীক্ষা
+                    {selectedLevel3Topic ? `"${selectedLevel3Topic}" - প্রশ্নপত্র` : "প্রকাশিত প্রশ্নপত্র ও পরীক্ষা"}
                   </h4>
                 </div>
 
                 {(() => {
                   // Requirement 3: Strictly filter out weekly/daily general all-subject tests
-                  const subPapers = examPapers.filter(paper => {
+                  let subPapers = examPapers.filter(paper => {
                     const pCourse = (paper.course || "").toLowerCase();
                     const pSubject = (paper.subject || "").toLowerCase();
                     const pSubSubject = (paper.subSubject || "").toLowerCase();
@@ -2469,6 +2531,16 @@ export default function Home() {
 
                     return isSubMatch;
                   });
+
+                  if (selectedLevel3Topic) {
+                    const normTopic = selectedLevel3Topic.toLowerCase();
+                    subPapers = subPapers.filter(paper => {
+                      const pTopic = (paper.topic || "").toLowerCase();
+                      const pTitle = (paper.title || "").toLowerCase();
+                      const pSub = (paper.subSubject || "").toLowerCase();
+                      return pTopic.includes(normTopic) || pTitle.includes(normTopic) || pSub.includes(normTopic);
+                    });
+                  }
 
                   if (subPapers.length === 0) {
                     return (
@@ -2685,6 +2757,81 @@ export default function Home() {
                       });
                     })()}
                   </div>
+
+                  {/* Course Sub-Subjects & Syllabus (Level 2 & Level 3) */}
+                  {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 && (
+                    <div className="space-y-3 pt-3">
+                      <div className="flex items-center justify-between px-1">
+                        <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <span>📚</span>
+                          <span>কোর্সের বিষয় ও সাব-ক্যাটাগরিসমূহ (Level 2 & Level 3)</span>
+                        </h4>
+                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6A00] border border-orange-200">
+                          {selectedCourseDetail.subSubjects.length}টি বিষয়
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3">
+                        {selectedCourseDetail.subSubjects.map((subItem: any, sIdx: number) => {
+                          const sub2List = subItem.subCategories2 || [];
+                          return (
+                            <div 
+                              key={subItem.id || sIdx}
+                              className="bg-white border border-slate-200/80 hover:border-orange-200 rounded-[2rem] p-4.5 shadow-2xs space-y-3 transition-all"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#FF6A00] flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+                                    #{sIdx + 1}
+                                  </div>
+                                  <div className="truncate">
+                                    <h5 className="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                                      {subItem.name}
+                                    </h5>
+                                    {subItem.sub && (
+                                      <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">
+                                        {subItem.sub}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setActiveExamSection("subject");
+                                    if (soundEnabled) quizAudio.playClick();
+                                  }}
+                                  className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-orange-50 text-[#FF6A00] hover:bg-[#FF6A00] hover:text-white transition-all cursor-pointer shrink-0 active:scale-95 shadow-2xs"
+                                >
+                                  পরীক্ষা দেখুন →
+                                </button>
+                              </div>
+
+                              {/* Level 3 Sub-Topics */}
+                              {sub2List.length > 0 && (
+                                <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
+                                  <div className="text-[10px] font-extrabold text-purple-700 flex items-center gap-1">
+                                    <span>🏷️</span>
+                                    <span>লেভেল ৩ সাব-টপিকসমূহ ({sub2List.length}টি):</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {sub2List.map((sub2: any, sub2Idx: number) => (
+                                      <span
+                                        key={sub2.id || sub2Idx}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 border border-purple-200/80 text-purple-800 rounded-lg text-[11px] font-bold"
+                                      >
+                                        <span>🔹</span>
+                                        <span>{sub2.name}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -4601,14 +4748,65 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="py-8 text-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 mx-auto flex items-center justify-center text-xl text-slate-400">
-                  {quickToolModal.icon}
+              {quickToolModal.name.toLowerCase().includes("syllabus") || quickToolModal.name.toLowerCase().includes("সিলেবাস") ? (
+                <div className="max-h-[60vh] overflow-y-auto space-y-3 py-2 pr-1">
+                  {(() => {
+                    let subList: any[] = [];
+                    if (selectedCourseDetail?.subSubjects?.length > 0) {
+                      subList = selectedCourseDetail.subSubjects;
+                    } else if (selectedPrepSubject) {
+                      const matchObj: any = allPrepSubjectsData.find((s: any) => 
+                        s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                        (s.bnName && s.bnName.toLowerCase() === selectedPrepSubject.toLowerCase())
+                      );
+                      if (matchObj && matchObj.subSubjects) {
+                        subList = matchObj.subSubjects;
+                      }
+                    }
+
+                    if (subList.length === 0) {
+                      return (
+                        <div className="py-6 text-center text-slate-400 text-xs font-bold">
+                          এই বিষয়ের কোনো নির্দিষ্ট সিলেবাস সেট করা নেই।
+                        </div>
+                      );
+                    }
+
+                    return subList.map((sub: any, sIdx: number) => (
+                      <div key={sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2 text-left">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF6A00] font-extrabold text-[11px] flex items-center justify-center shrink-0">
+                            #{sIdx + 1}
+                          </span>
+                          <div>
+                            <h5 className="text-xs sm:text-sm font-black text-slate-800">{sub.name}</h5>
+                            {sub.sub && <p className="text-[10px] font-bold text-slate-400">{sub.sub}</p>}
+                          </div>
+                        </div>
+
+                        {sub.subCategories2 && sub.subCategories2.length > 0 && (
+                          <div className="pt-2 border-t border-slate-200/60 flex flex-wrap gap-1">
+                            {sub.subCategories2.map((s2: any, s2Idx: number) => (
+                              <span key={s2Idx} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/70">
+                                🔹 {s2.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ));
+                  })()}
                 </div>
-                <p className="text-xs font-bold text-slate-500">
-                  কোন তথ্য পাওয়া যায়নি। শীঘ্রই আপডেট করা হবে।
-                </p>
-              </div>
+              ) : (
+                <div className="py-8 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 mx-auto flex items-center justify-center text-xl text-slate-400">
+                    {quickToolModal.icon}
+                  </div>
+                  <p className="text-xs font-bold text-slate-500">
+                    কোন তথ্য পাওয়া যায়নি। শীঘ্রই আপডেট করা হবে।
+                  </p>
+                </div>
+              )}
 
               <button
                 onClick={() => setQuickToolModal(null)}

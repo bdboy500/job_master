@@ -3349,46 +3349,27 @@ export default function AdminPage() {
                       />
                     </div>
 
-                    {/* Category & Icon */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          ক্যাটাগরি (Category)
-                        </label>
-                        <select
-                          value={courseFormCategory}
-                          onChange={(e) => setCourseFormCategory(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
-                        >
-                          <option value="BCS">BCS</option>
-                          <option value="Bank">Bank Jobs</option>
-                          <option value="Teachers">Teachers / NTRCA</option>
-                          <option value="Government Job">Government Job</option>
-                          <option value="Other">Other / অন্যান্য</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          আইকন (Icon)
-                        </label>
-                        <select
-                          value={courseFormIcon}
-                          onChange={(e) => setCourseFormIcon(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
-                        >
-                          <option value="BookOpen">📖 BookOpen</option>
-                          <option value="Calculator">🧮 Calculator</option>
-                          <option value="Globe">🌐 Globe</option>
-                          <option value="GraduationCap">🎓 GraduationCap</option>
-                          <option value="FileText">📄 FileText</option>
-                          <option value="Briefcase">💼 Briefcase</option>
-                          <option value="Users">👥 Users</option>
-                          <option value="Shield">🛡️ Shield</option>
-                          <option value="Zap">⚡ Zap</option>
-                          <option value="Award">🏆 Award</option>
-                        </select>
-                      </div>
+                    {/* Icon */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        আইকন (Icon)
+                      </label>
+                      <select
+                        value={courseFormIcon}
+                        onChange={(e) => setCourseFormIcon(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                      >
+                        <option value="BookOpen">📖 BookOpen</option>
+                        <option value="Calculator">🧮 Calculator</option>
+                        <option value="Globe">🌐 Globe</option>
+                        <option value="GraduationCap">🎓 GraduationCap</option>
+                        <option value="FileText">📄 FileText</option>
+                        <option value="Briefcase">💼 Briefcase</option>
+                        <option value="Users">👥 Users</option>
+                        <option value="Shield">🛡️ Shield</option>
+                        <option value="Zap">⚡ Zap</option>
+                        <option value="Award">🏆 Award</option>
+                      </select>
                     </div>
 
                     {/* Colors */}
