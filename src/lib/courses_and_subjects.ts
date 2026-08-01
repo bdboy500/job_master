@@ -145,23 +145,14 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
         name: "Bangla 1st Paper", 
         sub: "বাংলা সাহিত্য ও গল্প-কবিতা",
         serial: 1,
-        subCategories2: [
-          { id: "b1-sub2-1", name: "প্রাচীন ও মধ্যযুগ (চর্যাপদ)", serial: 1 },
-          { id: "b1-sub2-2", name: "আধুনিক যুগ (গল্প ও উপন্যাস)", serial: 2 },
-          { id: "b1-sub2-3", name: "কবিতা ও নাটক", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "bangla-2nd", 
         name: "Bangla 2nd Paper", 
         sub: "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব",
         serial: 2,
-        subCategories2: [
-          { id: "b2-sub2-1", name: "ধ্বনি ও বর্ণ", serial: 1 },
-          { id: "b2-sub2-2", name: "শব্দ ও পদ প্রকরণ", serial: 2 },
-          { id: "b2-sub2-3", name: "সমাস ও কারক", serial: 3 },
-          { id: "b2-sub2-4", name: "সন্ধি ও উপসর্গ", serial: 4 }
-        ]
+        subCategories2: []
       }
     ]
   },
@@ -180,23 +171,14 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
         name: "English 1st Paper", 
         sub: "English Literature & Reading",
         serial: 1,
-        subCategories2: [
-          { id: "e1-sub2-1", name: "Literary Periods & Authors", serial: 1 },
-          { id: "e1-sub2-2", name: "Poetry & Famous Quotes", serial: 2 },
-          { id: "e1-sub2-3", name: "Reading Comprehension", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "eng-2nd", 
         name: "English 2nd Paper", 
         sub: "English Grammar & Vocabulary",
         serial: 2,
-        subCategories2: [
-          { id: "e2-sub2-1", name: "Parts of Speech", serial: 1 },
-          { id: "e2-sub2-2", name: "Tense & Transformation", serial: 2 },
-          { id: "e2-sub2-3", name: "Idioms & Phrases", serial: 3 },
-          { id: "e2-sub2-4", name: "Subject-Verb Agreement", serial: 4 }
-        ]
+        subCategories2: []
       }
     ]
   },
@@ -215,33 +197,21 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
         name: "Arithmetic (পাটিগণিত)", 
         sub: "মৌলিক সংখ্যা, শতকরা ও লাভ-ক্ষতি",
         serial: 1,
-        subCategories2: [
-          { id: "m1-sub2-1", name: "ল.সা.গু ও গ.সা.গু", serial: 1 },
-          { id: "m1-sub2-2", name: "শতকরা ও লাভ-ক্ষতি", serial: 2 },
-          { id: "m1-sub2-3", name: "সুদকষা ও অনুপাত", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "math-algebra", 
         name: "Algebra (বীজগণিত)", 
         sub: "মান নির্ণয়, সমীকরণ ও লগারিদম",
         serial: 2,
-        subCategories2: [
-          { id: "m2-sub2-1", name: "বীজগণিতীয় মান নির্ণয়", serial: 1 },
-          { id: "m2-sub2-2", name: "উৎপাদক ও সমীকরণ", serial: 2 },
-          { id: "m2-sub2-3", name: "সূচক ও লগারিদম", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "math-geometry", 
         name: "Geometry (জ্যামিতি)", 
         sub: "রেখা, কোণ, ত্রিভুজ, চতুর্ভুজ ও বৃত্ত",
         serial: 3,
-        subCategories2: [
-          { id: "m3-sub2-1", name: "রেখা ও কোণ", serial: 1 },
-          { id: "m3-sub2-2", name: "ত্রিভুজ ও চতুর্ভুজ", serial: 2 },
-          { id: "m3-sub2-3", name: "বৃত্ত ও পরিমিতি", serial: 3 }
-        ]
+        subCategories2: []
       }
     ]
   },
@@ -260,33 +230,21 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
         name: "Physics", 
         sub: "পদার্থবিজ্ঞান ও গতিবিদ্যার সূত্রাবলী",
         serial: 1,
-        subCategories2: [
-          { id: "p-sub2-1", name: "গতি, বল ও কাজ", serial: 1 },
-          { id: "p-sub2-2", name: "তাপ, তরঙ্গ ও শব্দ", serial: 2 },
-          { id: "p-sub2-3", name: "আলো ও আধুনিক পদার্থবিজ্ঞান", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "sci-chemistry", 
         name: "Chemistry", 
         sub: "রসায়ন তত্ত্ব ও পর্যায় সারণি",
         serial: 2,
-        subCategories2: [
-          { id: "c-sub2-1", name: "পদার্থের গঠন ও বন্ধন", serial: 1 },
-          { id: "c-sub2-2", name: "এসিড, ক্ষার ও লবণ", serial: 2 },
-          { id: "c-sub2-3", name: "পর্যায় সারণি ও সংকেত", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "sci-biology", 
         name: "Biology", 
         sub: "জীববিজ্ঞান ও মানবদেহের কার্যাবলী",
         serial: 3,
-        subCategories2: [
-          { id: "bio-sub2-1", name: "কোষ ও টিস্যু", serial: 1 },
-          { id: "bio-sub2-2", name: "মানবদেহের অঙ্গতন্ত্র", serial: 2 },
-          { id: "bio-sub2-3", name: "উদ্ভিদবিজ্ঞান ও বংশগতি", serial: 3 }
-        ]
+        subCategories2: []
       }
     ]
   },
@@ -305,22 +263,14 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
         name: "Bangladesh Affairs", 
         sub: "বাংলাদেশ বিষয়াবলী ও ইতিহাস",
         serial: 1,
-        subCategories2: [
-          { id: "bd-sub2-1", name: "মুক্তিযুদ্ধ ও স্বাধীনতা", serial: 1 },
-          { id: "bd-sub2-2", name: "সংবিধান ও প্রশাসনিক ব্যবস্থা", serial: 2 },
-          { id: "bd-sub2-3", name: "অর্থনীতি ও উন্নয়ন প্রকল্প", serial: 3 }
-        ]
+        subCategories2: []
       },
       { 
         id: "gk-intl", 
         name: "International Affairs", 
         sub: "আন্তর্জাতিক বিষয়াবলী ও সংস্থা",
         serial: 2,
-        subCategories2: [
-          { id: "intl-sub2-1", name: "জাতিসংঘ ও আন্তর্জাতিক সংস্থা", serial: 1 },
-          { id: "intl-sub2-2", name: "বিশ্বের ভূ-রাজনীতি ও চুক্তি", serial: 2 },
-          { id: "intl-sub2-3", name: "সাম্প্রতিক বিশ্ব ঘটনাপ্রবাহ", serial: 3 }
-        ]
+        subCategories2: []
       }
     ]
   },

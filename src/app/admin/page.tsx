@@ -257,8 +257,7 @@ export default function AdminPage() {
     ...coursesList.map(c => ({
       id: c.id,
       name: `${c.name} (${c.title})`
-    })),
-    { id: "all_job", name: "All Job Special (সকল জব প্রস্তুতি)" }
+    }))
   ];
 
   // Dynamic Sub Subjects Map from dynamic Preparation Subjects and Courses
@@ -4092,7 +4091,7 @@ export default function AdminPage() {
                               <div className="space-y-0.5">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-extrabold text-xs text-slate-900">
-                                    {prep.bnName} ({prep.name})
+                                    {prep.bnName && prep.bnName !== prep.name ? `${prep.bnName} (${prep.name})` : (prep.name || prep.bnName)}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">

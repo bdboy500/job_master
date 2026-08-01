@@ -9,10 +9,7 @@
     "bg": "bg-[#FFF1E6]", 
     "iconColor": "text-orange-600",
     "serial": 1,
-    "subSubjects": [
-      { "id": "bcs-prelim", "name": "BCS Preliminary Full Syllabus", "sub": "সকল বিষয়ভিত্তিক মক টেস্ট" },
-      { "id": "bcs-[#1]", "name": "BCS Model Test Series", "sub": "নিয়মিত মডেল টেস্ট" }
-    ]
+    "subSubjects": []
   },
   { 
     "id": "bank", 
@@ -24,9 +21,7 @@
     "bg": "bg-[#E6F0FA]", 
     "iconColor": "text-blue-600",
     "serial": 2,
-    "subSubjects": [
-      { "id": "bank-off", "name": "Bank Officer Preliminary", "sub": "পাটিগণিত, ইংরেজি ও আইসিটি" }
-    ]
+    "subSubjects": []
   },
   { 
     "id": "primary", 
@@ -38,9 +33,7 @@
     "bg": "bg-[#EBF7EE]", 
     "iconColor": "text-green-600",
     "serial": 3,
-    "subSubjects": [
-      { "id": "prim-1", "name": "Primary Teacher Exam Model Test", "sub": "বোর্ড বই ও বিগত বছরের সমাধান" }
-    ]
+    "subSubjects": []
   },
   { 
     "id": "ntrca", 
@@ -52,9 +45,7 @@
     "bg": "bg-[#F3E8FF]", 
     "iconColor": "text-purple-600",
     "serial": 4,
-    "subSubjects": [
-      { "id": "ntrca-1", "name": "NTRCA Teacher Registration", "sub": "স্কুল ও কলেজ পর্যায়" }
-    ]
+    "subSubjects": []
   },
   { 
     "id": "psc", 
@@ -66,9 +57,7 @@
     "bg": "bg-[#FCE7F3]", 
     "iconColor": "text-rose-600",
     "serial": 5,
-    "subSubjects": [
-      { "id": "psc-1", "name": "PSC Non-Cadre Exam Prep", "sub": "১০ম থেকে ২০তম গ্রেড" }
-    ]
+    "subSubjects": []
   },
   { 
     "id": "office_assistant", 
@@ -80,10 +69,7 @@
     "bg": "bg-[#E0F2FE]", 
     "iconColor": "text-sky-600",
     "serial": 6,
-    "subSubjects": [
-      { "id": "off-ast-1", "name": "অফিস সহায়ক পার্ট ১ (বাংলা ও ইংরেজি)", "sub": "মৌলিক ব্যাকরণ ও প্রশ্নব্যাংক" },
-      { "id": "off-ast-2", "name": "অফিস সহায়ক পার্ট ২ (গণিত ও সাধারণ জ্ঞান)", "sub": "পাটিগণিত ও আইসিটি স্পেশাল" }
-    ]
+    "subSubjects": []
   },
   { 
     "id": "social_service", 
@@ -95,8 +81,6 @@
     "bg": "bg-[#FEF3C7]", 
     "iconColor": "text-amber-600",
     "serial": 7,
-    "subSubjects": [
-      { "id": "soc-1", "name": "সমাজসেবা ইউনিয়ন সমাজকর্মী মডেল টেস্ট", "sub": "বিগত বছরের প্রশ্ন ও সিলেবাস" }
-    ]
+    "subSubjects": []
   }
 ]

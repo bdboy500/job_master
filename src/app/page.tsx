@@ -1169,16 +1169,15 @@ export default function Home() {
   }, [coursesList, ICON_MAP]);
 
   const DEFAULT_PREP_SUBJECTS = useMemo(() => [
-    { name: "Bangla", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
-    { name: "English", bnName: "ইংরেজি", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
-    { name: "Mathematics", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
-    { name: "Science", bnName: "বিজ্ঞান", icon: Sparkles, bg: "bg-[#EBF7EE]", text: "text-green-600", sub: "পদার্থ, রসায়ন ও জীব" },
-    { name: "General Knowledge", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
-    { name: "Geography", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
-    { name: "General Science", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
-    { name: "Technology", bnName: "কম্পিউটার ও তথ্যপ্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
-    { name: "Mental Ability", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
-    { name: "Good Governance", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
+    { name: "বাংলা", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
+    { name: "English", bnName: "English", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
+    { name: "গণিত", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
+    { name: "সাধারণ জ্ঞান", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
+    { name: "প্রযুক্তি", bnName: "প্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
+    { name: "সাধারণ বিজ্ঞান", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
+    { name: "ভূগোল", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
+    { name: "মানসিক দক্ষতা", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
+    { name: "নৈতিকতা ও সুশাসন", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
   ], []);
 
   const allPrepSubjectsData = useMemo(() => {
@@ -1676,12 +1675,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* General Quiz Game Live Banner - Clean Layout */}
-              <div className="bg-gradient-to-br from-[#FF6A00] via-[#FF5500] to-[#E54800] rounded-2xl p-4 sm:p-4.5 text-white relative overflow-hidden shadow-lg shadow-orange-500/20 border border-orange-400/30">
-                {/* Subtle background glow effects */}
-                <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/20 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-amber-300/20 rounded-full blur-xl pointer-events-none" />
-                
+              {/* General Quiz Game Live Banner - Solid Orange Layout */}
+              <div className="bg-[#FF6A00] rounded-2xl p-4 sm:p-4.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20">
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
                   {/* LEFT SIDE: Title and Subtitle */}
                   <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
@@ -2186,9 +2181,6 @@ export default function Home() {
                         <span className="text-sm font-extrabold text-[#334155] tracking-wide block truncate group-hover:text-[#FF6A00] transition-colors">
                           {subject.name}
                         </span>
-                        <span className="text-xs font-bold text-slate-400 block truncate">
-                          {subject.bnName}
-                        </span>
                       </div>
                     </div>
                   );
@@ -2226,63 +2218,80 @@ export default function Home() {
                         questions: QUIZ_QUESTIONS,
                         subCategories2: sub.subCategories2 || []
                       }));
-                    } else if (selectedPrepSubject === "Bangla") {
-                      subSubjectsList = [
-                        { name: "Bangla 1st Paper", sub: "বাংলা সাহিত্য ও গল্প-কবিতা", questions: BANGLA_1ST_QUESTIONS },
-                        { name: "Bangla 2nd Paper", sub: "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব", questions: BANGLA_2ND_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "English") {
-                      subSubjectsList = [
-                        { name: "English 1st Paper", sub: "English Literature & Reading", questions: ENGLISH_1ST_QUESTIONS },
-                        { name: "English 2nd Paper", sub: "English Grammar & Vocabulary", questions: ENGLISH_2ND_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "Science") {
-                      subSubjectsList = [
-                        { name: "Physics", sub: "পদার্থবিজ্ঞান ও গতিবিদ্যার সূত্রাবলী", questions: PHYSICS_QUESTIONS },
-                        { name: "Chemistry", sub: "রসায়ন তত্ত্ব ও পর্যায় সারণি", questions: CHEMISTRY_QUESTIONS },
-                        { name: "Biology", sub: "জীববিজ্ঞান ও মানবদেহের কার্যাবলী", questions: BIOLOGY_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "Mathematics" || selectedPrepSubject === "Math") {
-                      subSubjectsList = [
-                        { name: "Arithmetic (পাটিগণিত)", sub: "মৌলিক সংখ্যা, শতকরা ও লাভ-ক্ষতি", questions: ARITHMETIC_QUESTIONS },
-                        { name: "Algebra (বীজগণিত)", sub: "মান নির্ণয়, সমীকরণ ও লগারিদম", questions: ALGEBRA_QUESTIONS },
-                        { name: "Geometry (জ্যামিতি)", sub: "রেখা, কোণ, ত্রিভুজ, চতুর্ভুজ ও বৃত্ত", questions: GEOMETRY_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "General Knowledge") {
-                      subSubjectsList = [
-                        { name: "Bangladesh Affairs", sub: "বাংলাদেশ বিষয়াবলী ও ইতিহাস", questions: QUIZ_QUESTIONS },
-                        { name: "International Affairs", sub: "আন্তর্জাতিক বিষয়াবলী ও সংস্থা", questions: QUIZ_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "Geography") {
-                      subSubjectsList = [
-                        { name: "Environment & Geography", sub: "পরিবেশ ও ভূ-প্রকৃতি", questions: QUIZ_QUESTIONS },
-                        { name: "Disaster Management", sub: "দুর্যোগ ব্যবস্থাপনা", questions: QUIZ_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "General Science") {
-                      subSubjectsList = [
-                        { name: "Daily Science", sub: "দৈনন্দিন বিজ্ঞান", questions: QUIZ_QUESTIONS },
-                        { name: "General Medical", sub: "সাধারণ চিকিৎসা", questions: QUIZ_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "Technology") {
-                      subSubjectsList = [
-                        { name: "Computer Basics", sub: "কম্পিউটার শিক্ষা", questions: QUIZ_QUESTIONS },
-                        { name: "ICT & Technology", sub: "তথ্যপ্রযুক্তি", questions: QUIZ_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "Mental Ability") {
-                      subSubjectsList = [
-                        { name: "Mathematical Logic", sub: "গাণিতিক যুক্তি", questions: QUIZ_QUESTIONS },
-                        { name: "Mental Skills", sub: "মনস্তাত্ত্বিক দক্ষতা", questions: QUIZ_QUESTIONS }
-                      ];
-                    } else if (selectedPrepSubject === "Good Governance") {
-                      subSubjectsList = [
-                        { name: "Ethics & Values", sub: "নৈতিকতা ও মূল্যবোধ", questions: QUIZ_QUESTIONS },
-                        { name: "Good Governance", sub: "সুশাসন", questions: QUIZ_QUESTIONS }
-                      ];
-                    } else {
-                      subSubjectsList = [
-                        { name: `${selectedPrepSubject} Module 1`, sub: "অধ্যায়ভিত্তিক মৌলিক কুইজ প্র্যাকটিস", questions: QUIZ_QUESTIONS },
-                        { name: `${selectedPrepSubject} Module 2`, sub: "বিগত বছরের প্রশ্ন ও কুইজ টেস্ট", questions: QUIZ_QUESTIONS }
-                      ];
+                    }
+
+                    if (subSubjectsList.length === 0) {
+                      // Filter exam papers matching this subject directly
+                      const matchingPapers = examPapers.filter(p => {
+                        const pCat = (p.categoryType || "").toLowerCase();
+                        const pCourse = (p.course || "").toLowerCase();
+                        const pSubject = (p.subSubject || p.subject || "").toLowerCase();
+                        const target = selectedPrepSubject.toLowerCase();
+                        return pCat === "prep_hub" && (
+                          pCourse === target || pSubject === target ||
+                          pCourse.includes(target) || target.includes(pCourse)
+                        );
+                      });
+
+                      return (
+                        <div className="space-y-4 pt-1">
+                          {matchingPapers.length > 0 ? (
+                            <div className="space-y-3">
+                              <p className="text-xs font-extrabold text-slate-500">
+                                {selectedPrepSubject} এর প্রশ্নপত্রসমূহ:
+                              </p>
+                              {matchingPapers.map((paper) => (
+                                <div
+                                  key={paper.id}
+                                  onClick={() => {
+                                    setSelectedLiveExamModal(paper);
+                                    if (soundEnabled) quizAudio.playClick();
+                                  }}
+                                  className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl p-4 flex items-center justify-between shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
+                                      📝
+                                    </div>
+                                    <div className="text-left">
+                                      <h5 className="text-xs sm:text-sm font-extrabold text-slate-800">
+                                        {paper.title}
+                                      </h5>
+                                      <p className="text-[10px] text-slate-400 font-bold">
+                                        {paper.questionCount || 20}টি প্রশ্ন • {paper.topic || "সাধারণ কুইজ"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center space-y-3">
+                              <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto">
+                                <BookOpen className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-extrabold text-slate-800">
+                                  {selectedPrepSubject} প্র্যাকটিস টেস্ট
+                                </h5>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  সরাসরি কুইজ টেস্ট শুরু করতে নিচের বাটনে ক্লিক করুন
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  startQuizFlow(`${selectedPrepSubject} কুইজ টেস্ট`, "মৌলিক বিষয়ভিত্তিক কুইজ", QUIZ_QUESTIONS);
+                                }}
+                                className="px-5 py-2.5 bg-[#FF6A00] hover:bg-[#FF5500] text-white text-xs font-extrabold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                              >
+                                <span>কুইজ শুরু করুন</span>
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
                     }
 
                     return subSubjectsList.map((sub, idx) => {
@@ -4649,7 +4658,6 @@ export default function Home() {
                     <option value="primary">🏫 Primary Teacher (প্রাথমিক শিক্ষক)</option>
                     <option value="ntrca">🎓 NTRCA Exam (এনটিআরসিএ)</option>
                     <option value="psc">📄 PSC Exams (পিএসসি)</option>
-                    <option value="all_job">💼 All Job Special (সকল জব)</option>
                   </select>
                 </div>
 
