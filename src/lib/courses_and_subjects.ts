@@ -40,6 +40,7 @@ export interface PrepSubjectItem {
   serial: number; // Order 1, 2, 3...
   subSubjects: SubCategoryItem[];
   active?: boolean;
+  showQuickTools?: boolean;
 }
 
 export const DEFAULT_COURSES: CourseItem[] = [

@@ -2267,27 +2267,18 @@ export default function Home() {
                               ))}
                             </div>
                           ) : (
-                            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center space-y-3">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center space-y-2 shadow-2xs">
                               <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto">
                                 <BookOpen className="w-6 h-6" />
                               </div>
                               <div>
                                 <h5 className="text-sm font-extrabold text-slate-800">
-                                  {selectedPrepSubject} প্র্যাকটিস টেস্ট
+                                  কোনো সাবজেক্ট/পরীক্ষা যুক্ত করা হয়নি
                                 </h5>
                                 <p className="text-xs text-slate-400 mt-1">
-                                  সরাসরি কুইজ টেস্ট শুরু করতে নিচের বাটনে ক্লিক করুন
+                                  এডমিন প্যানেল থেকে পরীক্ষা যুক্ত করা হলে তা এখানে দেখাবে।
                                 </p>
                               </div>
-                              <button
-                                onClick={() => {
-                                  startQuizFlow(`${selectedPrepSubject} কুইজ টেস্ট`, "মৌলিক বিষয়ভিত্তিক কুইজ", QUIZ_QUESTIONS);
-                                }}
-                                className="px-5 py-2.5 bg-[#FF6A00] hover:bg-[#FF5500] text-white text-xs font-extrabold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2"
-                              >
-                                <span>কুইজ শুরু করুন</span>
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
                             </div>
                           )}
                         </div>
@@ -2367,6 +2358,62 @@ export default function Home() {
                   })()}
                 </div>
               </div>
+
+              {/* Main Subject Quick Tools (Controlled by Admin toggle showQuickTools) */}
+              {(() => {
+                const currentObj: any = allPrepSubjectsData.find((s: any) => 
+                  s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                  (s.bnName && s.bnName.toLowerCase() === selectedPrepSubject.toLowerCase()) || 
+                  s.id === selectedPrepSubject
+                );
+                const shouldShowQT = currentObj ? (currentObj.showQuickTools !== false) : true;
+                if (!shouldShowQT) return null;
+
+                return (
+                  <div className="space-y-2 pt-3 border-t border-slate-100">
+                    <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider pl-1">
+                      কুইক টুলস ও আর্কাইভ (Quick Tools)
+                    </h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
+                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
+                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
+                        { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
+                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
+                        { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                        { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (item.name === "Archive") {
+                              setArchiveFilterCourse(selectedPrepSubject);
+                              setArchiveModalOpen(true);
+                            } else if (item.name === "Routine") {
+                              setCurrentScreen("routine");
+                            } else if (item.name === "Result" || item.name === "Merit List") {
+                              setCurrentScreen("tests");
+                            } else {
+                              setQuickToolModal({ name: item.name, icon: item.icon });
+                            }
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="bg-white border border-slate-100 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center hover:border-orange-200 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          <span className={`w-8 h-8 rounded-xl ${item.color} flex items-center justify-center text-sm font-black`}>
+                            {item.icon}
+                          </span>
+                          <span className="text-[11px] font-extrabold text-slate-700 leading-tight block truncate w-full">
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -2376,26 +2423,6 @@ export default function Home() {
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
             <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
               
-              {/* If subCategories2 exist, render Level 3 sub-categories */}
-              {selectedPrepSubSubject.subCategories2 && selectedPrepSubSubject.subCategories2.length > 0 && (
-                <div className="space-y-2 bg-orange-50/50 border border-orange-100 rounded-2xl p-3.5">
-                  <h5 className="text-xs font-black text-orange-800 tracking-wide">
-                    উপ-ক্যাটাগরি সমূহ (Sub-Categories):
-                  </h5>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {selectedPrepSubSubject.subCategories2.map((sc2: any, scIdx: number) => (
-                      <div 
-                        key={sc2.id || scIdx}
-                        className="bg-white border border-orange-200 text-orange-900 rounded-xl px-3 py-1.5 text-xs font-extrabold shadow-2xs flex flex-col"
-                      >
-                        <span>{sc2.name}</span>
-                        {sc2.sub && <span className="text-[10px] font-medium text-slate-500">{sc2.sub}</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-center">
                   <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
