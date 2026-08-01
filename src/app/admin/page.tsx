@@ -288,7 +288,10 @@ export default function AdminPage() {
 
   coursesList.forEach(course => {
     const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
-    (course.subSubjects || []).forEach(sub => {
+    const validSubs = (course.subSubjects || []).filter(
+      (sub: any) => !sub.name?.includes("Full Syllabus") && !sub.name?.includes("Model Test Series") && !sub.name?.includes("BCS Preliminary")
+    );
+    validSubs.forEach(sub => {
       subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
       (sub.subCategories2 || []).forEach(sub2 => {
         subs.push({ id: sub2.name, name: `└─ ${sub2.name}` });

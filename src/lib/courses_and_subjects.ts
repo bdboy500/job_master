@@ -140,22 +140,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-orange-600",
     sub: "সাহিত্য ও ব্যাকরণ",
     serial: 1,
-    subSubjects: [
-      { 
-        id: "bangla-1st", 
-        name: "Bangla 1st Paper", 
-        sub: "বাংলা সাহিত্য ও গল্প-কবিতা",
-        serial: 1,
-        subCategories2: []
-      },
-      { 
-        id: "bangla-2nd", 
-        name: "Bangla 2nd Paper", 
-        sub: "বাংলা ব্যাকরণ ও ভাষাতত্ত্ব",
-        serial: 2,
-        subCategories2: []
-      }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-english",
@@ -166,22 +151,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-purple-600",
     sub: "Literature & Grammar",
     serial: 2,
-    subSubjects: [
-      { 
-        id: "eng-1st", 
-        name: "English 1st Paper", 
-        sub: "English Literature & Reading",
-        serial: 1,
-        subCategories2: []
-      },
-      { 
-        id: "eng-2nd", 
-        name: "English 2nd Paper", 
-        sub: "English Grammar & Vocabulary",
-        serial: 2,
-        subCategories2: []
-      }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-math",
@@ -192,29 +162,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-blue-600",
     sub: "পাটিগণিত ও বীজগণিত",
     serial: 3,
-    subSubjects: [
-      { 
-        id: "math-arithmetic", 
-        name: "Arithmetic (পাটিগণিত)", 
-        sub: "মৌলিক সংখ্যা, শতকরা ও লাভ-ক্ষতি",
-        serial: 1,
-        subCategories2: []
-      },
-      { 
-        id: "math-algebra", 
-        name: "Algebra (বীজগণিত)", 
-        sub: "মান নির্ণয়, সমীকরণ ও লগারিদম",
-        serial: 2,
-        subCategories2: []
-      },
-      { 
-        id: "math-geometry", 
-        name: "Geometry (জ্যামিতি)", 
-        sub: "রেখা, কোণ, ত্রিভুজ, চতুর্ভুজ ও বৃত্ত",
-        serial: 3,
-        subCategories2: []
-      }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-science",
@@ -225,29 +173,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-green-600",
     sub: "পদার্থ, রসায়ন ও জীব",
     serial: 4,
-    subSubjects: [
-      { 
-        id: "sci-physics", 
-        name: "Physics", 
-        sub: "পদার্থবিজ্ঞান ও গতিবিদ্যার সূত্রাবলী",
-        serial: 1,
-        subCategories2: []
-      },
-      { 
-        id: "sci-chemistry", 
-        name: "Chemistry", 
-        sub: "রসায়ন তত্ত্ব ও পর্যায় সারণি",
-        serial: 2,
-        subCategories2: []
-      },
-      { 
-        id: "sci-biology", 
-        name: "Biology", 
-        sub: "জীববিজ্ঞান ও মানবদেহের কার্যাবলী",
-        serial: 3,
-        subCategories2: []
-      }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-gk",
@@ -258,22 +184,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-rose-600",
     sub: "বাংলাদেশ ও আন্তর্জাতিক",
     serial: 5,
-    subSubjects: [
-      { 
-        id: "gk-bd", 
-        name: "Bangladesh Affairs", 
-        sub: "বাংলাদেশ বিষয়াবলী ও ইতিহাস",
-        serial: 1,
-        subCategories2: []
-      },
-      { 
-        id: "gk-intl", 
-        name: "International Affairs", 
-        sub: "আন্তর্জাতিক বিষয়াবলী ও সংস্থা",
-        serial: 2,
-        subCategories2: []
-      }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-geography",
@@ -284,10 +195,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-sky-600",
     sub: "পরিবেশ ও দুর্যোগ",
     serial: 6,
-    subSubjects: [
-      { id: "geo-env", name: "Environment & Geography", sub: "পরিবেশ ও ভূ-প্রকৃতি", serial: 1 },
-      { id: "geo-disaster", name: "Disaster Management", sub: "দুর্যোগ ব্যবস্থাপনা", serial: 2 }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-gen-science",
@@ -298,10 +206,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-amber-600",
     sub: "দৈনন্দিন বিজ্ঞান",
     serial: 7,
-    subSubjects: [
-      { id: "gsci-daily", name: "Daily Science", sub: "দৈনন্দিন বিজ্ঞান", serial: 1 },
-      { id: "gsci-med", name: "General Medical", sub: "সাধারণ চিকিৎসা", serial: 2 }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-tech",
@@ -312,10 +217,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-indigo-600",
     sub: "কম্পিউটার ও আইসিটি",
     serial: 8,
-    subSubjects: [
-      { id: "tech-comp", name: "Computer Basics", sub: "কম্পিউটার শিক্ষা", serial: 1 },
-      { id: "tech-ict", name: "ICT & Technology", sub: "তথ্যপ্রযুক্তি", serial: 2 }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-mental",
@@ -326,10 +228,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-red-600",
     sub: "গাণিতিক ও মানসিক যুক্তি",
     serial: 9,
-    subSubjects: [
-      { id: "m-logic", name: "Mathematical Logic", sub: "গাণিতিক যুক্তি", serial: 1 },
-      { id: "m-skills", name: "Mental Skills", sub: "মনস্তাত্ত্বিক দক্ষতা", serial: 2 }
-    ]
+    subSubjects: []
   },
   {
     id: "prep-governance",
@@ -340,10 +239,7 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     text: "text-emerald-600",
     sub: "মূল্যবোধ, সুশাসন ও নীতি",
     serial: 10,
-    subSubjects: [
-      { id: "gov-ethics", name: "Ethics & Values", sub: "নৈতিকতা ও মূল্যবোধ", serial: 1 },
-      { id: "gov-good", name: "Good Governance", sub: "সুশাসন", serial: 2 }
-    ]
+    subSubjects: []
   }
 ];
 
@@ -353,6 +249,33 @@ const PREP_KEY = "jobmaster_custom_prep_subjects_v2";
 const CLOUD_COURSES_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_courses_v2";
 const CLOUD_PREP_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_prep_subjects_v2";
 
+const HARDCODED_SUB_NAMES = [
+  "full syllabus", "model test series", "bcs preliminary",
+  "1st paper", "2nd paper", "arithmetic", "algebra", "geometry",
+  "physics", "chemistry", "biology", "bangladesh affairs", "international affairs",
+  "environment & geography", "disaster management", "daily science", "general medical",
+  "computer basics", "ict & technology", "mathematical logic", "mental skills",
+  "ethics & values", "good governance"
+];
+
+export function sanitizeSubSubjects<T extends CourseItem | PrepSubjectItem>(items: T[]): T[] {
+  return items.map(item => {
+    if (item.subSubjects && Array.isArray(item.subSubjects)) {
+      const cleanSub = item.subSubjects.filter((s: any) => {
+        if (!s || !s.name) return false;
+        const lower = s.name.toLowerCase();
+        return !HARDCODED_SUB_NAMES.some(h => lower.includes(h));
+      });
+      return { ...item, subSubjects: cleanSub };
+    }
+    return item;
+  });
+}
+
+export function sanitizeCourseSubSubjects(courses: CourseItem[]): CourseItem[] {
+  return sanitizeSubSubjects(courses);
+}
+
 // Local cache retrievers for immediate 0ms rendering
 export function getCachedCourses(): CourseItem[] {
   if (typeof window !== "undefined") {
@@ -361,7 +284,8 @@ export function getCachedCourses(): CourseItem[] {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+          const sanitized = sanitizeSubSubjects(parsed);
+          return sanitized.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         }
       } catch (e) {}
     }
@@ -376,7 +300,8 @@ export function getCachedPrepSubjects(): PrepSubjectItem[] {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+          const sanitized = sanitizeSubSubjects(parsed);
+          return sanitized.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         }
       } catch (e) {}
     }
@@ -409,11 +334,12 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
       }
 
       if (Array.isArray(courses) && courses.length > 0) {
-        courses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        const cleanCourses = sanitizeCourseSubSubjects(courses);
+        cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         if (typeof window !== "undefined") {
-          localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+          localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
         }
-        return courses;
+        return cleanCourses;
       }
     }
   } catch (e) {
@@ -508,11 +434,12 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
       }
 
       if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
-        prepSubjects.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        const cleanPrep = sanitizeSubSubjects(prepSubjects);
+        cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
         if (typeof window !== "undefined") {
-          localStorage.setItem(PREP_KEY, JSON.stringify(prepSubjects));
+          localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
         }
-        return prepSubjects;
+        return cleanPrep;
       }
     }
   } catch (e) {
