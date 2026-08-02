@@ -3548,12 +3548,12 @@ export default function AdminPage() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const updated = [...courseFormSubSubjects];
+                                      const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
                                       if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
-                                      updated[sIdx].subCategories2!.push({
+                                      updated[sIdx].subCategories2.push({
                                         id: `sub2_${Date.now()}`,
                                         name: "নতুন সাব-টপিক",
-                                        serial: updated[sIdx].subCategories2!.length + 1
+                                        serial: updated[sIdx].subCategories2.length + 1
                                       });
                                       setCourseFormSubSubjects(updated);
                                     }}
@@ -3574,18 +3574,22 @@ export default function AdminPage() {
                                       placeholder="সাব-টপিক ৩ (e.g. বীজগণিত মান নির্ণয়)"
                                       value={sub2.name}
                                       onChange={(e) => {
-                                        const updated = [...courseFormSubSubjects];
-                                        updated[sIdx].subCategories2![sub2Idx].name = e.target.value;
-                                        setCourseFormSubSubjects(updated);
+                                        const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
+                                        if (updated[sIdx]?.subCategories2?.[sub2Idx]) {
+                                          updated[sIdx].subCategories2[sub2Idx].name = e.target.value;
+                                          setCourseFormSubSubjects(updated);
+                                        }
                                       }}
                                       className="flex-1 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800"
                                     />
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const updated = [...courseFormSubSubjects];
-                                        updated[sIdx].subCategories2 = updated[sIdx].subCategories2!.filter((_, i) => i !== sub2Idx);
-                                        setCourseFormSubSubjects(updated);
+                                        const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
+                                        if (updated[sIdx]?.subCategories2) {
+                                          updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                          setCourseFormSubSubjects(updated);
+                                        }
                                       }}
                                       className="p-1 text-rose-400 hover:text-rose-600 transition-all shrink-0 cursor-pointer"
                                     >
@@ -3990,9 +3994,11 @@ export default function AdminPage() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const updated = [...prepFormSubSubjects];
-                                          updated[sIdx].subCategories2 = (updated[sIdx].subCategories2 || []).filter((_, i) => i !== sub2Idx);
-                                          setPrepFormSubSubjects(updated);
+                                          const updated = JSON.parse(JSON.stringify(prepFormSubSubjects));
+                                          if (updated[sIdx]?.subCategories2) {
+                                            updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                            setPrepFormSubSubjects(updated);
+                                          }
                                         }}
                                         className="hover:text-rose-600 text-purple-400 p-0.5 cursor-pointer"
                                       >
@@ -4014,7 +4020,7 @@ export default function AdminPage() {
                                         e.preventDefault();
                                         const input = e.currentTarget;
                                         if (input.value.trim()) {
-                                          const updated = [...prepFormSubSubjects];
+                                          const updated = JSON.parse(JSON.stringify(prepFormSubSubjects));
                                           if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
                                           updated[sIdx].subCategories2!.push({
                                             id: `sub2_${Date.now()}_${Math.random()}`,
@@ -4032,7 +4038,7 @@ export default function AdminPage() {
                                     onClick={() => {
                                       const input = document.getElementById(`input_sub2_${sIdx}`) as HTMLInputElement;
                                       if (input && input.value.trim()) {
-                                        const updated = [...prepFormSubSubjects];
+                                        const updated = JSON.parse(JSON.stringify(prepFormSubSubjects));
                                         if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
                                         updated[sIdx].subCategories2!.push({
                                           id: `sub2_${Date.now()}_${Math.random()}`,

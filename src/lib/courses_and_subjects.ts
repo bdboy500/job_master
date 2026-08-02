@@ -262,11 +262,7 @@ const HARDCODED_SUB_NAMES = [
 export function sanitizeSubSubjects<T extends CourseItem | PrepSubjectItem>(items: T[]): T[] {
   return items.map(item => {
     if (item.subSubjects && Array.isArray(item.subSubjects)) {
-      const cleanSub = item.subSubjects.filter((s: any) => {
-        if (!s || !s.name) return false;
-        const lower = s.name.toLowerCase();
-        return !HARDCODED_SUB_NAMES.some(h => lower.includes(h.toLowerCase()));
-      });
+      const cleanSub = item.subSubjects.filter((s: any) => s && s.name && String(s.name).trim() !== "");
       return { ...item, subSubjects: cleanSub };
     }
     return item;

@@ -352,7 +352,7 @@ export default function Home() {
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
+  const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
@@ -650,6 +650,56 @@ export default function Home() {
       };
     }
   }, []);
+
+  // Keep selectedCourseDetail in sync when coursesList updates
+  useEffect(() => {
+    if (selectedCourseDetail && coursesList && coursesList.length > 0) {
+      const freshCourse = coursesList.find(c => c.id === selectedCourseDetail.id);
+      if (freshCourse) {
+        if (JSON.stringify(freshCourse) !== JSON.stringify(selectedCourseDetail)) {
+          setSelectedCourseDetail(freshCourse);
+        }
+      }
+    }
+  }, [coursesList, selectedCourseDetail]);
+
+  // Keep selectedPrepSubSubject in sync when coursesList or prepSubjectsList updates
+  useEffect(() => {
+    if (selectedPrepSubSubject) {
+      let foundInSub: any = null;
+      if (coursesList) {
+        for (const c of coursesList) {
+          if (c.subSubjects) {
+            const match = c.subSubjects.find((s: any) => 
+              (s.id && selectedPrepSubSubject.id && s.id === selectedPrepSubSubject.id) ||
+              (s.name && selectedPrepSubSubject.name && s.name.toLowerCase() === selectedPrepSubSubject.name.toLowerCase())
+            );
+            if (match) {
+              foundInSub = match;
+              break;
+            }
+          }
+        }
+      }
+      if (!foundInSub && prepSubjectsList) {
+        for (const p of prepSubjectsList) {
+          if (p.subSubjects) {
+            const match = p.subSubjects.find((s: any) => 
+              (s.id && selectedPrepSubSubject.id && s.id === selectedPrepSubSubject.id) ||
+              (s.name && selectedPrepSubSubject.name && s.name.toLowerCase() === selectedPrepSubSubject.name.toLowerCase())
+            );
+            if (match) {
+              foundInSub = match;
+              break;
+            }
+          }
+        }
+      }
+      if (foundInSub && JSON.stringify(foundInSub) !== JSON.stringify(selectedPrepSubSubject)) {
+        setSelectedPrepSubSubject(foundInSub);
+      }
+    }
+  }, [coursesList, prepSubjectsList, selectedPrepSubSubject]);
 
   // 1-second interval tick for live exam elapsed timer
   useEffect(() => {
