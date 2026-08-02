@@ -1274,8 +1274,11 @@ export default function Home() {
                   setDrawerOpen(false);
                   if (selectedPrepExamTypeFilter) {
                     setSelectedPrepExamTypeFilter(null);
+                  } else if (selectedLevel3Topic) {
+                    setSelectedLevel3Topic(null);
                   } else {
-                    setCurrentScreen("prep-sub");
+                    const dest = (previousScreen && previousScreen !== "prep-sub-detail") ? previousScreen : "prep-sub";
+                    setCurrentScreen(dest);
                   }
                 } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "packages" || currentScreen === "profile" || currentScreen === "notice") {
                   setDrawerOpen(false);
@@ -1658,7 +1661,7 @@ export default function Home() {
                         onClick={() => {
                           setSelectedCourseDetail(course);
                           setActiveExamSection(null);
-                          setPreviousScreen("courses");
+                          setPreviousScreen("home");
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
@@ -3211,7 +3214,7 @@ export default function Home() {
                                   </span>
                                   {sub2List.map((sub2: any, sub2Idx: number) => (
                                     <span key={sub2Idx} className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
-                                      ðŸ”¹ {sub2.name}
+                                      í ½í´¹ {sub2.name}
                                     </span>
                                   ))}
                                 </div>
