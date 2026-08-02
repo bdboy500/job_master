@@ -2562,14 +2562,33 @@ export default function Home() {
                         const selectedNorm = selectedPrepSubject.toLowerCase();
                         const dbMatchId = (dbMatch?.id || "").toLowerCase();
                         const dbMatchName = (dbMatch?.name || "").toLowerCase();
+                        const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
 
                         const courseMatch =
-                          pCat === "prep_hub" ||
                           pCourse === selectedNorm ||
                           pCourse === dbMatchId ||
                           pCourse === dbMatchName ||
+                          pCourse === dbMatchBn ||
                           pSubject === selectedNorm ||
-                          pSubject === dbMatchName;
+                          pSubject === dbMatchName ||
+                          (pCat === "prep_hub" && (
+                            pCourse === selectedNorm ||
+                            pCourse === dbMatchId ||
+                            pCourse === dbMatchName ||
+                            pCourse === dbMatchBn ||
+                            pSubject === selectedNorm ||
+                            pSubject === dbMatchName ||
+                            selectedNorm.includes(pCourse) || (pCourse && selectedNorm.includes(pCourse)) ||
+                            (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
+                            (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
+                            (selectedNorm.includes("gk") && (pCourse.includes("gk") || pCourse.includes("general_knowledge"))) ||
+                            (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs")))
+                          )) ||
+                          selectedNorm.includes(pCourse) || (pCourse && selectedNorm.includes(pCourse)) ||
+                          (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
+                          (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
+                          (selectedNorm.includes("gk") && (pCourse.includes("gk") || pCourse.includes("general_knowledge"))) ||
+                          (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs")));
 
                         if (!courseMatch) return false;
 
@@ -2677,13 +2696,25 @@ export default function Home() {
                     const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
 
                     const courseMatch =
-                      pCat === "prep_hub" ||
                       pCourse === selectedNorm ||
                       pCourse === dbMatchId ||
                       pCourse === dbMatchName ||
                       pCourse === dbMatchBn ||
                       pSubject === selectedNorm ||
                       pSubject === dbMatchName ||
+                      (pCat === "prep_hub" && (
+                        pCourse === selectedNorm ||
+                        pCourse === dbMatchId ||
+                        pCourse === dbMatchName ||
+                        pCourse === dbMatchBn ||
+                        pSubject === selectedNorm ||
+                        pSubject === dbMatchName ||
+                        selectedNorm.includes(pCourse) || (pCourse && selectedNorm.includes(pCourse)) ||
+                        (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
+                        (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
+                        (selectedNorm.includes("gk") && (pCourse.includes("gk") || pCourse.includes("general_knowledge"))) ||
+                        (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs")))
+                      )) ||
                       selectedNorm.includes(pCourse) || (pCourse && selectedNorm.includes(pCourse)) ||
                       (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
                       (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
@@ -4337,7 +4368,7 @@ export default function Home() {
           </div>
 
           {/* Drawer Menu Items */}
-          <div className="flex-1 overflow-y-auto py-3 px-3.5 space-y-1 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto py-3 px-3.5 space-y-1.5 bg-slate-50/50">
             {/* 0. Home */}
             <button
               onClick={() => {
@@ -4345,14 +4376,14 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all ${
                 currentScreen === "home" 
-                  ? "bg-orange-50 text-[#FF6A00] font-bold" 
-                  : "text-slate-600 hover:bg-slate-100 font-semibold"
-              } text-xs`}
+                  ? "bg-orange-50 text-[#FF6A00] font-extrabold" 
+                  : "text-slate-700 hover:bg-slate-100 font-bold"
+              } text-sm sm:text-base`}
               id="drawer-item-home"
             >
-              <HomeIcon className={`w-4 h-4 ${currentScreen === "home" ? "text-[#FF6A00]" : "text-slate-400"}`} />
+              <HomeIcon className={`w-5 h-5 ${currentScreen === "home" ? "text-[#FF6A00]" : "text-slate-400"}`} />
               <span>Home</span>
             </button>
 
@@ -4363,14 +4394,14 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all ${
                 currentScreen === "profile" 
-                  ? "bg-orange-50 text-[#FF6A00] font-bold" 
-                  : "text-slate-600 hover:bg-slate-100 font-semibold"
-              } text-xs`}
+                  ? "bg-orange-50 text-[#FF6A00] font-extrabold" 
+                  : "text-slate-700 hover:bg-slate-100 font-bold"
+              } text-sm sm:text-base`}
               id="drawer-item-profile"
             >
-              <CircleUser className={`w-4 h-4 ${currentScreen === "profile" ? "text-[#FF6A00]" : "text-slate-400"}`} />
+              <CircleUser className={`w-5 h-5 ${currentScreen === "profile" ? "text-[#FF6A00]" : "text-slate-400"}`} />
               <span>Profile</span>
             </button>
 
@@ -4383,14 +4414,14 @@ export default function Home() {
                 });
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all ${
                 currentScreen === "packages"
-                  ? "bg-orange-50 text-[#FF6A00] font-bold"
-                  : "text-slate-600 hover:bg-slate-100 font-semibold"
-              } text-xs`}
+                  ? "bg-orange-50 text-[#FF6A00] font-extrabold"
+                  : "text-slate-700 hover:bg-slate-100 font-bold"
+              } text-sm sm:text-base`}
               id="drawer-item-package"
             >
-              <Package className={`w-4 h-4 ${currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-400"}`} />
+              <Package className={`w-5 h-5 ${currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-400"}`} />
               <span>Package</span>
             </button>
 
@@ -4401,29 +4432,11 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
               id="drawer-item-bookstore"
             >
-              <BookOpen className="w-4 h-4 text-slate-400" />
+              <BookOpen className="w-5 h-5 text-slate-400" />
               <span>Book Store</span>
-            </button>
-
-            {/* 3.1 Install App */}
-            <button
-              onClick={() => {
-                localStorage.removeItem("jobmaster_pwa_dismissed");
-                window.location.reload();
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="w-full md:hidden flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/60 text-[#FF6A00] font-extrabold text-xs shadow-sm hover:shadow"
-              id="drawer-item-install-app"
-            >
-              <div className="flex items-center gap-3">
-                <Download className="w-4 h-4 text-[#FF6A00]" />
-                <span>Install Job Master App</span>
-              </div>
-              <span className="text-[9px] bg-[#FF6A00] text-white px-2 py-0.5 rounded-md font-black uppercase">Install</span>
             </button>
 
             {/* 4. Language */}
@@ -4433,10 +4446,10 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
               id="drawer-item-language"
             >
-              <Globe className="w-4 h-4 text-slate-400" />
+              <Globe className="w-5 h-5 text-slate-400" />
               <span>Language ({selectedLanguage === "BN" ? "বাংলা" : "English"})</span>
             </button>
 
@@ -4447,10 +4460,10 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
               id="drawer-item-settings"
             >
-              <Settings className="w-4 h-4 text-slate-400" />
+              <Settings className="w-5 h-5 text-slate-400" />
               <span>Settings</span>
             </button>
 
@@ -4461,10 +4474,10 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
               id="drawer-item-ourapps"
             >
-              <Sparkles className="w-4 h-4 text-slate-400" />
+              <Sparkles className="w-5 h-5 text-slate-400" />
               <span>Our Apps</span>
             </button>
 
@@ -4475,10 +4488,10 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
               id="drawer-item-contact"
             >
-              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <HelpCircle className="w-5 h-5 text-slate-400" />
               <span>Contact Us</span>
             </button>
 
@@ -4493,19 +4506,19 @@ export default function Home() {
                   else quizAudio.playError();
                 }
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all font-semibold text-xs mt-1 border-t border-slate-100/50 pt-2.5 ${
+              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all font-bold text-sm sm:text-base mt-2 border-t border-slate-200/80 pt-3 ${
                 isLoggedIn ? "text-red-600 hover:bg-red-50" : "text-[#FF6A00] hover:bg-orange-50"
               }`}
               id="drawer-item-auth"
             >
               {isLoggedIn ? (
                 <>
-                  <LogOut className="w-4 h-4 text-red-400" />
+                  <LogOut className="w-5 h-5 text-red-500" />
                   <span>Logout</span>
                 </>
               ) : (
                 <>
-                  <LogIn className="w-4 h-4 text-[#FF6A00]" />
+                  <LogIn className="w-5 h-5 text-[#FF6A00]" />
                   <span>LogIn</span>
                 </>
               )}
