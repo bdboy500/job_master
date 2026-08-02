@@ -2801,15 +2801,6 @@ export default function Home() {
                           color: "border-purple-200/90 hover:border-purple-400 bg-white",
                           iconBg: "bg-purple-100 text-purple-700",
                           icon: "📅"
-                        },
-                        { 
-                          id: "subject", 
-                          title: "Subject Wise Test", 
-                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
-                          desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
-                          color: "border-blue-200/90 hover:border-blue-400 bg-white",
-                          iconBg: "bg-blue-100 text-blue-700",
-                          icon: "📚"
                         }
                       ];
 
@@ -2862,72 +2853,92 @@ export default function Home() {
                     })()}
                   </div>
 
-                  {/* Course Sub-Subjects & Syllabus (Level 2 & Level 3) */}
+                  {/* Other Courses & Sub-Subjects Section */}
                   {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 && (
                     <div className="space-y-3 pt-3">
                       <div className="flex items-center justify-between px-1">
                         <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                          <span>📚</span>
-                          <span>কোর্সের বিষয় ও সাব-ক্যাটাগরিসমূহ (Level 2 & Level 3)</span>
+                          <span>🎓</span>
+                          <span>অন্যান্য কোর্স</span>
                         </h4>
                         <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6A00] border border-orange-200">
-                          {selectedCourseDetail.subSubjects.length}টি বিষয়
+                          {selectedCourseDetail.subSubjects.length}টি কোর্স
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 gap-3">
                         {selectedCourseDetail.subSubjects.map((subItem: any, sIdx: number) => {
                           const sub2List = subItem.subCategories2 || [];
+                          
+                          // Calculate live exams count for this subSubject / subject
+                          const liveCount = examPapers.filter(p => {
+                            const status = getExamStatus(p);
+                            if (status !== "Live") return false;
+                            if (p.course && p.course !== "all_courses" && p.course !== "all" && p.course !== selectedCourseDetail.id) return false;
+                            const pSub = (p.subSubject || p.subject || "").toLowerCase();
+                            const targetSub = (subItem.name || "").toLowerCase();
+                            if (!pSub || !targetSub) return false;
+                            return pSub === targetSub || pSub.includes(targetSub) || targetSub.includes(pSub) ||
+                              (pSub.includes("1st") && targetSub.includes("1st")) ||
+                              (pSub.includes("2nd") && targetSub.includes("2nd")) ||
+                              (pSub.includes("পাটিগণিত") && targetSub.includes("পাটিগণিত")) ||
+                              (pSub.includes("বীজগণিত") && targetSub.includes("বীজগণিত")) ||
+                              (pSub.includes("জ্যামিতি") && targetSub.includes("জ্যামিতি"));
+                          }).length;
+
                           return (
                             <div 
                               key={subItem.id || sIdx}
-                              className="bg-white border border-slate-200/80 hover:border-orange-200 rounded-[2rem] p-4.5 shadow-2xs space-y-3 transition-all"
+                              onClick={() => {
+                                setSelectedPrepSubject(selectedCourseDetail.title || selectedCourseDetail.name || "Course");
+                                setSelectedPrepSubSubject(subItem);
+                                setSelectedLevel3Topic(null);
+                                setPreviousScreen("course-detail");
+                                setCurrentScreen("prep-sub-detail");
+                                if (soundEnabled) quizAudio.playClick();
+                              }}
+                              className="w-full bg-white border border-slate-200/90 hover:border-orange-400 rounded-2xl sm:rounded-3xl p-4 sm:p-4.5 flex flex-col gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group"
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#FF6A00] flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
-                                    #{sIdx + 1}
+                              <div className="flex items-center justify-between gap-3 w-full">
+                                {/* Left side: Icon + Title + Desc */}
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <div className="w-11 h-11 rounded-2xl bg-orange-50 text-[#FF6A00] group-hover:bg-[#FF6A00] group-hover:text-white transition-colors flex items-center justify-center text-lg font-black shrink-0 shadow-2xs">
+                                    📚
                                   </div>
-                                  <div className="truncate">
-                                    <h5 className="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                                  <div className="space-y-0.5 truncate text-left">
+                                    <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
                                       {subItem.name}
-                                    </h5>
-                                    {subItem.sub && (
-                                      <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">
-                                        {subItem.sub}
-                                      </p>
-                                    )}
+                                    </h4>
+                                    <p className="text-[11px] font-bold text-slate-400 truncate">
+                                      {subItem.sub || "অধ্যায় ও বিষয়ভিত্তিক স্পেশাল কুইজ ও এক্সাম"}
+                                    </p>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => {
-                                    setActiveExamSection("subject");
-                                    if (soundEnabled) quizAudio.playClick();
-                                  }}
-                                  className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-orange-50 text-[#FF6A00] hover:bg-[#FF6A00] hover:text-white transition-all cursor-pointer shrink-0 active:scale-95 shadow-2xs"
-                                >
-                                  পরীক্ষা দেখুন →
-                                </button>
+
+                                {/* Right side: Live Exam Count Badge + Arrow */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                                    liveCount > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-slate-100 text-slate-500"
+                                  }`}>
+                                    {liveCount} Live
+                                  </span>
+                                  <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors">
+                                    <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                                  </div>
+                                </div>
                               </div>
 
                               {/* Level 3 Sub-Topics */}
                               {sub2List.length > 0 && (
-                                <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
-                                  <div className="text-[10px] font-extrabold text-purple-700 flex items-center gap-1">
-                                    <span>🏷️</span>
-                                    <span>লেভেল ৩ সাব-টপিকসমূহ ({sub2List.length}টি):</span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {sub2List.map((sub2: any, sub2Idx: number) => (
-                                      <span
-                                        key={sub2.id || sub2Idx}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 border border-purple-200/80 text-purple-800 rounded-lg text-[11px] font-bold"
-                                      >
-                                        <span>🔹</span>
-                                        <span>{sub2.name}</span>
-                                      </span>
-                                    ))}
-                                  </div>
+                                <div className="pt-2 border-t border-slate-100/80 flex flex-wrap items-center gap-1.5 text-left">
+                                  <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200/80 px-2 py-0.5 rounded-lg shrink-0">
+                                    🏷️ লেভেল ৩ ({sub2List.length}টি টপিক):
+                                  </span>
+                                  {sub2List.map((sub2: any, sub2Idx: number) => (
+                                    <span key={sub2Idx} className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
+                                      🔹 {sub2.name}
+                                    </span>
+                                  ))}
                                 </div>
                               )}
                             </div>
