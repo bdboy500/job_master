@@ -1171,13 +1171,29 @@ export default function Home() {
   }), []);
 
   const allCoursesData = useMemo(() => {
-    if (coursesList && coursesList.length > 0) {
-      return coursesList.map(c => ({
-        ...c,
-        icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
-      }));
+    const formattedDb = (coursesList || []).map(c => ({
+      ...c,
+      icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
+    }));
+
+    if (!formattedDb || formattedDb.length === 0) {
+      return ALL_COURSES_DATA;
     }
-    return ALL_COURSES_DATA;
+
+    const map = new Map<string, any>();
+    ALL_COURSES_DATA.forEach(c => {
+      const key = (c.id || c.name || c.title || "").toLowerCase();
+      if (key) map.set(key, c);
+    });
+
+    formattedDb.forEach(c => {
+      const key = (c.id || c.name || c.title || "").toLowerCase();
+      if (key) {
+        map.set(key, { ...map.get(key), ...c });
+      }
+    });
+
+    return Array.from(map.values());
   }, [coursesList, ICON_MAP]);
 
   const DEFAULT_PREP_SUBJECTS = useMemo(() => [
@@ -1193,14 +1209,30 @@ export default function Home() {
   ], []);
 
   const allPrepSubjectsData = useMemo(() => {
-    if (prepSubjectsList && prepSubjectsList.length > 0) {
-      return prepSubjectsList.map(s => ({
-        ...s,
-        icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
-        text: s.text || (s as any).iconColor || "text-orange-600"
-      }));
+    const formattedDb = (prepSubjectsList || []).map(s => ({
+      ...s,
+      icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
+      text: s.text || (s as any).iconColor || "text-orange-600"
+    }));
+
+    if (!formattedDb || formattedDb.length === 0) {
+      return DEFAULT_PREP_SUBJECTS;
     }
-    return DEFAULT_PREP_SUBJECTS;
+
+    const map = new Map<string, any>();
+    DEFAULT_PREP_SUBJECTS.forEach(s => {
+      const key = (s.name || s.bnName || (s as any).id || "").toLowerCase();
+      if (key) map.set(key, s);
+    });
+
+    formattedDb.forEach(s => {
+      const key = (s.name || s.bnName || s.id || "").toLowerCase();
+      if (key) {
+        map.set(key, { ...map.get(key), ...s });
+      }
+    });
+
+    return Array.from(map.values());
   }, [prepSubjectsList, ICON_MAP, DEFAULT_PREP_SUBJECTS]);
 
   // Search filter for courses
@@ -2234,6 +2266,62 @@ export default function Home() {
                         questions: QUIZ_QUESTIONS,
                         subCategories2: sub.subCategories2 || []
                       }));
+                    } else {
+                      const DEFAULT_SUB_SUBJECTS_MAP: Record<string, { name: string; sub: string }[]> = {
+                        "বাংলা": [
+                          { name: "বাংলা সাহিত্য", sub: "প্রাচীন, মধ্য ও আধুনিক যুগ" },
+                          { name: "বাংলা ব্যাকরণ", sub: "শব্দ, বাক্য, কারক ও সমাস" }
+                        ],
+                        "english": [
+                          { name: "English Literature", sub: "Authors, Quotations & Periods" },
+                          { name: "English Grammar", sub: "Parts of Speech, Tenses & Idioms" }
+                        ],
+                        "গণিত": [
+                          { name: "পাটিগণিত", sub: "ঐকিক নিয়ম, শতকরা ও লাভ-ক্ষতি" },
+                          { name: "বীজগণিত", sub: "সূচক, লগারিদম ও সমীকরণ" },
+                          { name: "জ্যামিতি", sub: "রেখা, কোণ, ত্রিভুজ ও বৃত্ত" }
+                        ],
+                        "সাধারণ জ্ঞান": [
+                          { name: "বাংলাদেশ বিষয়াবলী", sub: "ইতিহাস, সংবিধান ও অর্থনীতি" },
+                          { name: "আন্তর্জাতিক বিষয়াবলী", sub: "বৈশ্বিক রাজনীতি, সংস্থা ও চুক্তি" }
+                        ],
+                        "প্রযুক্তি": [
+                          { name: "কম্পিউটার প্রযুক্তি", sub: "হার্ডওয়্যার, সফটওয়্যার ও ডাটাবেস" },
+                          { name: "তথ্য প্রযুক্তি & ইন্টারনেট", sub: "নেটওয়ার্কিং, সাইবার সিকিউরিটি ও আইসিটি" }
+                        ],
+                        "সাধারণ বিজ্ঞান": [
+                          { name: "ভৌত বিজ্ঞান", sub: "পদার্থ ও রসায়ন" },
+                          { name: "জীববিজ্ঞান", sub: "উদ্ভিদ ও প্রাণী বিজ্ঞান" },
+                          { name: "আধুনিক বিজ্ঞান", sub: "মহাকাশ, তথ্য ও দৈনন্দিন বিজ্ঞান" }
+                        ],
+                        "ভূগোল": [
+                          { name: "বাংলাদেশ ও আঞ্চলিক ভূগোল", sub: "ভূ-প্রকৃতি, জলবায়ু ও মানচিত্র" },
+                          { name: "পরিবেশ ও দুর্যোগ ব্যবস্থাপনা", sub: "পরিবেশ দূষণ ও প্রাকৃতিক দুর্যোগ" }
+                        ],
+                        "মানসিক দক্ষতা": [
+                          { name: "ভাষাগত ও গাণিতিক যুক্তি", sub: "সিরিজ, কোডিং ও সম্পর্ক" },
+                          { name: "স্থানসংক্রান্ত ও স্থানাঙ্ক যুক্তি", sub: "দিক নির্ণয়, দর্পণ প্রতিফলন ও চিত্র" }
+                        ],
+                        "নৈতিকতা ও সুশাসন": [
+                          { name: "মূল্যবোধ ও নৈতিকতা", sub: "মানবিক মূল্যবোধ ও সামাজিক নীতি" },
+                          { name: "সুশাসন", sub: "সুশাসনের উপাদান, রাষ্ট্র ও নাগরিক" }
+                        ]
+                      };
+
+                      const subjKey = Object.keys(DEFAULT_SUB_SUBJECTS_MAP).find(k => 
+                        k.toLowerCase() === selectedPrepSubject.toLowerCase() ||
+                        selectedPrepSubject.toLowerCase().includes(k.toLowerCase()) ||
+                        k.toLowerCase().includes(selectedPrepSubject.toLowerCase())
+                      );
+
+                      if (subjKey && DEFAULT_SUB_SUBJECTS_MAP[subjKey]) {
+                        subSubjectsList = DEFAULT_SUB_SUBJECTS_MAP[subjKey].map(sub => ({
+                          name: sub.name,
+                          sub: sub.sub,
+                          questions: QUIZ_QUESTIONS,
+                          subCategories2: []
+                        }));
+                      }
                     }
 
                     if (subSubjectsList.length === 0) {
