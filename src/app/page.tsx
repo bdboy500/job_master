@@ -350,6 +350,7 @@ export default function Home() {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
+  const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
@@ -1254,7 +1255,7 @@ export default function Home() {
                     setActiveExamSection(null);
                   } else {
                     setDrawerOpen(false);
-                    const dest = previousScreen || "home";
+                    const dest = (previousScreen && previousScreen !== "course-detail") ? previousScreen : (courseOriginScreen || "home");
                     setCurrentScreen(dest);
                     if (dest === "courses") {
                       setPreviousScreen("home");
@@ -1279,6 +1280,9 @@ export default function Home() {
                   } else {
                     const dest = (previousScreen && previousScreen !== "prep-sub-detail") ? previousScreen : "prep-sub";
                     setCurrentScreen(dest);
+                    if (dest === "course-detail") {
+                      setPreviousScreen(courseOriginScreen || "home");
+                    }
                   }
                 } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "packages" || currentScreen === "profile" || currentScreen === "notice") {
                   setDrawerOpen(false);
@@ -1661,6 +1665,7 @@ export default function Home() {
                         onClick={() => {
                           setSelectedCourseDetail(course);
                           setActiveExamSection(null);
+                          setCourseOriginScreen("home");
                           setPreviousScreen("home");
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
@@ -2141,6 +2146,7 @@ export default function Home() {
                         onClick={() => {
                           setSelectedCourseDetail(course);
                           setActiveExamSection(null);
+                          setCourseOriginScreen("courses");
                           setPreviousScreen("courses");
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
@@ -4296,6 +4302,7 @@ export default function Home() {
                             onClick={() => {
                               setSelectedCourseDetail(course);
                               setActiveExamSection(null);
+                              setCourseOriginScreen("search");
                               setPreviousScreen("search");
                               setCurrentScreen("course-detail");
                               if (soundEnabled) quizAudio.playClick();
