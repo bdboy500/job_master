@@ -265,7 +265,7 @@ export default function AdminPage() {
 
   // Dynamic Courses & Exam Types list
   const COURSES = [
-    { id: "all_courses", name: "🌐 সকল কোর্স (All Courses - সব কোর্সে দেখাবে)" },
+    { id: "all_courses", name: "\uD83C\uDF10 সকল কোর্স (All Courses - সব কোর্সে দেখাবে)" },
     ...coursesList.map(c => ({
       id: c.id,
       name: `${c.name} (${c.title})`
@@ -450,19 +450,19 @@ export default function AdminPage() {
   const [offers, setOffers] = useState<AdminOffer[]>([
     { 
       id: "o-1", 
-      title: "🔥 বিসিএস স্পেশাল মাস্টারক্লাস - ৫০% ছাড়!", 
+      title: "\uD83D\uDD25 বিসিএস স্পেশাল মাস্টারক্লাস - ৫০% ছাড়!", 
       description: "কুপন কোড BCS50 ব্যবহার করে আজই এনরোল করুন অর্ধেকেরও কম মূল্যে। অফারটি সীমিত সময়ের জন্য প্রযোজ্য।", 
       active: true 
     },
     { 
       id: "o-2", 
-      title: "🚀 ফ্রি মেগা মক টেস্ট সপ্তাহ", 
+      title: "\uD83D\uDE80 ফ্রি মেগা মক টেস্ট সপ্তাহ", 
       description: "সকল শিক্ষার্থীদের জন্য এই সপ্তাহের সবকয়টি স্পেশাল মডেল টেস্ট সম্পূর্ণ ফ্রি! এখনই প্র্যাকটিস শুরু করুন।", 
       active: true 
     },
     { 
       id: "o-3", 
-      title: "📚 রেলওয়ে স্পেশাল স্পিড প্যাক বোনাস", 
+      title: "\uD83D\uDCDA রেলওয়ে স্পেশাল স্পিড প্যাক বোনাস", 
       description: "রেলওয়ে রিক্রুটমেন্ট ইউনিভার্সাল প্যাকে অতিরিক্ত ২০টি স্পিড টেস্ট সেট একদম ফ্রিতে যোগ করা হয়েছে।", 
       active: false 
     }
@@ -2365,12 +2365,12 @@ export default function AdminPage() {
                     <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl space-y-3.5">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                          📅 <span>পরীক্ষার সময়কাল নির্ধারণ (Start & End Date/Time Calendar) *</span>
+                          {"\uD83D\uDCC5"} <span>পরীক্ষার সময়কাল নির্ধারণ (Start & End Date/Time Calendar) *</span>
                         </label>
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                           paperStatus === "Live" ? "text-emerald-700 bg-emerald-100" : "text-purple-700 bg-purple-100"
                         }`}>
-                          {paperStatus === "Live" ? "🔴 লাইভ পরীক্ষার সময়সূচি নির্ধারণ" : "📅 আসন্ন পরীক্ষার সময়সূচি নির্ধারণ"}
+                          {paperStatus === "Live" ? "\uD83D\uDD34 লাইভ পরীক্ষার সময়সূচি নির্ধারণ" : "\uD83D\uDCC5 আসন্ন পরীক্ষার সময়সূচি নির্ধারণ"}
                         </span>
                       </div>
 
@@ -2453,7 +2453,7 @@ export default function AdminPage() {
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
-                          📅 ৩ দিনের লাইভ এক্সাম
+                          {"\uD83D\uDCC5"} ৩ দিনের লাইভ এক্সাম
                         </button>
                         <button
                           type="button"
@@ -2471,7 +2471,7 @@ export default function AdminPage() {
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
-                          🗓️ ৭ দিনের লাইভ এক্সাম
+                          {"\uD83D\uDDD3"}️ ৭ দিনের লাইভ এক্সাম
                         </button>
                       </div>
 
@@ -2486,9 +2486,9 @@ export default function AdminPage() {
                             if (now < start) {
                               return <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">⏳ Upcoming (নির্ধারিত সময়ের আগে)</span>;
                             } else if (now >= start && now <= end) {
-                              return <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">🔴 Live (লাইভ পরীক্ষা চলছে)</span>;
+                              return <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">{"\uD83D\uDD34"} Live (লাইভ পরীক্ষা চলছে)</span>;
                             } else {
-                              return <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">📂 Archive (সময় শেষ, আর্কাইভে চলে যাবে)</span>;
+                              return <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-extrabold flex items-center gap-1">{"\uD83D\uDCC2"} Archive (সময় শেষ, আর্কাইভে চলে যাবে)</span>;
                             }
                           })()}
                         </div>
@@ -2578,7 +2578,7 @@ export default function AdminPage() {
                                 : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
                             }`}
                           >
-                            🌐 সকল বিষয় (All)
+                            {"\uD83C\uDF10"} সকল বিষয় (All)
                           </button>
 
                           {SUBJECTS
@@ -2894,7 +2894,7 @@ export default function AdminPage() {
                     </label>
                     <input 
                       type="text"
-                      placeholder="যেমন: 🔥 বিসিএস মেগা কোর্স ২০% ছাড়!"
+                      placeholder="যেমন: \uD83D\uDD25 বিসিএস মেগা কোর্স ২০% ছাড়!"
                       value={newOfferTitle}
                       onChange={(e) => setNewOfferTitle(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
@@ -3043,7 +3043,7 @@ export default function AdminPage() {
                       </label>
                       <input 
                         type="text"
-                        placeholder="যেমন: ৬ মাসের ফুল অ্যাপ এক্সেস 🌟"
+                        placeholder="যেমন: ৬ মাসের ফুল অ্যাপ এক্সেস \uD83C\uDF1F"
                         value={pkgFormTitle}
                         onChange={(e) => setPkgFormTitle(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
@@ -3382,21 +3382,21 @@ export default function AdminPage() {
                         onChange={(e) => setCourseFormIcon(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                       >
-                        <option value="BookOpen">📖 BookOpen (Open Book)</option>
-                        <option value="Book">📘 Book (Closed Book)</option>
-                        <option value="Laptop">💻 Laptop (Computer)</option>
-                        <option value="Monitor">🖥️ Monitor (Computer)</option>
-                        <option value="FlaskConical">🧪 Flask (Science)</option>
+                        <option value="BookOpen">{"\uD83D\uDCD6"} BookOpen (Open Book)</option>
+                        <option value="Book">{"\uD83D\uDCD8"} Book (Closed Book)</option>
+                        <option value="Laptop">{"\uD83D\uDCBB"} Laptop (Computer)</option>
+                        <option value="Monitor">{"\uD83D\uDDA5"}️ Monitor (Computer)</option>
+                        <option value="FlaskConical">{"\uD83E\uDDEA"} Flask (Science)</option>
                         <option value="Atom">⚛️ Atom (Science)</option>
-                        <option value="Calculator">🧮 Calculator</option>
-                        <option value="Globe">🌐 Globe</option>
-                        <option value="GraduationCap">🎓 GraduationCap</option>
-                        <option value="FileText">📄 FileText</option>
-                        <option value="Briefcase">💼 Briefcase</option>
-                        <option value="Users">👥 Users</option>
-                        <option value="Shield">🛡️ Shield</option>
+                        <option value="Calculator">{"\uD83E\uDDEE"} Calculator</option>
+                        <option value="Globe">{"\uD83C\uDF10"} Globe</option>
+                        <option value="GraduationCap">{"\uD83C\uDF93"} GraduationCap</option>
+                        <option value="FileText">{"\uD83D\uDCC4"} FileText</option>
+                        <option value="Briefcase">{"\uD83D\uDCBC"} Briefcase</option>
+                        <option value="Users">{"\uD83D\uDC65"} Users</option>
+                        <option value="Shield">{"\uD83D\uDEE1"}️ Shield</option>
                         <option value="Zap">⚡ Zap</option>
-                        <option value="Award">🏆 Award</option>
+                        <option value="Award">{"\uD83C\uDFC6"} Award</option>
                       </select>
                     </div>
 
@@ -3813,22 +3813,22 @@ export default function AdminPage() {
                           onChange={(e) => setPrepFormIcon(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                         >
-                          <option value="BookOpen">📖 BookOpen (Open Book)</option>
-                          <option value="Book">📘 Book (Closed Book)</option>
-                          <option value="Laptop">💻 Laptop (Computer)</option>
-                          <option value="Monitor">🖥️ Monitor (Computer)</option>
-                          <option value="FlaskConical">🧪 Flask (Science)</option>
+                          <option value="BookOpen">{"\uD83D\uDCD6"} BookOpen (Open Book)</option>
+                          <option value="Book">{"\uD83D\uDCD8"} Book (Closed Book)</option>
+                          <option value="Laptop">{"\uD83D\uDCBB"} Laptop (Computer)</option>
+                          <option value="Monitor">{"\uD83D\uDDA5"}️ Monitor (Computer)</option>
+                          <option value="FlaskConical">{"\uD83E\uDDEA"} Flask (Science)</option>
                           <option value="Atom">⚛️ Atom (Science)</option>
-                          <option value="Calculator">🧮 Calculator</option>
-                          <option value="Globe">🌐 Globe</option>
-                          <option value="GraduationCap">🎓 GraduationCap</option>
-                          <option value="FileText">📄 FileText</option>
-                          <option value="Briefcase">💼 Briefcase</option>
-                          <option value="Users">👥 Users</option>
-                          <option value="ShieldCheck">🛡️ Shield</option>
+                          <option value="Calculator">{"\uD83E\uDDEE"} Calculator</option>
+                          <option value="Globe">{"\uD83C\uDF10"} Globe</option>
+                          <option value="GraduationCap">{"\uD83C\uDF93"} GraduationCap</option>
+                          <option value="FileText">{"\uD83D\uDCC4"} FileText</option>
+                          <option value="Briefcase">{"\uD83D\uDCBC"} Briefcase</option>
+                          <option value="Users">{"\uD83D\uDC65"} Users</option>
+                          <option value="ShieldCheck">{"\uD83D\uDEE1"}️ Shield</option>
                           <option value="Zap">⚡ Zap</option>
-                          <option value="Award">🏆 Award</option>
-                          <option value="Flame">🔥 Flame</option>
+                          <option value="Award">{"\uD83C\uDFC6"} Award</option>
+                          <option value="Flame">{"\uD83D\uDD25"} Flame</option>
                           <option value="Sparkles">✨ Sparkles</option>
                         </select>
                       </div>
@@ -3973,7 +3973,7 @@ export default function AdminPage() {
                               {/* Level 3 Sub-Categories 2 (Sub-sub-categories) Manager */}
                               <div className="bg-white border border-slate-200/60 rounded-xl p-2.5 space-y-2">
                                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                                  <span>🏷️ সাব-ক্যাটাগরি ২ / টপিকসমূহ (Level 3 Topics):</span>
+                                  <span>{"\uD83C\uDFF7"}️ সাব-ক্যাটাগরি ২ / টপিকসমূহ (Level 3 Topics):</span>
                                   <span className="text-[10px] text-purple-600 font-bold">
                                     {(subItem.subCategories2 || []).length}টি টপিক
                                   </span>
@@ -4223,7 +4223,7 @@ export default function AdminPage() {
                     </div>
 
                     <p className="text-[11px] font-bold text-slate-400 bg-white p-2.5 rounded-xl border border-slate-100">
-                      💡 তথ্য: বর্তমানে হোমে {appSettings.ourCoursesHomeLimit || 5} টি কোর্স কার্ড + ১ টি কমলা রঙের &apos;সকল কোর্স&apos; বাটন প্রদর্শিত হবে।
+                      {"\uD83D\uDCA1"} তথ্য: বর্তমানে হোমে {appSettings.ourCoursesHomeLimit || 5} টি কোর্স কার্ড + ১ টি কমলা রঙের &apos;সকল কোর্স&apos; বাটন প্রদর্শিত হবে।
                     </p>
                   </div>
 
@@ -4265,7 +4265,7 @@ export default function AdminPage() {
                     </div>
 
                     <p className="text-[11px] font-bold text-slate-400 bg-white p-2.5 rounded-xl border border-slate-100">
-                      💡 তথ্য: বর্তমানে হোমে {appSettings.prepHubHomeLimit || 4} টি সাবজেক্ট কার্ড প্রদর্শিত হবে।
+                      {"\uD83D\uDCA1"} তথ্য: বর্তমানে হোমে {appSettings.prepHubHomeLimit || 4} টি সাবজেক্ট কার্ড প্রদর্শিত হবে।
                     </p>
                   </div>
                 </div>
@@ -4407,7 +4407,7 @@ export default function AdminPage() {
                   {editExplanation && (
                     <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1">
                       <span className="text-[10px] font-extrabold text-[#FF6A00] uppercase block">
-                        📐 লাইভ গাণিতিক সংকেত প্রাকদর্শন (Live Math Preview):
+                        {"\uD83D\uDCD0"} লাইভ গাণিতিক সংকেত প্রাকদর্শন (Live Math Preview):
                       </span>
                       <MathRenderer content={editExplanation} />
                     </div>

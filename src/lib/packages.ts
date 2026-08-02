@@ -44,7 +44,7 @@ export const DEFAULT_PACKAGES: PackageItem[] = [
   },
   {
     id: "pkg-6m",
-    title: "৬ মাসের ফুল অ্যাপ এক্সেস 🌟",
+    title: "৬ মাসের ফুল অ্যাপ এক্সেস \uD83C\uDF1F",
     desc: "১৮০ দিনের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
     price: "৳৪৯৯",
     oldPrice: null,
@@ -57,7 +57,7 @@ export const DEFAULT_PACKAGES: PackageItem[] = [
   },
   {
     id: "pkg-1y",
-    title: "১ বছরের ফুল অ্যাপ এক্সেস 🌟",
+    title: "১ বছরের ফুল অ্যাপ এক্সেস \uD83C\uDF1F",
     desc: "১ বছরের জন্য বিসিএস, ব্যাংক, প্রাইমারি, শিক্ষক নিবন্ধন (NTRCA) সহ অ্যাপ এর সকল ফিচারের ফুল এক্সেস",
     price: "৳৭৯৯",
     oldPrice: null,

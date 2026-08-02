@@ -1847,9 +1847,9 @@ export default function Home() {
                     <h3 className="font-black text-2xl text-slate-900">অভিনন্দন!</h3>
                     <p className="text-slate-500 text-xs leading-relaxed max-w-[260px] mx-auto">
                       {score === questions.length 
-                        ? "চমৎকার! আপনি সব প্রশ্নের সঠিক উত্তর দিয়েছেন। 🏆" 
+                        ? "চমৎকার! আপনি সব প্রশ্নের সঠিক উত্তর দিয়েছেন। \uD83C\uDFC6" 
                         : score >= questions.length / 2 
-                        ? "দুর্দান্ত চেষ্টা! আপনার প্রিপারেশন আরও শক্তিশালী করুন। 🎉" 
+                        ? "দুর্দান্ত চেষ্টা! আপনার প্রিপারেশন আরও শক্তিশালী করুন। \uD83C\uDF89" 
                         : "ভালো চেষ্টা! নিয়মিত প্রিপারেশন নিয়ে আরও ভালো করুন।"}
                     </p>
                   </div>
@@ -1947,7 +1947,7 @@ export default function Home() {
                   {isSubmitted && currentQuestion && (
                     <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs text-slate-800 space-y-1.5 animate-fade-in text-left">
                       <div className="font-extrabold text-amber-800 flex items-center gap-1.5">
-                        <span>📌</span>
+                        <span>{"\uD83D\uDCCC"}</span>
                         <span>ব্যাখ্যা ও সমাধান:</span>
                       </div>
                       <div className="text-slate-700 font-medium leading-relaxed">
@@ -2033,7 +2033,7 @@ export default function Home() {
               ) : liveExamsList.length === 0 ? (
                 <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 sm:p-10 text-center space-y-3 shadow-2xs">
                   <div className="w-14 h-14 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
-                    📢
+                    {"\uD83D\uDCE2"}
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-slate-800">
                     এই মুহূর্তে কোনো লাইভ এক্সাম নেই
@@ -2326,7 +2326,7 @@ export default function Home() {
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
-                                      📝
+                                      {"\uD83D\uDCDD"}
                                     </div>
                                     <div className="text-left">
                                       <h5 className="text-xs sm:text-sm font-extrabold text-slate-800">
@@ -2436,11 +2436,11 @@ export default function Home() {
                           {sub.subCategories2 && sub.subCategories2.length > 0 && (
                             <div className="pt-2 border-t border-slate-100/80 flex flex-wrap items-center gap-1.5 text-left">
                               <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200/80 px-2 py-0.5 rounded-lg shrink-0">
-                                🏷️ লেভেল ৩ ({sub.subCategories2.length}টি টপিক):
+                                {"\uD83C\uDFF7"}️ লেভেল ৩ ({sub.subCategories2.length}টি টপিক):
                               </span>
                               {sub.subCategories2.map((s2: any, s2Idx: number) => (
                                 <span key={s2Idx} className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
-                                  🔹 {s2.name}
+                                  {"\uD83D\uDD39"} {s2.name}
                                 </span>
                               ))}
                             </div>
@@ -2469,13 +2469,13 @@ export default function Home() {
                     </h4>
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
-                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
-                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
-                        { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
-                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
-                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
-                        { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                        { name: "Archive", icon: "\uD83D\uDCC2", color: "bg-purple-50 text-purple-600" },
+                        { name: "Result", icon: "\uD83C\uDFC6", color: "bg-amber-50 text-amber-600" },
+                        { name: "Routine", icon: "\uD83D\uDCC5", color: "bg-blue-50 text-blue-600" },
+                        { name: "Syllabus", icon: "\uD83D\uDCDC", color: "bg-green-50 text-green-600" },
+                        { name: "PDFs", icon: "\uD83D\uDCC4", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                        { name: "Favorite", icon: "\uD83E\uDE76", color: "bg-rose-50 text-rose-600" },
+                        { name: "Merit List", icon: "\uD83C\uDF96️", color: "bg-indigo-50 text-indigo-600" },
                         { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
                       ].map((item, idx) => (
                         <button
@@ -2521,7 +2521,7 @@ export default function Home() {
                 <div className="bg-white border border-slate-200/90 rounded-[2rem] p-4.5 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
-                      <span>🏷️</span>
+                      <span>{"\uD83C\uDFF7"}️</span>
                       <span>লেভেল ৩ সাব-ক্যাটাগরি ও টপিকসমূহ:</span>
                     </h5>
                     <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
@@ -2551,7 +2551,7 @@ export default function Home() {
                               : "bg-purple-50 text-purple-800 border border-purple-200/80 hover:bg-purple-100"
                           }`}
                         >
-                          <span>🔹</span>
+                          <span>{"\uD83D\uDD39"}</span>
                           <span>{sub2.name}</span>
                         </button>
                       );
@@ -2589,20 +2589,20 @@ export default function Home() {
                         { 
                           id: "weekly", 
                           title: "Weekly Model Test", 
-                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
+                          banglaTitle: "\uD83D\uDCC5 সাপ্তাহিক মডেল টেস্ট",
                           desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
                           color: "border-purple-200/90 hover:border-purple-400 bg-white",
                           iconBg: "bg-purple-100 text-purple-700",
-                          icon: "📅"
+                          icon: "\uD83D\uDCC5"
                         },
                         { 
                           id: "subject", 
                           title: "Subject Wise Test", 
-                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
+                          banglaTitle: "\uD83D\uDCDA বিষয়ভিত্তিক পরীক্ষা",
                           desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
                           color: "border-blue-200/90 hover:border-blue-400 bg-white",
                           iconBg: "bg-blue-100 text-blue-700",
-                          icon: "📚"
+                          icon: "\uD83D\uDCDA"
                         }
                       ];
 
@@ -2736,8 +2736,8 @@ export default function Home() {
                         {selectedPrepExamTypeFilter === "daily" 
                           ? "⚡ Daily Quick Test" 
                           : selectedPrepExamTypeFilter === "weekly" 
-                            ? "📅 Weekly Model Test" 
-                            : "📚 Subject Wise Test"}
+                            ? "\uD83D\uDCC5 Weekly Model Test" 
+                            : "\uD83D\uDCDA Subject Wise Test"}
                       </span>
                     </div>
                   </div>
@@ -2751,8 +2751,8 @@ export default function Home() {
                           : selectedPrepExamTypeFilter === "daily" 
                             ? "⚡ Daily Quick Test - প্রশ্নপত্র"
                             : selectedPrepExamTypeFilter === "weekly"
-                              ? "📅 Weekly Model Test - প্রশ্নপত্র"
-                              : "📚 Subject Wise Test - প্রশ্নপত্র"}
+                              ? "\uD83D\uDCC5 Weekly Model Test - প্রশ্নপত্র"
+                              : "\uD83D\uDCDA Subject Wise Test - প্রশ্নপত্র"}
                       </h4>
                       <span className="text-xs font-black text-[#FF6A00] bg-orange-50 border border-orange-200/80 px-3 py-1 rounded-full">
                         {selectedPrepExamTypeFilter === "daily" ? "Daily" : selectedPrepExamTypeFilter === "weekly" ? "Weekly" : "Subject"}
@@ -2864,7 +2864,7 @@ export default function Home() {
                         return (
                           <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
                             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                              {selectedPrepExamTypeFilter === "daily" ? "⚡" : selectedPrepExamTypeFilter === "weekly" ? "📅" : "📚"}
+                              {selectedPrepExamTypeFilter === "daily" ? "⚡" : selectedPrepExamTypeFilter === "weekly" ? "\uD83D\uDCC5" : "\uD83D\uDCDA"}
                             </div>
                             <h3 className="text-sm sm:text-base font-black text-slate-800">
                               বর্তমানে কোনো পরীক্ষা লাইভ বা আসন্ন নেই
@@ -2887,9 +2887,9 @@ export default function Home() {
 
                       const examTypeBadgeMap: Record<string, { label: string; bg: string }> = {
                         daily: { label: "⚡ Daily Quick Test", bg: "bg-amber-50 text-amber-700 border-amber-100" },
-                        weekly: { label: "📅 Weekly Model Test", bg: "bg-purple-50 text-purple-700 border-purple-100" },
-                        special: { label: "🩺 BCS Health Quiz", bg: "bg-rose-50 text-rose-700 border-rose-100" },
-                        subject: { label: "📚 Subject Wise Test", bg: "bg-blue-50 text-blue-700 border-blue-100" }
+                        weekly: { label: "\uD83D\uDCC5 Weekly Model Test", bg: "bg-purple-50 text-purple-700 border-purple-100" },
+                        special: { label: "\uD83E\uDE7A BCS Health Quiz", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+                        subject: { label: "\uD83D\uDCDA Subject Wise Test", bg: "bg-blue-50 text-blue-700 border-blue-100" }
                       };
 
                       return (
@@ -2899,7 +2899,7 @@ export default function Home() {
                             const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
                             const durationMins = Math.floor(totalSec / 60);
                             const typeBadge = examTypeBadgeMap[paper.examType] || { 
-                              label: paper.examType === "daily" ? "⚡ Daily Quick Test" : paper.examType === "weekly" ? "📅 Weekly Model Test" : "📚 Subject Wise Test", 
+                              label: paper.examType === "daily" ? "⚡ Daily Quick Test" : paper.examType === "weekly" ? "\uD83D\uDCC5 Weekly Model Test" : "\uD83D\uDCDA Subject Wise Test", 
                               bg: paper.examType === "daily" ? "bg-amber-50 text-amber-700 border-amber-100" : paper.examType === "weekly" ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100"
                             };
 
@@ -2911,7 +2911,7 @@ export default function Home() {
                                 {/* Header Date & Badges */}
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
                                   <span className="text-[11px] font-extrabold text-slate-500">
-                                    📅 {paper.examDate || "Fri, Jul 31, 2026"}
+                                    {"\uD83D\uDCC5"} {paper.examDate || "Fri, Jul 31, 2026"}
                                   </span>
                                   <div className="flex items-center gap-1.5">
                                     <span className={`font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border ${typeBadge.bg}`}>
@@ -2929,7 +2929,7 @@ export default function Home() {
                                     )}
                                     {computedStatus === "Archive" && (
                                       <span className="bg-slate-100 text-slate-600 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-slate-200">
-                                        📂 Archive
+                                        {"\uD83D\uDCC2"} Archive
                                       </span>
                                     )}
                                   </div>
@@ -2963,14 +2963,14 @@ export default function Home() {
                                     }}
                                     className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                                   >
-                                    <span>📝 পরীক্ষা দিন</span>
+                                    <span>{"\uD83D\uDCDD"} পরীক্ষা দিন</span>
                                   </button>
 
                                   <button
                                     onClick={() => handleOpenViewPaper(paper)}
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                                   >
-                                    <span>📄 প্রশ্নপত্র</span>
+                                    <span>{"\uD83D\uDCC4"} প্রশ্নপত্র</span>
                                   </button>
                                 </div>
                               </div>
@@ -3000,13 +3000,13 @@ export default function Home() {
                     </h4>
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
-                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
-                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
-                        { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
-                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
-                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
-                        { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                        { name: "Archive", icon: "\uD83D\uDCC2", color: "bg-purple-50 text-purple-600" },
+                        { name: "Result", icon: "\uD83C\uDFC6", color: "bg-amber-50 text-amber-600" },
+                        { name: "Routine", icon: "\uD83D\uDCC5", color: "bg-blue-50 text-blue-600" },
+                        { name: "Syllabus", icon: "\uD83D\uDCDC", color: "bg-green-50 text-green-600" },
+                        { name: "PDFs", icon: "\uD83D\uDCC4", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                        { name: "Favorite", icon: "\uD83E\uDE76", color: "bg-rose-50 text-rose-600" },
+                        { name: "Merit List", icon: "\uD83C\uDF96️", color: "bg-indigo-50 text-indigo-600" },
                         { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
                       ].map((item, idx) => (
                         <button
@@ -3065,20 +3065,20 @@ export default function Home() {
                         { 
                           id: "weekly", 
                           title: "Weekly Model Test", 
-                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
+                          banglaTitle: "\uD83D\uDCC5 সাপ্তাহিক মডেল টেস্ট",
                           desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
                           color: "border-purple-200/90 hover:border-purple-400 bg-white",
                           iconBg: "bg-purple-100 text-purple-700",
-                          icon: "📅"
+                          icon: "\uD83D\uDCC5"
                         },
                         { 
                           id: "subject", 
                           title: "Subject Wise Test", 
-                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
+                          banglaTitle: "\uD83D\uDCDA বিষয়ভিত্তিক পরীক্ষা",
                           desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
                           color: "border-blue-200/90 hover:border-blue-400 bg-white",
                           iconBg: "bg-blue-100 text-blue-700",
-                          icon: "📚"
+                          icon: "\uD83D\uDCDA"
                         }
                       ];
 
@@ -3136,7 +3136,7 @@ export default function Home() {
                     <div className="space-y-3 pt-3">
                       <div className="flex items-center justify-between px-1">
                         <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                          <span>🎓</span>
+                          <span>{"\uD83C\uDF93"}</span>
                           <span>অন্যান্য কোর্স</span>
                         </h4>
                         <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6A00] border border-orange-200">
@@ -3181,7 +3181,7 @@ export default function Home() {
                                 {/* Left side: Icon + Title + Desc */}
                                 <div className="flex items-center gap-3.5 min-w-0">
                                   <div className="w-11 h-11 rounded-2xl bg-orange-50 text-[#FF6A00] group-hover:bg-[#FF6A00] group-hover:text-white transition-colors flex items-center justify-center text-lg font-black shrink-0 shadow-2xs">
-                                    📚
+                                    {"\uD83D\uDCDA"}
                                   </div>
                                   <div className="space-y-0.5 truncate text-left">
                                     <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
@@ -3210,11 +3210,11 @@ export default function Home() {
                               {sub2List.length > 0 && (
                                 <div className="pt-2 border-t border-slate-100/80 flex flex-wrap items-center gap-1.5 text-left">
                                   <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200/80 px-2 py-0.5 rounded-lg shrink-0">
-                                    🏷️ লেভেল ৩ ({sub2List.length}টি টপিক):
+                                    {"\uD83C\uDFF7"}️ লেভেল ৩ ({sub2List.length}টি টপিক):
                                   </span>
                                   {sub2List.map((sub2: any, sub2Idx: number) => (
                                     <span key={sub2Idx} className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
-                                      ������ {sub2.name}
+                                      {"\uD83D\uDD39"} {sub2.name}
                                     </span>
                                   ))}
                                 </div>
@@ -3249,7 +3249,7 @@ export default function Home() {
                       return (
                         <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
                           <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                            {activeExamSection === "daily" ? "⚡" : activeExamSection === "weekly" ? "📅" : activeExamSection === "special" ? "🩺" : "📚"}
+                            {activeExamSection === "daily" ? "⚡" : activeExamSection === "weekly" ? "\uD83D\uDCC5" : activeExamSection === "special" ? "\uD83E\uDE7A" : "\uD83D\uDCDA"}
                           </div>
                           <h3 className="text-sm sm:text-base font-black text-slate-800">
                             বর্তমানে কোনো পরীক্ষা লাইভ বা আসন্ন নেই
@@ -3269,9 +3269,9 @@ export default function Home() {
 
                     const examTypeBadgeMap: Record<string, { label: string; bg: string }> = {
                       daily: { label: "⚡ Daily Quick Test", bg: "bg-amber-50 text-amber-700 border-amber-100" },
-                      weekly: { label: "📅 Weekly Model Test", bg: "bg-purple-50 text-purple-700 border-purple-100" },
-                      special: { label: "🩺 BCS Health Quiz", bg: "bg-rose-50 text-rose-700 border-rose-100" },
-                      subject: { label: "📚 Subject Wise Test", bg: "bg-blue-50 text-blue-700 border-blue-100" }
+                      weekly: { label: "\uD83D\uDCC5 Weekly Model Test", bg: "bg-purple-50 text-purple-700 border-purple-100" },
+                      special: { label: "\uD83E\uDE7A BCS Health Quiz", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+                      subject: { label: "\uD83D\uDCDA Subject Wise Test", bg: "bg-blue-50 text-blue-700 border-blue-100" }
                     };
 
                     return (
@@ -3287,7 +3287,7 @@ export default function Home() {
                               {/* Header Date & Badges */}
                               <div className="flex items-center justify-between gap-2 flex-wrap">
                                 <span className="text-[11px] font-extrabold text-slate-500">
-                                  📅 {paper.examDate || "Fri, Jul 31, 2026"}
+                                  {"\uD83D\uDCC5"} {paper.examDate || "Fri, Jul 31, 2026"}
                                 </span>
                                 <div className="flex items-center gap-1.5">
                                   <span className={`font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border ${typeBadge.bg}`}>
@@ -3334,14 +3334,14 @@ export default function Home() {
                                   }}
                                   className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
-                                  <span>📝 পরীক্ষা দিন</span>
+                                  <span>{"\uD83D\uDCDD"} পরীক্ষা দিন</span>
                                 </button>
 
                                 <button
                                   onClick={() => handleOpenViewPaper(paper)}
                                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
-                                  <span>📄 প্রশ্নপত্র</span>
+                                  <span>{"\uD83D\uDCC4"} প্রশ্নপত্র</span>
                                 </button>
                               </div>
                             </div>
@@ -3359,13 +3359,13 @@ export default function Home() {
 
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { name: "Archive", icon: "📂", color: "bg-purple-50 text-purple-600" },
-                        { name: "Result", icon: "🏆", color: "bg-amber-50 text-amber-600" },
-                        { name: "Routine", icon: "📅", color: "bg-blue-50 text-blue-600" },
-                        { name: "Syllabus", icon: "📜", color: "bg-green-50 text-green-600" },
-                        { name: "PDFs", icon: "📄", color: "bg-[#FFF1E6] text-[#FF6A00]" },
-                        { name: "Favorite", icon: "🩶", color: "bg-rose-50 text-rose-600" },
-                        { name: "Merit List", icon: "🎖️", color: "bg-indigo-50 text-indigo-600" },
+                        { name: "Archive", icon: "\uD83D\uDCC2", color: "bg-purple-50 text-purple-600" },
+                        { name: "Result", icon: "\uD83C\uDFC6", color: "bg-amber-50 text-amber-600" },
+                        { name: "Routine", icon: "\uD83D\uDCC5", color: "bg-blue-50 text-blue-600" },
+                        { name: "Syllabus", icon: "\uD83D\uDCDC", color: "bg-green-50 text-green-600" },
+                        { name: "PDFs", icon: "\uD83D\uDCC4", color: "bg-[#FFF1E6] text-[#FF6A00]" },
+                        { name: "Favorite", icon: "\uD83E\uDE76", color: "bg-rose-50 text-rose-600" },
+                        { name: "Merit List", icon: "\uD83C\uDF96️", color: "bg-indigo-50 text-indigo-600" },
                         { name: "Wrong & Unans", icon: "✕", color: "bg-red-50 text-red-600" },
                       ].map((item, idx) => (
                         <button
@@ -3704,7 +3704,7 @@ export default function Home() {
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-orange-200 transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2.5 py-0.5 rounded-full uppercase border border-orange-200">
-                      🔔 স্পেশাল আপডেট
+                      {"\uD83D\uDD14"} স্পেশাল আপডেট
                     </span>
                     <span className="text-[11px] font-bold text-slate-400">আজ, ১০:৩০ AM</span>
                   </div>
@@ -3719,7 +3719,7 @@ export default function Home() {
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-blue-200 transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full uppercase border border-blue-200">
-                      🏆 ফল প্রকাশ
+                      {"\uD83C\uDFC6"} ফল প্রকাশ
                     </span>
                     <span className="text-[11px] font-bold text-slate-400">গতকাল, ৮:০০ PM</span>
                   </div>
@@ -3734,7 +3734,7 @@ export default function Home() {
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-purple-200 transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full uppercase border border-purple-200">
-                      📅 রুটিন আপডেট
+                      {"\uD83D\uDCC5"} রুটিন আপডেট
                     </span>
                     <span className="text-[11px] font-bold text-slate-400">২৫ জুলাই, ২০২৬</span>
                   </div>
@@ -4092,7 +4092,7 @@ export default function Home() {
               {/* Apple-style Security & Payment Notice */}
               <div className="bg-slate-100/80 border border-slate-200/60 rounded-2xl p-4 text-center space-y-1">
                 <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
-                  🛡️ <span>ইনস্ট্যান্ট এক্সেস ও সেফ পেমেন্ট</span>
+                  {"\uD83D\uDEE1"}️ <span>ইনস্ট্যান্ট এক্সেস ও সেফ পেমেন্ট</span>
                 </p>
                 <p className="text-[10px] font-semibold text-slate-500">
                   bKash, Nagad বা Rocket এর মাধ্যমে পেমেন্ট সম্পন্ন করে মুহূর্তেই সকল ফিচারের আনলিমিটেড এক্সেস সক্রিয় করুন।
@@ -4127,12 +4127,12 @@ export default function Home() {
 
             // Filter 3: Subjects
             const allSubjects = [
-              { name: "বাংলা ব্যাকরণ ও সাহিত্য", key: "bangla", icon: "📚", color: "text-red-500 bg-red-50" },
-              { name: "English Language & Literature", key: "english", icon: "🌐", color: "text-blue-500 bg-blue-50" },
-              { name: "গাণিতিক যুক্তি ও মানসিক দক্ষতা", key: "math", icon: "📐", color: "text-emerald-500 bg-emerald-50" },
-              { name: "সাধারণ বিজ্ঞান ও তথ্যপ্রযুক্তি", key: "science", icon: "🧪", color: "text-purple-500 bg-purple-50" },
-              { name: "বাংলাদেশ ও আন্তর্জাতিক বিষয়াবলি", key: "gk", icon: "🗺️", color: "text-orange-500 bg-orange-50" },
-              { name: "কম্পিউটার ও তথ্যপ্রযুক্তি", key: "ict", icon: "💻", color: "text-indigo-500 bg-indigo-50" }
+              { name: "বাংলা ব্যাকরণ ও সাহিত্য", key: "bangla", icon: "\uD83D\uDCDA", color: "text-red-500 bg-red-50" },
+              { name: "English Language & Literature", key: "english", icon: "\uD83C\uDF10", color: "text-blue-500 bg-blue-50" },
+              { name: "গাণিতিক যুক্তি ও মানসিক দক্ষতা", key: "math", icon: "\uD83D\uDCD0", color: "text-emerald-500 bg-emerald-50" },
+              { name: "সাধারণ বিজ্ঞান ও তথ্যপ্রযুক্তি", key: "science", icon: "\uD83E\uDDEA", color: "text-purple-500 bg-purple-50" },
+              { name: "বাংলাদেশ ও আন্তর্জাতিক বিষয়াবলি", key: "gk", icon: "\uD83D\uDDFA️", color: "text-orange-500 bg-orange-50" },
+              { name: "কম্পিউটার ও তথ্যপ্রযুক্তি", key: "ict", icon: "\uD83D\uDCBB", color: "text-indigo-500 bg-indigo-50" }
             ];
             const matchedSubjects = allSubjects.filter(s => 
               !query || s.name.toLowerCase().includes(query) || s.key.toLowerCase().includes(query)
@@ -4213,7 +4213,7 @@ export default function Home() {
                 {/* Suggested Hot Search Keywords if query empty */}
                 {!query && (
                   <div className="bg-orange-50/60 border border-orange-100 rounded-3xl p-4 space-y-2.5">
-                    <span className="text-[10px] font-black text-[#FF6A00] uppercase tracking-wider block">🔥 জনপ্রিয় বিষয়গুলো খুঁজুন</span>
+                    <span className="text-[10px] font-black text-[#FF6A00] uppercase tracking-wider block">{"\uD83D\uDD25"} জনপ্রিয় বিষয়গুলো খুঁজুন</span>
                     <div className="flex flex-wrap gap-2">
                       {[
                         "বিসিএস প্রিলি",
@@ -4247,7 +4247,7 @@ export default function Home() {
                   {(searchCategoryFilter === "all" || searchCategoryFilter === "exams") && matchedExams.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                        <span>📋 প্রশ্নপত্র ও পরীক্ষা ({matchedExams.length})</span>
+                        <span>{"\uD83D\uDCCB"} প্রশ্নপত্র ও পরীক্ষা ({matchedExams.length})</span>
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {matchedExams.slice(0, 6).map((paper) => (
@@ -4287,7 +4287,7 @@ export default function Home() {
                   {(searchCategoryFilter === "all" || searchCategoryFilter === "courses") && matchedCourses.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
-                        🎓 কোর্স ও প্রোগ্রাম ({matchedCourses.length})
+                        {"\uD83C\uDF93"} কোর্স ও প্রোগ্রাম ({matchedCourses.length})
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {matchedCourses.map((course) => (
@@ -4303,7 +4303,7 @@ export default function Home() {
                             className="bg-white border border-slate-200 hover:border-blue-300 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center gap-3 group"
                           >
                             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-lg shrink-0">
-                              🎓
+                              {"\uD83C\uDF93"}
                             </div>
                             <div className="space-y-0.5 flex-1 min-w-0">
                               <h5 className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-blue-600 transition-colors truncate">
@@ -4324,7 +4324,7 @@ export default function Home() {
                   {(searchCategoryFilter === "all" || searchCategoryFilter === "subjects") && matchedSubjects.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
-                        📚 প্রস্তুতি বিষয়সমূহ ({matchedSubjects.length})
+                        {"\uD83D\uDCDA"} প্রস্তুতি বিষয়সমূহ ({matchedSubjects.length})
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {matchedSubjects.map((sub) => (
@@ -4394,7 +4394,7 @@ export default function Home() {
                   {query && matchedExams.length === 0 && matchedCourses.length === 0 && matchedSubjects.length === 0 && matchedQuestions.length === 0 && (
                     <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-3">
                       <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto text-2xl">
-                        🔍
+                        {"\uD83D\uDD0D"}
                       </div>
                       <h4 className="font-black text-slate-800 text-sm sm:text-base">কোনো ফলাফল পাওয়া যায়নি</h4>
                       <p className="text-xs text-slate-400 max-w-xs mx-auto">
@@ -5163,7 +5163,7 @@ export default function Home() {
                           <div className="pt-2 border-t border-slate-200/60 flex flex-wrap gap-1">
                             {sub.subCategories2.map((s2: any, s2Idx: number) => (
                               <span key={s2Idx} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/70">
-                                🔹 {s2.name}
+                                {"\uD83D\uDD39"} {s2.name}
                               </span>
                             ))}
                           </div>
@@ -5209,7 +5209,7 @@ export default function Home() {
                 </button>
                 <div>
                   <h2 className="text-sm sm:text-base font-black text-slate-900 leading-tight flex items-center gap-1.5">
-                    <span className="text-lg">📂</span>
+                    <span className="text-lg">{"\uD83D\uDCC2"}</span>
                     <span>আর্কাইভড মডেল টেস্ট (Archive)</span>
                   </h2>
                   <p className="text-[10px] font-bold text-slate-400">পূর্বের অনুষ্ঠিত সকল প্রশ্নপত্র</p>
@@ -5229,7 +5229,7 @@ export default function Home() {
               {/* Informational Banner */}
               <div className="bg-purple-50 border border-purple-200/80 rounded-2xl p-4 text-xs font-semibold text-purple-900 flex items-start gap-3 shadow-2xs">
                 <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center text-purple-700 shrink-0 font-black">
-                  📂
+                  {"\uD83D\uDCC2"}
                 </div>
                 <div className="space-y-0.5">
                   <h4 className="font-extrabold text-sm text-purple-950">মডেল টেস্ট আর্কাইভ সেন্টার</h4>
@@ -5252,12 +5252,12 @@ export default function Home() {
                     onChange={(e) => setArchiveFilterCourse(e.target.value)}
                     className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-extrabold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF6A00] cursor-pointer"
                   >
-                    <option value="all">🌐 সকল কোর্স (All Courses)</option>
-                    <option value="bcs">📚 BCS Course (বিসিএস)</option>
-                    <option value="bank">🏦 Bank Jobs (ব্যাংক নিয়োগ)</option>
-                    <option value="primary">🏫 Primary Teacher (প্রাথমিক শিক্ষক)</option>
-                    <option value="ntrca">🎓 NTRCA Exam (এনটিআরসিএ)</option>
-                    <option value="psc">📄 PSC Exams (পিএসসি)</option>
+                    <option value="all">{"\uD83C\uDF10"} সকল কোর্স (All Courses)</option>
+                    <option value="bcs">{"\uD83D\uDCDA"} BCS Course (বিসিএস)</option>
+                    <option value="bank">{"\uD83C\uDFE6"} Bank Jobs (ব্যাংক নিয়োগ)</option>
+                    <option value="primary">{"\uD83C\uDFEB"} Primary Teacher (প্রাথমিক শিক্ষক)</option>
+                    <option value="ntrca">{"\uD83C\uDF93"} NTRCA Exam (এনটিআরসিএ)</option>
+                    <option value="psc">{"\uD83D\uDCC4"} PSC Exams (পিএসসি)</option>
                   </select>
                 </div>
 
@@ -5268,8 +5268,8 @@ export default function Home() {
                     {[
                       { id: "all", label: "সকল" },
                       { id: "daily", label: "⚡ ডেইলি" },
-                      { id: "weekly", label: "📅 সাপ্তাহিক" },
-                      { id: "subject", label: "📚 বিষয়ভিত্তিক" },
+                      { id: "weekly", label: "\uD83D\uDCC5 সাপ্তাহিক" },
+                      { id: "subject", label: "\uD83D\uDCDA বিষয়ভিত্তিক" },
                     ].map((tab) => {
                       const isActive = archiveFilterCategory === tab.id;
                       return (
@@ -5316,7 +5316,7 @@ export default function Home() {
                   return (
                     <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
                       <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                        📂
+                        {"\uD83D\uDCC2"}
                       </div>
                       <h3 className="text-sm font-black text-slate-800">কোনো আর্কাইভড মডেল টেস্ট পাওয়া যায়নি</h3>
                       <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
@@ -5328,9 +5328,9 @@ export default function Home() {
 
                 const typeBadgeMap: Record<string, string> = {
                   daily: "⚡ ডেইলি কুইক টেস্ট",
-                  weekly: "📅 সাপ্তাহিক মডেল টেস্ট",
-                  subject: "📚 বিষয়ভিত্তিক",
-                  special: "🩺 BCS Health Quiz"
+                  weekly: "\uD83D\uDCC5 সাপ্তাহিক মডেল টেস্ট",
+                  subject: "\uD83D\uDCDA বিষয়ভিত্তিক",
+                  special: "\uD83E\uDE7A BCS Health Quiz"
                 };
 
                 return (
@@ -5348,14 +5348,14 @@ export default function Home() {
                           {/* Card Top Row */}
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <span className="text-[11px] font-extrabold text-slate-500">
-                              📅 {paper.examDate || "Archive"}
+                              {"\uD83D\uDCC5"} {paper.examDate || "Archive"}
                             </span>
                             <div className="flex items-center gap-1.5">
                               <span className="bg-purple-100 text-purple-700 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase">
                                 {typeBadgeMap[paper.examType] || paper.examType}
                               </span>
                               <span className="bg-slate-100 text-slate-600 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase">
-                                📂 ARCHIVED
+                                {"\uD83D\uDCC2"} ARCHIVED
                               </span>
                             </div>
                           </div>
@@ -5390,7 +5390,7 @@ export default function Home() {
                               }}
                               className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                             >
-                              <span>📝 অনুশীলন করুন</span>
+                              <span>{"\uD83D\uDCDD"} অনুশীলন করুন</span>
                             </button>
 
                             <button
@@ -5400,7 +5400,7 @@ export default function Home() {
                               }}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-1.5"
                             >
-                              <span>📄 প্রশ্নপত্র দেখুন</span>
+                              <span>{"\uD83D\uDCC4"} প্রশ্নপত্র দেখুন</span>
                             </button>
                           </div>
                         </div>
@@ -5584,7 +5584,7 @@ export default function Home() {
                         {/* Explanation Box */}
                         {isExpRevealed && (
                           <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-semibold space-y-1 animate-fade-in">
-                            <div className="font-extrabold text-emerald-700">📌 ব্যাখ্যা ও রেফারেন্স:</div>
+                            <div className="font-extrabold text-emerald-700">{"\uD83D\uDCCC"} ব্যাখ্যা ও রেফারেন্স:</div>
                             <MathRenderer content={q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। এই বিষয়ের আরও বিস্তারিত তথ্য আমাদের প্রশ্ন ব্যাংকে দেওয়া আছে।`} />
                           </div>
                         )}
@@ -5646,7 +5646,7 @@ export default function Home() {
               <div className="bg-amber-100 border-b border-amber-200 text-amber-900 px-4 py-2 text-xs font-bold flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-amber-700 shrink-0" />
-                  <span>🔔 প্রতি প্রশ্নের মান ১ ও ভুল উত্তরের জন্য ০.৫০ কাটা যাবে।</span>
+                  <span>{"\uD83D\uDD14"} প্রতি প্রশ্নের মান ১ ও ভুল উত্তরের জন্য ০.৫০ কাটা যাবে।</span>
                 </div>
                 <button onClick={() => setShowExamNoticeAlert(false)} className="text-amber-800 hover:text-amber-950 cursor-pointer">
                   <X className="w-4 h-4" />
@@ -5812,7 +5812,7 @@ export default function Home() {
                       }}
                       className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-md shadow-emerald-500/20"
                     >
-                      📄 উত্তরপত্র দেখুন
+                      {"\uD83D\uDCC4"} উত্তরপত্র দেখুন
                     </button>
                     <button
                       onClick={() => setTakingExamModal(null)}
@@ -5839,7 +5839,7 @@ export default function Home() {
               </button>
 
               <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black shadow-2xs">
-                🛍️
+                {"\uD83D\uDECD"}️
               </div>
 
               <div className="space-y-1">
@@ -6034,7 +6034,7 @@ export default function Home() {
                 {/* QUESTION & ANSWER LIST SECTION */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
-                    <span>📋 প্রশ্ন ও বিস্তারিত উত্তর সমাধান</span>
+                    <span>{"\uD83D\uDCCB"} প্রশ্ন ও বিস্তারিত উত্তর সমাধান</span>
                     <span className="text-xs text-slate-400 font-bold">({viewingAnswerSheetData.paper.questions.length} টি)</span>
                   </h3>
 
@@ -6141,7 +6141,7 @@ export default function Home() {
                           {expandedExplanations[qIdx] && (
                             <div className="mt-2.5 p-3.5 bg-slate-50 border border-orange-100 rounded-xl text-xs text-slate-800 space-y-1.5 animate-fade-in">
                               <div className="font-extrabold text-[#FF6A00] flex items-center gap-1">
-                                📌 <span>ব্যাখ্যা ও সমাধান:</span>
+                                {"\uD83D\uDCCC"} <span>ব্যাখ্যা ও সমাধান:</span>
                               </div>
                               <div className="text-slate-700 font-medium leading-relaxed">
                                 <MathRenderer content={q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। বিসিএস ও পিএসসি স্ট্যান্ডার্ড বিষয়ভিত্তিক পর্যালোচনার ভিত্তিতে সমাধান প্রদান করা হয়েছে।`} />
@@ -6182,7 +6182,7 @@ export default function Home() {
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-orange-100 text-[#FF6A00] rounded-xl flex items-center justify-center font-black">
-                  📞
+                  {"\uD83D\uDCDE"}
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900">Contact Us (যোগাযোগ)</h3>
@@ -6191,15 +6191,15 @@ export default function Home() {
               </div>
               <div className="space-y-3 pt-2 text-xs font-bold text-slate-700">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span>📧 ইমেইল সাপোর্ট:</span>
+                  <span>{"\uD83D\uDCE7"} ইমেইল সাপোর্ট:</span>
                   <span className="font-mono text-[#FF6A00]">support@jobmaster.app</span>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span>📱 হেল্পলাইন:</span>
+                  <span>{"\uD83D\uDCF1"} হেল্পলাইন:</span>
                   <span className="font-mono text-[#FF6A00]">+880 1700-000000</span>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span>🌐 ফেসবুক পেজ:</span>
+                  <span>{"\uD83C\uDF10"} ফেসবুক পেজ:</span>
                   <span className="text-blue-600">fb.com/jobmasterapp</span>
                 </div>
               </div>
@@ -6449,7 +6449,7 @@ export default function Home() {
               </div>
               <div className="space-y-3 pt-2 text-xs font-bold">
                 <div className="p-3.5 bg-slate-50 rounded-xl flex items-center justify-between">
-                  <span>🔊 সাউন্ড ইফেক্ট:</span>
+                  <span>{"\uD83D\uDD0A"} সাউন্ড ইফেক্ট:</span>
                   <button 
                     onClick={() => setSoundEnabled(!soundEnabled)}
                     className={`px-3 py-1.5 rounded-lg font-black ${soundEnabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}
@@ -6471,7 +6471,7 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <span className="bg-orange-100 text-[#FF6A00] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#FF6A00] animate-ping"></span>
-                  🔴 লাইভ পরীক্ষা বিবরণ
+                  {"\uD83D\uDD34"} লাইভ পরীক্ষা বিবরণ
                 </span>
                 <button 
                   onClick={() => setSelectedLiveExamModal(null)}
