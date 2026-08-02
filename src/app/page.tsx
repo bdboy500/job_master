@@ -627,12 +627,12 @@ export default function Home() {
 
       // Fetch dynamic courses & prep subjects & subscribe
       fetchCoursesFromDb().then(courses => {
-        if (courses && courses.length > 0) {
+        if (courses) {
           setCoursesList(courses);
         }
       });
       fetchPrepSubjectsFromDb().then(prep => {
-        if (prep && prep.length > 0) {
+        if (prep) {
           setPrepSubjectsList(prep);
         }
       });
@@ -1171,29 +1171,13 @@ export default function Home() {
   }), []);
 
   const allCoursesData = useMemo(() => {
-    const formattedDb = (coursesList || []).map(c => ({
-      ...c,
-      icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
-    }));
-
-    if (!formattedDb || formattedDb.length === 0) {
-      return ALL_COURSES_DATA;
+    if (coursesList && coursesList.length > 0) {
+      return coursesList.map(c => ({
+        ...c,
+        icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
+      }));
     }
-
-    const map = new Map<string, any>();
-    ALL_COURSES_DATA.forEach(c => {
-      const key = (c.id || c.name || c.title || "").toLowerCase();
-      if (key) map.set(key, c);
-    });
-
-    formattedDb.forEach(c => {
-      const key = (c.id || c.name || c.title || "").toLowerCase();
-      if (key) {
-        map.set(key, { ...map.get(key), ...c });
-      }
-    });
-
-    return Array.from(map.values());
+    return ALL_COURSES_DATA;
   }, [coursesList, ICON_MAP]);
 
   const DEFAULT_PREP_SUBJECTS = useMemo(() => [
@@ -1209,30 +1193,14 @@ export default function Home() {
   ], []);
 
   const allPrepSubjectsData = useMemo(() => {
-    const formattedDb = (prepSubjectsList || []).map(s => ({
-      ...s,
-      icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
-      text: s.text || (s as any).iconColor || "text-orange-600"
-    }));
-
-    if (!formattedDb || formattedDb.length === 0) {
-      return DEFAULT_PREP_SUBJECTS;
+    if (prepSubjectsList && prepSubjectsList.length > 0) {
+      return prepSubjectsList.map(s => ({
+        ...s,
+        icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
+        text: s.text || (s as any).iconColor || "text-orange-600"
+      }));
     }
-
-    const map = new Map<string, any>();
-    DEFAULT_PREP_SUBJECTS.forEach(s => {
-      const key = (s.name || s.bnName || (s as any).id || "").toLowerCase();
-      if (key) map.set(key, s);
-    });
-
-    formattedDb.forEach(s => {
-      const key = (s.name || s.bnName || s.id || "").toLowerCase();
-      if (key) {
-        map.set(key, { ...map.get(key), ...s });
-      }
-    });
-
-    return Array.from(map.values());
+    return DEFAULT_PREP_SUBJECTS;
   }, [prepSubjectsList, ICON_MAP, DEFAULT_PREP_SUBJECTS]);
 
   // Search filter for courses
@@ -4147,7 +4115,7 @@ export default function Home() {
             );
 
             // Filter 2: Courses
-            const matchedCourses = ALL_COURSES_DATA.filter(c => 
+            const matchedCourses = allCoursesData.filter(c => 
               !query || 
               c.title.toLowerCase().includes(query) || 
               c.desc.toLowerCase().includes(query) ||

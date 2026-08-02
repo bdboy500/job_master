@@ -336,6 +336,15 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
         }
       }
 
+      if (source !== "default" && Array.isArray(courses)) {
+        const cleanCourses = sanitizeCourseSubSubjects(courses);
+        cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
+        }
+        return cleanCourses;
+      }
+
       if (Array.isArray(courses) && courses.length > 0) {
         const cleanCourses = sanitizeCourseSubSubjects(courses);
         cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
@@ -443,6 +452,15 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
           }).catch(() => {});
           return localCached;
         }
+      }
+
+      if (source !== "default" && Array.isArray(prepSubjects)) {
+        const cleanPrep = sanitizeSubSubjects(prepSubjects);
+        cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
+        }
+        return cleanPrep;
       }
 
       if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
