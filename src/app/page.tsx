@@ -2496,66 +2496,199 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Exam Types Filter Bar for Sub-subject (Daily Quick test, Weekly model test) */}
-              <div className="bg-white border border-slate-200/90 rounded-[2rem] p-4 shadow-2xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
+              {/* Exam Types Section Cards & Selector (Identical to Our Course) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h4 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
                     <span>⚡</span>
-                    <span>পরীক্ষার ধরন সিলেক্ট করুন:</span>
-                  </h5>
+                    <span>পরীক্ষার সেকশন সিলেক্ট করুন:</span>
+                  </h4>
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6A00] border border-orange-200">
+                    {selectedPrepSubSubject.name}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-0.5">
-                  {[
-                    { id: "daily", label: "Daily Quick Test", icon: "⚡", color: "border-amber-200 text-amber-700 bg-amber-50/60" },
-                    { id: "weekly", label: "Weekly Model Test", icon: "📅", color: "border-blue-200 text-blue-700 bg-blue-50/60" },
-                  ].map((tab) => {
-                    const active = selectedPrepExamTypeFilter === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setSelectedPrepExamTypeFilter(tab.id as any)}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
-                          active 
-                            ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-2xs scale-[1.02]" 
-                            : `${tab.color} hover:opacity-90`
-                        }`}
-                      >
-                        <span>{tab.icon}</span>
-                        <span className="truncate">{tab.label}</span>
-                      </button>
+
+                {/* Section Cards Grid - Identical to Our Course */}
+                <div className="flex flex-col gap-3">
+                  {(() => {
+                    const allPrepSections = [
+                      { 
+                        id: "daily", 
+                        title: "Daily Quick Test", 
+                        banglaTitle: "⚡ ডেইলি কুইক টেস্ট",
+                        desc: "প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট",
+                        color: "border-amber-200/90 hover:border-amber-400 bg-white",
+                        iconBg: "bg-amber-100 text-amber-700",
+                        icon: "⚡"
+                      },
+                      { 
+                        id: "weekly", 
+                        title: "Weekly Model Test", 
+                        banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
+                        desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
+                        color: "border-purple-200/90 hover:border-purple-400 bg-white",
+                        iconBg: "bg-purple-100 text-purple-700",
+                        icon: "📅"
+                      },
+                      { 
+                        id: "subject", 
+                        title: "Subject Wise Test", 
+                        banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
+                        desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
+                        color: "border-blue-200/90 hover:border-blue-400 bg-white",
+                        iconBg: "bg-blue-100 text-blue-700",
+                        icon: "📚"
+                      }
+                    ];
+
+                    const dbMatch = prepSubjectsList.find(s => 
+                      s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                      (s.bnName && s.bnName === selectedPrepSubject) || 
+                      s.id === selectedPrepSubject
                     );
-                  })}
+
+                    return allPrepSections.map((sec) => {
+                      const count = examPapers.filter(p => {
+                        const status = getExamStatus(p);
+                        if (status !== "Live") return false;
+                        
+                        const pCourse = (p.course || "").toLowerCase();
+                        const pSubject = (p.subject || "").toLowerCase();
+                        const pSubSubject = (p.subSubject || "").toLowerCase();
+                        const pCat = (p.categoryType || "").toLowerCase();
+
+                        if (pCourse === "all_courses" || (pCourse === "all" && pSubSubject === "all" && pSubject === "all")) return false;
+
+                        const selectedNorm = selectedPrepSubject.toLowerCase();
+                        const dbMatchId = (dbMatch?.id || "").toLowerCase();
+                        const dbMatchName = (dbMatch?.name || "").toLowerCase();
+
+                        const courseMatch =
+                          pCat === "prep_hub" ||
+                          pCourse === selectedNorm ||
+                          pCourse === dbMatchId ||
+                          pCourse === dbMatchName ||
+                          pSubject === selectedNorm ||
+                          pSubject === dbMatchName;
+
+                        if (!courseMatch) return false;
+
+                        const targetSub = selectedPrepSubSubject.name.toLowerCase();
+                        const isSubMatch = 
+                          pSubSubject === targetSub ||
+                          pSubject === targetSub ||
+                          pSubSubject.includes(targetSub) ||
+                          targetSub.includes(pSubSubject) ||
+                          pSubSubject === "all";
+
+                        if (!isSubMatch) return false;
+
+                        if (sec.id === "daily") return p.examType === "daily";
+                        if (sec.id === "weekly") return p.examType === "weekly";
+                        if (sec.id === "subject") return p.examType === "subject" || !p.examType;
+                        return true;
+                      }).length;
+
+                      const isSelected = selectedPrepExamTypeFilter === sec.id;
+
+                      return (
+                        <div
+                          key={sec.id}
+                          onClick={() => {
+                            setSelectedPrepExamTypeFilter(sec.id as any);
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className={`w-full ${sec.color} border rounded-2xl sm:rounded-3xl p-4 sm:p-4.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group ${
+                            isSelected ? "ring-2 ring-[#FF6A00] bg-orange-50/20" : ""
+                          }`}
+                        >
+                          {/* Left side: Icon + Text */}
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className={`w-11 h-11 rounded-2xl ${sec.iconBg} flex items-center justify-center text-lg font-black shrink-0 shadow-2xs`}>
+                              {sec.icon}
+                            </div>
+                            <div className="space-y-0.5 truncate text-left">
+                              <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                                {sec.title}
+                              </h4>
+                              <p className="text-[11px] font-bold text-slate-400 truncate">
+                                {sec.desc}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right side: Badge + Arrow */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                              count > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {count} Live
+                            </span>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                              isSelected ? "bg-[#FF6A00] text-white" : "bg-slate-50 text-slate-400 group-hover:bg-orange-50 group-hover:text-[#FF6A00]"
+                            }`}>
+                              <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
+              {/* Selected Exam Type Section Papers List */}
               <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-center">
-                  <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
-                    {selectedLevel3Topic ? `"${selectedLevel3Topic}" - প্রশ্নপত্র` : "প্রকাশিত প্রশ্নপত্র ও পরীক্ষা"}
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base sm:text-lg font-bold text-slate-800 text-left">
+                    {selectedLevel3Topic 
+                      ? `"${selectedLevel3Topic}" - প্রশ্নপত্র` 
+                      : selectedPrepExamTypeFilter === "daily" 
+                        ? "⚡ Daily Quick Test - প্রশ্নপত্র"
+                        : selectedPrepExamTypeFilter === "weekly"
+                          ? "📅 Weekly Model Test - প্রশ্নপত্র"
+                          : "📚 Subject Wise Test - প্রশ্নপত্র"}
                   </h4>
+                  <span className="text-xs font-black text-[#FF6A00] bg-orange-50 border border-orange-200/80 px-3 py-1 rounded-full">
+                    {selectedPrepExamTypeFilter === "daily" ? "Daily" : selectedPrepExamTypeFilter === "weekly" ? "Weekly" : "Subject"}
+                  </span>
                 </div>
 
                 {(() => {
-                  // Requirement 3: Strictly filter out weekly/daily general all-subject tests
+                  const dbMatch = prepSubjectsList.find(s => 
+                    s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                    (s.bnName && s.bnName === selectedPrepSubject) || 
+                    s.id === selectedPrepSubject
+                  );
+
                   let subPapers = examPapers.filter(paper => {
                     const pCourse = (paper.course || "").toLowerCase();
                     const pSubject = (paper.subject || "").toLowerCase();
                     const pSubSubject = (paper.subSubject || "").toLowerCase();
+                    const pCat = (paper.categoryType || "").toLowerCase();
 
-                    // Requirement 3: Exclude general model tests or all-courses tests
-                    if (pCourse === "all_courses" || pCourse === "all") return false;
-                    if (pSubject === "all subjects" || pSubject === "all") return false;
-                    if (pSubSubject === "all subjects" || pSubSubject === "all") return false;
+                    // Exclude general all_courses or all subjects tests unless specific
+                    if (pCourse === "all_courses" || (pCourse === "all" && pSubSubject === "all" && pSubject === "all")) return false;
 
-                    // Match Course/Subject
+                    // Match Course / Parent Subject
                     const selectedNorm = selectedPrepSubject.toLowerCase();
+                    const dbMatchId = (dbMatch?.id || "").toLowerCase();
+                    const dbMatchName = (dbMatch?.name || "").toLowerCase();
+                    const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
+
                     const courseMatch =
+                      pCat === "prep_hub" ||
                       pCourse === selectedNorm ||
-                      (selectedNorm === "mathematics" && (pCourse === "math" || pCourse === "mathematics")) ||
-                      (selectedNorm === "general knowledge" && (pCourse === "general_knowledge" || pCourse === "gk")) ||
-                      (selectedNorm === "general science" && (pCourse === "general_science" || pCourse === "gen_science")) ||
-                      (selectedNorm === "mental ability" && (pCourse === "mental_ability" || pCourse === "mental")) ||
-                      (selectedNorm === "good governance" && (pCourse === "good_governance" || pCourse === "governance"));
+                      pCourse === dbMatchId ||
+                      pCourse === dbMatchName ||
+                      pCourse === dbMatchBn ||
+                      pSubject === selectedNorm ||
+                      pSubject === dbMatchName ||
+                      selectedNorm.includes(pCourse) || (pCourse && selectedNorm.includes(pCourse)) ||
+                      (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
+                      (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
+                      (selectedNorm.includes("gk") && (pCourse.includes("gk") || pCourse.includes("general_knowledge"))) ||
+                      (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs")));
 
                     if (!courseMatch) return false;
 
@@ -2566,6 +2699,7 @@ export default function Home() {
                       pSubject === targetSub ||
                       pSubSubject.includes(targetSub) ||
                       targetSub.includes(pSubSubject) ||
+                      pSubSubject === "all" ||
                       (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
                       (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
                       (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
@@ -2575,7 +2709,7 @@ export default function Home() {
                     return isSubMatch;
                   });
 
-                  // Filter by Exam Type (Daily Quick Test / Weekly Model Test)
+                  // Filter by Exam Type (Daily Quick Test / Weekly Model Test / Subject Wise Test)
                   subPapers = subPapers.filter(paper => {
                     if (selectedPrepExamTypeFilter === "daily") {
                       return (
@@ -2587,6 +2721,13 @@ export default function Home() {
                       return (
                         paper.examType === "weekly" ||
                         (paper.title && (paper.title.toLowerCase().includes("weekly") || paper.title.toLowerCase().includes("সাপ্তাহিক")))
+                      );
+                    }
+                    if (selectedPrepExamTypeFilter === "subject") {
+                      return (
+                        paper.examType === "subject" ||
+                        !paper.examType ||
+                        (paper.title && (paper.title.toLowerCase().includes("subject") || paper.title.toLowerCase().includes("বিষয়ভিত্তিক")))
                       );
                     }
                     return true;
@@ -2605,14 +2746,14 @@ export default function Home() {
                   if (subPapers.length === 0) {
                     return (
                       <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
-                        <div className="w-12 h-12 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                          📚
+                        <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
+                          {selectedPrepExamTypeFilter === "daily" ? "⚡" : selectedPrepExamTypeFilter === "weekly" ? "📅" : "📚"}
                         </div>
                         <h3 className="text-sm sm:text-base font-black text-slate-800">
-                          কোনো প্রশ্নপত্র যুক্ত হয়নি
+                          বর্তমানে কোনো পরীক্ষা লাইভ বা আসন্ন নেই
                         </h3>
                         <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
-                          এই সাব-সাবজেক্টের ({selectedPrepSubSubject.name}) জন্য এখনো কোনো প্রশ্নপত্র প্রকাশিত হয়নি। এডমিন প্যানেল থেকে এই বিষয় ও সাব-সাবজেক্টের প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।
+                          এই সাব-সাবজেক্টের ({selectedPrepSubSubject.name}) জন্য এখনো কোনো {selectedPrepExamTypeFilter === "daily" ? "ডেইলি কুইক" : selectedPrepExamTypeFilter === "weekly" ? "সাপ্তাহিক মডেল" : "বিষয়ভিত্তিক"} পরীক্ষা প্রকাশিত হয়নি। এডমিন প্যানেল থেকে প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।
                         </p>
                       </div>
                     );
@@ -2632,8 +2773,8 @@ export default function Home() {
                         const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
                         const durationMins = Math.floor(totalSec / 60);
                         const typeBadge = examTypeBadgeMap[paper.examType] || { 
-                          label: paper.examType === "daily" ? "⚡ Daily Quick Test" : paper.examType === "weekly" ? "📅 Weekly Model Test" : paper.examType, 
-                          bg: paper.examType === "daily" ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-purple-50 text-purple-700 border-purple-100" 
+                          label: paper.examType === "daily" ? "⚡ Daily Quick Test" : paper.examType === "weekly" ? "📅 Weekly Model Test" : "📚 Subject Wise Test", 
+                          bg: paper.examType === "daily" ? "bg-amber-50 text-amber-700 border-amber-100" : paper.examType === "weekly" ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100"
                         };
 
                         return (
@@ -2801,6 +2942,15 @@ export default function Home() {
                           color: "border-purple-200/90 hover:border-purple-400 bg-white",
                           iconBg: "bg-purple-100 text-purple-700",
                           icon: "📅"
+                        },
+                        { 
+                          id: "subject", 
+                          title: "Subject Wise Test", 
+                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
+                          desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
+                          color: "border-blue-200/90 hover:border-blue-400 bg-white",
+                          iconBg: "bg-blue-100 text-blue-700",
+                          icon: "📚"
                         }
                       ];
 
@@ -2809,7 +2959,7 @@ export default function Home() {
                           const status = getExamStatus(p);
                           if (status !== "Live") return false;
                           if (p.course && p.course !== "all_courses" && p.course !== "all" && p.course !== selectedCourseDetail.id) return false;
-                          return p.examType === sec.id;
+                          return p.examType === sec.id || (sec.id === "subject" && (!p.examType || p.examType === "subject"));
                         }).length;
 
                         return (
