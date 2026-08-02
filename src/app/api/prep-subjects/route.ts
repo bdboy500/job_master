@@ -98,6 +98,22 @@ export async function GET() {
           saveToDiskFile(TMP_CACHE_FILE, mapped);
           return NextResponse.json({ prepSubjects: mapped, source: "supabase" });
         }
+
+        // Try app_config table as secondary check
+        const { data: configData } = await supabase
+          .from("app_config")
+          .select("value")
+          .eq("key", "prep_subjects")
+          .maybeSingle();
+
+        if (configData && configData.value && Array.isArray(configData.value) && configData.value.length > 0) {
+          const configMapped: PrepSubjectItem[] = configData.value;
+          configMapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+          memoryPrepCache = configMapped;
+          saveToKvStore(configMapped);
+          saveToDiskFile(TMP_CACHE_FILE, configMapped);
+          return NextResponse.json({ prepSubjects: configMapped, source: "supabase_app_config" });
+        }
       }
     } catch (sbErr) {
       console.warn("Supabase prep query note:", sbErr);
@@ -153,30 +169,43 @@ export async function POST(req: NextRequest) {
     try {
       const supabase = getSupabase();
       if (supabase) {
+        // 1. Table upsert with exact table columns
         const payload = sorted.map(s => ({
           id: s.id,
           name: s.name,
-          bnName: s.bnName,
-          bn_name: s.bnName,
-          icon: s.icon,
-          bg: s.bg,
-          text: s.text,
-          sub: s.sub,
-          serial: s.serial,
-          subSubjects: JSON.stringify(s.subSubjects || []),
-          sub_subjects: JSON.stringify(s.subSubjects || []),
-          active: s.active !== false,
-          showQuickTools: s.showQuickTools !== false,
-          show_quick_tools: s.showQuickTools !== false
+          bnName: s.bnName || s.name,
+          bn_name: s.bnName || s.name,
+          icon: s.icon || "BookOpen",
+          bg: s.bg || "bg-[#FFF1E6]",
+          text: s.text || "text-orange-600",
+          sub: s.sub || "",
+          serial: Number(s.serial) || 1,
+          subSubjects: s.subSubjects || [],
+          sub_subjects: s.subSubjects || [],
+          active: s.active !== false
         }));
 
-        const currentIds = sorted.map(s => s.id);
-        if (currentIds.length > 0) {
-          const formattedIds = `(${currentIds.map(id => `'${id}'`).join(",")})`;
-          await supabase.from("app_prep_subjects").delete().not("id", "in", formattedIds);
+        try {
+          const currentIds = sorted.map(s => s.id);
+          if (currentIds.length > 0) {
+            const formattedIds = `(${currentIds.map(id => id).join(",")})`;
+            await supabase.from("app_prep_subjects").delete().not("id", "in", formattedIds);
+          }
+        } catch (delErr) {
+          console.warn("Delete old prep subjects note:", delErr);
         }
 
-        await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
+        const { error: upsertErr } = await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
+        if (upsertErr) {
+          console.warn("Supabase app_prep_subjects table upsert note:", upsertErr);
+        }
+
+        // 2. Backup to app_config table for 100% reliable fail-safe persistence
+        await supabase.from("app_config").upsert({
+          key: "prep_subjects",
+          value: sorted,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
       }
     } catch (sbErr) {
       console.warn("Supabase upsert prep subjects note:", sbErr);

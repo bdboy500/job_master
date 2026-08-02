@@ -156,26 +156,33 @@ export async function POST(req: NextRequest) {
         const payload = sorted.map(c => ({
           id: c.id,
           name: c.name,
-          title: c.title,
-          desc: c.desc,
-          category: c.category,
-          icon: c.icon,
-          bg: c.bg,
-          iconColor: c.iconColor,
-          icon_color: c.iconColor,
-          serial: c.serial,
-          subSubjects: JSON.stringify(c.subSubjects || []),
-          sub_subjects: JSON.stringify(c.subSubjects || []),
+          title: c.title || c.name,
+          desc: c.desc || "",
+          category: c.category || "Other",
+          icon: c.icon || "BookOpen",
+          bg: c.bg || "bg-[#FFF1E6]",
+          iconColor: c.iconColor || "text-orange-600",
+          icon_color: c.iconColor || "text-orange-600",
+          serial: Number(c.serial) || 1,
+          subSubjects: c.subSubjects || [],
+          sub_subjects: c.subSubjects || [],
           active: c.active !== false
         }));
 
-        const currentIds = sorted.map(c => c.id);
-        if (currentIds.length > 0) {
-          const formattedIds = `(${currentIds.map(id => `'${id}'`).join(",")})`;
-          await supabase.from("app_courses").delete().not("id", "in", formattedIds);
-        }
+        try {
+          const currentIds = sorted.map(c => c.id);
+          if (currentIds.length > 0) {
+            const formattedIds = `(${currentIds.map(id => id).join(",")})`;
+            await supabase.from("app_courses").delete().not("id", "in", formattedIds);
+          }
+        } catch (delErr) {}
 
         await supabase.from("app_courses").upsert(payload, { onConflict: "id" });
+        await supabase.from("app_config").upsert({
+          key: "app_courses",
+          value: sorted,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
       }
     } catch (sbErr) {
       console.warn("Supabase upsert courses note:", sbErr);
