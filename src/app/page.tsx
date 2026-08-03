@@ -2668,6 +2668,12 @@ export default function Home() {
                         s.id === selectedPrepSubject
                       );
 
+                      const dbCourseMatch = coursesList.find(c => 
+                        c.id.toLowerCase() === selectedPrepSubject.toLowerCase() ||
+                        c.name.toLowerCase() === selectedPrepSubject.toLowerCase() ||
+                        (c.title && c.title.toLowerCase() === selectedPrepSubject.toLowerCase())
+                      ) || selectedCourseDetail;
+
                       return allPrepSections.map((sec) => {
                         const count = examPapers.filter(p => {
                           const status = getExamStatus(p);
@@ -2685,13 +2691,21 @@ export default function Home() {
                           const dbMatchName = (dbMatch?.name || "").toLowerCase();
                           const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
 
+                          const courseId = (dbCourseMatch?.id || "").toLowerCase();
+                          const courseName = (dbCourseMatch?.name || "").toLowerCase();
+                          const courseTitle = (dbCourseMatch?.title || "").toLowerCase();
+
                           const courseMatch =
                             pCourse === selectedNorm ||
                             pCourse === dbMatchId ||
                             pCourse === dbMatchName ||
                             pCourse === dbMatchBn ||
+                            (courseId && pCourse === courseId) ||
+                            (courseName && pCourse === courseName) ||
+                            (courseTitle && pCourse === courseTitle) ||
                             pSubject === selectedNorm ||
                             pSubject === dbMatchName ||
+                            (courseTitle && pSubject === courseTitle) ||
                             (pCat === "prep_hub" && (
                               pCourse === selectedNorm ||
                               pCourse === dbMatchId ||
@@ -2709,16 +2723,25 @@ export default function Home() {
                             (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
                             (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
                             (selectedNorm.includes("gk") && (pCourse.includes("gk") || pCourse.includes("general_knowledge"))) ||
-                            (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs")));
+                            (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs"))) ||
+                            (!pCourse || pCourse === "all_courses" || pCourse === "all");
 
                           if (!courseMatch) return false;
 
                           const targetSub = selectedPrepSubSubject.name.toLowerCase();
+                          const targetSubId = (selectedPrepSubSubject.id || "").toLowerCase();
                           const isSubMatch = 
                             pSubSubject === targetSub ||
+                            (targetSubId && pSubSubject === targetSubId) ||
                             pSubject === targetSub ||
-                            pSubSubject.includes(targetSub) ||
-                            targetSub.includes(pSubSubject);
+                            (targetSubId && pSubject === targetSubId) ||
+                            (pSubSubject && pSubSubject.includes(targetSub)) ||
+                            (pSubSubject && targetSub.includes(pSubSubject)) ||
+                            (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
+                            (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
+                            (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
+                            (targetSub.includes("বীজগণিত") && (pSubSubject.includes("বীজগণিত") || pSubject.includes("বীজগণিত") || pSubSubject.includes("algebra"))) ||
+                            (targetSub.includes("জ্যামিতি") && (pSubSubject.includes("জ্যামিতি") || pSubject.includes("জ্যামিতি") || pSubSubject.includes("geometry")));
 
                           if (!isSubMatch) return false;
 
@@ -2821,6 +2844,12 @@ export default function Home() {
                         s.id === selectedPrepSubject
                       );
 
+                      const dbCourseMatch = coursesList.find(c => 
+                        c.id.toLowerCase() === selectedPrepSubject.toLowerCase() ||
+                        c.name.toLowerCase() === selectedPrepSubject.toLowerCase() ||
+                        (c.title && c.title.toLowerCase() === selectedPrepSubject.toLowerCase())
+                      ) || selectedCourseDetail;
+
                       let subPapers = examPapers.filter(paper => {
                         const pCourse = (paper.course || "").toLowerCase();
                         const pSubject = (paper.subject || "").toLowerCase();
@@ -2836,13 +2865,21 @@ export default function Home() {
                         const dbMatchName = (dbMatch?.name || "").toLowerCase();
                         const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
 
+                        const courseId = (dbCourseMatch?.id || "").toLowerCase();
+                        const courseName = (dbCourseMatch?.name || "").toLowerCase();
+                        const courseTitle = (dbCourseMatch?.title || "").toLowerCase();
+
                         const courseMatch =
                           pCourse === selectedNorm ||
                           pCourse === dbMatchId ||
                           pCourse === dbMatchName ||
                           pCourse === dbMatchBn ||
+                          (courseId && pCourse === courseId) ||
+                          (courseName && pCourse === courseName) ||
+                          (courseTitle && pCourse === courseTitle) ||
                           pSubject === selectedNorm ||
                           pSubject === dbMatchName ||
+                          (courseTitle && pSubject === courseTitle) ||
                           (pCat === "prep_hub" && (
                             pCourse === selectedNorm ||
                             pCourse === dbMatchId ||
@@ -2860,17 +2897,21 @@ export default function Home() {
                           (selectedNorm.includes("math") && (pCourse.includes("math") || pSubject.includes("math"))) ||
                           (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pSubject.includes("bangla"))) ||
                           (selectedNorm.includes("gk") && (pCourse.includes("gk") || pCourse.includes("general_knowledge"))) ||
-                          (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs")));
+                          (selectedNorm.includes("bcs") && (pCourse.includes("bcs") || pSubject.includes("bcs"))) ||
+                          (!pCourse || pCourse === "all_courses" || pCourse === "all");
 
                         if (!courseMatch) return false;
 
                         // Match SubSubject
                         const targetSub = selectedPrepSubSubject.name.toLowerCase();
+                        const targetSubId = (selectedPrepSubSubject.id || "").toLowerCase();
                         const isSubMatch = 
                           pSubSubject === targetSub ||
+                          (targetSubId && pSubSubject === targetSubId) ||
                           pSubject === targetSub ||
-                          pSubSubject.includes(targetSub) ||
-                          targetSub.includes(pSubSubject) ||
+                          (targetSubId && pSubject === targetSubId) ||
+                          (pSubSubject && pSubSubject.includes(targetSub)) ||
+                          (pSubSubject && targetSub.includes(pSubSubject)) ||
                           (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
                           (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
                           (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
