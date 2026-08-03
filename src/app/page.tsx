@@ -2453,6 +2453,7 @@ export default function Home() {
                             setSelectedPrepSubSubject(sub);
                             setSelectedLevel3Topic(null);
                             setSelectedPrepExamTypeFilter(null);
+                            setActiveExamSection(null);
                             setPreviousScreen("prep-sub");
                             setCurrentScreen("prep-sub-detail");
                             if (soundEnabled) quizAudio.playClick();
@@ -2507,6 +2508,262 @@ export default function Home() {
                   })()}
                 </div>
               </div>
+
+              {/* Exam Sections for Main Subject (Daily Quick Test, Weekly Model Test, Subject Wise Test) */}
+              {!activeExamSection && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between px-1">
+                    <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>⚡</span>
+                      <span>পরীক্ষার সেকশন সিলেক্ট করুন:</span>
+                    </h4>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const prepSections = [
+                        { 
+                          id: "daily", 
+                          title: "Daily Quick Test", 
+                          banglaTitle: "⚡ ডেইলি কুইক টেস্ট",
+                          desc: "প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট",
+                          color: "border-amber-200/90 hover:border-amber-400 bg-white",
+                          iconBg: "bg-amber-100 text-amber-700",
+                          icon: "⚡"
+                        },
+                        { 
+                          id: "weekly", 
+                          title: "Weekly Model Test", 
+                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
+                          desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
+                          color: "border-purple-200/90 hover:border-purple-400 bg-white",
+                          iconBg: "bg-purple-100 text-purple-700",
+                          icon: "📅"
+                        },
+                        { 
+                          id: "subject", 
+                          title: "Subject Wise Test", 
+                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
+                          desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
+                          color: "border-blue-200/90 hover:border-blue-400 bg-white",
+                          iconBg: "bg-blue-100 text-blue-700",
+                          icon: "📚"
+                        }
+                      ];
+
+                      return prepSections.map((sec) => {
+                        const count = examPapers.filter(p => {
+                          const status = getExamStatus(p);
+                          if (status !== "Live") return false;
+
+                          const pCat = (p.categoryType || "").toLowerCase();
+                          const pCourse = (p.course || "").toLowerCase();
+                          const pSub = (p.subSubject || p.subject || "").toLowerCase();
+
+                          const selectedNorm = selectedPrepSubject.toLowerCase();
+                          const dbMatch = prepSubjectsList.find(s => 
+                            s.name.toLowerCase() === selectedNorm || 
+                            (s.bnName && s.bnName.toLowerCase() === selectedNorm) || 
+                            s.id === selectedPrepSubject
+                          );
+                          const dbMatchId = (dbMatch?.id || "").toLowerCase();
+                          const dbMatchName = (dbMatch?.name || "").toLowerCase();
+                          const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
+
+                          const courseMatch = 
+                            pCourse === selectedNorm ||
+                            pCourse === dbMatchId ||
+                            pCourse === dbMatchName ||
+                            pCourse === dbMatchBn ||
+                            (pCat === "prep_hub" && (pCourse === selectedNorm || pCourse === dbMatchId || pCourse === dbMatchName || pCourse === dbMatchBn)) ||
+                            (selectedNorm.includes("math") && (pCourse.includes("math") || pCourse.includes("গণিত"))) ||
+                            (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pCourse.includes("বাংলা"))) ||
+                            (selectedNorm.includes("english") && (pCourse.includes("english") || pCourse.includes("ইংরেজি"))) ||
+                            (!pCourse || pCourse === "all_courses" || pCourse === "all");
+
+                          if (!courseMatch) return false;
+
+                          const hasSpecificSubSubject = pSub && pSub !== "none" && pSub !== "all" && pSub !== "" && pSub !== selectedNorm && pSub !== dbMatchId && pSub !== dbMatchName;
+                          if (hasSpecificSubSubject) return false;
+
+                          return p.examType === sec.id || (sec.id === "subject" && (!p.examType || p.examType === "subject"));
+                        }).length;
+
+                        return (
+                          <div
+                            key={sec.id}
+                            onClick={() => {
+                              setActiveExamSection(sec.id as any);
+                              if (soundEnabled) quizAudio.playClick();
+                            }}
+                            className={`w-full ${sec.color} border rounded-2xl sm:rounded-3xl p-4 sm:p-4.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group`}
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className={`w-11 h-11 rounded-2xl ${sec.iconBg} flex items-center justify-center text-lg font-black shrink-0 shadow-2xs`}>
+                                {sec.icon}
+                              </div>
+                              <div className="space-y-0.5 truncate text-left">
+                                <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                                  {sec.title}
+                                </h4>
+                                <p className="text-[11px] font-bold text-slate-400 truncate">
+                                  {sec.desc}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                                count > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-slate-100 text-slate-500"
+                              }`}>
+                                {count} Live
+                              </span>
+                              <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors">
+                                <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* CASE 2: Inside Active Exam Section for Main Preparation Hub Subject */}
+              {activeExamSection && (
+                <div className="space-y-4 pt-1">
+                  <div className="flex items-center justify-between bg-orange-50/70 border border-orange-200/80 rounded-2xl p-3.5 px-4">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-lg">
+                        {activeExamSection === "daily" ? "⚡" : activeExamSection === "weekly" ? "📅" : "📚"}
+                      </span>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800">
+                          {activeExamSection === "daily" ? "Daily Quick Test" : activeExamSection === "weekly" ? "Weekly Model Test" : "Subject Wise Test"}
+                        </h4>
+                        <p className="text-[10px] font-bold text-[#FF6A00]">
+                          {selectedPrepSubject} সেকশনের প্রশ্নপত্র
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveExamSection(null)}
+                      className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:text-[#FF6A00] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                    >
+                      সব সেকশন দেখুন
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const rawSectionPapers = examPapers.filter(p => {
+                      const currentStatus = getExamStatus(p);
+                      if (currentStatus === "Archive") return false;
+
+                      const pCat = (p.categoryType || "").toLowerCase();
+                      const pCourse = (p.course || "").toLowerCase();
+                      const pSub = (p.subSubject || p.subject || "").toLowerCase();
+
+                      const selectedNorm = selectedPrepSubject.toLowerCase();
+                      const dbMatch = prepSubjectsList.find(s => 
+                        s.name.toLowerCase() === selectedNorm || 
+                        (s.bnName && s.bnName.toLowerCase() === selectedNorm) || 
+                        s.id === selectedPrepSubject
+                      );
+                      const dbMatchId = (dbMatch?.id || "").toLowerCase();
+                      const dbMatchName = (dbMatch?.name || "").toLowerCase();
+                      const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
+
+                      const courseMatch = 
+                        pCourse === selectedNorm ||
+                        pCourse === dbMatchId ||
+                        pCourse === dbMatchName ||
+                        pCourse === dbMatchBn ||
+                        (pCat === "prep_hub" && (pCourse === selectedNorm || pCourse === dbMatchId || pCourse === dbMatchName || pCourse === dbMatchBn)) ||
+                        (selectedNorm.includes("math") && (pCourse.includes("math") || pCourse.includes("গণিত"))) ||
+                        (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pCourse.includes("বাংলা"))) ||
+                        (selectedNorm.includes("english") && (pCourse.includes("english") || pCourse.includes("ইংরেজি"))) ||
+                        (!pCourse || pCourse === "all_courses" || pCourse === "all");
+
+                      if (!courseMatch) return false;
+
+                      const hasSpecificSubSubject = pSub && pSub !== "none" && pSub !== "all" && pSub !== "" && pSub !== selectedNorm && pSub !== dbMatchId && pSub !== dbMatchName;
+                      if (hasSpecificSubSubject) return false;
+
+                      return p.examType === activeExamSection || (activeExamSection === "subject" && (!p.examType || p.examType === "subject"));
+                    });
+
+                    const sectionPapers = sortExamPapersForDisplay(rawSectionPapers);
+
+                    if (sectionPapers.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
+                          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
+                            {activeExamSection === "daily" ? "⚡" : activeExamSection === "weekly" ? "📅" : "📚"}
+                          </div>
+                          <h3 className="text-sm sm:text-base font-black text-slate-800">
+                            বর্তমানে কোনো পরীক্ষা লাইভ বা আসন্ন নেই
+                          </h3>
+                          <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
+                            এই সেকশনে ({selectedPrepSubject}) এখনো কোনো লাইভ বা আসন্ন পরীক্ষা যুক্ত করা হয়নি। এডমিন প্যানেল থেকে প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।
+                          </p>
+                          <button
+                            onClick={() => setActiveExamSection(null)}
+                            className="px-4 py-2 bg-[#FF6A00] text-white text-xs font-black rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm shadow-orange-500/20 inline-block"
+                          >
+                            অন্যান্য সেকশন দেখুন
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {sectionPapers.map((paper) => {
+                          const status = getExamStatus(paper);
+                          return (
+                            <div
+                              key={paper.id}
+                              onClick={() => {
+                                setSelectedLiveExamModal(paper);
+                                if (soundEnabled) quizAudio.playClick();
+                              }}
+                              className="bg-white border border-slate-200/90 hover:border-orange-400 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.98]"
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <div className="w-11 h-11 rounded-2xl bg-orange-50 text-[#FF6A00] group-hover:bg-[#FF6A00] group-hover:text-white transition-colors flex items-center justify-center text-lg font-black shrink-0 shadow-2xs">
+                                  {paper.examType === "daily" ? "⚡" : paper.examType === "weekly" ? "📅" : "📚"}
+                                </div>
+                                <div className="space-y-1 truncate text-left">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                      status === "Live" ? "bg-rose-100 text-rose-700 animate-pulse" : "bg-blue-100 text-blue-700"
+                                    }`}>
+                                      {status === "Live" ? "LIVE NOW" : "UPCOMING"}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold text-slate-400">
+                                      {paper.examDate}
+                                    </span>
+                                  </div>
+                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-[#FF6A00] transition-colors truncate">
+                                    {paper.title}
+                                  </h4>
+                                  <p className="text-[11px] font-bold text-slate-400 truncate">
+                                    {paper.questionCount}টি প্রশ্ন • {paper.topic || "সাধারণ কুইজ"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors shrink-0">
+                                <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Main Subject Quick Tools (Controlled by Admin toggle showQuickTools) */}
               {(() => {
