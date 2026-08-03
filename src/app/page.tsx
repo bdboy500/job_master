@@ -2717,44 +2717,93 @@ export default function Home() {
                       );
                     }
 
+                    const examTypeBadgeMap: Record<string, { label: string; bg: string }> = {
+                      daily: { label: "⚡ Daily Quick Test", bg: "bg-amber-50 text-amber-700 border-amber-100" },
+                      weekly: { label: "📅 Weekly Model Test", bg: "bg-purple-50 text-purple-700 border-purple-100" },
+                      special: { label: "🩺 BCS Health Quiz", bg: "bg-rose-50 text-rose-700 border-rose-100" },
+                      subject: { label: "📚 Subject Wise Test", bg: "bg-blue-50 text-blue-700 border-blue-100" }
+                    };
+
                     return (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {sectionPapers.map((paper) => {
-                          const status = getExamStatus(paper);
+                          const computedStatus = getExamStatus(paper);
+                          const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
+                          const durationMins = Math.floor(totalSec / 60);
+                          const typeBadge = examTypeBadgeMap[paper.examType] || { 
+                            label: paper.examType === "daily" ? "⚡ Daily Quick Test" : paper.examType === "weekly" ? "📅 Weekly Model Test" : "📚 Subject Wise Test", 
+                            bg: paper.examType === "daily" ? "bg-amber-50 text-amber-700 border-amber-100" : paper.examType === "weekly" ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100"
+                          };
+
                           return (
-                            <div
-                              key={paper.id}
-                              onClick={() => {
-                                setSelectedLiveExamModal(paper);
-                                if (soundEnabled) quizAudio.playClick();
-                              }}
-                              className="bg-white border border-slate-200/90 hover:border-orange-400 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.98]"
+                            <div 
+                              key={paper.id} 
+                              className="bg-white border border-slate-200/80 hover:border-orange-200 rounded-[2rem] p-5 shadow-2xs space-y-3.5 transition-all"
                             >
-                              <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="w-11 h-11 rounded-2xl bg-orange-50 text-[#FF6A00] group-hover:bg-[#FF6A00] group-hover:text-white transition-colors flex items-center justify-center text-lg font-black shrink-0 shadow-2xs">
-                                  {paper.examType === "daily" ? "⚡" : paper.examType === "weekly" ? "📅" : "📚"}
-                                </div>
-                                <div className="space-y-1 truncate text-left">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                                      status === "Live" ? "bg-rose-100 text-rose-700 animate-pulse" : "bg-blue-100 text-blue-700"
-                                    }`}>
-                                      {status === "Live" ? "LIVE NOW" : "UPCOMING"}
+                              {/* Header Date & Badges */}
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-[11px] font-extrabold text-slate-500">
+                                  📅 {paper.examDate || "Fri, Jul 31, 2026"}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border ${typeBadge.bg}`}>
+                                    {typeBadge.label}
+                                  </span>
+                                  {computedStatus === "Live" && (
+                                    <span className="bg-emerald-50 text-emerald-600 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100">
+                                      ● Live
                                     </span>
-                                    <span className="text-[10px] font-extrabold text-slate-400">
-                                      {paper.examDate}
+                                  )}
+                                  {computedStatus === "Upcoming" && (
+                                    <span className="bg-amber-50 text-amber-700 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">
+                                      ⏳ Upcoming
                                     </span>
-                                  </div>
-                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-[#FF6A00] transition-colors truncate">
-                                    {paper.title}
-                                  </h4>
-                                  <p className="text-[11px] font-bold text-slate-400 truncate">
-                                    {paper.questionCount}টি প্রশ্ন • {paper.topic || "সাধারণ কুইজ"}
-                                  </p>
+                                  )}
+                                  {computedStatus === "Archive" && (
+                                    <span className="bg-slate-100 text-slate-600 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-slate-200">
+                                      📁 Archive
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                              <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors shrink-0">
-                                <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+
+                              {/* Marks & Duration */}
+                              <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                                <span>Marks: {paper.totalMarks || paper.questions?.length || 10}</span>
+                                <span>•</span>
+                                <span>Duration: {durationMins} mins</span>
+                              </div>
+
+                              {/* Title & Topic */}
+                              <div className="space-y-1">
+                                {paper.topic && (
+                                  <div className="text-xs font-extrabold text-[#FF6A00]">
+                                    Topic: <span className="text-slate-800 font-bold">"{paper.topic}"</span>
+                                  </div>
+                                )}
+                                <h4 className="text-sm font-black text-slate-800 leading-snug">
+                                  <MathRenderer content={paper.title} />
+                                </h4>
+                              </div>
+
+                              {/* Action Buttons: Take Exam & Question Paper */}
+                              <div className="grid grid-cols-2 gap-3 pt-1">
+                                <button
+                                  onClick={() => {
+                                    setSelectedLiveExamModal(paper);
+                                    if (soundEnabled) quizAudio.playClick();
+                                  }}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <span>📝 পরীক্ষা দিন</span>
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenViewPaper(paper)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <span>📄 প্রশ্নপত্র</span>
+                                </button>
                               </div>
                             </div>
                           );
