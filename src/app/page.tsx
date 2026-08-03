@@ -2718,8 +2718,7 @@ export default function Home() {
                             pSubSubject === targetSub ||
                             pSubject === targetSub ||
                             pSubSubject.includes(targetSub) ||
-                            targetSub.includes(pSubSubject) ||
-                            pSubSubject === "all";
+                            targetSub.includes(pSubSubject);
 
                           if (!isSubMatch) return false;
 
@@ -2872,7 +2871,6 @@ export default function Home() {
                           pSubject === targetSub ||
                           pSubSubject.includes(targetSub) ||
                           targetSub.includes(pSubSubject) ||
-                          pSubSubject === "all" ||
                           (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
                           (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
                           (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
@@ -3142,7 +3140,18 @@ export default function Home() {
                         const count = examPapers.filter(p => {
                           const status = getExamStatus(p);
                           if (status !== "Live") return false;
-                          if (p.course && p.course !== "all_courses" && p.course !== "all" && p.course !== selectedCourseDetail.id) return false;
+                          const pCourse = (p.course || "").toLowerCase();
+                          const cId = (selectedCourseDetail.id || "").toLowerCase();
+                          const cTitle = (selectedCourseDetail.title || "").toLowerCase();
+                          const cName = (selectedCourseDetail.name || "").toLowerCase();
+                          const isCourseMatch = !p.course || pCourse === "all_courses" || pCourse === "all" ||
+                                                pCourse === cId || pCourse === cTitle || pCourse === cName;
+                          if (!isCourseMatch) return false;
+
+                          // If paper has a specific sub-subject selected, do not count at main course level
+                          const hasSpecificSubSubject = p.subSubject && p.subSubject !== "none" && p.subSubject !== "all" && p.subSubject !== "";
+                          if (hasSpecificSubSubject) return false;
+
                           return p.examType === sec.id || (sec.id === "subject" && (!p.examType || p.examType === "subject"));
                         }).length;
 
@@ -3293,9 +3302,19 @@ export default function Home() {
                       const currentStatus = getExamStatus(p);
                       // Show Live and Upcoming exams in section list. Archive papers go to archive tab automatically!
                       if (currentStatus === "Archive") return false;
-                      if (p.course && p.course !== "all_courses" && p.course !== "all" && p.course !== selectedCourseDetail.id) {
-                        return false;
-                      }
+
+                      const pCourse = (p.course || "").toLowerCase();
+                      const cId = (selectedCourseDetail.id || "").toLowerCase();
+                      const cTitle = (selectedCourseDetail.title || "").toLowerCase();
+                      const cName = (selectedCourseDetail.name || "").toLowerCase();
+                      const isCourseMatch = !p.course || pCourse === "all_courses" || pCourse === "all" ||
+                                            pCourse === cId || pCourse === cTitle || pCourse === cName;
+                      if (!isCourseMatch) return false;
+
+                      // If paper has a specific sub-subject selected, do not display at main course level
+                      const hasSpecificSubSubject = p.subSubject && p.subSubject !== "none" && p.subSubject !== "all" && p.subSubject !== "";
+                      if (hasSpecificSubSubject) return false;
+
                       return p.examType === activeExamSection;
                     });
 
