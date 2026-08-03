@@ -205,6 +205,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
           let endDT: string | undefined = item.endDateTime || item.end_date_time || item.endDate;
           let createdAt: string | undefined = item.createdAt || item.created_at;
           let updatedAt: string | undefined = item.updatedAt || item.updated_at;
+          let subSubjectVal: string | undefined = item.subSubject || item.sub_subject;
+          let categoryTypeVal: string | undefined = item.categoryType || item.category_type;
           
           if (typeof item.questions === "string") {
             try {
@@ -213,6 +215,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
                 questionsArr = parsed;
               } else if (parsed && typeof parsed === "object") {
                 questionsArr = parsed.questions || [];
+                if (parsed.subSubject) subSubjectVal = parsed.subSubject;
+                if (parsed.categoryType) categoryTypeVal = parsed.categoryType;
                 startDT = parsed.startDateTime || startDT;
                 endDT = parsed.endDateTime || endDT;
                 createdAt = parsed.createdAt || createdAt;
@@ -225,6 +229,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
             questionsArr = item.questions;
           } else if (item.questions && typeof item.questions === "object") {
             questionsArr = item.questions.questions || [];
+            if (item.questions.subSubject) subSubjectVal = item.questions.subSubject;
+            if (item.questions.categoryType) categoryTypeVal = item.questions.categoryType;
             startDT = item.questions.startDateTime || startDT;
             endDT = item.questions.endDateTime || endDT;
             createdAt = item.questions.createdAt || createdAt;
@@ -235,7 +241,8 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
             id: item.id,
             title: item.title,
             course: item.course,
-            subSubject: item.subSubject || item.sub_subject || item.subject,
+            subSubject: subSubjectVal || item.subject,
+            categoryType: (categoryTypeVal as any) || "our_course",
             examType: item.examType || item.exam_type || "weekly",
             subject: item.subject,
             questionCount: item.questionCount || item.question_count || (Array.isArray(questionsArr) ? questionsArr.length : 10),
@@ -317,18 +324,21 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
       const questionsData = JSON.stringify({
         questions: paperWithTimestamps.questions || [],
         subSubject: paperWithTimestamps.subSubject,
+        categoryType: paperWithTimestamps.categoryType,
         startDateTime: paperWithTimestamps.startDateTime,
         endDateTime: paperWithTimestamps.endDateTime,
         createdAt: paperWithTimestamps.createdAt,
         updatedAt: paperWithTimestamps.updatedAt
       });
 
-      const payload = {
+      const payload: any = {
         id: paperWithTimestamps.id,
         title: paperWithTimestamps.title,
         course: paperWithTimestamps.course,
         exam_type: paperWithTimestamps.examType,
         subject: paperWithTimestamps.subSubject || paperWithTimestamps.subject || "All Subjects",
+        sub_subject: paperWithTimestamps.subSubject,
+        category_type: paperWithTimestamps.categoryType,
         question_count: paperWithTimestamps.questionCount,
         time_per_question: paperWithTimestamps.timePerQuestionSeconds,
         total_duration: paperWithTimestamps.totalDurationSeconds,
