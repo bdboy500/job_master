@@ -1725,7 +1725,7 @@ export default function Home() {
                         <div className={`w-9 h-9 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-5 h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide truncate">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -1744,7 +1744,7 @@ export default function Home() {
                     <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
                       <Briefcase className="w-4 h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-sm sm:text-base font-extrabold text-white tracking-wide">সকল কোর্স</span>
+                    <span className="text-base sm:text-lg font-extrabold text-white tracking-wide">সকল কোর্স</span>
                   </div>
                 </div>
               </div>
@@ -1808,7 +1808,7 @@ export default function Home() {
                         <div className={`w-11 h-11 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
                           <SubIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide truncate">
                           {subject.name}
                         </span>
                       </div>
@@ -2206,7 +2206,7 @@ export default function Home() {
                         <div className={`w-11 h-11 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
                           <CourseIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-sm sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide truncate">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -2253,7 +2253,7 @@ export default function Home() {
                         <SubIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-extrabold text-[#334155] tracking-wide block truncate group-hover:text-[#FF6A00] transition-colors">
+                        <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide block truncate group-hover:text-[#FF6A00] transition-colors">
                           {subject.name}
                         </span>
                       </div>
@@ -2465,7 +2465,7 @@ export default function Home() {
                                 <BookOpen className="w-5.5 h-5.5 stroke-[2.2px]" />
                               </div>
                               <div className="text-left space-y-0.5 truncate">
-                                <h5 className="text-xs sm:text-sm font-black text-slate-800 leading-snug group-hover:text-[#FF6A00] transition-colors truncate">
+                                <h5 className="text-base sm:text-lg font-black text-slate-800 leading-snug group-hover:text-[#FF6A00] transition-colors truncate">
                                   {sub.name}
                                 </h5>
                                 <p className="text-[10px] font-bold text-slate-400 truncate">{sub.sub}</p>
@@ -3240,7 +3240,7 @@ export default function Home() {
                                     {"\uD83D\uDCDA"}
                                   </div>
                                   <div className="space-y-0.5 truncate text-left">
-                                    <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                                    <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
                                       {subItem.name}
                                     </h4>
                                     <p className="text-[11px] font-bold text-slate-400 truncate">
@@ -4363,7 +4363,7 @@ export default function Home() {
                               {"\uD83C\uDF93"}
                             </div>
                             <div className="space-y-0.5 flex-1 min-w-0">
-                              <h5 className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                              <h5 className="font-extrabold text-base sm:text-lg text-slate-800 group-hover:text-blue-600 transition-colors truncate">
                                 {course.title}
                               </h5>
                               <p className="text-[10px] text-slate-400 font-medium truncate">
@@ -4397,7 +4397,7 @@ export default function Home() {
                           >
                             <div className="flex items-center gap-3">
                               <span className="text-xl p-2 rounded-xl bg-slate-50">{sub.icon}</span>
-                              <span className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-emerald-600 transition-colors">
+                              <span className="font-extrabold text-base sm:text-lg text-slate-800 group-hover:text-emerald-600 transition-colors">
                                 {sub.name}
                               </span>
                             </div>
