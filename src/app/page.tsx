@@ -1320,7 +1320,11 @@ export default function Home() {
                   setCurrentScreen("home");
                 } else if (currentScreen === "prep-sub") {
                   setDrawerOpen(false);
-                  setCurrentScreen("prep-all-subjects");
+                  if (activeExamSection) {
+                    setActiveExamSection(null);
+                  } else {
+                    setCurrentScreen("prep-all-subjects");
+                  }
                 } else if (currentScreen === "prep-sub-detail") {
                   setDrawerOpen(false);
                   if (selectedPrepExamTypeFilter) {
@@ -2270,14 +2274,15 @@ export default function Home() {
           {currentScreen === "prep-sub" && (
             <div className="p-5 space-y-4 animate-fade-in pb-10 text-left">
               
-              {/* Sub-subjects grid */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
-                  বিষয় সিলেক্ট করুন
-                </h4>
+              {/* Sub-subjects grid (Only shown when no exam section is active) */}
+              {!activeExamSection && (
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
+                    বিষয় সিলেক্ট করুন
+                  </h4>
 
-                <div className="grid grid-cols-1 gap-3">
-                  {(() => {
+                  <div className="grid grid-cols-1 gap-3">
+                    {(() => {
                     let subSubjectsList: { name: string; sub: string; questions: Question[]; subCategories2?: any[] }[] = [];
 
                     const dbMatch = prepSubjectsList.find(s => 
@@ -2508,6 +2513,7 @@ export default function Home() {
                   })()}
                 </div>
               </div>
+              )}
 
               {/* Exam Sections for Main Subject (Daily Quick Test, Weekly Model Test, Subject Wise Test) */}
               {!activeExamSection && (
