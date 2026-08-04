@@ -120,20 +120,17 @@ function formatLiveRemaining(endDateTime?: string, startDateTime?: string, creat
     const hours = Math.floor(totalSecs / 3600);
     const mins = Math.floor((totalSecs % 3600) / 60);
     const secs = totalSecs % 60;
-    const hStr = String(hours).padStart(2, '0');
-    const mStr = String(mins).padStart(2, '0');
-    const sStr = String(secs).padStart(2, '0');
     if (hours > 0) {
-      return `সময় বাকী: ${hStr}:${mStr}:${sStr}`;
+      return `সময় বাকী: ${hours} ঘণ্টা ${mins} মিনিট ${secs} সেকেন্ড`;
     } else {
-      return `সময় বাকী: ${mStr}:${sStr}`;
+      return `সময় বাকী: ${mins} মিনিট ${secs} সেকেন্ড`;
     }
   } else {
     const days = Math.floor(totalSecs / 86400);
     const remSecs = totalSecs % 86400;
     const hours = Math.floor(remSecs / 3600);
     const mins = Math.floor((remSecs % 3600) / 60);
-    return `সময় বাকী: ${days}দিন ${hours}ঘণ্টা ${mins}মি.`;
+    return `সময় বাকী: ${days} দিন ${hours} ঘণ্টা ${mins} মিনিট`;
   }
 }
 
@@ -4997,7 +4994,7 @@ export default function Home() {
           </div>
 
           {/* Drawer Menu Items */}
-          <div className="flex-1 overflow-y-auto py-3 px-3.5 space-y-1.5 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto py-3 px-3.5 space-y-2 bg-slate-50/50">
             {/* 0. Home */}
             <button
               onClick={() => {
@@ -5005,14 +5002,14 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all ${
                 currentScreen === "home" 
-                  ? "bg-orange-50 text-[#FF6A00] font-extrabold" 
-                  : "text-slate-700 hover:bg-slate-100 font-bold"
-              } text-sm sm:text-base`}
+                  ? "bg-orange-50 text-[#FF6A00] font-black" 
+                  : "text-slate-800 hover:bg-slate-100 font-extrabold"
+              } text-base sm:text-lg`}
               id="drawer-item-home"
             >
-              <HomeIcon className={`w-5 h-5 ${currentScreen === "home" ? "text-[#FF6A00]" : "text-slate-400"}`} />
+              <HomeIcon className={`w-6 h-6 ${currentScreen === "home" ? "text-[#FF6A00]" : "text-slate-500"}`} />
               <span>Home</span>
             </button>
 
@@ -5023,14 +5020,14 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all ${
                 currentScreen === "profile" 
-                  ? "bg-orange-50 text-[#FF6A00] font-extrabold" 
-                  : "text-slate-700 hover:bg-slate-100 font-bold"
-              } text-sm sm:text-base`}
+                  ? "bg-orange-50 text-[#FF6A00] font-black" 
+                  : "text-slate-800 hover:bg-slate-100 font-extrabold"
+              } text-base sm:text-lg`}
               id="drawer-item-profile"
             >
-              <CircleUser className={`w-5 h-5 ${currentScreen === "profile" ? "text-[#FF6A00]" : "text-slate-400"}`} />
+              <CircleUser className={`w-6 h-6 ${currentScreen === "profile" ? "text-[#FF6A00]" : "text-slate-500"}`} />
               <span>Profile</span>
             </button>
 
@@ -5043,43 +5040,15 @@ export default function Home() {
                 });
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all ${
                 currentScreen === "packages"
-                  ? "bg-orange-50 text-[#FF6A00] font-extrabold"
-                  : "text-slate-700 hover:bg-slate-100 font-bold"
-              } text-sm sm:text-base`}
+                  ? "bg-orange-50 text-[#FF6A00] font-black"
+                  : "text-slate-800 hover:bg-slate-100 font-extrabold"
+              } text-base sm:text-lg`}
               id="drawer-item-package"
             >
-              <Package className={`w-5 h-5 ${currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-400"}`} />
+              <Package className={`w-6 h-6 ${currentScreen === "packages" ? "text-[#FF6A00]" : "text-slate-500"}`} />
               <span>Package</span>
-            </button>
-
-            {/* 3. Book Store */}
-            <button
-              onClick={() => {
-                setActiveDrawerModal("bookstore");
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
-              id="drawer-item-bookstore"
-            >
-              <BookOpen className="w-5 h-5 text-slate-400" />
-              <span>Book Store</span>
-            </button>
-
-            {/* 4. Language */}
-            <button
-              onClick={() => {
-                setActiveDrawerModal("language");
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
-              id="drawer-item-language"
-            >
-              <Globe className="w-5 h-5 text-slate-400" />
-              <span>Language ({selectedLanguage === "BN" ? "বাংলা" : "English"})</span>
             </button>
 
             {/* 5. Settings */}
@@ -5089,25 +5058,11 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
+              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all text-slate-800 hover:bg-slate-100 font-extrabold text-base sm:text-lg"
               id="drawer-item-settings"
             >
-              <Settings className="w-5 h-5 text-slate-400" />
+              <Settings className="w-6 h-6 text-slate-500" />
               <span>Settings</span>
-            </button>
-
-            {/* 6. Our Apps */}
-            <button
-              onClick={() => {
-                setActiveDrawerModal("ourapps");
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
-              id="drawer-item-ourapps"
-            >
-              <Sparkles className="w-5 h-5 text-slate-400" />
-              <span>Our Apps</span>
             </button>
 
             {/* 7. Contact Us */}
@@ -5117,10 +5072,10 @@ export default function Home() {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-slate-700 hover:bg-slate-100 font-bold text-sm sm:text-base"
+              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all text-slate-800 hover:bg-slate-100 font-extrabold text-base sm:text-lg"
               id="drawer-item-contact"
             >
-              <HelpCircle className="w-5 h-5 text-slate-400" />
+              <HelpCircle className="w-6 h-6 text-slate-500" />
               <span>Contact Us</span>
             </button>
 
@@ -5135,19 +5090,19 @@ export default function Home() {
                   else quizAudio.playError();
                 }
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all font-bold text-sm sm:text-base mt-2 border-t border-slate-200/80 pt-3 ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all font-black text-base sm:text-lg mt-2 border-t border-slate-200/80 pt-4 ${
                 isLoggedIn ? "text-red-600 hover:bg-red-50" : "text-[#FF6A00] hover:bg-orange-50"
               }`}
               id="drawer-item-auth"
             >
               {isLoggedIn ? (
                 <>
-                  <LogOut className="w-5 h-5 text-red-500" />
+                  <LogOut className="w-6 h-6 text-red-500" />
                   <span>Logout</span>
                 </>
               ) : (
                 <>
-                  <LogIn className="w-5 h-5 text-[#FF6A00]" />
+                  <LogIn className="w-6 h-6 text-[#FF6A00]" />
                   <span>LogIn</span>
                 </>
               )}
@@ -7052,10 +7007,10 @@ export default function Home() {
 
               {/* Live Running Timer Box */}
               <div className="p-3 bg-rose-50/80 border border-rose-100 rounded-2xl flex items-center justify-between text-xs font-bold text-rose-700">
-                <span>লাইভ সময়সীমা চলছে:</span>
+                <span>লাইভ সময়সীমা</span>
                 <span className="font-black text-rose-600 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
-                  {formatLiveElapsed(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt)}
+                  {formatLiveElapsed(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt, selectedLiveExamModal.endDateTime)}
                 </span>
               </div>
 
