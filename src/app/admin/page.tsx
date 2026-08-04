@@ -2171,7 +2171,7 @@ export default function AdminPage() {
                         }`}
                       >
                         <Compass className="w-4 h-4" />
-                        <span>আওয়ার কোর্স (Our Course)</span>
+                        <span>আওয়ার কোর্স (Our Courses)</span>
                       </button>
 
                       <button
@@ -4196,7 +4196,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
                         <Compass className="w-4 h-4 text-[#FF6A00]" />
-                        <span>১. আওয়ার কোর্স (Our Course)</span>
+                        <span>১. আওয়ার কোর্স (Our Courses)</span>
                       </h4>
                       <span className="text-xs font-black bg-orange-100 text-[#FF6A00] px-2.5 py-1 rounded-full">
                         {appSettings.ourCoursesHomeLimit || 5} টি কোর্স
@@ -4204,7 +4204,7 @@ export default function AdminPage() {
                     </div>
                     
                     <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                      ইউজার হোম স্ক্রিনের &quot;Our Course&quot; গ্রিডে কয়টি সাবজেক্ট/কোর্স শো করবে সিলেক্ট করুন (১ - ১২ টি):
+                      ইউজার হোম স্ক্রিনের &quot;Our Courses&quot; গ্রিডে কয়টি সাবজেক্ট/কোর্স শো করবে সিলেক্ট করুন (১ - ১২ টি):
                     </p>
 
                     <div className="grid grid-cols-6 gap-2 pt-1">

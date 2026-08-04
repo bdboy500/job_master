@@ -116,3 +116,17 @@ html, body {
   }
 }
 
+@keyframes liveTextScale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.animate-live-text {
+  display: inline-block;
+  animation: liveTextScale 1.2s ease-in-out infinite;
+}
+

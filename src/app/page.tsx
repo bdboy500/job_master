@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
 import { 
   Play, 
@@ -88,14 +88,33 @@ interface TakenTest {
   percentage: number;
 }
 
-// Live Exam Elapsed Time Formatter
-function formatLiveElapsed(startDateTime?: string, createdAt?: string): string {
-  const startMs = startDateTime 
-    ? new Date(startDateTime).getTime() 
-    : (createdAt ? new Date(createdAt).getTime() : Date.now());
+// Live Exam Remaining Time Formatter
+function formatLiveRemaining(endDateTime?: string, startDateTime?: string, createdAt?: string): string {
   const nowMs = Date.now();
-  const diffMs = Math.max(0, nowMs - startMs);
+  let endMs: number = 0;
+
+  if (endDateTime) {
+    const parsed = new Date(endDateTime).getTime();
+    if (!isNaN(parsed)) endMs = parsed;
+  }
+  if (!endMs && startDateTime) {
+    const parsed = new Date(startDateTime).getTime();
+    if (!isNaN(parsed)) endMs = parsed + 24 * 60 * 60 * 1000;
+  }
+  if (!endMs && createdAt) {
+    const parsed = new Date(createdAt).getTime();
+    if (!isNaN(parsed)) endMs = parsed + 24 * 60 * 60 * 1000;
+  }
+  if (!endMs) {
+    endMs = nowMs + 12 * 60 * 60 * 1000;
+  }
+
+  const diffMs = Math.max(0, endMs - nowMs);
   const totalSecs = Math.floor(diffMs / 1000);
+
+  if (totalSecs <= 0) {
+    return "সময় শেষ";
+  }
 
   if (totalSecs < 86400) {
     const hours = Math.floor(totalSecs / 3600);
@@ -104,14 +123,22 @@ function formatLiveElapsed(startDateTime?: string, createdAt?: string): string {
     const hStr = String(hours).padStart(2, '0');
     const mStr = String(mins).padStart(2, '0');
     const sStr = String(secs).padStart(2, '0');
-    return `${hStr}:${mStr}:${sStr}`;
+    if (hours > 0) {
+      return `সময় বাকী: ${hStr}:${mStr}:${sStr}`;
+    } else {
+      return `সময় বাকী: ${mStr}:${sStr}`;
+    }
   } else {
     const days = Math.floor(totalSecs / 86400);
     const remSecs = totalSecs % 86400;
     const hours = Math.floor(remSecs / 3600);
     const mins = Math.floor((remSecs % 3600) / 60);
-    return `${days} দিন ${hours} ঘণ্টা ${mins} মিনিট`;
+    return `সময় বাকী: ${days}দিন ${hours}ঘণ্টা ${mins}মি.`;
   }
+}
+
+function formatLiveElapsed(startDateTime?: string, createdAt?: string, endDateTime?: string): string {
+  return formatLiveRemaining(endDateTime, startDateTime, createdAt);
 }
 
 // Extra mock question databases for other test subjects
@@ -416,6 +443,13 @@ export default function Home() {
   const [selectedLiveExamModal, setSelectedLiveExamModal] = useState<ExamPaper | null>(null);
   const [liveTick, setLiveTick] = useState<number>(0);
   const [isLivePaused, setIsLivePaused] = useState<boolean>(false);
+  const [liveAutoPlayKey, setLiveAutoPlayKey] = useState<number>(0);
+  const touchStartXRef = useRef<number | null>(null);
+  const mouseStartXRef = useRef<number | null>(null);
+
+  const resetLiveAutoPlay = useCallback(() => {
+    setLiveAutoPlayKey(prev => prev + 1);
+  }, []);
 
   // Quick Tools Archive & Modal State
   const [archiveModalOpen, setArchiveModalOpen] = useState<boolean>(false);
@@ -723,7 +757,72 @@ export default function Home() {
       setActiveLiveExamIndex(prev => prev + 1);
     }, 4000);
     return () => clearInterval(interval);
-  }, [liveExamsList.length, isLivePaused]);
+  }, [liveExamsList.length, isLivePaused, liveAutoPlayKey]);
+
+  const handleNextLiveCard = useCallback(() => {
+    if (liveExamsList.length <= 1) return;
+    setIsLiveTransitioning(true);
+    setActiveLiveExamIndex(prev => prev + 1);
+    resetLiveAutoPlay();
+  }, [liveExamsList.length, resetLiveAutoPlay]);
+
+  const handlePrevLiveCard = useCallback(() => {
+    if (liveExamsList.length <= 1) return;
+    setIsLiveTransitioning(true);
+    setActiveLiveExamIndex(prev => {
+      if (prev <= 0) {
+        return liveExamsList.length - 1;
+      }
+      return prev - 1;
+    });
+    resetLiveAutoPlay();
+  }, [liveExamsList.length, resetLiveAutoPlay]);
+
+  const handleLiveTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    setIsLivePaused(true);
+  };
+
+  const handleLiveTouchEnd = (e: React.TouchEvent) => {
+    setIsLivePaused(false);
+    if (touchStartXRef.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartXRef.current - touchEndX;
+    touchStartXRef.current = null;
+
+    if (Math.abs(diff) > 30) {
+      if (diff > 0) {
+        handleNextLiveCard();
+      } else {
+        handlePrevLiveCard();
+      }
+    } else {
+      resetLiveAutoPlay();
+    }
+  };
+
+  const handleLiveMouseDown = (e: React.MouseEvent) => {
+    mouseStartXRef.current = e.clientX;
+    setIsLivePaused(true);
+  };
+
+  const handleLiveMouseUp = (e: React.MouseEvent) => {
+    setIsLivePaused(false);
+    if (mouseStartXRef.current === null) return;
+    const mouseEndX = e.clientX;
+    const diff = mouseStartXRef.current - mouseEndX;
+    mouseStartXRef.current = null;
+
+    if (Math.abs(diff) > 30) {
+      if (diff > 0) {
+        handleNextLiveCard();
+      } else {
+        handlePrevLiveCard();
+      }
+    } else {
+      resetLiveAutoPlay();
+    }
+  };
 
   // Seamless reset when reaching the clone item at the end of the carousel
   useEffect(() => {
@@ -1581,15 +1680,18 @@ export default function Home() {
 
                     return (
                       <div className="space-y-2.5">
-                        {/* Smooth Sliding Carousel Container with Tap & Hold Pause */}
+                        {/* Smooth Sliding Carousel Container with Tap & Hold & Swipe Gesture */}
                         <div 
-                          className="overflow-hidden rounded-3xl w-full"
-                          onMouseDown={() => setIsLivePaused(true)}
-                          onMouseUp={() => setIsLivePaused(false)}
-                          onTouchStart={() => setIsLivePaused(true)}
-                          onTouchEnd={() => setIsLivePaused(false)}
+                          className="overflow-hidden rounded-3xl w-full select-none"
+                          onMouseDown={handleLiveMouseDown}
+                          onMouseUp={handleLiveMouseUp}
+                          onTouchStart={handleLiveTouchStart}
+                          onTouchEnd={handleLiveTouchEnd}
                           onMouseEnter={() => setIsLivePaused(true)}
-                          onMouseLeave={() => setIsLivePaused(false)}
+                          onMouseLeave={() => {
+                            setIsLivePaused(false);
+                            resetLiveAutoPlay();
+                          }}
                         >
                           <div 
                             className="flex w-full"
@@ -1619,9 +1721,9 @@ export default function Home() {
                                         <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
                                         For All Job
                                       </span>
-                                      <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 animate-pulse">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                                        Live Now
+                                      <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
+                                        <span className="animate-live-text font-black">Live Now</span>
                                       </span>
                                     </div>
 
@@ -1646,7 +1748,7 @@ export default function Home() {
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                                             <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                                           </span>
-                                          <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt)}</span>
+                                          <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt, currentLive.endDateTime)}</span>
                                         </div>
 
                                         {/* Participant Count */}
@@ -1672,6 +1774,7 @@ export default function Home() {
                                   e.stopPropagation();
                                   setIsLiveTransitioning(true);
                                   setActiveLiveExamIndex(idx);
+                                  resetLiveAutoPlay();
                                 }}
                                 className={`transition-all duration-300 cursor-pointer ${
                                   idx === activeIndex
@@ -1689,12 +1792,12 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Our Course Section */}
+              {/* Our Courses Section */}
               <div className="space-y-3.5 -mt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
-                      Our Course
+                      Our Courses
                     </h3>
                   </div>
                   <button 
@@ -1807,10 +1910,10 @@ export default function Home() {
                           setCurrentScreen("prep-sub");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                        className="bg-white border border-slate-100 rounded-2xl px-3 py-3.5 sm:py-4 flex flex-row items-center gap-2.5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
                       >
-                        <div className={`w-11 h-11 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
-                          <SubIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
+                          <SubIcon className="w-5 h-5 stroke-[2.2px]" />
                         </div>
                         <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide truncate">
                           {subject.name}
@@ -2132,9 +2235,9 @@ export default function Home() {
                             <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
                             For All Job
                           </span>
-                          <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                            Live Now
+                          <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
+                            <span className="animate-live-text font-black">Live Now</span>
                           </span>
                         </div>
 
@@ -2158,7 +2261,7 @@ export default function Home() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                               </span>
-                              <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt)}</span>
+                              <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt, currentLive.endDateTime)}</span>
                             </div>
 
                             <div className="text-slate-400 text-[11px] font-bold tracking-tight">
@@ -2251,10 +2354,10 @@ export default function Home() {
                         setCurrentScreen("prep-sub");
                         if (soundEnabled) quizAudio.playClick();
                       }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl p-3 flex flex-row items-center gap-3 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left"
+                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl px-3 py-3.5 sm:py-4 flex flex-row items-center gap-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left"
                     >
-                      <div className={`w-11 h-11 ${subject.bg} ${subject.text} rounded-xl flex items-center justify-center shrink-0`}>
-                        <SubIcon className="w-5.5 h-5.5 stroke-[2.2px]" />
+                      <div className={`w-9 h-9 sm:w-10 sm:h-10 ${subject.bg} ${subject.text} rounded-xl flex items-center justify-center shrink-0`}>
+                        <SubIcon className="w-5 h-5 stroke-[2.2px]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide block truncate group-hover:text-[#FF6A00] transition-colors">
