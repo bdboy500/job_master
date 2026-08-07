@@ -1459,15 +1459,15 @@ export default function Home() {
                 attemptExitQuiz(() => setCurrentScreen("home"));
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="flex items-center gap-1.5 ml-1 text-left cursor-pointer active:scale-95 transition-all"
+              className="flex items-center gap-2 ml-1 text-left cursor-pointer active:scale-95 transition-all"
               id="header-brand-button"
             >
               {/* Custom icon combining orange graduation cap */}
-              <div className="bg-[#FF6A00] p-1.5 rounded-xl shadow-md shadow-orange-500/20">
-                <GraduationCap className="w-5 h-5 text-white" />
+              <div className="bg-[#FF6A00] p-1.5 sm:p-2 rounded-xl shadow-md shadow-orange-500/20">
+                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-extrabold text-[#1E293B] text-base tracking-tight leading-none">
+                <span className="font-black text-[#1E293B] text-lg sm:text-xl tracking-tight leading-none">
                   {currentScreen === "course-detail" && selectedCourseDetail ? (
                     <>
                       {selectedCourseDetail.title.split(" ")[0]} <span className="text-[#FF6A00]">{selectedCourseDetail.title.split(" ").slice(1).join(" ")}</span>

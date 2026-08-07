@@ -1541,19 +1541,120 @@ export default function AdminPage() {
       {/* Main Body with Sidebar & Content */}
       <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
         
-        {/* Sidebar Left / Tabs Header on Mobile */}
-        <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-100 p-4 shrink-0 flex flex-row md:flex-col justify-between md:justify-start gap-2 overflow-x-auto md:overflow-y-auto">
+        {/* Navigation Tabs - Mobile Lazy Row UI */}
+        <div className="block md:hidden w-full bg-white border-b border-slate-100 p-2.5 overflow-x-auto shrink-0 shadow-2xs">
+          <div className="flex items-center gap-2 min-w-max px-1">
+            <button
+              onClick={() => setActiveTab("questions")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "questions"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <HelpCircle className={`w-4 h-4 ${activeTab === "questions" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>প্রশ্ন ব্যাংক ({questions.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("exam_papers")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "exam_papers"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <FileText className={`w-4 h-4 ${activeTab === "exam_papers" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "users"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Users className={`w-4 h-4 ${activeTab === "users" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>ইউজার লিস্ট ({users.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("offers")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "offers"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Megaphone className={`w-4 h-4 ${activeTab === "offers" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>ব্যানার ও অফার ({offers.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("packages")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "packages"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Package className={`w-4 h-4 ${activeTab === "packages" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("courses")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "courses"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Compass className={`w-4 h-4 ${activeTab === "courses" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>কোর্সসমূহ ({coursesList.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("prep_hub")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "prep_hub"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <BookOpen className={`w-4 h-4 ${activeTab === "prep_hub" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("switches")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "switches"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Sliders className={`w-4 h-4 ${activeTab === "switches" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>কন্ট্রোল সুইচ</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Sidebar Left on Desktop */}
+        <aside className="hidden md:flex md:w-64 bg-white border-r border-slate-100 p-4 shrink-0 flex-col justify-between overflow-y-auto">
           
-          <div className="w-full flex flex-row md:flex-col gap-1.5">
+          <div className="w-full flex flex-col gap-1.5">
             {/* Nav Title Desktop */}
-            <h3 className="hidden md:block text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2.5 py-2">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2.5 py-2">
               ম্যানেজমেন্ট ড্যাশবোর্ড
             </h3>
 
             {/* Tab Button 1: Questions */}
             <button
               onClick={() => setActiveTab("questions")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "questions"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1566,7 +1667,7 @@ export default function AdminPage() {
             {/* Tab Button 2: Exam Papers / Question Sets */}
             <button
               onClick={() => setActiveTab("exam_papers")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "exam_papers"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1579,7 +1680,7 @@ export default function AdminPage() {
             {/* Tab Button 3: Users */}
             <button
               onClick={() => setActiveTab("users")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "users"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1592,7 +1693,7 @@ export default function AdminPage() {
             {/* Tab Button 4: Offers */}
             <button
               onClick={() => setActiveTab("offers")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "offers"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1605,7 +1706,7 @@ export default function AdminPage() {
             {/* Tab Button 5: Packages Management */}
             <button
               onClick={() => setActiveTab("packages")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "packages"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1618,7 +1719,7 @@ export default function AdminPage() {
             {/* Tab Button 6: Our Courses Management */}
             <button
               onClick={() => setActiveTab("courses")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "courses"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1631,7 +1732,7 @@ export default function AdminPage() {
             {/* Tab Button 7: Preparation Hub Management */}
             <button
               onClick={() => setActiveTab("prep_hub")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "prep_hub"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1644,7 +1745,7 @@ export default function AdminPage() {
             {/* Tab Button 8: Control Switches */}
             <button
               onClick={() => setActiveTab("switches")}
-              className={`flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-center md:text-left ${
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                 activeTab === "switches"
                   ? "bg-orange-50 text-[#FF6A00]"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -1964,7 +2065,7 @@ export default function AdminPage() {
 
                   </div>
 
-                  {/* Table List Card */}
+                  {/* Table / Card List Container */}
                   <div className="bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden">
                     <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-0.5">
@@ -1990,7 +2091,8 @@ export default function AdminPage() {
                       </div>
                     )}
 
-                    <div className="overflow-x-auto">
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -2105,6 +2207,127 @@ export default function AdminPage() {
                         )}
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Mobile Card List View */}
+                    <div className="block md:hidden p-3.5 space-y-3.5 bg-slate-50/50">
+                      {displayedQuestions.map((q) => {
+                        const idVal = q.id;
+                        const subjectLabel = q.subjectName || q.subject_name || "Bangla Literature";
+                        const questionText = q.questionText || q.question || q.title || q.question_text || "Untitled Question";
+                        const explanationText = q.explanation || "";
+                        
+                        let options: string[] = ["", "", "", ""];
+                        const rawOpts = q.options || q.choices || q.answers;
+                        if (Array.isArray(rawOpts)) {
+                          options = rawOpts.map(String);
+                        } else if (typeof rawOpts === "string") {
+                          try {
+                            const parsed = JSON.parse(rawOpts);
+                            if (Array.isArray(parsed)) options = parsed.map(String);
+                          } catch {
+                            options = rawOpts.split(",").map((s: string) => s.trim());
+                          }
+                        }
+
+                        const correctIdxVal = q.correctOptionIndex !== undefined ? q.correctOptionIndex : (q.correct_option_index !== undefined ? q.correct_option_index : (q.correctIndex !== undefined ? q.correctIndex : 0));
+                        const correctIdx = Number(correctIdxVal);
+
+                        return (
+                          <div key={idVal} className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs relative space-y-3">
+                            
+                            {/* Header Row: Subject Badge + Edit Icon on Top Right */}
+                            <div className="flex items-start justify-between gap-2 pr-10">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {typeof idVal === "number" ? `#${idVal}` : `#${String(idVal).slice(0, 6)}`}
+                                </span>
+                                <span className="text-[9px] font-extrabold bg-[#FF6A00]/10 text-[#FF6A00] border border-[#FF6A00]/20 px-2.5 py-0.5 rounded-full">
+                                  {subjectLabel}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Top Right Edit Button */}
+                            <button
+                              onClick={() => handleEditClick(q)}
+                              className="absolute top-3.5 right-3.5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all active:scale-90 cursor-pointer shadow-2xs"
+                              title="Edit Question"
+                            >
+                              <Pencil className="w-4 h-4 text-slate-600" />
+                            </button>
+
+                            {/* 1. Question Text */}
+                            <div className="text-sm font-extrabold text-slate-900 leading-snug pt-0.5 pr-2">
+                              <MathRenderer content={questionText} />
+                            </div>
+
+                            {/* 2. 4 Options Stacked One Below Another */}
+                            <div className="space-y-1.5 pt-0.5">
+                              {options.map((opt, oIdx) => (
+                                <div 
+                                  key={oIdx}
+                                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2.5 transition-all ${
+                                    oIdx === correctIdx 
+                                      ? "bg-emerald-50 text-emerald-800 border-emerald-200 font-bold" 
+                                      : "bg-slate-50 text-slate-700 border-slate-100"
+                                  }`}
+                                >
+                                  <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                    oIdx === correctIdx ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
+                                  }`}>
+                                    {oIdx + 1}
+                                  </span>
+                                  <div className="flex-1 min-w-0 leading-tight">
+                                    <MathRenderer content={opt || `অপশন ${oIdx + 1}`} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 3. Correct Answer */}
+                            <div className="p-2.5 bg-emerald-50/90 border border-emerald-100 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                              <span>সঠিক উত্তর:</span>
+                              <span className="font-extrabold text-emerald-950">
+                                <MathRenderer content={options[correctIdx] || options[0] || "অপশন ১"} />
+                              </span>
+                            </div>
+
+                            {/* 4. Explanation & Bottom Right Delete Button */}
+                            <div className="flex items-start justify-between gap-2.5 pt-1">
+                              <div className="flex-1 min-w-0 bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-xs text-slate-600">
+                                <span className="text-[11px] font-black text-slate-700 block mb-0.5">ব্যাখ্যা:</span>
+                                {explanationText ? (
+                                  <MathRenderer content={explanationText} />
+                                ) : (
+                                  <span className="text-slate-400 italic">কোন ব্যাখ্যা দেওয়া নেই</span>
+                                )}
+                              </div>
+
+                              {/* Bottom Right Delete Button */}
+                              <button
+                                onClick={() => {
+                                  if (confirm(`আপনি কি নিশ্চিত যে আপনি এই প্রশ্নটি মুছে ফেলতে চান?`)) {
+                                    handleDeleteQuestion(idVal);
+                                  }
+                                }}
+                                className="p-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-xl transition-all active:scale-90 cursor-pointer shrink-0 self-end"
+                                title="Delete Question"
+                              >
+                                <Trash2 className="w-4 h-4 text-rose-600" />
+                              </button>
+                            </div>
+
+                          </div>
+                        );
+                      })}
+
+                      {displayedQuestions.length === 0 && (
+                        <div className="p-8 text-center text-xs font-bold text-slate-400">
+                          কোনো প্রশ্ন পাওয়া যায়নি! দয়া করে ডেমো প্রশ্ন সিড করুন অথবা নতুন প্রশ্ন যোগ করুন।
+                        </div>
+                      )}
                     </div>
                   </div>
 
