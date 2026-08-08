@@ -245,9 +245,65 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
 
 const COURSES_KEY = "jobmaster_custom_courses_v2";
 const PREP_KEY = "jobmaster_custom_prep_subjects_v2";
+const PRO_SECTION_KEY = "jobmaster_custom_pro_section_v2";
 
 const CLOUD_COURSES_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_courses_v2";
 const CLOUD_PREP_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_prep_subjects_v2";
+const CLOUD_PRO_SECTION_KV = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_pro_section_v2";
+
+export interface ProSectionItem {
+  id: string;
+  name: string;
+  sub?: string;
+  icon: string;
+  bg: string;
+  text: string;
+  serial: number;
+  active?: boolean;
+}
+
+export const DEFAULT_PRO_SECTION: ProSectionItem[] = [
+  {
+    id: "pro-job-solution",
+    name: "জব সল্যুশন",
+    sub: "বিগত বছরের প্রশ্ন ও বিস্তারিত সমাধান",
+    icon: "Briefcase",
+    bg: "bg-[#FFF1E6]",
+    text: "text-orange-600",
+    serial: 1,
+    active: true
+  },
+  {
+    id: "pro-live-class",
+    name: "লাইভ ক্লাস",
+    sub: "অভিজ্ঞ শিক্ষকদের লাইভ ক্লাস",
+    icon: "Video",
+    bg: "bg-[#F3E8FF]",
+    text: "text-purple-600",
+    serial: 2,
+    active: true
+  },
+  {
+    id: "pro-question-bank",
+    name: "প্রশ্ন ব্যাংক",
+    sub: "বিষয়ভিত্তিক বিশাল প্রশ্ন ব্যাংক",
+    icon: "Database",
+    bg: "bg-[#E6F0FA]",
+    text: "text-blue-600",
+    serial: 3,
+    active: true
+  },
+  {
+    id: "pro-video-class",
+    name: "ভিডিও ক্লাস",
+    sub: "সকল বিষয়ভিত্তিক রেকর্ডেড ক্লাস",
+    icon: "PlayCircle",
+    bg: "bg-[#EBF7EE]",
+    text: "text-green-600",
+    serial: 4,
+    active: true
+  }
+];
 
 const HARDCODED_SUB_NAMES = [
   "full syllabus", "model test series", "model test", "bcs preliminary", "preliminary", "bcs",
@@ -543,10 +599,101 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
   return sorted;
 }
 
+export function getCachedProSection(): ProSectionItem[] {
+  if (typeof window === "undefined") return DEFAULT_PRO_SECTION;
+  try {
+    const raw = localStorage.getItem(PRO_SECTION_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_PRO_SECTION;
+}
+
+export async function fetchProSectionFromDb(): Promise<ProSectionItem[]> {
+  try {
+    const res = await fetch("/api/pro-section", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      const items: ProSectionItem[] = data.proSection || [];
+      if (Array.isArray(items) && items.length > 0) {
+        items.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+        if (typeof window !== "undefined") {
+          localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(items));
+        }
+        return items;
+      }
+    }
+  } catch (e) {}
+  return getCachedProSection();
+}
+
+export async function saveProSectionToDb(items: ProSectionItem[]): Promise<ProSectionItem[]> {
+  const sorted = [...items].sort((a, b) => (a.serial || 99) - (b.serial || 99));
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(sorted));
+    window.dispatchEvent(new CustomEvent("jobmaster_pro_section_updated", { detail: sorted }));
+  }
+
+  try {
+    await fetch("/api/pro-section", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sorted)
+    });
+  } catch (e) {}
+
+  try {
+    await fetch(CLOUD_PRO_SECTION_KV, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sorted)
+    });
+  } catch (e) {}
+
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const payload = sorted.map(item => ({
+        id: item.id,
+        name: item.name,
+        sub: item.sub || "",
+        icon: item.icon || "Briefcase",
+        bg: item.bg || "bg-[#FFF1E6]",
+        text: item.text || "text-orange-600",
+        serial: Number(item.serial) || 1,
+        active: item.active !== false
+      }));
+
+      try {
+        const currentIds = sorted.map(i => i.id);
+        if (currentIds.length > 0) {
+          const formattedIds = currentIds.map(id => id).join(",");
+          await supabase.from("app_pro_section").delete().not("id", "in", `(${formattedIds})`);
+        }
+      } catch (delErr) {}
+
+      await supabase.from("app_pro_section").upsert(payload, { onConflict: "id" });
+      await supabase.from("app_config").upsert({
+        key: "pro_section",
+        value: sorted,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+    }
+  } catch (e) {}
+
+  return sorted;
+}
+
 // Subscription helper for real-time updates across users
 export function subscribeToCoursesAndPrep(
   onCourses: (courses: CourseItem[]) => void,
-  onPrep: (prep: PrepSubjectItem[]) => void
+  onPrep: (prep: PrepSubjectItem[]) => void,
+  onPro?: (pro: ProSectionItem[]) => void
 ) {
   if (typeof window === "undefined") return () => {};
 
@@ -560,16 +707,26 @@ export function subscribeToCoursesAndPrep(
     else fetchPrepSubjectsFromDb().then(onPrep);
   };
 
+  const handlePro = (e: any) => {
+    if (onPro) {
+      if (e.detail) onPro(e.detail);
+      else fetchProSectionFromDb().then(onPro);
+    }
+  };
+
   window.addEventListener("jobmaster_courses_updated", handleCourses);
   window.addEventListener("jobmaster_prep_subjects_updated", handlePrep);
+  window.addEventListener("jobmaster_pro_section_updated", handlePro);
   window.addEventListener("storage", handleCourses);
   window.addEventListener("storage", handlePrep);
+  window.addEventListener("storage", handlePro);
 
   // Re-fetch when tab becomes visible or focused
   const handleVisibility = () => {
     if (document.visibilityState === "visible") {
       fetchCoursesFromDb().then(onCourses);
       fetchPrepSubjectsFromDb().then(onPrep);
+      if (onPro) fetchProSectionFromDb().then(onPro);
     }
   };
   window.addEventListener("visibilitychange", handleVisibility);
@@ -577,8 +734,10 @@ export function subscribeToCoursesAndPrep(
   return () => {
     window.removeEventListener("jobmaster_courses_updated", handleCourses);
     window.removeEventListener("jobmaster_prep_subjects_updated", handlePrep);
+    window.removeEventListener("jobmaster_pro_section_updated", handlePro);
     window.removeEventListener("storage", handleCourses);
     window.removeEventListener("storage", handlePrep);
+    window.removeEventListener("storage", handlePro);
     window.removeEventListener("visibilitychange", handleVisibility);
   };
 }

@@ -33,7 +33,9 @@ export async function GET() {
   return NextResponse.json({
     settings: {
       ourCoursesHomeLimit: 5,
-      prepHubHomeLimit: 4
+      prepHubHomeLimit: 4,
+      proSectionActive: true,
+      proSectionHomeLimit: 4
     }
   });
 }
@@ -43,7 +45,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const settings = {
       ourCoursesHomeLimit: Math.min(12, Math.max(1, Number(body.ourCoursesHomeLimit) || 5)),
-      prepHubHomeLimit: Math.min(12, Math.max(1, Number(body.prepHubHomeLimit) || 4))
+      prepHubHomeLimit: Math.min(12, Math.max(1, Number(body.prepHubHomeLimit) || 4)),
+      proSectionActive: body.proSectionActive !== false,
+      proSectionHomeLimit: Math.min(12, Math.max(1, Number(body.proSectionHomeLimit) || 4))
     };
 
     const supabase = getSupabase();

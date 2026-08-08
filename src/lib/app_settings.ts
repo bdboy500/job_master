@@ -3,11 +3,15 @@ import { getSupabase } from "./supabase";
 export interface AppSettings {
   ourCoursesHomeLimit: number; // 1 - 12
   prepHubHomeLimit: number;   // 1 - 12
+  proSectionHomeLimit?: number; // 1 - 12
+  proSectionActive?: boolean;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   ourCoursesHomeLimit: 5,
-  prepHubHomeLimit: 4
+  prepHubHomeLimit: 4,
+  proSectionHomeLimit: 4,
+  proSectionActive: true
 };
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_settings_v2";

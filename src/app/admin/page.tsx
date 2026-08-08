@@ -48,9 +48,15 @@ import {
   TrendingUp,
   Laptop,
   Monitor,
+  Clock,
   FlaskConical,
   Atom,
-  Book
+  Book,
+  Video,
+  Database as DbIcon,
+  PlayCircle,
+  Tv,
+  Film
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -64,12 +70,17 @@ import {
   PrepSubjectItem, 
   SubCategoryItem, 
   SubCategory2Item,
+  ProSectionItem,
+  DEFAULT_PRO_SECTION,
   getCachedCourses, 
   getCachedPrepSubjects, 
+  getCachedProSection,
   fetchCoursesFromDb, 
   fetchPrepSubjectsFromDb, 
+  fetchProSectionFromDb,
   saveCoursesToDb, 
   savePrepSubjectsToDb, 
+  saveProSectionToDb,
   subscribeToCoursesAndPrep,
   sanitizeSubSubjects
 } from "../../lib/courses_and_subjects";
@@ -198,7 +209,10 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "switches">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches">("questions");
+
+  // Full Exam Paper Viewing State Modal
+  const [viewingExamPaper, setViewingExamPaper] = useState<ExamPaper | null>(null);
 
   // App Settings State (Grid Display Limits)
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
@@ -242,6 +256,18 @@ export default function AdminPage() {
   const [prepFormText, setPrepFormText] = useState<string>("text-orange-600");
   const [prepFormShowQuickTools, setPrepFormShowQuickTools] = useState<boolean>(true);
   const [prepFormSubSubjects, setPrepFormSubSubjects] = useState<SubCategoryItem[]>([]);
+
+  // Pro Section Management State
+  const [proSectionList, setProSectionList] = useState<ProSectionItem[]>(getCachedProSection());
+  const [editingProId, setEditingProId] = useState<string | null>(null);
+  const [proFormSerial, setProFormSerial] = useState<number>(1);
+  const [proFormId, setProFormId] = useState<string>("");
+  const [proFormName, setProFormName] = useState<string>("");
+  const [proFormSub, setProFormSub] = useState<string>("");
+  const [proFormIcon, setProFormIcon] = useState<string>("Briefcase");
+  const [proFormBg, setProFormBg] = useState<string>("bg-purple-50");
+  const [proFormText, setProFormText] = useState<string>("text-purple-600");
+  const [proFormActive, setProFormActive] = useState<boolean>(true);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -524,7 +550,10 @@ export default function AdminPage() {
     fetchPrepSubjectsFromDb().then((prep) => {
       setPrepSubjectsList(prep);
     });
-    const unsubCoursesPrep = subscribeToCoursesAndPrep(setCoursesList, setPrepSubjectsList);
+    fetchProSectionFromDb().then((pro) => {
+      if (pro) setProSectionList(pro);
+    });
+    const unsubCoursesPrep = subscribeToCoursesAndPrep(setCoursesList, setPrepSubjectsList, setProSectionList);
 
     return () => {
       unsubExams();
@@ -829,6 +858,88 @@ export default function AdminPage() {
     setPrepSubjectsList(newList);
     await savePrepSubjectsToDb(newList);
     triggerNotification("success", "সাবজেক্ট সিরিয়াল আপডেট করা হয়েছে!");
+  };
+
+  // Pro Section Handlers
+  const handleSavePro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proFormName.trim()) {
+      triggerNotification("error", "দয়া করে নাম ফিল্ড পূরণ করুন।");
+      return;
+    }
+
+    const newItem: ProSectionItem = {
+      id: editingProId || proFormId.trim() || `pro_${Date.now()}`,
+      serial: Number(proFormSerial) || (proSectionList.length + 1),
+      name: proFormName.trim(),
+      sub: proFormSub.trim(),
+      icon: proFormIcon,
+      bg: proFormBg,
+      text: proFormText,
+      active: proFormActive
+    };
+
+    let updated: ProSectionItem[] = [...proSectionList];
+    if (editingProId) {
+      const idx = updated.findIndex(p => p.id === editingProId);
+      if (idx >= 0) updated[idx] = newItem;
+      else updated.push(newItem);
+    } else {
+      updated.push(newItem);
+    }
+
+    updated.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    setProSectionList(updated);
+    await saveProSectionToDb(updated);
+    triggerNotification("success", editingProId ? "প্রো সেকশন আইটেম আপডেট করা হয়েছে!" : "নতুন প্রো সেকশন আইটেম যোগ করা হয়েছে!");
+    handleCancelProEdit();
+  };
+
+  const handleCancelProEdit = () => {
+    setEditingProId(null);
+    setProFormSerial(proSectionList.length + 1);
+    setProFormId("");
+    setProFormName("");
+    setProFormSub("");
+    setProFormIcon("Briefcase");
+    setProFormBg("bg-purple-50");
+    setProFormText("text-purple-600");
+    setProFormActive(true);
+  };
+
+  const handleEditPro = (item: ProSectionItem) => {
+    setEditingProId(item.id);
+    setProFormSerial(item.serial || 1);
+    setProFormId(item.id);
+    setProFormName(item.name || "");
+    setProFormSub(item.sub || "");
+    setProFormIcon(item.icon || "Briefcase");
+    setProFormBg(item.bg || "bg-purple-50");
+    setProFormText(item.text || "text-purple-600");
+    setProFormActive(item.active !== false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDeletePro = async (id: string, name: string) => {
+    if (!confirm(`আপনি কি নিশ্চিত যে "${name}" প্রো সেকশন আইটেমটি ডিলিট করতে চান?`)) return;
+    const updated = proSectionList.filter(p => p.id !== id);
+    setProSectionList(updated);
+    await saveProSectionToDb(updated);
+    triggerNotification("success", `"${name}" ডিলিট করা হয়েছে।`);
+    if (editingProId === id) handleCancelProEdit();
+  };
+
+  const handleMoveProSerial = async (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= proSectionList.length) return;
+    const newList = [...proSectionList];
+    const temp = newList[index];
+    newList[index] = newList[targetIdx];
+    newList[targetIdx] = temp;
+    newList.forEach((item, idx) => { item.serial = idx + 1; });
+    setProSectionList(newList);
+    await saveProSectionToDb(newList);
+    triggerNotification("success", "প্রো সেকশন সিরিয়াল আপডেট করা হয়েছে!");
   };
 
   // Exam Paper Builder handlers
@@ -1643,6 +1754,18 @@ export default function AdminPage() {
             </button>
 
             <button
+              onClick={() => setActiveTab("pro_section")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "pro_section"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Briefcase className={`w-4 h-4 ${activeTab === "pro_section" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>প্রো সেকশন ({proSectionList.length})</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("switches")}
               className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
                 activeTab === "switches"
@@ -1754,6 +1877,19 @@ export default function AdminPage() {
             >
               <BookOpen className="w-4 h-4" />
               <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
+            </button>
+
+            {/* Tab Button 8: Pro Section Management */}
+            <button
+              onClick={() => setActiveTab("pro_section")}
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                activeTab === "pro_section"
+                  ? "bg-orange-50 text-[#FF6A00]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>প্রো সেকশন ({proSectionList.length})</span>
             </button>
 
             {/* Tab Button 8: Control Switches */}
@@ -2862,7 +2998,8 @@ export default function AdminPage() {
                       return (
                         <div 
                           key={paper.id}
-                          className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all"
+                          onClick={() => setViewingExamPaper(paper)}
+                          className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all cursor-pointer group"
                         >
                           <div className="space-y-1 text-left">
                             <div className="flex items-center gap-2">
@@ -2881,7 +3018,7 @@ export default function AdminPage() {
                               </span>
                             </div>
 
-                            <h4 className="text-xs sm:text-sm font-black text-slate-800">
+                            <h4 className="text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#FF6A00] transition-colors">
                               {paper.title}
                             </h4>
 
@@ -2889,13 +3026,16 @@ export default function AdminPage() {
                               <span>প্রশ্ন: {paper.questionCount} টি</span>
                               <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
                               <span>তারিখ: {paper.examDate}</span>
+                              <span className="text-[10px] font-bold text-slate-400 underline group-hover:text-orange-500">
+                                🔍 বিস্তারিত দেখতে ক্লিক করুন
+                              </span>
                             </div>
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
                             <button
-                              onClick={() => handleToggleArchiveExamPaper(paper)}
+                              onClick={(e) => { e.stopPropagation(); handleToggleArchiveExamPaper(paper); }}
                               className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
                                 computedStatus === "Archive"
                                   ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
@@ -2908,7 +3048,7 @@ export default function AdminPage() {
                             </button>
 
                             <button
-                              onClick={() => handleEditExamPaper(paper)}
+                              onClick={(e) => { e.stopPropagation(); handleEditExamPaper(paper); }}
                               className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
                             >
                               <Pencil className="w-3.5 h-3.5" />
@@ -2916,7 +3056,7 @@ export default function AdminPage() {
                             </button>
 
                             <button
-                              onClick={() => handleDeleteExamPaper(paper.id)}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteExamPaper(paper.id); }}
                               className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                               title="ডিলেট করুন"
                             >
@@ -4322,6 +4462,200 @@ export default function AdminPage() {
           )}
 
           {/* ========================================================= */}
+          {/* VIEW: PRO SECTION MANAGEMENT                               */}
+          {/* ========================================================= */}
+          {activeTab === "pro_section" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fade-in text-left">
+              {/* Left Column: Form */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-purple-600" />
+                      <span>{editingProId ? "প্রো সেকশন আইটেম এডিট করুন" : "নতুন প্রো সেকশন আইটেম যোগ করুন"}</span>
+                    </h3>
+                    {editingProId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelProEdit}
+                        className="text-[10px] font-extrabold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg hover:bg-rose-100 cursor-pointer"
+                      >
+                        বাতিল করুন
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSavePro} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">সিরিয়াল নম্বর</label>
+                        <input
+                          type="number"
+                          value={proFormSerial}
+                          onChange={(e) => setProFormSerial(parseInt(e.target.value) || 1)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">আইডি (Unique ID)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. pro_bcs"
+                          value={proFormId}
+                          onChange={(e) => setProFormId(e.target.value)}
+                          disabled={!!editingProId}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">শিরোনাম/নাম (Name)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. বিসিএস প্রিলি বিশেষ"
+                        value={proFormName}
+                        onChange={(e) => setProFormName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">সাবটাইটেল (Subtitle)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. প্রিলিমিনারি প্রিপারেশন"
+                        value={proFormSub}
+                        onChange={(e) => setProFormSub(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">আইকন নাম (Lucide Icon)</label>
+                        <select
+                          value={proFormIcon}
+                          onChange={(e) => setProFormIcon(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        >
+                          {["Briefcase", "Sparkles", "Zap", "Award", "Video", "PlayCircle", "Tv", "Film", "BookOpen", "Globe", "GraduationCap", "FileText", "ShieldCheck", "HelpCircle"].map(ic => (
+                            <option key={ic} value={ic}>{ic}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">ব্যাকগ্রাউন্ড কালার Class</label>
+                        <select
+                          value={proFormBg}
+                          onChange={(e) => setProFormBg(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        >
+                          <option value="bg-purple-50">bg-purple-50 (Purple)</option>
+                          <option value="bg-orange-50">bg-orange-50 (Orange)</option>
+                          <option value="bg-blue-50">bg-blue-50 (Blue)</option>
+                          <option value="bg-rose-50">bg-rose-50 (Rose)</option>
+                          <option value="bg-emerald-50">bg-emerald-50 (Emerald)</option>
+                          <option value="bg-amber-50">bg-amber-50 (Amber)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-xs font-extrabold text-slate-700">স্ট্যাটাস (Active / Inactive)</span>
+                      <button
+                        type="button"
+                        onClick={() => setProFormActive(!proFormActive)}
+                        className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                          proFormActive ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {proFormActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
+                      </button>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs py-3 rounded-2xl transition-all cursor-pointer shadow-md shadow-purple-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5px]" />
+                      <span>{editingProId ? "সংরক্ষণ করুন" : "নতুন আইটেম যোগ করুন"}</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: List */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-purple-600" />
+                      <span>বিদ্যমান প্রো সেকশন তালিকা ({proSectionList.length} টি)</span>
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    {proSectionList.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3 hover:border-purple-300 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60 shrink-0">
+                            <button
+                              onClick={() => handleMoveProSerial(idx, "up")}
+                              disabled={idx === 0}
+                              className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg cursor-pointer"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-[10px] font-black text-slate-700">#{item.serial || idx + 1}</span>
+                            <button
+                              onClick={() => handleMoveProSerial(idx, "down")}
+                              disabled={idx === proSectionList.length - 1}
+                              className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg cursor-pointer"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className={`w-9 h-9 ${item.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${item.text || "text-purple-600"} shrink-0`}>
+                            {renderPrepIcon(item.icon, "w-4 h-4 stroke-[2.2px]")}
+                          </div>
+
+                          <div className="flex flex-col min-w-0 text-left">
+                            <span className="font-extrabold text-xs text-slate-900 truncate">{item.name}</span>
+                            {item.sub && <span className="text-[10px] font-bold text-slate-400 truncate">{item.sub}</span>}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleEditPro(item)}
+                            className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>এডিট</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeletePro(item.id, item.name)}
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
           {/* VIEW: CONTROL SWITCHES & HOME LIMITS                       */}
           {/* ========================================================= */}
           {activeTab === "switches" && (
@@ -4725,15 +5059,28 @@ export default function AdminPage() {
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none"
                     >
                       <option value="all">সকল বিষয় (All Topics)</option>
-                      {(
-                        SUB_SUBJECTS_MAP[paperCourse] || 
-                        SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || 
-                        [{ id: "all", name: "সকল বিষয় (All Topics)" }]
-                      ).map((sc) => (
-                        <option key={sc.id} value={sc.id}>
-                          {sc.name}
-                        </option>
-                      ))}
+                      {paperCategoryType === "our_course" ? (
+                        (
+                          SUB_SUBJECTS_MAP[paperCourse] || 
+                          SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || 
+                          [{ id: "all", name: "সকল বিষয় (All Topics)" }]
+                        ).map((sc) => (
+                          <option key={sc.id} value={sc.id}>
+                            {sc.name}
+                          </option>
+                        ))
+                      ) : (
+                        (
+                          SUB_SUBJECTS_MAP[paperPrepSubjectId] || 
+                          SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || 
+                          (prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId || s.bnName === paperPrepSubjectId)?.subSubjects) || 
+                          [{ id: "all", name: "সকল বিষয় (All Topics)" }]
+                        ).map((sc: any) => (
+                          <option key={sc.id || sc.name} value={sc.id || sc.name}>
+                            {sc.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>
@@ -4906,14 +5253,16 @@ export default function AdminPage() {
                           return;
                         }
                         const existingIds = new Set(paperQuestions.map(q => q.id));
-                        const available = questions.filter(q => !existingIds.has(q.id));
-                        const toAdd = available.slice(0, remainingNeeded);
+                        const pool = questions.length > 0 ? questions : QUIZ_QUESTIONS;
+                        const available = pool.filter(q => !existingIds.has(q.id));
+                        const shuffled = [...available].sort(() => 0.5 - Math.random());
+                        const toAdd = shuffled.slice(0, remainingNeeded);
                         if (toAdd.length === 0) {
                           alert("প্রশ্ন ব্যাংকে যুক্ত করার মতো নতুন আর কোনো প্রশ্ন নেই!");
                           return;
                         }
                         setPaperQuestions(prev => [...prev, ...toAdd]);
-                        triggerNotification("success", `${toAdd.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে যুক্ত হয়েছে!`);
+                        triggerNotification("success", `${toAdd.length} টি র্যান্ডম প্রশ্ন স্বয়ংক্রিয়ভাবে যুক্ত হয়েছে!`);
                       }}
                       className="px-3 py-1.5 bg-[#FF6A00]/10 hover:bg-[#FF6A00]/20 text-[#FF6A00] rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1"
                     >
@@ -5025,6 +5374,152 @@ export default function AdminPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW FULL EXAM PAPER MODAL */}
+        {viewingExamPaper && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+            <div className="bg-white rounded-[2rem] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+              
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 bg-[#1A0B2E] text-white flex items-center justify-between shrink-0">
+                <div className="space-y-1 text-left">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black bg-[#FF6A00] text-white px-2.5 py-0.5 rounded-full uppercase">
+                      {(COURSES.find(c => c.id === viewingExamPaper.course)?.name || viewingExamPaper.course).toUpperCase()}
+                    </span>
+                    <span className="text-[10px] font-extrabold bg-white/10 text-slate-200 px-2.5 py-0.5 rounded-full uppercase">
+                      {viewingExamPaper.examType}
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-black text-white">{viewingExamPaper.title}</h2>
+                  {viewingExamPaper.topic && <p className="text-xs text-purple-200 font-medium">টপিক: {viewingExamPaper.topic}</p>}
+                </div>
+
+                <button
+                  onClick={() => setViewingExamPaper(null)}
+                  className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer shrink-0"
+                  title="বন্ধ করুন"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Exam Info Metadata Bar */}
+              <div className="bg-purple-50/70 border-b border-purple-100 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">মোট সময়</span>
+                  <span className="text-xs sm:text-sm font-black text-purple-900 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-purple-600" />
+                    {Math.floor(viewingExamPaper.totalDurationSeconds / 60)} মিনিট
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">মোট প্রশ্ন</span>
+                  <span className="text-xs sm:text-sm font-black text-purple-900 flex items-center gap-1">
+                    <HelpCircle className="w-3.5 h-3.5 text-purple-600" />
+                    {viewingExamPaper.questionCount || (viewingExamPaper.questions || []).length} টি
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">মোট মার্কস</span>
+                  <span className="text-xs sm:text-sm font-black text-purple-900 flex items-center gap-1">
+                    <Award className="w-3.5 h-3.5 text-purple-600" />
+                    {viewingExamPaper.totalMarks || viewingExamPaper.questionCount}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">তৈরির তারিখ</span>
+                  <span className="text-xs sm:text-sm font-black text-purple-900 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    {viewingExamPaper.examDate}
+                  </span>
+                </div>
+              </div>
+
+              {/* Questions List with Correct Answers Highlighted in Green */}
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-left">
+                {(!viewingExamPaper.questions || viewingExamPaper.questions.length === 0) ? (
+                  <div className="py-12 text-center text-slate-400 font-bold">
+                    এই প্রশ্নপত্রে কোনো প্রশ্ন সংরক্ষিত নেই।
+                  </div>
+                ) : (
+                  viewingExamPaper.questions.map((q, qIndex) => {
+                    const normQ = normalizeQuestion(q);
+                    return (
+                      <div key={q.id || qIndex} className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+                        <div className="flex items-start gap-2">
+                          <span className="w-6 h-6 rounded-full bg-[#1A0B2E] text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
+                            {qIndex + 1}
+                          </span>
+                          <div className="space-y-1 flex-1">
+                            <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                              {normQ.questionText || normQ.question}
+                            </h4>
+                            {normQ.subjectName && (
+                              <span className="inline-block text-[10px] font-extrabold bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
+                                {normQ.subjectName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Options Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-8">
+                          {normQ.options.map((opt, optIndex) => {
+                            const rawQ = q as any;
+                            const isCorrect = optIndex === normQ.correctOptionIndex || optIndex === rawQ?.correctIndex || optIndex === rawQ?.correctOptionIndex || opt === rawQ?.correctAnswer || optIndex.toString() === rawQ?.correctAnswer;
+                            return (
+                              <div
+                                key={optIndex}
+                                className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-between ${
+                                  isCorrect
+                                    ? "bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs font-black"
+                                    : "bg-white border-slate-200 text-slate-700 opacity-80"
+                                }`}
+                              >
+                                <span>{String.fromCharCode(65 + optIndex)}. {opt}</span>
+                                {isCorrect && (
+                                  <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> সঠিক উত্তর
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Explanation */}
+                        {normQ.explanation && (
+                          <div className="ml-8 mt-2 p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-950 space-y-1">
+                            <span className="font-extrabold text-amber-800 block">ব্যাখ্যা:</span>
+                            <p className="leading-relaxed font-medium">{normQ.explanation}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">
+                  মোট {viewingExamPaper.questions?.length || 0} টি প্রশ্ন প্রদর্শিত হচ্ছে
+                </span>
+                <button
+                  onClick={() => setViewingExamPaper(null)}
+                  className="bg-slate-900 hover:bg-black text-white font-black text-xs px-6 py-2.5 rounded-xl cursor-pointer transition-all"
+                >
+                  বন্ধ করুন (Close)
+                </button>
+              </div>
+
             </div>
           </div>
         )}

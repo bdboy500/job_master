@@ -57,14 +57,19 @@ import {
   Monitor,
   FlaskConical,
   Atom,
-  Book
+  Book,
+  Video,
+  Database,
+  PlayCircle,
+  Tv,
+  Film
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
-import { CourseItem, PrepSubjectItem, getCachedCourses, getCachedPrepSubjects, fetchCoursesFromDb, fetchPrepSubjectsFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
+import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
@@ -430,6 +435,7 @@ export default function Home() {
   const [packagesList, setPackagesList] = useState<PackageItem[]>(DEFAULT_PACKAGES);
   const [coursesList, setCoursesList] = useState<CourseItem[]>([]);
   const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>([]);
+  const [proSectionList, setProSectionList] = useState<ProSectionItem[]>(getCachedProSection());
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
@@ -657,7 +663,7 @@ export default function Home() {
         }
       });
 
-      // Fetch dynamic courses & prep subjects & subscribe
+      // Fetch dynamic courses & prep subjects & pro section & subscribe
       fetchCoursesFromDb().then(courses => {
         if (courses) {
           setCoursesList(courses);
@@ -668,10 +674,16 @@ export default function Home() {
           setPrepSubjectsList(prep);
         }
       });
+      fetchProSectionFromDb().then(pro => {
+        if (pro && pro.length > 0) {
+          setProSectionList(pro);
+        }
+      });
 
       const unsubCoursesPrep = subscribeToCoursesAndPrep(
         (updatedCourses) => setCoursesList(updatedCourses),
-        (updatedPrep) => setPrepSubjectsList(updatedPrep)
+        (updatedPrep) => setPrepSubjectsList(updatedPrep),
+        (updatedPro) => setProSectionList(updatedPro)
       );
 
       return () => {
@@ -1314,8 +1326,30 @@ export default function Home() {
     Monitor,
     FlaskConical,
     Atom,
-    Book
+    Book,
+    Video,
+    Database,
+    PlayCircle,
+    Tv,
+    Film
   }), []);
+
+  const allProSectionData = useMemo(() => {
+    if (proSectionList && proSectionList.length > 0) {
+      return proSectionList.map(s => ({
+        ...s,
+        icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
+        text: s.text || "text-orange-600",
+        bg: s.bg || "bg-[#FFF1E6]"
+      }));
+    }
+    return DEFAULT_PRO_SECTION.map(s => ({
+      ...s,
+      icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
+      text: s.text || "text-orange-600",
+      bg: s.bg || "bg-[#FFF1E6]"
+    }));
+  }, [proSectionList, ICON_MAP]);
 
   const allCoursesData = useMemo(() => {
     if (coursesList && coursesList.length > 0) {
@@ -1563,13 +1597,6 @@ export default function Home() {
             >
               Package
             </button>
-
-            <button
-              onClick={() => { setShowContactModal(true); if (soundEnabled) quizAudio.playClick(); }}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all cursor-pointer"
-            >
-              Contact Us
-            </button>
           </nav>
 
           {/* Right side: Search, Notification, and Settings icons */}
@@ -1793,8 +1820,8 @@ export default function Home() {
               <div className="space-y-3.5 -mt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
-                      Our Courses
+                    <h3 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight">
+                      Our Courses (আমাদের কোর্সসমূহ)
                     </h3>
                   </div>
                   <button 
@@ -1880,8 +1907,8 @@ export default function Home() {
               {/* Preparation Hub Section */}
               <div className="space-y-3 -mt-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
-                    Preparation Hub
+                  <h3 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight">
+                    Preparation Hub (প্রেপারেশন হাব)
                   </h3>
                   <button 
                     onClick={() => {
@@ -1920,6 +1947,55 @@ export default function Home() {
                   })}
                 </div>
               </div>
+
+              {/* Pro Section (Requirement 6) */}
+              {appSettings.proSectionActive !== false && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight flex items-center gap-2">
+                      <span>Pro Section (প্রো সেকশন)</span>
+                    </h3>
+                    <span className="text-[10px] font-extrabold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full uppercase">
+                      Pro Features
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {allProSectionData
+                      .filter(s => s.active !== false)
+                      .slice(0, appSettings.proSectionHomeLimit || 4)
+                      .map((subject, idx) => {
+                        const SubIcon = subject.icon || Briefcase;
+                        return (
+                          <div 
+                            key={subject.id || idx}
+                            onClick={() => {
+                              if (soundEnabled) quizAudio.playClick();
+                              setSelectedPrepSubject(subject.name);
+                              setPreviousScreen("home");
+                              setCurrentScreen("prep-sub");
+                            }}
+                            className="bg-white border border-purple-100/80 rounded-2xl px-3.5 py-3.5 sm:py-4 flex flex-row items-center gap-3 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer active:scale-95"
+                          >
+                            <div className={`w-10 h-10 ${subject.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${subject.text || "text-purple-600"} shrink-0 shadow-2xs`}>
+                              <SubIcon className="w-5 h-5 stroke-[2.2px]" />
+                            </div>
+                            <div className="flex flex-col min-w-0 text-left">
+                              <span className="text-base sm:text-lg font-black text-slate-800 tracking-tight truncate">
+                                {subject.name}
+                              </span>
+                              {subject.sub && (
+                                <span className="text-[10px] font-extrabold text-slate-400 truncate">
+                                  {subject.sub}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
 
               {/* Database / Sync health card */}
               <div className="bg-slate-100/50 rounded-2xl p-4 flex items-center justify-between text-[11px] font-semibold text-slate-500">
