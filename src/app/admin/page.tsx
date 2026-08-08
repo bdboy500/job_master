@@ -41,6 +41,7 @@ import {
   Globe,
   Calculator,
   GraduationCap,
+  Calendar,
   Sliders,
   Flame,
   Newspaper,
@@ -54,7 +55,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
 import { getSupabase } from "../../lib/supabase";
-import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, subscribeToExamPapers } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { getTodayVisitorCount } from "../../lib/visitors";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
@@ -329,6 +330,19 @@ export default function AdminPage() {
   // ==========================================
   const [examPapers, setExamPapers] = useState<ExamPaper[]>([]);
   const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
+  const [examPaperDisplayLimit, setExamPaperDisplayLimit] = useState<number>(10);
+
+  const resetExamPaperForm = () => {
+    setEditingPaperId(null);
+    setPaperTitle("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
+    setPaperTopic('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
+    setPaperSubSubject("all");
+    setPaperPrepSubSubject("all");
+    setPaperQuestions([]);
+    setPaperSearchQuery("");
+    setPaperSearchSubjects(["All"]);
+    setPaperStatus("Upcoming");
+  };
 
   // Form states for creating/editing paper
   const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub">("our_course");
@@ -2091,126 +2105,8 @@ export default function AdminPage() {
                       </div>
                     )}
 
-                    {/* Desktop Table View */}
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50/50 border-b border-slate-100">
-                            <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-14">ID</th>
-                            <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">বিষয় ও প্রশ্ন (Subject & MCQ)</th>
-                            <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">সম্ভাব্য অপশনসমূহ (Options)</th>
-                            <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-40">সঠিক উত্তর</th>
-                            <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-32">অ্যাকশন</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {displayedQuestions.map((q) => {
-                            const idVal = q.id;
-                            const subjectLabel = q.subjectName || q.subject_name || "Bangla Literature";
-                            const questionText = q.questionText || q.question || q.title || q.question_text || "Untitled Question";
-                            const explanationText = q.explanation || "";
-                            
-                            // options parsing safely
-                            let options: string[] = ["", "", "", ""];
-                            const rawOpts = q.options || q.choices || q.answers;
-                            if (Array.isArray(rawOpts)) {
-                              options = rawOpts.map(String);
-                            } else if (typeof rawOpts === "string") {
-                              try {
-                                const parsed = JSON.parse(rawOpts);
-                                if (Array.isArray(parsed)) options = parsed.map(String);
-                              } catch {
-                                options = rawOpts.split(",").map((s: string) => s.trim());
-                              }
-                            }
-
-                            const correctIdxVal = q.correctOptionIndex !== undefined ? q.correctOptionIndex : (q.correct_option_index !== undefined ? q.correct_option_index : (q.correctIndex !== undefined ? q.correctIndex : 0));
-                            const correctIdx = Number(correctIdxVal);
-
-                            return (
-                              <tr key={idVal} className="hover:bg-slate-50/20 transition-all">
-                                <td className="p-4 text-[10px] font-mono font-bold text-slate-400 text-center truncate max-w-[60px]" title={String(idVal)}>
-                                  {typeof idVal === "number" ? `#${idVal}` : `#${String(idVal).slice(0, 6)}...`}
-                                </td>
-                                <td className="p-4 max-w-sm">
-                                  <div className="space-y-1">
-                                    <span className="text-[9px] font-extrabold bg-[#FF6A00]/5 text-[#FF6A00] border border-[#FF6A00]/10 px-2 py-0.5 rounded-full inline-block">
-                                      {subjectLabel}
-                                    </span>
-                                    <span className="text-xs sm:text-sm font-bold text-slate-800 leading-snug block">
-                                      <MathRenderer content={questionText} />
-                                    </span>
-                                    {explanationText && (
-                                      <span className="text-[10px] font-semibold text-slate-400 block italic leading-normal">
-                                        <MathRenderer content={`ব্যাখ্যা: ${explanationText}`} />
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="p-4">
-                                  <div className="grid grid-cols-2 gap-1.5 max-w-sm">
-                                    {options.map((opt, oIdx) => (
-                                      <span 
-                                        key={oIdx} 
-                                        className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${
-                                          oIdx === correctIdx 
-                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold" 
-                                            : "bg-slate-50 text-slate-500 border border-transparent"
-                                        }`}
-                                      >
-                                        <span className="font-extrabold mr-1">{oIdx + 1}.</span>
-                                        <MathRenderer content={opt || `অপশন ${oIdx + 1}`} />
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="p-4">
-                                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg inline-block max-w-[150px]">
-                                    <MathRenderer content={options[correctIdx] || options[0] || "অপশন ১"} />
-                                  </span>
-                                </td>
-                                <td className="p-4 text-center">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    {/* Edit Button */}
-                                    <button
-                                      onClick={() => handleEditClick(q)}
-                                      className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-600 rounded-xl transition-colors active:scale-90 cursor-pointer"
-                                      title="Edit Question"
-                                    >
-                                      <Pencil className="w-3.5 h-3.5 text-slate-500" />
-                                    </button>
-
-                                    {/* Delete Button */}
-                                    <button
-                                      onClick={() => {
-                                        if (confirm(`আপনি কি নিশ্চিত যে আপনি এই প্রশ্নটি মুছে ফেলতে চান?`)) {
-                                          handleDeleteQuestion(idVal);
-                                        }
-                                      }}
-                                      className="p-2 bg-rose-50 hover:bg-rose-100 border border-rose-100/50 text-rose-600 rounded-xl transition-colors active:scale-90 cursor-pointer"
-                                      title="Delete Question"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-
-                        {displayedQuestions.length === 0 && (
-                          <tr>
-                            <td colSpan={5} className="p-8 text-center text-xs font-bold text-slate-400">
-                              কোনো প্রশ্ন পাওয়া যায়নি! দয়া করে ডেমো প্রশ্ন সিড করুন অথবা নতুন প্রশ্ন যোগ করুন।
-                            </td>
-                          </tr>
-                        )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile Card List View */}
-                    <div className="block md:hidden p-3.5 space-y-3.5 bg-slate-50/50">
+                    {/* Question Bank Cards View (Desktop & Mobile) */}
+                    <div className="p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 bg-slate-50/50">
                       {displayedQuestions.map((q) => {
                         const idVal = q.id;
                         const subjectLabel = q.subjectName || q.subject_name || "Bangla Literature";
@@ -2234,15 +2130,15 @@ export default function AdminPage() {
                         const correctIdx = Number(correctIdxVal);
 
                         return (
-                          <div key={idVal} className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs relative space-y-3">
+                          <div key={idVal} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs relative space-y-3">
                             
                             {/* Header Row: Subject Badge + Edit Icon on Top Right */}
-                            <div className="flex items-start justify-between gap-2 pr-10">
+                            <div className="flex items-start justify-between gap-2 pr-12">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-md">
                                   {typeof idVal === "number" ? `#${idVal}` : `#${String(idVal).slice(0, 6)}`}
                                 </span>
-                                <span className="text-[9px] font-extrabold bg-[#FF6A00]/10 text-[#FF6A00] border border-[#FF6A00]/20 px-2.5 py-0.5 rounded-full">
+                                <span className="text-[10px] font-extrabold bg-[#FF6A00]/10 text-[#FF6A00] border border-[#FF6A00]/20 px-3 py-0.5 rounded-full">
                                   {subjectLabel}
                                 </span>
                               </div>
@@ -2251,14 +2147,15 @@ export default function AdminPage() {
                             {/* Top Right Edit Button */}
                             <button
                               onClick={() => handleEditClick(q)}
-                              className="absolute top-3.5 right-3.5 p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all active:scale-90 cursor-pointer shadow-2xs"
+                              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all active:scale-90 cursor-pointer shadow-2xs flex items-center gap-1 text-xs font-extrabold"
                               title="Edit Question"
                             >
                               <Pencil className="w-4 h-4 text-slate-600" />
+                              <span className="hidden sm:inline">এডিট</span>
                             </button>
 
                             {/* 1. Question Text */}
-                            <div className="text-sm font-extrabold text-slate-900 leading-snug pt-0.5 pr-2">
+                            <div className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug pt-0.5 pr-2">
                               <MathRenderer content={questionText} />
                             </div>
 
@@ -2267,13 +2164,13 @@ export default function AdminPage() {
                               {options.map((opt, oIdx) => (
                                 <div 
                                   key={oIdx}
-                                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-2.5 transition-all ${
+                                  className={`p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center gap-2.5 transition-all ${
                                     oIdx === correctIdx 
                                       ? "bg-emerald-50 text-emerald-800 border-emerald-200 font-bold" 
                                       : "bg-slate-50 text-slate-700 border-slate-100"
                                   }`}
                                 >
-                                  <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                  <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-black shrink-0 ${
                                     oIdx === correctIdx ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
                                   }`}>
                                     {oIdx + 1}
@@ -2286,8 +2183,8 @@ export default function AdminPage() {
                             </div>
 
                             {/* 3. Correct Answer */}
-                            <div className="p-2.5 bg-emerald-50/90 border border-emerald-100 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <div className="p-2.5 sm:p-3 bg-emerald-50/90 border border-emerald-100 rounded-xl text-xs sm:text-sm font-bold text-emerald-800 flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
                               <span>সঠিক উত্তর:</span>
                               <span className="font-extrabold text-emerald-950">
                                 <MathRenderer content={options[correctIdx] || options[0] || "অপশন ১"} />
@@ -2295,9 +2192,9 @@ export default function AdminPage() {
                             </div>
 
                             {/* 4. Explanation & Bottom Right Delete Button */}
-                            <div className="flex items-start justify-between gap-2.5 pt-1">
-                              <div className="flex-1 min-w-0 bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-xs text-slate-600">
-                                <span className="text-[11px] font-black text-slate-700 block mb-0.5">ব্যাখ্যা:</span>
+                            <div className="flex items-start justify-between gap-3 pt-1">
+                              <div className="flex-1 min-w-0 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs sm:text-sm text-slate-600">
+                                <span className="text-[11px] sm:text-xs font-black text-slate-700 block mb-1">ব্যাখ্যা:</span>
                                 {explanationText ? (
                                   <MathRenderer content={explanationText} />
                                 ) : (
@@ -2312,10 +2209,11 @@ export default function AdminPage() {
                                     handleDeleteQuestion(idVal);
                                   }
                                 }}
-                                className="p-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-xl transition-all active:scale-90 cursor-pointer shrink-0 self-end"
+                                className="p-2.5 sm:p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-xl transition-all active:scale-90 cursor-pointer shrink-0 self-end flex items-center gap-1 text-xs font-extrabold"
                                 title="Delete Question"
                               >
                                 <Trash2 className="w-4 h-4 text-rose-600" />
+                                <span className="hidden sm:inline">ডিলেট</span>
                               </button>
                             </div>
 
@@ -2924,85 +2822,111 @@ export default function AdminPage() {
 
               {/* Published Exam Papers Table / List */}
               <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <h3 className="font-extrabold text-sm text-slate-800 tracking-tight flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#FF6A00]" />
                     <span>পাবলিশকৃত প্রশ্ন পত্রসমূহের তালিকা ({examPapers.length} টি)</span>
                   </h3>
+
+                  {/* Display Limit Selector: 10 / 20 / 30 / 40 / 50 */}
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+                    <span className="text-[10px] font-bold text-slate-500 px-2">দেখান:</span>
+                    {[10, 20, 30, 40, 50].map((limit) => (
+                      <button
+                        key={limit}
+                        type="button"
+                        onClick={() => setExamPaperDisplayLimit(limit)}
+                        className={`px-2.5 py-1 text-xs font-black rounded-lg transition-all cursor-pointer ${
+                          examPaperDisplayLimit === limit
+                            ? "bg-[#FF6A00] text-white shadow-2xs"
+                            : "text-slate-600 hover:bg-slate-200/60"
+                        }`}
+                      >
+                        {limit}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
                   {(() => {
-                    const sortedAdminPapers = [...examPapers].sort((a, b) => {
-                      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-                      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-                      return timeB - timeA;
+                    const sortedAdminPapers = sortExamPapersForDisplay(examPapers);
+                    const visibleAdminPapers = sortedAdminPapers.slice(0, examPaperDisplayLimit);
+
+                    return visibleAdminPapers.map((paper) => {
+                      // Dynamically calculate actual status based on start/end date-time unless explicitly set to Archive
+                      const computedStatus = paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
+                        ? "Archive"
+                        : getExamStatus(paper);
+
+                      return (
+                        <div 
+                          key={paper.id}
+                          className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all"
+                        >
+                          <div className="space-y-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1 ${
+                                computedStatus === "Live" 
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold animate-pulse" 
+                                  : computedStatus === "Upcoming"
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200 font-extrabold"
+                                  : "bg-slate-100 text-slate-600 border border-slate-200 font-bold"
+                              }`}>
+                                {computedStatus === "Live" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>}
+                                {computedStatus}
+                              </span>
+                              <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
+                                {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
+                              </span>
+                            </div>
+
+                            <h4 className="text-xs sm:text-sm font-black text-slate-800">
+                              {paper.title}
+                            </h4>
+
+                            <div className="text-[11px] font-bold text-slate-500 flex flex-wrap items-center gap-3 pt-0.5">
+                              <span>প্রশ্ন: {paper.questionCount} টি</span>
+                              <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
+                              <span>তারিখ: {paper.examDate}</span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <button
+                              onClick={() => handleToggleArchiveExamPaper(paper)}
+                              className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                                computedStatus === "Archive"
+                                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                  : "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
+                              }`}
+                              title={computedStatus === "Archive" ? "লাইভ করুন" : "আর্কাইভ করুন"}
+                            >
+                              <Archive className="w-3.5 h-3.5" />
+                              <span>{computedStatus === "Archive" ? "লাইভ করুন" : "আর্কাইভ"}</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleEditExamPaper(paper)}
+                              className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>এডিট</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteExamPaper(paper.id)}
+                              className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                              title="ডিলেট করুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
                     });
-
-                    return sortedAdminPapers.map((paper) => (
-                      <div 
-                        key={paper.id}
-                        className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all"
-                      >
-                      <div className="space-y-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
-                            paper.status === "Live" 
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
-                              : "bg-slate-100 text-slate-500"
-                          }`}>
-                            {paper.status}
-                          </span>
-                          <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
-                            {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
-                          </span>
-                        </div>
-
-                        <h4 className="text-xs sm:text-sm font-black text-slate-800">
-                          {paper.title}
-                        </h4>
-
-                        <div className="text-[11px] font-bold text-slate-500 flex flex-wrap items-center gap-3 pt-0.5">
-                          <span>প্রশ্ন: {paper.questionCount} টি</span>
-                          <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
-                          <span>তারিখ: {paper.examDate}</span>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <button
-                          onClick={() => handleToggleArchiveExamPaper(paper)}
-                          className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                            paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
-                              ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                              : "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
-                          }`}
-                          title={paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived" ? "লাইভ করুন" : "আর্কাইভ করুন"}
-                        >
-                          <Archive className="w-3.5 h-3.5" />
-                          <span>{paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived" ? "লাইভ করুন" : "আর্কাইভ"}</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleEditExamPaper(paper)}
-                          className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          <span>এডিট</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteExamPaper(paper.id)}
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
-                          title="ডিলেট করুন"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ));
-                })()}
+                  })()}
 
                   {examPapers.length === 0 && (
                     <div className="p-8 text-center text-xs font-bold text-slate-400">
@@ -4663,6 +4587,441 @@ export default function AdminPage() {
                       <Check className="w-4 h-4 stroke-[2.5px]" />
                     )}
                     আপডেট করুন
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 4. EDIT EXAM PAPER MODAL POPUP */}
+        {editingPaperId && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+            <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto text-left space-y-5 relative">
+              <button 
+                type="button"
+                onClick={resetExamPaperForm}
+                className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-500 hover:text-slate-700 rounded-xl transition-all cursor-pointer"
+                title="বন্ধ করুন"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 pr-10">
+                <div className="w-8 h-8 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0">
+                  <Pencil className="w-4 h-4 stroke-[2.5px]" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800 tracking-tight">
+                    প্রশ্ন পত্র এডিট ও আপডেট করুন (Edit Exam Paper)
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    পাবলিশকৃত প্রশ্ন পত্রের সকল তথ্য ও যুক্ত করা প্রশ্ন এখান থেকে আপডেট করুন
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handlePublishExamPaper} className="space-y-4 text-left">
+                {/* Target Section Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                    ১. টার্গেট সেকশন নির্বাচন করুন
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaperCategoryType("our_course");
+                        setPaperCourse(COURSES[0]?.id || "bcs");
+                        setPaperSubSubject("all");
+                      }}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        paperCategoryType === "our_course"
+                          ? "bg-orange-50 border-[#FF6A00] text-[#FF6A00] shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>Our Course (আমাদের কোর্স)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaperCategoryType("prep_hub");
+                        setPaperPrepSubjectId(prepSubjectsList[0]?.id || "Bangla");
+                        setPaperPrepSubSubject("all");
+                      }}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        paperCategoryType === "prep_hub"
+                          ? "bg-purple-50 border-purple-600 text-purple-700 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <GraduationCap className="w-4 h-4" />
+                      <span>Preparation Hub (প্রস্তুতি)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Course / Subject Selector */}
+                  {paperCategoryType === "our_course" ? (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        কোর্স নির্বাচন করুন (Course)
+                      </label>
+                      <select
+                        value={paperCourse}
+                        onChange={(e) => {
+                          setPaperCourse(e.target.value);
+                          setPaperSubSubject("all");
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none"
+                      >
+                        {COURSES.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.id.toUpperCase()})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        বিষয় নির্বাচন করুন (Prep Subject)
+                      </label>
+                      <select
+                        value={paperPrepSubjectId}
+                        onChange={(e) => {
+                          setPaperPrepSubjectId(e.target.value);
+                          setPaperPrepSubSubject("all");
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none"
+                      >
+                        {prepSubjectsList.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.bnName || sub.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Sub Subject Selector */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                      সাব-সাবজেক্ট / বিষয় ক্যাটাগরি
+                    </label>
+                    <select
+                      value={paperCategoryType === "our_course" ? paperSubSubject : paperPrepSubSubject}
+                      onChange={(e) => {
+                        if (paperCategoryType === "our_course") {
+                          setPaperSubSubject(e.target.value);
+                        } else {
+                          setPaperPrepSubSubject(e.target.value);
+                        }
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none"
+                    >
+                      <option value="all">সকল বিষয় (All Topics)</option>
+                      {(
+                        SUB_SUBJECTS_MAP[paperCourse] || 
+                        SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || 
+                        [{ id: "all", name: "সকল বিষয় (All Topics)" }]
+                      ).map((sc) => (
+                        <option key={sc.id} value={sc.id}>
+                          {sc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Exam Type */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                    পরীক্ষার ধরন (Exam Type)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "weekly", label: "সাপ্তাহিক" },
+                      { id: "daily", label: "ডেইলি" },
+                      { id: "subject", label: "বিষয় ভিত্তিক" }
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setPaperExamType(t.id as any)}
+                        className={`py-2.5 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
+                          paperExamType === t.id
+                            ? "bg-[#FF6A00] text-white border-[#FF6A00]"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Title and Topic */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                      পরীক্ষার শিরোনাম (Title)
+                    </label>
+                    <input
+                      type="text"
+                      value={paperTitle}
+                      onChange={(e) => setPaperTitle(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                      পরীক্ষার বিষয়বস্তু/টপিক (Topic)
+                    </label>
+                    <input
+                      type="text"
+                      value={paperTopic}
+                      onChange={(e) => setPaperTopic(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Start & End DateTime Pickers */}
+                <div className="p-4 bg-orange-50/50 border border-orange-100 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-[#FF6A00] uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" />
+                      লাইভ সময়সীমা নির্ধারণ (Start & End Schedule)
+                    </span>
+                    
+                    {/* Live calculated status badge */}
+                    {(() => {
+                      const tempPaper: ExamPaper = {
+                        id: paperStatus,
+                        course: paperCourse,
+                        examType: paperExamType,
+                        title: paperTitle,
+                        topic: paperTopic,
+                        examDate: paperDate,
+                        startDateTime: paperStartDateTime,
+                        endDateTime: paperEndDateTime,
+                        status: paperStatus,
+                        totalDurationSeconds: 1200,
+                        timePerQuestionSeconds: 60,
+                        totalMarks: paperQuestions.length,
+                        questionCount: paperQuestions.length,
+                        questions: paperQuestions
+                      };
+                      const calculatedStatus = getExamStatus(tempPaper);
+                      return (
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${
+                          calculatedStatus === "Live" 
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse" 
+                            : calculatedStatus === "Upcoming"
+                            ? "bg-blue-100 text-blue-800 border border-blue-200"
+                            : "bg-slate-200 text-slate-700"
+                        }`}>
+                          বর্তমান অবস্থা: {calculatedStatus}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold text-slate-500 uppercase block">
+                        শুরুর সময় (Start Date & Time)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={paperStartDateTime}
+                        onChange={(e) => {
+                          setPaperStartDateTime(e.target.value);
+                          setPaperDate(formatDisplayDate(e.target.value));
+                        }}
+                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold text-slate-500 uppercase block">
+                        শেষের সময় (End Date & Time)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={paperEndDateTime}
+                        onChange={(e) => setPaperEndDateTime(e.target.value)}
+                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Target question count capacity */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                    মোট প্রশ্ন সংখ্যা নির্ধারণ (Target Questions: {paperQuestions.length} / {paperTargetCount})
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[10, 20, 50, 100, 200].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setPaperTargetCount(num)}
+                        className={`px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          paperTargetCount === num
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {num} টি
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Question Search & Add Section */}
+                <div className="border border-slate-200/80 rounded-2xl p-3.5 bg-slate-50/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Plus className="w-4 h-4 text-[#FF6A00]" />
+                      প্রশ্ন ব্যাংক থেকে প্রশ্ন যুক্ত করুন
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const remainingNeeded = paperTargetCount - paperQuestions.length;
+                        if (remainingNeeded <= 0) {
+                          alert(`ইতিমধ্যে ${paperTargetCount} টি প্রশ্ন যুক্ত করা হয়েছে!`);
+                          return;
+                        }
+                        const existingIds = new Set(paperQuestions.map(q => q.id));
+                        const available = questions.filter(q => !existingIds.has(q.id));
+                        const toAdd = available.slice(0, remainingNeeded);
+                        if (toAdd.length === 0) {
+                          alert("প্রশ্ন ব্যাংকে যুক্ত করার মতো নতুন আর কোনো প্রশ্ন নেই!");
+                          return;
+                        }
+                        setPaperQuestions(prev => [...prev, ...toAdd]);
+                        triggerNotification("success", `${toAdd.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে যুক্ত হয়েছে!`);
+                      }}
+                      className="px-3 py-1.5 bg-[#FF6A00]/10 hover:bg-[#FF6A00]/20 text-[#FF6A00] rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>অটো ফিল ({paperTargetCount - paperQuestions.length} টি)</span>
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="প্রশ্ন সার্চ করুন..."
+                    value={paperSearchQuery}
+                    onChange={(e) => setPaperSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                  />
+
+                  {/* Filtered questions list */}
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {questions
+                      .filter((q) => {
+                        const qText = (q.questionText || q.question || "").toLowerCase();
+                        return qText.includes(paperSearchQuery.toLowerCase());
+                      })
+                      .slice(0, 15)
+                      .map((q) => {
+                        const isAdded = paperQuestions.some((pq) => pq.id === q.id);
+                        return (
+                          <div
+                            key={q.id}
+                            className="p-2 bg-white border border-slate-100 rounded-xl flex items-center justify-between text-xs font-medium gap-2 hover:border-slate-300"
+                          >
+                            <span className="truncate text-slate-800 font-semibold flex-1">
+                              {q.questionText || q.question}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={isAdded}
+                              onClick={() => {
+                                setPaperQuestions((prev) => [...prev, q]);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 transition-all cursor-pointer ${
+                                isAdded
+                                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                              }`}
+                            >
+                              {isAdded ? "যুক্ত হয়েছে" : "+ যোগ করুন"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Attached questions list */}
+                {paperQuestions.length > 0 && (
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <span className="text-xs font-extrabold text-slate-700 block">
+                      সংযুক্ত প্রশ্নসমূহ ({paperQuestions.length} টি):
+                    </span>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                      {paperQuestions.map((q, idx) => (
+                        <div
+                          key={`${q.id}-${idx}`}
+                          className="p-2 bg-slate-50 border border-slate-200/60 rounded-xl flex items-center justify-between text-xs gap-2"
+                        >
+                          <span className="font-bold text-slate-400 font-mono w-6 shrink-0">
+                            #{idx + 1}
+                          </span>
+                          <span className="truncate text-slate-800 font-semibold flex-1">
+                            {q.questionText || q.question}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaperQuestions((prev) => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="p-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg shrink-0 transition-all cursor-pointer"
+                            title="মুছে ফেলুন"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={resetExamPaperForm}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm px-5 py-3 rounded-2xl active:scale-95 transition-all cursor-pointer"
+                  >
+                    বাতিল করুন
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={dbLoading}
+                    className="bg-[#FF6A00] hover:bg-orange-600 disabled:bg-slate-400 text-white font-black text-xs sm:text-sm px-6 py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/10 cursor-pointer flex items-center gap-2"
+                  >
+                    {dbLoading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4 stroke-[2.5px]" />
+                    )}
+                    <span>প্রশ্ন পত্র আপডেট করুন</span>
                   </button>
                 </div>
               </form>
