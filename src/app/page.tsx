@@ -383,6 +383,7 @@ export default function Home() {
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -1682,7 +1683,7 @@ export default function Home() {
                   if (activeExamSection) {
                     setActiveExamSection(null);
                   } else {
-                    setCurrentScreen("prep-all-subjects");
+                    setCurrentScreen(prepSubjectOrigin || "home");
                   }
                 } else if (currentScreen === "prep-sub-detail") {
                   setDrawerOpen(false);
@@ -1835,6 +1836,7 @@ export default function Home() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button 
               onClick={() => {
+                setDrawerOpen(false);
                 if (currentScreen === "search") {
                   setCurrentScreen(previousScreen || "home");
                 } else {
@@ -1853,6 +1855,7 @@ export default function Home() {
 
             <button 
               onClick={() => {
+                setDrawerOpen(false);
                 if (currentScreen === "notice") {
                   setCurrentScreen(previousScreen || "home");
                 } else {
@@ -1874,6 +1877,7 @@ export default function Home() {
             {isLoggedIn ? (
               <button
                 onClick={() => {
+                  setDrawerOpen(false);
                   if (currentScreen === "profile") {
                     setCurrentScreen(previousScreen && previousScreen !== "profile" ? previousScreen : "home");
                   } else {
@@ -2088,9 +2092,9 @@ export default function Home() {
               </div>
 
               {/* Our Courses Section */}
-              <div className="space-y-2.5 sm:space-y-3.5 pt-2">
+              <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <div className="bg-orange-50/90 border border-orange-200/80 px-3.5 py-1.5 rounded-2xl inline-flex items-center gap-2 shadow-2xs">
+                  <div className="bg-orange-50/90 border border-orange-200/80 px-2.5 py-0.5 rounded-none inline-flex items-center gap-2 shadow-2xs">
                     <h3 className="font-black text-xl sm:text-2xl text-[#FF6A00] tracking-tight">
                       Our Courses
                     </h3>
@@ -2176,9 +2180,9 @@ export default function Home() {
               </div>
 
               {/* Preparation Hub Section */}
-              <div className="space-y-3 pt-4 sm:pt-6">
+              <div className="space-y-2 pt-2 sm:pt-3">
                 <div className="flex items-center justify-between">
-                  <div className="bg-orange-50/90 border border-orange-200/80 px-3.5 py-1.5 rounded-2xl inline-flex items-center gap-2 shadow-2xs">
+                  <div className="bg-orange-50/90 border border-orange-200/80 px-2.5 py-0.5 rounded-none inline-flex items-center gap-2 shadow-2xs">
                     <h3 className="font-black text-xl sm:text-2xl text-[#FF6A00] tracking-tight">
                       Preparation Hub
                     </h3>
@@ -2203,6 +2207,7 @@ export default function Home() {
                         key={subject.id || idx}
                         onClick={() => {
                           setSelectedPrepSubject(subject.name);
+                          setPrepSubjectOrigin("home");
                           setPreviousScreen("home");
                           setCurrentScreen("prep-sub");
                           if (soundEnabled) quizAudio.playClick();
@@ -2223,11 +2228,11 @@ export default function Home() {
 
               {/* Pro Section (Requirement 6) */}
               {appSettings.proSectionActive !== false && (
-                <div className="space-y-3 pt-4 sm:pt-6">
+                <div className="space-y-2 pt-2 sm:pt-3">
                   <div className="flex items-center justify-between">
-                    <div className="bg-orange-50/90 border border-orange-200/80 px-3.5 py-1.5 rounded-2xl inline-flex items-center gap-2 shadow-2xs">
+                    <div className="bg-orange-50/90 border border-orange-200/80 px-2.5 py-0.5 rounded-none inline-flex items-center gap-2 shadow-2xs">
                       <h3 className="font-black text-xl sm:text-2xl text-[#FF6A00] tracking-tight">
-                        Pro Section
+                        Pro Feature
                       </h3>
                     </div>
                     <span className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60">
@@ -2247,6 +2252,7 @@ export default function Home() {
                             onClick={() => {
                               if (soundEnabled) quizAudio.playClick();
                               setSelectedPrepSubject(subject.name);
+                              setPrepSubjectOrigin("home");
                               setPreviousScreen("home");
                               setCurrentScreen("prep-sub");
                             }}
@@ -5835,6 +5841,7 @@ export default function Home() {
           {/* Home Tab */}
           <button
             onClick={() => {
+              setDrawerOpen(false);
               attemptExitQuiz(() => setCurrentScreen("home"));
               if (soundEnabled) quizAudio.playClick();
             }}
@@ -5858,6 +5865,7 @@ export default function Home() {
           {/* Results Tab */}
           <button
             onClick={() => {
+              setDrawerOpen(false);
               attemptExitQuiz(() => setCurrentScreen("tests"));
               if (soundEnabled) quizAudio.playClick();
             }}
@@ -5881,6 +5889,7 @@ export default function Home() {
           {/* Packages Tab */}
           <button
             onClick={() => {
+              setDrawerOpen(false);
               attemptExitQuiz(() => setCurrentScreen("packages"));
               if (soundEnabled) quizAudio.playClick();
             }}
@@ -5904,6 +5913,7 @@ export default function Home() {
           {/* Profile Tab */}
           <button
             onClick={() => {
+              setDrawerOpen(false);
               attemptExitQuiz(() => setCurrentScreen("profile"));
               if (soundEnabled) quizAudio.playClick();
             }}
