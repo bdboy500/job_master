@@ -2094,18 +2094,16 @@ export default function Home() {
               {/* Our Courses Section */}
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <div className="bg-orange-50/90 border border-orange-200/80 px-2.5 py-0.5 rounded-none inline-flex items-center gap-2 shadow-2xs">
-                    <h3 className="font-black text-xl sm:text-2xl text-[#FF6A00] tracking-tight">
-                      Our Courses
-                    </h3>
-                  </div>
+                  <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
+                    Our Courses
+                  </h3>
                   <button 
                     onClick={() => {
                       setPreviousScreen("home");
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs sm:text-sm font-extrabold text-[#FF6A00] hover:underline active:scale-95 transition-all"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all"
                   >
                     সকল কোর্স দেখুন
                   </button>
@@ -2131,7 +2129,7 @@ export default function Home() {
                         <div className={`w-9 h-9 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-5 h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-base sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -2150,20 +2148,20 @@ export default function Home() {
                     <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
                       <Briefcase className="w-4 h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-base sm:text-lg font-extrabold text-white tracking-wide">সকল কোর্স দেখুন</span>
+                    <span className="text-base sm:text-base font-extrabold text-white tracking-wide">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
 
               {/* General Quiz Game Live Banner - Solid Orange Layout (Placed directly below Our Courses) */}
-              <div className="bg-[#FF6A00] rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 my-2 sm:my-3">
+              <div className="bg-[#FF6A00] rounded-2xl p-4 sm:p-4.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 my-2 sm:my-2.5">
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
                   {/* LEFT SIDE: Title and Subtitle */}
-                  <div className="flex flex-col items-start space-y-1 flex-1 min-w-0">
-                    <h3 className="text-xl sm:text-2xl font-black tracking-tight leading-tight text-white">
+                  <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
+                    <h3 className="text-xl sm:text-lg font-black tracking-tight leading-tight text-white">
                       Live Quiz Game
                     </h3>
-                    <p className="text-white/95 text-sm sm:text-base font-extrabold tracking-wide truncate max-w-full">
+                    <p className="text-white/95 text-sm sm:text-xs font-extrabold tracking-wide truncate max-w-full">
                       খেলতে খেলতে শিখুন
                     </p>
                   </div>
@@ -2171,10 +2169,10 @@ export default function Home() {
                   {/* RIGHT SIDE: Start Quiz CTA button */}
                   <button 
                     onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
-                    className="bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-base px-6 py-3 rounded-2xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2 border border-white/80 shrink-0"
+                    className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
                   >
-                    <Zap className="w-5 h-5 text-[#FF4E00] fill-[#FF4E00]" />
-                    <span>Start Quiz</span>
+                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
+                    <span className="font-black">Start Quiz</span>
                   </button>
                 </div>
               </div>
@@ -2182,18 +2180,16 @@ export default function Home() {
               {/* Preparation Hub Section */}
               <div className="space-y-2 pt-2 sm:pt-3">
                 <div className="flex items-center justify-between">
-                  <div className="bg-orange-50/90 border border-orange-200/80 px-2.5 py-0.5 rounded-none inline-flex items-center gap-2 shadow-2xs">
-                    <h3 className="font-black text-xl sm:text-2xl text-[#FF6A00] tracking-tight">
-                      Preparation Hub
-                    </h3>
-                  </div>
+                  <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
+                    Preparation Hub
+                  </h3>
                   <button 
                     onClick={() => {
                       setPreviousScreen("home");
                       setCurrentScreen("prep-all-subjects");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs sm:text-sm font-extrabold text-[#FF6A00] hover:underline active:scale-95 transition-all"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all"
                   >
                     সকল বিষয় দেখুন
                   </button>
@@ -2217,7 +2213,7 @@ export default function Home() {
                         <div className={`w-9 h-9 sm:w-10 sm:h-10 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
                           <SubIcon className="w-5 h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-base sm:text-lg font-extrabold text-[#334155] tracking-wide truncate">
+                        <span className="text-base sm:text-base font-extrabold text-[#334155] tracking-wide truncate">
                           {subject.name}
                         </span>
                       </div>
@@ -2230,11 +2226,9 @@ export default function Home() {
               {appSettings.proSectionActive !== false && (
                 <div className="space-y-2 pt-2 sm:pt-3">
                   <div className="flex items-center justify-between">
-                    <div className="bg-orange-50/90 border border-orange-200/80 px-2.5 py-0.5 rounded-none inline-flex items-center gap-2 shadow-2xs">
-                      <h3 className="font-black text-xl sm:text-2xl text-[#FF6A00] tracking-tight">
-                        Pro Feature
-                      </h3>
-                    </div>
+                    <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
+                      Pro Feature
+                    </h3>
                     <span className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60">
                       Pro Features
                     </span>
