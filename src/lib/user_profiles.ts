@@ -17,34 +17,59 @@ export function generateStudentId(): string {
   return `JM-${randomNum}`;
 }
 
+// In-flight promise cache and memory cache for request deduplication
+const profilePromises = new Map<string, Promise<UserProfile | null>>();
+const profileMemoryCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
+const CACHE_TTL_MS = 10000; // 10 seconds cache for single user profile
+
 export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
-  try {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (error || !data) return null;
-
-    return {
-      id: data.id,
-      email: data.email || "",
-      full_name: data.full_name || data.name || "শিক্ষার্থী",
-      phone_number: data.phone_number || data.phone || "",
-      student_id: data.student_id || data.studentId || `JM-${data.id.substring(0, 6)}`,
-      role: data.role || "Student",
-      status: data.status === "Banned" || data.status === "banned" ? "Banned" : "Active",
-      created_at: data.created_at || new Date().toISOString(),
-      avatar_url: data.avatar_url || "",
-    };
-  } catch (err) {
-    console.error("Error fetching user profile from Supabase:", err);
-    return null;
+  const now = Date.now();
+  const cached = profileMemoryCache.get(userId);
+  if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+    return cached.data;
   }
+
+  if (profilePromises.has(userId)) {
+    return profilePromises.get(userId)!;
+  }
+
+  const promise = (async () => {
+    try {
+      const supabase = getSupabase();
+      if (!supabase) return null;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, phone_number, student_id, role, status, created_at, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      const profile: UserProfile = {
+        id: data.id,
+        email: data.email || "",
+        full_name: data.full_name || (data as any).name || "শিক্ষার্থী",
+        phone_number: data.phone_number || (data as any).phone || "",
+        student_id: data.student_id || (data as any).studentId || `JM-${data.id.substring(0, 6)}`,
+        role: data.role || "Student",
+        status: data.status === "Banned" || data.status === "banned" ? "Banned" : "Active",
+        created_at: data.created_at || new Date().toISOString(),
+        avatar_url: data.avatar_url || "",
+      };
+
+      profileMemoryCache.set(userId, { data: profile, timestamp: Date.now() });
+      return profile;
+    } catch (err) {
+      console.error("Error fetching user profile from Supabase:", err);
+      return null;
+    } finally {
+      profilePromises.delete(userId);
+    }
+  })();
+
+  profilePromises.set(userId, promise);
+  return promise;
 }
 
 export async function upsertUserProfile(profile: UserProfile): Promise<boolean> {
@@ -83,7 +108,7 @@ export async function fetchAllProfilesFromDb(): Promise<UserProfile[]> {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, email, full_name, phone_number, student_id, role, status, created_at, avatar_url")
       .order("created_at", { ascending: false });
 
     if (error || !data) {

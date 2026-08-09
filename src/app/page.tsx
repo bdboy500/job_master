@@ -1139,136 +1139,107 @@ export default function Home() {
     }
   };
 
-  // Fetch BCS Daily Challenge questions on mount
-  useEffect(() => {
-    async function fetchQuestions() {
-      try {
-        setLoading(true);
-        setError(null);
-        const supabase = getSupabase();
-        
-        const { data, error: sbError } = await supabase
-          .from("questions")
-          .select("*");
+  // In-memory cache for questions by subject/key to avoid duplicate fetches
+  const questionsCacheRef = useRef<Record<string, Question[]>>({});
 
-        if (sbError) {
-          throw sbError;
-        }
-
-        if (data && data.length > 0) {
-          const mappedQuestions: Question[] = data.map((q: any) => {
-            let questionText = "Untitled Question";
-            const possibleQuestionKeys = ["questionText", "question_text", "question", "title", "text", "questiontext"];
-            for (const key of possibleQuestionKeys) {
-              if (q[key] !== undefined && q[key] !== null) {
-                questionText = String(q[key]);
-                break;
-              }
-            }
-
-            let rawOptions: any = null;
-            const possibleOptionKeys = ["options", "choices", "answers", "answers_list", "option_list"];
-            for (const key of possibleOptionKeys) {
-              if (q[key] !== undefined && q[key] !== null) {
-                rawOptions = q[key];
-                break;
-              }
-            }
-
-            let options: string[] = [];
-            if (Array.isArray(rawOptions)) {
-              options = rawOptions.map(String);
-            } else if (typeof rawOptions === "string") {
-              try {
-                const parsed = JSON.parse(rawOptions);
-                if (Array.isArray(parsed)) {
-                  options = parsed.map(String);
-                } else if (typeof parsed === "object" && parsed !== null) {
-                  options = Object.values(parsed).map(String);
-                }
-              } catch {
-                options = rawOptions.split(",").map((s: string) => s.trim());
-              }
-            } else if (typeof rawOptions === "object" && rawOptions !== null) {
-              options = Object.values(rawOptions).map(String);
-            } else {
-              options = ["Option 1", "Option 2", "Option 3", "Option 4"];
-            }
-
-            let correctIndexVal: any = undefined;
-            const possibleIndexKeys = [
-              "correctIndex", "correct_index", "correctOptionIndex", "correct_option_index",
-              "correctoptionindex", "correct_option", "correctoption", "correct", "answer",
-              "answer_index", "answerindex"
-            ];
-            for (const key of possibleIndexKeys) {
-              if (q[key] !== undefined && q[key] !== null) {
-                correctIndexVal = q[key];
-                break;
-              }
-            }
-
-            let correctIndex = 0;
-            if (correctIndexVal !== undefined && correctIndexVal !== null) {
-              if (typeof correctIndexVal === "string") {
-                const parsedNum = parseInt(correctIndexVal, 10);
-                if (!isNaN(parsedNum) && parsedNum >= 0 && parsedNum < options.length) {
-                  correctIndex = parsedNum;
-                } else {
-                  const foundIdx = options.findIndex(opt => opt.toLowerCase().trim() === correctIndexVal.toLowerCase().trim());
-                  if (foundIdx !== -1) {
-                    correctIndex = foundIdx;
-                  }
-                }
-              } else if (typeof correctIndexVal === "number") {
-                correctIndex = correctIndexVal;
-              }
-            }
-
-            let id = Date.now();
-            if (q.id !== undefined && q.id !== null) {
-              id = Number(q.id);
-            }
-
-            let subjectVal: string | undefined = undefined;
-            const possibleSubjectKeys = ["subject", "subject_name", "category", "topic", "subjectName", "subject_title"];
-            for (const key of possibleSubjectKeys) {
-              if (q[key] !== undefined && q[key] !== null) {
-                subjectVal = String(q[key]);
-                break;
-              }
-            }
-
-            return {
-              id,
-              question: questionText,
-              options,
-              correctIndex,
-              subject: subjectVal
-            };
-          });
-
-          mappedQuestions.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
-          setAllRawQuestions(mappedQuestions);
-          setQuestions(mappedQuestions);
-          setIsUsingFallback(false);
-        } else {
-          setAllRawQuestions(QUIZ_QUESTIONS);
-          setQuestions(QUIZ_QUESTIONS);
-          setIsUsingFallback(true);
-        }
-      } catch (err: any) {
-        console.warn("Falling back to local quiz questions:", err);
-        setError(err.message || "Failed to load questions from database.");
-        setAllRawQuestions(QUIZ_QUESTIONS);
-        setQuestions(QUIZ_QUESTIONS);
-        setIsUsingFallback(true);
-      } finally {
-        setLoading(false);
-      }
+  // On-demand questions fetcher with local caching and explicit column selection
+  const fetchQuestionsOnDemand = useCallback(async (subjectKey: string = "all"): Promise<Question[]> => {
+    // 1. Check in-memory cache
+    if (questionsCacheRef.current[subjectKey] && questionsCacheRef.current[subjectKey].length > 0) {
+      return questionsCacheRef.current[subjectKey];
     }
 
-    fetchQuestions();
+    // 2. Check Session Storage cache
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem(`jobmaster_questions_${subjectKey}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            questionsCacheRef.current[subjectKey] = parsed;
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Fetch from Supabase with explicit column selection
+    try {
+      const supabase = getSupabase();
+      if (!supabase) return QUIZ_QUESTIONS;
+
+      let query = supabase
+        .from("questions")
+        .select("id, questionText, question_text, question, title, text, options, choices, answers, option_list, correctOptionIndex, correct_option_index, correctIndex, explanation, subject, subject_name, subjectName")
+        .limit(30);
+
+      if (subjectKey !== "all" && subjectKey.trim() !== "") {
+        query = query.or(`subject.ilike.%${subjectKey}%,subjectName.ilike.%${subjectKey}%,subject_name.ilike.%${subjectKey}%`);
+      }
+
+      const { data, error: sbError } = await query;
+      if (sbError || !data || data.length === 0) {
+        return QUIZ_QUESTIONS;
+      }
+
+      const mappedQuestions: Question[] = data.map((q: any) => {
+        let questionText = "Untitled Question";
+        const possibleQuestionKeys = ["questionText", "question_text", "question", "title", "text"];
+        for (const key of possibleQuestionKeys) {
+          if (q[key] !== undefined && q[key] !== null) {
+            questionText = String(q[key]);
+            break;
+          }
+        }
+
+        let rawOptions: any = q.options || q.choices || q.answers || q.option_list;
+        let options: string[] = [];
+        if (Array.isArray(rawOptions)) {
+          options = rawOptions.map(String);
+        } else if (typeof rawOptions === "string") {
+          try {
+            const parsed = JSON.parse(rawOptions);
+            if (Array.isArray(parsed)) options = parsed.map(String);
+          } catch {
+            options = rawOptions.split(",").map((s: string) => s.trim());
+          }
+        } else {
+          options = ["Option 1", "Option 2", "Option 3", "Option 4"];
+        }
+
+        let correctIndex = Number(q.correctIndex ?? q.correct_index ?? q.correctOptionIndex ?? q.correct_option_index ?? 0);
+        if (isNaN(correctIndex) || correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
+
+        return {
+          id: Number(q.id) || Date.now(),
+          question: questionText,
+          options,
+          correctIndex,
+          subject: q.subject || q.subjectName || q.subject_name
+        };
+      });
+
+      // Cache result
+      questionsCacheRef.current[subjectKey] = mappedQuestions;
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(`jobmaster_questions_${subjectKey}`, JSON.stringify(mappedQuestions));
+        } catch (e) {}
+      }
+
+      return mappedQuestions;
+    } catch (err) {
+      return QUIZ_QUESTIONS;
+    }
+  }, []);
+
+  // No question fetching on mount! Use default initial state to save Egress
+  useEffect(() => {
+    setLoading(false);
+    setError(null);
+    setAllRawQuestions(QUIZ_QUESTIONS);
+    setQuestions(QUIZ_QUESTIONS);
+    setIsUsingFallback(false);
   }, []);
 
   // Countdown timer logic
@@ -1291,7 +1262,7 @@ export default function Home() {
 
   // Handle start quiz action (Sets screen to 'quiz' and resets statistics)
   const startQuizFlow = (title: string, subtitle: string, customQuestionSet?: Question[]) => {
-    executeWithAuth(() => {
+    executeWithAuth(async () => {
       setActiveQuizTitle(title);
       setActiveQuizSubtitle(subtitle);
       
@@ -1299,7 +1270,8 @@ export default function Home() {
       if (customQuestionSet && customQuestionSet.length > 0) {
         pool = customQuestionSet;
       } else {
-        pool = allRawQuestions.length > 0 ? allRawQuestions : QUIZ_QUESTIONS;
+        const fetched = await fetchQuestionsOnDemand(title);
+        pool = fetched.length > 0 ? fetched : QUIZ_QUESTIONS;
       }
 
       if (title === "Live Quiz Game") {

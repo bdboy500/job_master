@@ -19,7 +19,7 @@ export async function GET() {
         // Query users profiles if exists
         const { count: userCount, error: userErr } = await supabase
           .from("profiles")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
         if (!userErr && userCount !== null && userCount > 0) {
           totalRegisteredUsers = userCount;
@@ -28,7 +28,7 @@ export async function GET() {
         // Query exam papers count
         const { count: examCount, error: examErr } = await supabase
           .from("exam_papers")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
         if (!examErr && examCount !== null && examCount > 0) {
           totalExamsCount = examCount;
@@ -37,7 +37,7 @@ export async function GET() {
         // Query questions count
         const { count: qCount, error: qErr } = await supabase
           .from("questions")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
         if (!qErr && qCount !== null && qCount > 0) {
           totalQuestionsCount = qCount;

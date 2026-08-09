@@ -112,93 +112,65 @@ export function getCachedPackages(): PackageItem[] {
   return DEFAULT_PACKAGES;
 }
 
+let packagesInFlightPromise: Promise<PackageItem[]> | null = null;
+let packagesMemoryCache: PackageItem[] | null = null;
+
 export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
-  // 1. Primary: Try Supabase Server
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("packages")
-        .select("*")
-        .order("order", { ascending: true });
+  if (packagesMemoryCache && packagesMemoryCache.length > 0) {
+    return packagesMemoryCache;
+  }
 
-      if (!error && data && data.length > 0) {
-        const mappedData: PackageItem[] = data.map((item: any) => ({
-          id: String(item.id),
-          title: String(item.title || ""),
-          desc: String(item.desc || ""),
-          price: String(item.price || ""),
-          oldPrice: item.oldPrice ?? item.oldprice ?? null,
-          badge: item.badge || null,
-          category: item.category === "course" ? "course" : "all",
-          bg: item.bg || "bg-white",
-          border: item.border || "border-slate-200/80",
-          order: Number(item.order) || 1,
-          active: item.active !== false
-        }));
+  if (packagesInFlightPromise) {
+    return packagesInFlightPromise;
+  }
 
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(mappedData));
-        }
-        return mappedData;
-      } else if (!error && data && data.length === 0) {
-        // Table exists in Supabase, but is empty (0 rows).
-        // Auto-seed current local or default packages to Supabase so it's populated!
-        let localPkgs: PackageItem[] | null = null;
-        if (typeof window !== "undefined") {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed) && parsed.length > 0) localPkgs = parsed;
-            } catch (e) {}
+  packagesInFlightPromise = (async () => {
+    try {
+      // 1. Primary: Try Supabase Server
+      try {
+        const supabase = getSupabase();
+        if (supabase) {
+          const { data, error } = await supabase
+            .from("packages")
+            .select("id, title, desc, price, oldPrice, oldprice, badge, category, bg, border, order, active")
+            .order("order", { ascending: true });
+
+          if (!error && data && data.length > 0) {
+            const mappedData: PackageItem[] = data.map((item: any) => ({
+              id: String(item.id),
+              title: String(item.title || ""),
+              desc: String(item.desc || ""),
+              price: String(item.price || ""),
+              oldPrice: item.oldPrice ?? item.oldprice ?? null,
+              badge: item.badge || null,
+              category: item.category === "course" ? "course" : "all",
+              bg: item.bg || "bg-white",
+              border: item.border || "border-slate-200/80",
+              order: Number(item.order) || 1,
+              active: item.active !== false
+            }));
+
+            if (typeof window !== "undefined") {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(mappedData));
+            }
+            packagesMemoryCache = mappedData;
+            return mappedData;
           }
         }
-        const pkgsToSeed = localPkgs || DEFAULT_PACKAGES;
-        console.log("Supabase packages table is empty. Auto-seeding packages to Supabase server...");
-        syncAllPackagesToSupabase(pkgsToSeed).catch(e => console.warn("Auto-seed error:", e));
-        return pkgsToSeed;
-      } else if (error) {
-        console.warn("Supabase packages fetch error:", error);
+      } catch (err) {
+        console.warn("Supabase packages query exception:", err);
       }
-    }
-  } catch (err) {
-    console.warn("Supabase packages fetch exception:", err);
-  }
 
-  // 2. Secondary: Try Cloud Store KV
-  try {
-    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-        return data as PackageItem[];
-      }
+      // 2. Secondary: Fallback to LocalStorage / Defaults
+      const cached = getCachedPackages();
+      packagesMemoryCache = cached;
+      return cached;
+    } finally {
+      packagesInFlightPromise = null;
     }
-  } catch (err) {
-    console.warn("Cloud packages fetch warning:", err);
-  }
+  })();
 
-  // 3. Fallback: LocalStorage / Defaults
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error("Error parsing stored packages:", e);
-      }
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PACKAGES));
-  }
-
-  return DEFAULT_PACKAGES;
+  return packagesInFlightPromise;
 }
 
 export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Promise<{ success: boolean; message: string }> {

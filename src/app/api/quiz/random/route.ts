@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const limit = limitParam ? parseInt(limitParam, 10) : 10;
 
     const supabase = getSupabase();
-    let query = supabase.from("questions").select("*");
+    let query = supabase.from("questions").select("id, question, questionText, question_text, title, text, options, choices, answers, option_list, correctOptionIndex, correct_option_index, correctIndex, subjectName, subject_name, explanation");
 
     if (subject) {
       // Support filtering by subject

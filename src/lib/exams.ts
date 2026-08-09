@@ -171,27 +171,39 @@ export function getCachedExamPapers(): ExamPaper[] {
   return DEFAULT_EXAM_PAPERS;
 }
 
+let examPapersInFlightPromise: Promise<ExamPaper[]> | null = null;
+let examPapersMemoryCache: ExamPaper[] | null = null;
+
 export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
-  let localPapers: ExamPaper[] = [];
-  if (typeof window !== "undefined") {
-    const cached = localStorage.getItem("job_master_exam_papers");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          localPapers = parsed;
-        }
-      } catch (e) {
-        console.error("Failed parsing cached exam papers:", e);
-      }
-    }
+  if (examPapersMemoryCache && examPapersMemoryCache.length > 0) {
+    return examPapersMemoryCache;
   }
 
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      // Race Supabase select with a 2500ms timeout to prevent hanging on desktop/slow networks
-      const supabasePromise = supabase.from("exam_papers").select("*");
+  if (examPapersInFlightPromise) {
+    return examPapersInFlightPromise;
+  }
+
+  examPapersInFlightPromise = (async () => {
+    let localPapers: ExamPaper[] = [];
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("job_master_exam_papers");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localPapers = parsed;
+          }
+        } catch (e) {
+          console.error("Failed parsing cached exam papers:", e);
+        }
+      }
+    }
+
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        // Race Supabase select with a 2500ms timeout to prevent hanging on desktop/slow networks
+        const supabasePromise = supabase.from("exam_papers").select("id, title, course, subSubject, sub_subject, categoryType, category_type, examType, exam_type, subject, questionCount, question_count, timePerQuestionSeconds, time_per_question, totalDurationSeconds, total_duration, totalMarks, total_marks, topic, examDate, exam_date, startDateTime, start_date_time, endDateTime, end_date_time, status, questions, createdAt, created_at, updatedAt, updated_at");
       const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
         setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
       );
@@ -271,11 +283,14 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
         if (typeof window !== "undefined") {
           localStorage.setItem("job_master_exam_papers", JSON.stringify(parsedSupabaseData));
         }
+        examPapersMemoryCache = parsedSupabaseData;
         return parsedSupabaseData;
       }
     }
   } catch (err) {
     console.warn("Falling back to local exam papers:", err);
+  } finally {
+    examPapersInFlightPromise = null;
   }
 
   if (localPapers && localPapers.length > 0) {
@@ -284,13 +299,18 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
       const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
       return timeB - timeA;
     });
+    examPapersMemoryCache = localPapers;
     return localPapers;
   }
 
   if (typeof window !== "undefined") {
     localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
   }
+  examPapersMemoryCache = DEFAULT_EXAM_PAPERS;
   return DEFAULT_EXAM_PAPERS;
+})();
+
+  return examPapersInFlightPromise;
 }
 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {

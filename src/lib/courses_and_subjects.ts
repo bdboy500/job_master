@@ -364,54 +364,68 @@ export function getCachedPrepSubjects(): PrepSubjectItem[] {
   return DEFAULT_PREP_SUBJECTS;
 }
 
+let coursesInFlightPromise: Promise<CourseItem[]> | null = null;
+let prepSubjectsInFlightPromise: Promise<PrepSubjectItem[]> | null = null;
+let proSectionInFlightPromise: Promise<ProSectionItem[]> | null = null;
+
 // Global fetcher & sync methods for Courses
 export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
-  // 1. Try Server API Route (/api/courses)
-  try {
-    const res = await fetch("/api/courses", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      const courses: CourseItem[] = data.courses || [];
-      const source = data.source;
+  if (coursesInFlightPromise) return coursesInFlightPromise;
 
-      // Fail-safe: If server returned default fallback, but client has custom edited data in localStorage, preserve client's custom data and sync to server
-      if (source === "default" && typeof window !== "undefined") {
-        const localCached = getCachedCourses();
-        if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_COURSES)) {
-          // Re-sync local custom data to server
-          fetch("/api/courses", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(localCached)
-          }).catch(() => {});
-          return localCached;
+  coursesInFlightPromise = (async () => {
+    try {
+      // 1. Try Server API Route (/api/courses)
+      try {
+        const res = await fetch("/api/courses");
+        if (res.ok) {
+          const data = await res.json();
+          const courses: CourseItem[] = data.courses || [];
+          const source = data.source;
+
+          // Fail-safe: If server returned default fallback, but client has custom edited data in localStorage, preserve client's custom data and sync to server
+          if (source === "default" && typeof window !== "undefined") {
+            const localCached = getCachedCourses();
+            if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_COURSES)) {
+              // Re-sync local custom data to server
+              fetch("/api/courses", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(localCached)
+              }).catch(() => {});
+              return localCached;
+            }
+          }
+
+          if (source !== "default" && Array.isArray(courses)) {
+            const cleanCourses = sanitizeCourseSubSubjects(courses);
+            cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+            if (typeof window !== "undefined") {
+              localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
+            }
+            return cleanCourses;
+          }
+
+          if (Array.isArray(courses) && courses.length > 0) {
+            const cleanCourses = sanitizeCourseSubSubjects(courses);
+            cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+            if (typeof window !== "undefined") {
+              localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
+            }
+            return cleanCourses;
+          }
         }
+      } catch (e) {
+        console.warn("API courses fetch note:", e);
       }
 
-      if (source !== "default" && Array.isArray(courses)) {
-        const cleanCourses = sanitizeCourseSubSubjects(courses);
-        cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
-        }
-        return cleanCourses;
-      }
-
-      if (Array.isArray(courses) && courses.length > 0) {
-        const cleanCourses = sanitizeCourseSubSubjects(courses);
-        cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
-        }
-        return cleanCourses;
-      }
+      // 2. Fallback to Local Storage / Default
+      return getCachedCourses();
+    } finally {
+      coursesInFlightPromise = null;
     }
-  } catch (e) {
-    console.warn("API courses fetch note:", e);
-  }
+  })();
 
-  // 2. Fallback to Local Storage / Default
-  return getCachedCourses();
+  return coursesInFlightPromise;
 }
 
 export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem[]> {
@@ -484,52 +498,59 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
 
 // Global fetcher & sync methods for Prep Subjects
 export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
-  // 1. Try Server API Route (/api/prep-subjects)
-  try {
-    const res = await fetch("/api/prep-subjects", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      const prepSubjects: PrepSubjectItem[] = data.prepSubjects || [];
-      const source = data.source;
+  if (prepSubjectsInFlightPromise) return prepSubjectsInFlightPromise;
 
-      // Fail-safe: If server returned default fallback, but client has custom edited data in localStorage, preserve client's custom data and sync to server
-      if (source === "default" && typeof window !== "undefined") {
-        const localCached = getCachedPrepSubjects();
-        if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_PREP_SUBJECTS)) {
-          // Re-sync local custom data to server
-          fetch("/api/prep-subjects", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(localCached)
-          }).catch(() => {});
-          return localCached;
+  prepSubjectsInFlightPromise = (async () => {
+    try {
+      // 1. Try Server API Route (/api/prep-subjects)
+      try {
+        const res = await fetch("/api/prep-subjects");
+        if (res.ok) {
+          const data = await res.json();
+          const prepSubjects: PrepSubjectItem[] = data.prepSubjects || [];
+          const source = data.source;
+
+          if (source === "default" && typeof window !== "undefined") {
+            const localCached = getCachedPrepSubjects();
+            if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_PREP_SUBJECTS)) {
+              fetch("/api/prep-subjects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(localCached)
+              }).catch(() => {});
+              return localCached;
+            }
+          }
+
+          if (source !== "default" && Array.isArray(prepSubjects)) {
+            const cleanPrep = sanitizeSubSubjects(prepSubjects);
+            cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+            if (typeof window !== "undefined") {
+              localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
+            }
+            return cleanPrep;
+          }
+
+          if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
+            const cleanPrep = sanitizeSubSubjects(prepSubjects);
+            cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+            if (typeof window !== "undefined") {
+              localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
+            }
+            return cleanPrep;
+          }
         }
+      } catch (e) {
+        console.warn("API prep-subjects fetch note:", e);
       }
 
-      if (source !== "default" && Array.isArray(prepSubjects)) {
-        const cleanPrep = sanitizeSubSubjects(prepSubjects);
-        cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
-        }
-        return cleanPrep;
-      }
-
-      if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
-        const cleanPrep = sanitizeSubSubjects(prepSubjects);
-        cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
-        }
-        return cleanPrep;
-      }
+      return getCachedPrepSubjects();
+    } finally {
+      prepSubjectsInFlightPromise = null;
     }
-  } catch (e) {
-    console.warn("API prep-subjects fetch note:", e);
-  }
+  })();
 
-  // 2. Fallback to Local Storage / Default
-  return getCachedPrepSubjects();
+  return prepSubjectsInFlightPromise;
 }
 
 export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Promise<PrepSubjectItem[]> {
@@ -614,21 +635,29 @@ export function getCachedProSection(): ProSectionItem[] {
 }
 
 export async function fetchProSectionFromDb(): Promise<ProSectionItem[]> {
-  try {
-    const res = await fetch("/api/pro-section", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      const items: ProSectionItem[] = data.proSection || [];
-      if (Array.isArray(items) && items.length > 0) {
-        items.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-        if (typeof window !== "undefined") {
-          localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(items));
+  if (proSectionInFlightPromise) return proSectionInFlightPromise;
+
+  proSectionInFlightPromise = (async () => {
+    try {
+      const res = await fetch("/api/pro-section");
+      if (res.ok) {
+        const data = await res.json();
+        const items: ProSectionItem[] = data.proSection || [];
+        if (Array.isArray(items) && items.length > 0) {
+          items.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+          if (typeof window !== "undefined") {
+            localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(items));
+          }
+          return items;
         }
-        return items;
       }
+    } catch (e) {} finally {
+      proSectionInFlightPromise = null;
     }
-  } catch (e) {}
-  return getCachedProSection();
+    return getCachedProSection();
+  })();
+
+  return proSectionInFlightPromise;
 }
 
 export async function saveProSectionToDb(items: ProSectionItem[]): Promise<ProSectionItem[]> {

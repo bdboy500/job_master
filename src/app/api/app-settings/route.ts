@@ -9,7 +9,7 @@ export async function GET() {
     if (supabase) {
       const { data, error } = await supabase
         .from("app_config")
-        .select("*")
+        .select("key, value")
         .eq("key", "home_display_settings")
         .maybeSingle();
 

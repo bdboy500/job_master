@@ -74,7 +74,7 @@ export async function GET() {
       if (supabase) {
         const { data, error } = await supabase
           .from("app_courses")
-          .select("*")
+          .select("id, name, title, desc, category, icon, bg, iconColor, icon_color, serial, subSubjects, sub_subjects, active")
           .order("serial", { ascending: true });
 
         if (!error && data && data.length > 0) {

@@ -69,12 +69,12 @@ export default function AdminDashboardPage() {
 
       try {
         const supabase = getSupabase();
-        const { count: qCount } = await supabase.from("questions").select("*", { count: "exact", head: true });
+        const { count: qCount } = await supabase.from("questions").select("id", { count: "exact", head: true });
         if (qCount !== null && qCount !== undefined && qCount > 0) {
           questionCount = qCount;
         }
 
-        const { count: uCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
+        const { count: uCount } = await supabase.from("profiles").select("id", { count: "exact", head: true });
         if (uCount !== null && uCount !== undefined && uCount > 0) {
           userCount = uCount;
         }
