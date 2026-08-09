@@ -3226,7 +3226,7 @@ export default function AdminPage() {
                                   <span className="text-xs font-black text-slate-800 group-hover:text-[#FF6A00] truncate">
                                     {sug.full_name || "শিক্ষার্থী"}
                                   </span>
-                                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
+                                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded whitespace-nowrap">
                                     {sug.student_id || `JM-${sug.id.substring(0,6)}`}
                                   </span>
                                 </div>
@@ -3253,7 +3253,7 @@ export default function AdminPage() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50/60 border-b border-slate-100">
-                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-24">স্টুডেন্ট ID</th>
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-36 whitespace-nowrap">স্টুডেন্ট ID</th>
                         <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">ইউজারের নাম ও ইমেইল</th>
                         <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider w-32">মোবাইল নম্বর</th>
                         <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider w-28 text-center">ভূমিকা</th>
@@ -3287,8 +3287,8 @@ export default function AdminPage() {
 
                         return list.map((user) => (
                           <tr key={user.id} className="hover:bg-slate-50/40 transition-all">
-                            <td className="p-3.5 text-xs font-mono font-bold text-slate-600 text-center">
-                              <span className="bg-slate-100 px-2 py-1 rounded-md border border-slate-200/80">
+                            <td className="p-3.5 text-xs font-mono font-bold text-slate-700 text-center whitespace-nowrap">
+                              <span className="inline-block bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200/80 whitespace-nowrap shadow-2xs">
                                 {user.student_id || `JM-${user.id.substring(0, 6)}`}
                               </span>
                             </td>
