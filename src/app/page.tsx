@@ -666,7 +666,30 @@ export default function Home() {
         setProfileId(profile.student_id || generateStudentId());
         localStorage.setItem("job_master_current_user", JSON.stringify(profile));
 
-        // Auto redirect to Model Test / Exam option if coming from pending intent
+        // Auto redirect to Model Test / Exam option if coming from pending intent or pending paper
+        const pendingPaperId = localStorage.getItem("job_master_pending_paper_id");
+        if (pendingPaperId) {
+          localStorage.removeItem("job_master_pending_paper_id");
+          localStorage.removeItem("job_master_pending_intent");
+          
+          let paper = examPapers.find(p => p.id === pendingPaperId);
+          if (!paper) {
+            try {
+              const allPapers = await fetchExamPapersFromDb();
+              if (allPapers && allPapers.length > 0) {
+                setExamPapers(allPapers);
+                paper = allPapers.find(p => p.id === pendingPaperId);
+              }
+            } catch (e) {
+              console.error("Failed to fetch papers for pending exam redirect", e);
+            }
+          }
+          if (paper) {
+            handleOpenTakeExamDirectly(paper);
+            return;
+          }
+        }
+
         const pendingIntent = localStorage.getItem("job_master_pending_intent");
         if (pendingIntent) {
           localStorage.removeItem("job_master_pending_intent");
@@ -978,43 +1001,52 @@ export default function Home() {
   };
 
   // Auth Protection Gatekeeper for Exams & Quizzes
-  const executeWithAuth = (action: () => void, intentType: string = "exams") => {
+  const executeWithAuth = (action: () => void, intentType: string = "exams", paperId?: string) => {
     if (isLoggedIn && currentUser && currentUser.status !== "Banned") {
       action();
     } else if (currentUser && currentUser.status === "Banned") {
       alert("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক সাময়িকভাবে নিষিদ্ধ করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।");
     } else {
       localStorage.setItem("job_master_pending_intent", intentType);
+      if (paperId) {
+        localStorage.setItem("job_master_pending_paper_id", paperId);
+      }
       setPendingExamAction(() => action);
       setAuthModalMode("signin");
       setShowAuthModal(true);
     }
   };
 
+  const handleOpenTakeExamDirectly = (paper: ExamPaper) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("job_master_pending_paper_id");
+      localStorage.removeItem("job_master_pending_intent");
+    }
+    const currentStatus = getExamStatus(paper);
+    if (currentStatus === "Upcoming") {
+      const startTimeFormatted = paper.startDateTime 
+        ? new Date(paper.startDateTime).toLocaleString("bn-BD", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
+        : paper.examDate;
+      alert(`⏳ পরীক্ষাটি এখনো শুরু হয়নি!\n\nপরীক্ষা শুরুর সময়:\n${startTimeFormatted}\n\nনির্ধারিত সময় শুরু হলেই আপনি লাইভ পরীক্ষায় অংশ নিতে পারবেন।`);
+      return;
+    }
+
+    const duration = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
+    setTakingExamModal(paper);
+    setExamUserAnswers({});
+    setExamSubmitted(false);
+    setExamResultSummary(null);
+    setExamInitialTime(duration);
+    setExamTimer(duration);
+    setShowExamNoticeAlert(true);
+    setExamQuestionsDrawerOpen(false);
+    setShowExamSubmitConfirmModal(false);
+    if (soundEnabled) quizAudio.playClick();
+  };
+
   // Exam Paper Handlers
   const handleOpenTakeExam = (paper: ExamPaper) => {
-    executeWithAuth(() => {
-      const currentStatus = getExamStatus(paper);
-      if (currentStatus === "Upcoming") {
-        const startTimeFormatted = paper.startDateTime 
-          ? new Date(paper.startDateTime).toLocaleString("bn-BD", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
-          : paper.examDate;
-        alert(`⏳ পরীক্ষাটি এখনো শুরু হয়নি!\n\nপরীক্ষা শুরুর সময়:\n${startTimeFormatted}\n\nনির্ধারিত সময় শুরু হলেই আপনি লাইভ পরীক্ষায় অংশ নিতে পারবেন।`);
-        return;
-      }
-
-      const duration = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
-      setTakingExamModal(paper);
-      setExamUserAnswers({});
-      setExamSubmitted(false);
-      setExamResultSummary(null);
-      setExamInitialTime(duration);
-      setExamTimer(duration);
-      setShowExamNoticeAlert(true);
-      setExamQuestionsDrawerOpen(false);
-      setShowExamSubmitConfirmModal(false);
-      if (soundEnabled) quizAudio.playClick();
-    });
+    executeWithAuth(() => handleOpenTakeExamDirectly(paper), "exams", paper.id);
   };
 
   const handleOpenViewPaper = (paper: ExamPaper) => {
@@ -1427,6 +1459,21 @@ export default function Home() {
     localStorage.setItem("job_master_current_user", JSON.stringify(profile));
 
     setShowAuthModal(false);
+
+    // If user clicked an exam before logging in, trigger direct exam now
+    const pendingPaperId = localStorage.getItem("job_master_pending_paper_id");
+    if (pendingPaperId) {
+      localStorage.removeItem("job_master_pending_paper_id");
+      localStorage.removeItem("job_master_pending_intent");
+      setPendingExamAction(null);
+      const paper = examPapers.find(p => p.id === pendingPaperId);
+      if (paper) {
+        setTimeout(() => {
+          handleOpenTakeExamDirectly(paper);
+        }, 150);
+        return;
+      }
+    }
 
     // If user clicked an exam or quiz before logging in, trigger action now
     if (pendingExamAction) {
@@ -5278,20 +5325,26 @@ export default function Home() {
 
             {/* Profile Avatar inside Drawer */}
             <div className="flex items-center gap-3 mt-2">
-              <div className="w-12 h-12 rounded-full bg-white text-[#FF4E00] font-black text-xl flex items-center justify-center shadow-inner">
-                {isLoggedIn ? "M" : "G"}
+              <div className="w-12 h-12 rounded-full bg-white text-[#FF4E00] font-black text-xl flex items-center justify-center shadow-inner overflow-hidden shrink-0">
+                {isLoggedIn && profileAvatarUrl ? (
+                  <img src={profileAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : isLoggedIn ? (
+                  (profileName || "S").charAt(0).toUpperCase()
+                ) : (
+                  "G"
+                )}
               </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-sm tracking-tight leading-tight">
-                  {isLoggedIn ? "mobileseba247" : "Guest User"}
+              <div className="flex flex-col min-w-0">
+                <span className="font-extrabold text-sm tracking-tight leading-tight truncate">
+                  {isLoggedIn ? (profileName || currentUser?.full_name || "শিক্ষার্থী") : "Guest User"}
                 </span>
-                <span className="text-[10px] text-white/80 font-semibold">
-                  {isLoggedIn ? "mobileseba247@gmail.com" : "guest@jobmaster.com"}
+                <span className="text-[10px] text-white/80 font-semibold truncate">
+                  {isLoggedIn ? (profileEmail || currentUser?.email || "") : "guest@jobmaster.com"}
                 </span>
                 <span className={`inline-block text-[8px] font-black w-max px-1.5 py-0.5 rounded uppercase mt-1 ${
                   isLoggedIn ? "bg-white/25 text-white" : "bg-black/20 text-white/70"
                 }`}>
-                  {isLoggedIn ? "Premium Member" : "Guest Account"}
+                  {isLoggedIn ? "Registered Student" : "Guest Account"}
                 </span>
               </div>
             </div>
@@ -5386,15 +5439,16 @@ export default function Home() {
             {/* 9. Logout/LogIn */}
             <button
               onClick={() => {
-                const nextState = !isLoggedIn;
-                setIsLoggedIn(nextState);
                 setDrawerOpen(false);
-                if (soundEnabled) {
-                  if (nextState) quizAudio.playSuccess();
-                  else quizAudio.playError();
+                if (isLoggedIn) {
+                  handleSignOut();
+                } else {
+                  setAuthModalMode("signin");
+                  setShowAuthModal(true);
+                  if (soundEnabled) quizAudio.playClick();
                 }
               }}
-              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all font-black text-base sm:text-lg mt-2 border-t border-slate-200/80 pt-4 ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all font-black text-base sm:text-lg mt-2 border-t border-slate-200/80 pt-4 cursor-pointer ${
                 isLoggedIn ? "text-red-600 hover:bg-red-50" : "text-[#FF6A00] hover:bg-orange-50"
               }`}
               id="drawer-item-auth"
