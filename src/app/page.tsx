@@ -75,7 +75,7 @@ import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import { recordVisit } from "../lib/visitors";
 import AuthModal from "../components/AuthModal";
-import { UserProfile, fetchUserProfile, generateStudentId } from "../lib/user_profiles";
+import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 
 // Type definition for routine items
 interface RoutineItem {
@@ -629,50 +629,66 @@ export default function Home() {
       }
 
       // Sync Supabase Auth Session
+      const syncUserFromSession = async (session: any) => {
+        if (!session?.user) return;
+        const user = session.user;
+
+        let profile = await fetchUserProfile(user.id);
+        if (!profile) {
+          // Auto create profile from OAuth metadata if DB row isn't fetched yet
+          profile = {
+            id: user.id,
+            email: user.email || "",
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "শিক্ষার্থী",
+            phone_number: user.user_metadata?.phone_number || "",
+            student_id: user.user_metadata?.student_id || generateStudentId(),
+            role: "Student",
+            status: "Active",
+          };
+          await upsertUserProfile(profile);
+        }
+
+        if (profile.status === "Banned") {
+          alert("আপনার অ্যাকাউন্টটি স্থগিত/নিষিদ্ধ করা হয়েছে।");
+          localStorage.removeItem("job_master_current_user");
+          const supabase = getSupabase();
+          if (supabase) await supabase.auth.signOut();
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+          return;
+        }
+
+        setCurrentUser(profile);
+        setIsLoggedIn(true);
+        setProfileName(profile.full_name || user.email?.split("@")[0] || "শিক্ষার্থী");
+        setProfileEmail(profile.email || user.email || "");
+        setProfilePhone(profile.phone_number || "");
+        setProfileId(profile.student_id || generateStudentId());
+        localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+
+        // Auto redirect to Model Test / Exam option if coming from pending intent
+        const pendingIntent = localStorage.getItem("job_master_pending_intent");
+        if (pendingIntent) {
+          localStorage.removeItem("job_master_pending_intent");
+          if (pendingIntent === "exams" || pendingIntent === "all-live-exams" || pendingIntent === "model_test") {
+            setCurrentScreen("all-live-exams");
+          } else if (pendingIntent === "live_quiz" || pendingIntent === "quiz") {
+            setCurrentScreen("quiz");
+          }
+        }
+      };
+
       const supabase = getSupabase();
       if (supabase) {
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
           if (session?.user) {
-            const profile = await fetchUserProfile(session.user.id);
-            if (profile) {
-              if (profile.status === "Banned") {
-                localStorage.removeItem("job_master_current_user");
-                supabase.auth.signOut();
-                setCurrentUser(null);
-                setIsLoggedIn(false);
-                return;
-              }
-              setCurrentUser(profile);
-              setIsLoggedIn(true);
-              setProfileName(profile.full_name || session.user.email?.split("@")[0] || "শিক্ষার্থী");
-              setProfileEmail(profile.email || session.user.email || "");
-              setProfilePhone(profile.phone_number || "");
-              setProfileId(profile.student_id || generateStudentId());
-              localStorage.setItem("job_master_current_user", JSON.stringify(profile));
-            }
+            syncUserFromSession(session);
           }
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (session?.user) {
-            const profile = await fetchUserProfile(session.user.id);
-            if (profile) {
-              if (profile.status === "Banned") {
-                alert("আপনার অ্যাকাউন্টটি স্থগিত/নিষিদ্ধ করা হয়েছে।");
-                localStorage.removeItem("job_master_current_user");
-                supabase.auth.signOut();
-                setCurrentUser(null);
-                setIsLoggedIn(false);
-                return;
-              }
-              setCurrentUser(profile);
-              setIsLoggedIn(true);
-              setProfileName(profile.full_name);
-              setProfileEmail(profile.email);
-              setProfilePhone(profile.phone_number);
-              setProfileId(profile.student_id);
-              localStorage.setItem("job_master_current_user", JSON.stringify(profile));
-            }
+            await syncUserFromSession(session);
           } else if (event === "SIGNED_OUT") {
             setCurrentUser(null);
             setIsLoggedIn(false);
@@ -962,12 +978,13 @@ export default function Home() {
   };
 
   // Auth Protection Gatekeeper for Exams & Quizzes
-  const executeWithAuth = (action: () => void) => {
+  const executeWithAuth = (action: () => void, intentType: string = "exams") => {
     if (isLoggedIn && currentUser && currentUser.status !== "Banned") {
       action();
     } else if (currentUser && currentUser.status === "Banned") {
       alert("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক সাময়িকভাবে নিষিদ্ধ করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।");
     } else {
+      localStorage.setItem("job_master_pending_intent", intentType);
       setPendingExamAction(() => action);
       setAuthModalMode("signin");
       setShowAuthModal(true);
@@ -1275,7 +1292,7 @@ export default function Home() {
       setCurrentScreen("quiz");
       
       if (soundEnabled) quizAudio.playClick();
-    });
+    }, "quiz");
   };
 
   // Handle option select - Instant feedback & score update
