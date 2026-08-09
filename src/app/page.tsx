@@ -1816,32 +1816,8 @@ export default function Home() {
                 )}
               </div>
 
-              {/* General Quiz Game Live Banner - Solid Orange Layout (Placed above Our Courses) */}
-              <div className="bg-[#FF6A00] rounded-2xl p-3.5 sm:p-4.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20">
-                <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
-                  {/* LEFT SIDE: Title and Subtitle */}
-                  <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
-                    <h3 className="text-lg sm:text-xl font-black tracking-tight leading-tight text-white">
-                      Live Quiz Game
-                    </h3>
-                    <p className="text-white/95 text-xs sm:text-sm font-extrabold tracking-wide truncate max-w-full">
-                      খেলতে খেলতে শিখুন
-                    </p>
-                  </div>
-
-                  {/* RIGHT SIDE: Start Quiz CTA button */}
-                  <button 
-                    onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
-                    className="bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
-                  >
-                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00]" />
-                    <span>Start Quiz</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Our Courses Section (Placed below Live Quiz Game with reduced gap) */}
-              <div className="space-y-2.5 sm:space-y-3.5 -mt-1 sm:-mt-2">
+              {/* Our Courses Section */}
+              <div className="space-y-2.5 sm:space-y-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h3 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight">
@@ -1901,6 +1877,30 @@ export default function Home() {
                     </div>
                     <span className="text-base sm:text-lg font-extrabold text-white tracking-wide">সকল কোর্স</span>
                   </div>
+                </div>
+              </div>
+
+              {/* General Quiz Game Live Banner - Solid Orange Layout (Placed directly below Our Courses) */}
+              <div className="bg-[#FF6A00] rounded-2xl p-3.5 sm:p-4.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 my-1 sm:my-2">
+                <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
+                  {/* LEFT SIDE: Title and Subtitle */}
+                  <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-black tracking-tight leading-tight text-white">
+                      Live Quiz Game
+                    </h3>
+                    <p className="text-white/95 text-xs sm:text-sm font-extrabold tracking-wide truncate max-w-full">
+                      খেলতে খেলতে শিখুন
+                    </p>
+                  </div>
+
+                  {/* RIGHT SIDE: Start Quiz CTA button */}
+                  <button 
+                    onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
+                    className="bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
+                  >
+                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00]" />
+                    <span>Start Quiz</span>
+                  </button>
                 </div>
               </div>
 
