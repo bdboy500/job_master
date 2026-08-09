@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
 import { 
   Users, 
+  Search,
   BookOpen, 
   Plus, 
   Trash2, 
@@ -61,6 +62,12 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
 import { getSupabase } from "../../lib/supabase";
+import { 
+  fetchAllProfilesFromDb, 
+  updateUserStatusInDb, 
+  deleteUserProfileFromDb, 
+  UserProfile 
+} from "../../lib/user_profiles";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { getTodayVisitorCount } from "../../lib/visitors";
@@ -191,8 +198,12 @@ function normalizeQuestion(q: any): Question {
 interface AdminUser {
   id: string;
   email: string;
+  full_name?: string;
+  phone_number?: string;
+  student_id?: string;
   role: string;
   status: "Active" | "Banned";
+  created_at?: string;
 }
 
 interface AdminOffer {
@@ -448,12 +459,16 @@ export default function AdminPage() {
   // 2. USERS STATE & COMPONENT
   // ==========================================
   const [users, setUsers] = useState<AdminUser[]>([
-    { id: "u-101", email: "hassan.bcs@gmail.com", role: "Student", status: "Active" },
-    { id: "u-102", email: "tasnim_sheikh@yahoo.com", role: "Student", status: "Active" },
-    { id: "u-103", email: "kamrul.dev@outlook.com", role: "Moderator", status: "Active" },
-    { id: "u-104", email: "spambot99@gmail.com", role: "Student", status: "Banned" },
-    { id: "u-105", email: "rahima_begum@gmail.com", role: "Student", status: "Active" },
+    { id: "u-101", email: "hassan.bcs@gmail.com", full_name: "হসান মাহমুদ", phone_number: "01711223344", student_id: "JM-884201", role: "Student", status: "Active" },
+    { id: "u-102", email: "tasnim_sheikh@yahoo.com", full_name: "তাসনিম শেখ", phone_number: "01822334455", student_id: "JM-884202", role: "Student", status: "Active" },
+    { id: "u-103", email: "kamrul.dev@outlook.com", full_name: "কামরুল ইসলাম", phone_number: "01933445566", student_id: "JM-884203", role: "Moderator", status: "Active" },
+    { id: "u-104", email: "spambot99@gmail.com", full_name: "স্প্যাম ব্যবহারকারী", phone_number: "01544556677", student_id: "JM-884204", role: "Student", status: "Banned" },
+    { id: "u-105", email: "rahima_begum@gmail.com", full_name: "রাহিমা বেগম", phone_number: "01655667788", student_id: "JM-884205", role: "Student", status: "Active" },
   ]);
+
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [showSqlModal, setShowSqlModal] = useState(false);
 
   // Daily Visitor Tracker state
   const [todayVisitors, setTodayVisitors] = useState<number>(0);
@@ -521,9 +536,15 @@ export default function AdminPage() {
       setIsAuthenticated(false);
     }
 
-    // Initialize static data from local storage if available
-    const cachedUsers = localStorage.getItem("job_master_admin_users");
-    if (cachedUsers) setUsers(JSON.parse(cachedUsers));
+    // Load users from Supabase DB or cache
+    fetchAllProfilesFromDb().then((dbProfiles) => {
+      if (dbProfiles && dbProfiles.length > 0) {
+        setUsers(dbProfiles);
+      } else {
+        const cachedUsers = localStorage.getItem("job_master_registered_users") || localStorage.getItem("job_master_admin_users");
+        if (cachedUsers) setUsers(JSON.parse(cachedUsers));
+      }
+    });
 
     const cachedOffers = localStorage.getItem("job_master_admin_offers");
     if (cachedOffers) setOffers(JSON.parse(cachedOffers));
@@ -1454,20 +1475,46 @@ export default function AdminPage() {
     triggerNotification("success", "সফলভাবে লগআউট করা হয়েছে।");
   };
 
-  // Handle User Status Change (Ban/Unban toggle)
-  const toggleUserStatus = (userId: string) => {
+  // Handle User Status Change (Ban/Unban toggle) with Supabase DB sync
+  const toggleUserStatus = async (userId: string) => {
+    const target = users.find(u => u.id === userId);
+    if (!target) return;
+    const nextStatus = target.status === "Active" ? "Banned" : "Active";
+
     const updated = users.map(user => {
       if (user.id === userId) {
-        const nextStatus = user.status === "Active" ? "Banned" : "Active";
-        triggerNotification(
-          "success", 
-          `ইউজার ${user.email} কে ${nextStatus === "Active" ? "সক্রিয়" : "নিষিদ্ধ"} করা হয়েছে।`
-        );
         return { ...user, status: nextStatus as "Active" | "Banned" };
       }
       return user;
     });
+
+    setUsers(updated);
     saveUsers(updated);
+
+    // Sync to Supabase DB
+    await updateUserStatusInDb(userId, nextStatus);
+
+    triggerNotification(
+      "success", 
+      `ইউজার ${target.email} কে ${nextStatus === "Active" ? "সক্রিয়" : "নিষিদ্ধ"} করা হয়েছে।`
+    );
+  };
+
+  // Handle Delete User Account
+  const handleDeleteUser = async (userId: string) => {
+    const target = users.find(u => u.id === userId);
+    if (!target) return;
+
+    if (window.confirm(`আপনি কি নিশ্চিত যে ইউজার (${target.email}) কে স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      const updated = users.filter(u => u.id !== userId);
+      setUsers(updated);
+      saveUsers(updated);
+
+      // Sync to Supabase DB
+      await deleteUserProfileFromDb(userId);
+
+      triggerNotification("success", `ইউজার ${target.email} সফলভাবে মুছে ফেলা হয়েছে।`);
+    }
   };
 
   // Handle Add Offer Banner
@@ -3085,73 +3132,301 @@ export default function AdminPage() {
           {activeTab === "users" && (
             <div className="space-y-6 animate-fade-in">
               
+              {/* User Management Card */}
               <div className="bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h3 className="font-extrabold text-sm text-slate-800">
-                      নিবন্ধিত শিক্ষার্থীদের তালিকা (User Management)
+                      নিবন্ধিত শিক্ষার্থীদের তালিকা (User Directory)
                     </h3>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-1">
-                      শিক্ষার্থীদের অ্যাকাউন্ট নিষিদ্ধ ও সক্রিয় করার ডিরেক্টরি
+                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                      স্টুডেন্ট আইডি, নাম, ইমেইল ও মোবাইল নম্বর দিয়ে খুঁজুন এবং স্ট্যাটাস ম্যানেজ করুন
                     </p>
                   </div>
-                  <span className="text-[10px] font-extrabold bg-slate-100 text-slate-500 px-3 py-1 rounded-full">
-                    মোট: {users.length} জন ইউজার
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                      মোট: {users.length}
+                    </span>
+                    <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-3 py-1 rounded-full">
+                      সক্রিয়: {users.filter(u => u.status === "Active").length}
+                    </span>
+                    <span className="text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200/80 px-3 py-1 rounded-full">
+                      নিষিদ্ধ: {users.filter(u => u.status === "Banned").length}
+                    </span>
+                    <button
+                      onClick={() => setShowSqlModal(!showSqlModal)}
+                      className="text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/80 px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <DbIcon className="w-3 h-3" />
+                      <span>Supabase SQL কোড</span>
+                    </button>
+                  </div>
                 </div>
 
+                {/* Real-time Search Input & Autocomplete Suggestions Bar */}
+                <div className="p-4 bg-slate-50/70 border-b border-slate-100 relative">
+                  <div className="relative max-w-lg">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={userSearchQuery}
+                      onChange={(e) => {
+                        setUserSearchQuery(e.target.value);
+                        setShowSearchSuggestions(true);
+                      }}
+                      onFocus={() => setShowSearchSuggestions(true)}
+                      placeholder="ইমেইল, মোবাইল নম্বর, স্টুডেন্ট আইডি বা নাম লিখে সার্চ করুন..."
+                      className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    />
+                    {userSearchQuery && (
+                      <button
+                        onClick={() => {
+                          setUserSearchQuery("");
+                          setShowSearchSuggestions(false);
+                        }}
+                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {/* Live Suggestion Popover Dropdown */}
+                    {showSearchSuggestions && userSearchQuery.trim() !== "" && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-30 overflow-hidden divide-y divide-slate-100 animate-fade-in">
+                        <div className="p-2 text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-50 flex items-center justify-between">
+                          <span>সার্চ সাজেশন (Matching Users)</span>
+                          <span className="text-[9px] text-[#FF6A00] font-bold">
+                            {users.filter(u => 
+                              u.email.toLowerCase().includes(userSearchQuery.toLowerCase().trim()) ||
+                              (u.full_name && u.full_name.toLowerCase().includes(userSearchQuery.toLowerCase().trim())) ||
+                              (u.phone_number && u.phone_number.includes(userSearchQuery.trim())) ||
+                              (u.student_id && u.student_id.toLowerCase().includes(userSearchQuery.toLowerCase().trim()))
+                            ).length} রেজাল্ট পাওয়া গেছে
+                          </span>
+                        </div>
+                        {users
+                          .filter(u => 
+                            u.email.toLowerCase().includes(userSearchQuery.toLowerCase().trim()) ||
+                            (u.full_name && u.full_name.toLowerCase().includes(userSearchQuery.toLowerCase().trim())) ||
+                            (u.phone_number && u.phone_number.includes(userSearchQuery.trim())) ||
+                            (u.student_id && u.student_id.toLowerCase().includes(userSearchQuery.toLowerCase().trim()))
+                          )
+                          .slice(0, 5)
+                          .map((sug) => (
+                            <div
+                              key={sug.id}
+                              onClick={() => {
+                                setUserSearchQuery(sug.student_id || sug.email || sug.full_name || "");
+                                setShowSearchSuggestions(false);
+                              }}
+                              className="p-3 hover:bg-orange-50/80 transition-colors cursor-pointer flex items-center justify-between group"
+                            >
+                              <div className="flex flex-col min-w-0 pr-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-slate-800 group-hover:text-[#FF6A00] truncate">
+                                    {sug.full_name || "শিক্ষার্থী"}
+                                  </span>
+                                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
+                                    {sug.student_id || `JM-${sug.id.substring(0,6)}`}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-slate-500 font-semibold truncate mt-0.5">
+                                  ✉ {sug.email} {sug.phone_number ? `• 📱 ${sug.phone_number}` : ""}
+                                </span>
+                              </div>
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border shrink-0 ${
+                                sug.status === "Active" 
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                  : "bg-rose-50 text-rose-700 border-rose-200"
+                              }`}>
+                                {sug.status}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Table Data */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50/50 border-b border-slate-100">
-                        <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-20">ID</th>
-                        <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ইমেইল এড্রেস (Email)</th>
-                        <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-36">ভূমিকা (Role)</th>
-                        <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-32 text-center">স্ট্যাটাস</th>
-                        <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-40">অ্যাকশন</th>
+                      <tr className="bg-slate-50/60 border-b border-slate-100">
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-24">স্টুডেন্ট ID</th>
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">ইউজারের নাম ও ইমেইল</th>
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider w-32">মোবাইল নম্বর</th>
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider w-28 text-center">ভূমিকা</th>
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider w-28 text-center">স্ট্যাটাস</th>
+                        <th className="p-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-44">অ্যাকশন</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {users.map((user) => (
-                        <tr key={user.id} className="hover:bg-slate-50/20 transition-all">
-                          <td className="p-4 text-xs font-mono font-bold text-slate-400 text-center">{user.id}</td>
-                          <td className="p-4">
-                            <span className="text-xs sm:text-sm font-bold text-slate-800">
-                              {user.email}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-100 inline-block">
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full inline-block border ${
-                              user.status === "Active"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : "bg-rose-50 text-rose-700 border-rose-100"
-                            }`}>
-                              {user.status === "Active" ? "সক্রিয় (Active)" : "নিষিদ্ধ (Banned)"}
-                            </span>
-                          </td>
-                          <td className="p-4 text-center">
-                            <button
-                              onClick={() => toggleUserStatus(user.id)}
-                              className={`text-[10px] font-black px-4 py-2 rounded-xl transition-all active:scale-95 border cursor-pointer ${
+                      {(() => {
+                        const q = userSearchQuery.toLowerCase().trim();
+                        const list = users.filter((u) => {
+                          if (!q) return true;
+                          return (
+                            u.email.toLowerCase().includes(q) ||
+                            (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+                            (u.phone_number && u.phone_number.includes(q)) ||
+                            (u.student_id && u.student_id.toLowerCase().includes(q)) ||
+                            u.id.toLowerCase().includes(q)
+                          );
+                        });
+
+                        if (list.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-xs font-bold text-slate-400">
+                                🔍 কোনো ইউজার পাওয়া যায়নি। অন্য কিছু লিখে খুঁজুন।
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return list.map((user) => (
+                          <tr key={user.id} className="hover:bg-slate-50/40 transition-all">
+                            <td className="p-3.5 text-xs font-mono font-bold text-slate-600 text-center">
+                              <span className="bg-slate-100 px-2 py-1 rounded-md border border-slate-200/80">
+                                {user.student_id || `JM-${user.id.substring(0, 6)}`}
+                              </span>
+                            </td>
+                            <td className="p-3.5">
+                              <div className="flex flex-col">
+                                <span className="text-xs sm:text-sm font-black text-slate-800">
+                                  {user.full_name || "অজ্ঞাত শিক্ষার্থী"}
+                                </span>
+                                <span className="text-[11px] font-semibold text-slate-500">
+                                  {user.email}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-3.5 text-xs font-semibold text-slate-700">
+                              {user.phone_number || "—"}
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <span className="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full border border-slate-200/60 inline-block">
+                                {user.role || "Student"}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full inline-block border ${
                                 user.status === "Active"
-                                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-100/50"
-                                  : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100/50"
-                              }`}
-                            >
-                              {user.status === "Active" ? "Ban Account" : "Activate"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-rose-50 text-rose-700 border-rose-200"
+                              }`}>
+                                {user.status === "Active" ? "সক্রিয় (Active)" : "নিষিদ্ধ (Banned)"}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => toggleUserStatus(user.id)}
+                                  className={`text-[10px] font-black px-3 py-1.5 rounded-xl transition-all active:scale-95 border cursor-pointer ${
+                                    user.status === "Active"
+                                      ? "bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200/80"
+                                      : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200/80"
+                                  }`}
+                                >
+                                  {user.status === "Active" ? "Ban Account" : "Activate"}
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="p-1.5 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-xl transition-all cursor-pointer border border-slate-200/60"
+                                  title="ইউজার ডিলিট করুন"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
               </div>
+
+              {/* Supabase SQL instructions Card / Drawer */}
+              {showSqlModal && (
+                <div className="bg-slate-900 text-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-xl space-y-4 border border-slate-800 animate-fade-in">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <DbIcon className="w-5 h-5 text-amber-400" />
+                      <h4 className="font-extrabold text-sm text-white">
+                        Supabase Database Setup Script (SQL Editor Code)
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setShowSqlModal(false)}
+                      className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-300">
+                    Supabase এর SQL Editor এ নিচের কোডটি হুবহু কপি করে Run চাপুন। এতে <code className="text-amber-300">profiles</code> টেবিল, অটো-ইউজার ট্রিগার ও ইনডেক্স তৈরি হয়ে যাবে:
+                  </p>
+
+                  <div className="bg-black/60 p-4 rounded-xl font-mono text-[11px] leading-relaxed text-emerald-400 overflow-x-auto border border-slate-800 selection:bg-amber-400 selection:text-black">
+                    <pre>{`-- 1. Create profiles table
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT UNIQUE NOT NULL,
+  full_name TEXT NOT NULL,
+  phone_number TEXT,
+  student_id TEXT UNIQUE NOT NULL,
+  role TEXT DEFAULT 'Student',
+  status TEXT DEFAULT 'Active',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Enable RLS or permissions
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public profiles viewable by all" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admin full access" ON public.profiles FOR ALL USING (true);
+
+-- 3. Automatic Profile Creation Trigger on Sign Up
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, phone_number, student_id, role, status)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'phone_number', ''),
+    COALESCE(NEW.raw_user_meta_data->>'student_id', CONCAT('JM-', FLOOR(100000 + RANDOM() * 900000)::TEXT)),
+    'Student',
+    'Active'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 4. Search Indexes for fast searching
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
+CREATE INDEX IF NOT EXISTS idx_profiles_phone ON public.profiles(phone_number);
+CREATE INDEX IF NOT EXISTS idx_profiles_student_id ON public.profiles(student_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);`}</pre>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

@@ -74,6 +74,8 @@ import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../li
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import { recordVisit } from "../lib/visitors";
+import AuthModal from "../components/AuthModal";
+import { UserProfile, fetchUserProfile, generateStudentId } from "../lib/user_profiles";
 
 // Type definition for routine items
 interface RoutineItem {
@@ -389,15 +391,20 @@ export default function Home() {
   
   // Drawer & Overlay States
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<"BN" | "EN">("BN");
   const [activeDrawerModal, setActiveDrawerModal] = useState<"none" | "package" | "bookstore" | "language" | "settings" | "ourapps" | "contact">("none");
   
-  // User Profile States
-  const [profileName, setProfileName] = useState<string>("Tanvir Hossain");
-  const [profileEmail, setProfileEmail] = useState<string>("mobileseba247@gmail.com");
-  const [profilePhone, setProfilePhone] = useState<string>("01712345678");
-  const [profileId, setProfileId] = useState<string>("284710");
+  // Auth & Profile States
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
+  const [pendingExamAction, setPendingExamAction] = useState<(() => void) | null>(null);
+
+  const [profileName, setProfileName] = useState<string>("Guest User");
+  const [profileEmail, setProfileEmail] = useState<string>("guest@jobmaster.com");
+  const [profilePhone, setProfilePhone] = useState<string>("");
+  const [profileId, setProfileId] = useState<string>("");
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string>("");
   const profileFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -603,6 +610,79 @@ export default function Home() {
       const savedAvatar = localStorage.getItem("job_master_user_avatar");
       if (savedAvatar) {
         setProfileAvatarUrl(savedAvatar);
+      }
+
+      // Restore cached user profile from localStorage
+      const cachedUserRaw = localStorage.getItem("job_master_current_user");
+      if (cachedUserRaw) {
+        try {
+          const u: UserProfile = JSON.parse(cachedUserRaw);
+          if (u && u.status !== "Banned") {
+            setCurrentUser(u);
+            setIsLoggedIn(true);
+            setProfileName(u.full_name || "শিক্ষার্থী");
+            setProfileEmail(u.email || "");
+            setProfilePhone(u.phone_number || "");
+            setProfileId(u.student_id || `JM-${u.id.substring(0, 6)}`);
+          }
+        } catch (e) {}
+      }
+
+      // Sync Supabase Auth Session
+      const supabase = getSupabase();
+      if (supabase) {
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+          if (session?.user) {
+            const profile = await fetchUserProfile(session.user.id);
+            if (profile) {
+              if (profile.status === "Banned") {
+                localStorage.removeItem("job_master_current_user");
+                supabase.auth.signOut();
+                setCurrentUser(null);
+                setIsLoggedIn(false);
+                return;
+              }
+              setCurrentUser(profile);
+              setIsLoggedIn(true);
+              setProfileName(profile.full_name || session.user.email?.split("@")[0] || "শিক্ষার্থী");
+              setProfileEmail(profile.email || session.user.email || "");
+              setProfilePhone(profile.phone_number || "");
+              setProfileId(profile.student_id || generateStudentId());
+              localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+            }
+          }
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (session?.user) {
+            const profile = await fetchUserProfile(session.user.id);
+            if (profile) {
+              if (profile.status === "Banned") {
+                alert("আপনার অ্যাকাউন্টটি স্থগিত/নিষিদ্ধ করা হয়েছে।");
+                localStorage.removeItem("job_master_current_user");
+                supabase.auth.signOut();
+                setCurrentUser(null);
+                setIsLoggedIn(false);
+                return;
+              }
+              setCurrentUser(profile);
+              setIsLoggedIn(true);
+              setProfileName(profile.full_name);
+              setProfileEmail(profile.email);
+              setProfilePhone(profile.phone_number);
+              setProfileId(profile.student_id);
+              localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+            }
+          } else if (event === "SIGNED_OUT") {
+            setCurrentUser(null);
+            setIsLoggedIn(false);
+            setProfileName("Guest User");
+            setProfileEmail("guest@jobmaster.com");
+            setProfilePhone("");
+            setProfileId("");
+            localStorage.removeItem("job_master_current_user");
+          }
+        });
       }
 
       // Synchronously load cached exam papers & packages for instant 0ms rendering
@@ -881,28 +961,43 @@ export default function Home() {
     }
   };
 
+  // Auth Protection Gatekeeper for Exams & Quizzes
+  const executeWithAuth = (action: () => void) => {
+    if (isLoggedIn && currentUser && currentUser.status !== "Banned") {
+      action();
+    } else if (currentUser && currentUser.status === "Banned") {
+      alert("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক সাময়িকভাবে নিষিদ্ধ করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।");
+    } else {
+      setPendingExamAction(() => action);
+      setAuthModalMode("signin");
+      setShowAuthModal(true);
+    }
+  };
+
   // Exam Paper Handlers
   const handleOpenTakeExam = (paper: ExamPaper) => {
-    const currentStatus = getExamStatus(paper);
-    if (currentStatus === "Upcoming") {
-      const startTimeFormatted = paper.startDateTime 
-        ? new Date(paper.startDateTime).toLocaleString("bn-BD", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
-        : paper.examDate;
-      alert(`⏳ পরীক্ষাটি এখনো শুরু হয়নি!\n\nপরীক্ষা শুরুর সময়:\n${startTimeFormatted}\n\nনির্ধারিত সময় শুরু হলেই আপনি লাইভ পরীক্ষায় অংশ নিতে পারবেন।`);
-      return;
-    }
+    executeWithAuth(() => {
+      const currentStatus = getExamStatus(paper);
+      if (currentStatus === "Upcoming") {
+        const startTimeFormatted = paper.startDateTime 
+          ? new Date(paper.startDateTime).toLocaleString("bn-BD", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
+          : paper.examDate;
+        alert(`⏳ পরীক্ষাটি এখনো শুরু হয়নি!\n\nপরীক্ষা শুরুর সময়:\n${startTimeFormatted}\n\nনির্ধারিত সময় শুরু হলেই আপনি লাইভ পরীক্ষায় অংশ নিতে পারবেন।`);
+        return;
+      }
 
-    const duration = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
-    setTakingExamModal(paper);
-    setExamUserAnswers({});
-    setExamSubmitted(false);
-    setExamResultSummary(null);
-    setExamInitialTime(duration);
-    setExamTimer(duration);
-    setShowExamNoticeAlert(true);
-    setExamQuestionsDrawerOpen(false);
-    setShowExamSubmitConfirmModal(false);
-    if (soundEnabled) quizAudio.playClick();
+      const duration = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
+      setTakingExamModal(paper);
+      setExamUserAnswers({});
+      setExamSubmitted(false);
+      setExamResultSummary(null);
+      setExamInitialTime(duration);
+      setExamTimer(duration);
+      setShowExamNoticeAlert(true);
+      setExamQuestionsDrawerOpen(false);
+      setShowExamSubmitConfirmModal(false);
+      if (soundEnabled) quizAudio.playClick();
+    });
   };
 
   const handleOpenViewPaper = (paper: ExamPaper) => {
@@ -1134,51 +1229,53 @@ export default function Home() {
 
   // Handle start quiz action (Sets screen to 'quiz' and resets statistics)
   const startQuizFlow = (title: string, subtitle: string, customQuestionSet?: Question[]) => {
-    setActiveQuizTitle(title);
-    setActiveQuizSubtitle(subtitle);
-    
-    let pool: Question[] = [];
-    if (customQuestionSet && customQuestionSet.length > 0) {
-      pool = customQuestionSet;
-    } else {
-      pool = allRawQuestions.length > 0 ? allRawQuestions : QUIZ_QUESTIONS;
-    }
+    executeWithAuth(() => {
+      setActiveQuizTitle(title);
+      setActiveQuizSubtitle(subtitle);
+      
+      let pool: Question[] = [];
+      if (customQuestionSet && customQuestionSet.length > 0) {
+        pool = customQuestionSet;
+      } else {
+        pool = allRawQuestions.length > 0 ? allRawQuestions : QUIZ_QUESTIONS;
+      }
 
-    if (title === "Live Quiz Game") {
-      const allowed = LIVE_QUIZ_ALLOWED_SUBJECTS;
-      const filtered = pool.filter(q => {
-        if (!q.subject) return true;
-        const s = q.subject.toLowerCase();
-        return allowed.some(a => 
-          s.includes(a.toLowerCase()) || 
-          (a === "Bangladesh Affairs" && (s.includes("bangladesh") || s.includes("বাংলাদেশ"))) ||
-          (a === "International Affairs" && (s.includes("international") || s.includes("আন্তর্জাতিক"))) ||
-          (a === "Geography" && (s.includes("geography") || s.includes("ভূগোল"))) ||
-          (a === "General Science" && (s.includes("science") || s.includes("বিজ্ঞান"))) ||
-          (a === "Technology" && (s.includes("tech") || s.includes("ict") || s.includes("প্রযুক্তি") || s.includes("কম্পিউটার"))) ||
-          (a === "Mental Ability" && (s.includes("mental") || s.includes("iq") || s.includes("মানসিক")))
-        );
-      });
+      if (title === "Live Quiz Game") {
+        const allowed = LIVE_QUIZ_ALLOWED_SUBJECTS;
+        const filtered = pool.filter(q => {
+          if (!q.subject) return true;
+          const s = q.subject.toLowerCase();
+          return allowed.some(a => 
+            s.includes(a.toLowerCase()) || 
+            (a === "Bangladesh Affairs" && (s.includes("bangladesh") || s.includes("বাংলাদেশ"))) ||
+            (a === "International Affairs" && (s.includes("international") || s.includes("আন্তর্জাতিক"))) ||
+            (a === "Geography" && (s.includes("geography") || s.includes("ভূগোল"))) ||
+            (a === "General Science" && (s.includes("science") || s.includes("বিজ্ঞান"))) ||
+            (a === "Technology" && (s.includes("tech") || s.includes("ict") || s.includes("প্রযুক্তি") || s.includes("কম্পিউটার"))) ||
+            (a === "Mental Ability" && (s.includes("mental") || s.includes("iq") || s.includes("মানসিক")))
+          );
+        });
 
-      const candidateSet = filtered.length >= 5 ? filtered : pool;
-      const randomized = shuffleArray(candidateSet);
-      setQuestions(randomized.slice(0, 10));
-    } else {
-      const randomized = shuffleArray(pool);
-      setQuestions(randomized.slice(0, 10));
-    }
+        const candidateSet = filtered.length >= 5 ? filtered : pool;
+        const randomized = shuffleArray(candidateSet);
+        setQuestions(randomized.slice(0, 10));
+      } else {
+        const randomized = shuffleArray(pool);
+        setQuestions(randomized.slice(0, 10));
+      }
 
-    setQuizStarted(true);
-    setCurrentQuestionIndex(0);
-    setScore(0);
-    setSubmittedCount(0);
-    setSelectedOptionIndex(null);
-    setIsSubmitted(false);
-    setTimeLeft(30);
-    setIsTimedOut(false);
-    setCurrentScreen("quiz");
-    
-    if (soundEnabled) quizAudio.playClick();
+      setQuizStarted(true);
+      setCurrentQuestionIndex(0);
+      setScore(0);
+      setSubmittedCount(0);
+      setSelectedOptionIndex(null);
+      setIsSubmitted(false);
+      setTimeLeft(30);
+      setIsTimedOut(false);
+      setCurrentScreen("quiz");
+      
+      if (soundEnabled) quizAudio.playClick();
+    });
   };
 
   // Handle option select - Instant feedback & score update
@@ -1300,6 +1397,47 @@ export default function Home() {
   // Clear all taken tests history
   const handleClearTestHistory = () => {
     saveTakenTests([]);
+  };
+
+  // Auth Success Callback from AuthModal
+  const handleAuthSuccess = (profile: UserProfile) => {
+    setCurrentUser(profile);
+    setIsLoggedIn(true);
+    setProfileName(profile.full_name || "শিক্ষার্থী");
+    setProfileEmail(profile.email || "");
+    setProfilePhone(profile.phone_number || "");
+    setProfileId(profile.student_id || `JM-${profile.id.substring(0, 6)}`);
+    localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+
+    setShowAuthModal(false);
+
+    // If user clicked an exam or quiz before logging in, trigger action now
+    if (pendingExamAction) {
+      const action = pendingExamAction;
+      setPendingExamAction(null);
+      setTimeout(() => {
+        action();
+      }, 150);
+    }
+  };
+
+  // Sign Out Handler
+  const handleSignOut = async () => {
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {}
+
+    localStorage.removeItem("job_master_current_user");
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    setProfileName("Guest User");
+    setProfileEmail("guest@jobmaster.com");
+    setProfilePhone("");
+    setProfileId("");
+    if (soundEnabled) quizAudio.playClick();
   };
 
   // Calculate routine progress percentage
@@ -1638,6 +1776,41 @@ export default function Home() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full animate-ping" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF6A00] rounded-full" />
             </button>
+
+            {isLoggedIn ? (
+              <button
+                onClick={() => {
+                  setPreviousScreen(currentScreen);
+                  setCurrentScreen("profile");
+                  if (soundEnabled) quizAudio.playClick();
+                }}
+                className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200/80 rounded-xl transition-all cursor-pointer active:scale-95"
+                title="প্রোফাইল"
+              >
+                <div className="w-6 h-6 rounded-full bg-[#FF6A00] text-white flex items-center justify-center font-black text-xs overflow-hidden">
+                  {profileAvatarUrl ? (
+                    <img src={profileAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    profileName.substring(0, 1).toUpperCase()
+                  )}
+                </div>
+                <span className="hidden sm:inline-block text-xs font-black text-slate-800 truncate max-w-[80px]">
+                  {profileName.split(" ")[0]}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setAuthModalMode("signin");
+                  setShowAuthModal(true);
+                  if (soundEnabled) quizAudio.playClick();
+                }}
+                className="px-2.5 py-1.5 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl font-extrabold text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              >
+                <User className="w-3.5 h-3.5 stroke-[2.5px]" />
+                <span className="hidden sm:inline-block">সাইন ইন</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -4570,6 +4743,44 @@ export default function Home() {
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#FF6A00] group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
+
+                  {/* Log Out / Log In */}
+                  {isLoggedIn ? (
+                    <button
+                      onClick={() => {
+                        handleSignOut();
+                      }}
+                      className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-rose-50 transition-colors group cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                          <LogOut className="w-4.5 h-4.5 stroke-[2.2]" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-extrabold text-rose-600 group-hover:text-rose-700 transition-colors truncate">
+                          লগ আউট (Sign Out)
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-rose-300 group-hover:text-rose-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setAuthModalMode("signin");
+                        setShowAuthModal(true);
+                      }}
+                      className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-orange-50 transition-colors group cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-orange-50 text-[#FF6A00] flex items-center justify-center shrink-0">
+                          <LogIn className="w-4.5 h-4.5 stroke-[2.2]" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-extrabold text-[#FF6A00] group-hover:text-orange-700 transition-colors truncate">
+                          সাইন ইন বা নতুন একাউন্ট (Sign In / Up)
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-orange-300 group-hover:text-[#FF6A00] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -7113,6 +7324,14 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Auth Protection Modal */}
+        <AuthModal
+          isOpen={showAuthModal}
+          initialMode={authModalMode}
+          onClose={() => setShowAuthModal(false)}
+          onAuthSuccess={handleAuthSuccess}
+        />
 
       </div>
 
