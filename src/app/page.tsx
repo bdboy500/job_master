@@ -408,6 +408,9 @@ export default function Home() {
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string>("");
   const profileFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Logout confirmation modal state
+  const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState<boolean>(false);
+
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -665,6 +668,15 @@ export default function Home() {
         setProfilePhone(profile.phone_number || "");
         setProfileId(profile.student_id || generateStudentId());
         localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+
+        // Rule 1 & Rule 2 & Rule 3: Profile Avatar Resolution
+        // Rule 1: Google Auth Avatar from user metadata (avatar_url or picture)
+        const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.avatar || profile.avatar_url || "";
+        // Rule 2: Secondary Image (Gallery Upload / Local Selection from localStorage)
+        const localGalleryAvatar = typeof window !== "undefined" ? localStorage.getItem("job_master_user_avatar") : "";
+        // Priority: Local selection override > Google metadata avatar > Fallback
+        const effectiveAvatar = localGalleryAvatar || googleAvatar || "";
+        setProfileAvatarUrl(effectiveAvatar);
 
         // Auto redirect to Model Test / Exam option if coming from pending intent or pending paper
         const pendingPaperId = localStorage.getItem("job_master_pending_paper_id");
@@ -1458,6 +1470,11 @@ export default function Home() {
     setProfileId(profile.student_id || `JM-${profile.id.substring(0, 6)}`);
     localStorage.setItem("job_master_current_user", JSON.stringify(profile));
 
+    // Resolve avatar according to rules
+    const localGalleryAvatar = typeof window !== "undefined" ? localStorage.getItem("job_master_user_avatar") : "";
+    const activeAvatar = localGalleryAvatar || profile.avatar_url || "";
+    setProfileAvatarUrl(activeAvatar);
+
     setShowAuthModal(false);
 
     // If user clicked an exam before logging in, trigger direct exam now
@@ -1485,6 +1502,13 @@ export default function Home() {
     }
   };
 
+  // Prompt Sign Out (Opens confirmation popup first)
+  const promptSignOut = () => {
+    setDrawerOpen(false);
+    setShowLogoutConfirmModal(true);
+    if (soundEnabled) quizAudio.playClick();
+  };
+
   // Sign Out Handler
   const handleSignOut = async () => {
     try {
@@ -1495,12 +1519,15 @@ export default function Home() {
     } catch (err) {}
 
     localStorage.removeItem("job_master_current_user");
+    localStorage.removeItem("job_master_user_avatar");
     setCurrentUser(null);
     setIsLoggedIn(false);
     setProfileName("Guest User");
     setProfileEmail("guest@jobmaster.com");
     setProfilePhone("");
     setProfileId("");
+    setProfileAvatarUrl("");
+    setShowLogoutConfirmModal(false);
     if (soundEnabled) quizAudio.playClick();
   };
 
@@ -4812,7 +4839,7 @@ export default function Home() {
                   {isLoggedIn ? (
                     <button
                       onClick={() => {
-                        handleSignOut();
+                        promptSignOut();
                       }}
                       className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-rose-50 transition-colors group cursor-pointer text-left"
                     >
@@ -5441,7 +5468,7 @@ export default function Home() {
               onClick={() => {
                 setDrawerOpen(false);
                 if (isLoggedIn) {
-                  handleSignOut();
+                  promptSignOut();
                 } else {
                   setAuthModalMode("signin");
                   setShowAuthModal(true);
@@ -7390,6 +7417,42 @@ export default function Home() {
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   পরীক্ষা শুরু করুন
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Logout Confirmation Modal */}
+        {showLogoutConfirmModal && (
+          <div className="fixed inset-0 z-[1200] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-100 flex flex-col items-center animate-in zoom-in-95 duration-150">
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-4 shadow-inner">
+                <LogOut className="w-7 h-7 stroke-[2.2]" />
+              </div>
+              <h3 className="text-xl font-black text-slate-800 mb-2">লগআউট নিশ্চিতকরণ</h3>
+              <p className="text-sm font-semibold text-slate-600 mb-6 leading-relaxed">
+                আপনি কি নিশ্চিত যে আপনি আপনার অ্যাকাউন্ট থেকে লগআউট করতে চান?
+              </p>
+              <div className="flex items-center justify-center gap-3 w-full">
+                <button
+                  onClick={() => {
+                    setShowLogoutConfirmModal(false);
+                    if (soundEnabled) quizAudio.playClick();
+                  }}
+                  className="flex-1 py-3 px-4 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-orange-500/25 active:scale-95 transition-all cursor-pointer"
+                  id="logout-cancel-no-button"
+                >
+                  না (No)
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleSignOut();
+                  }}
+                  className="flex-1 py-3 px-4 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-bold text-sm rounded-2xl border border-slate-200 active:scale-95 transition-all cursor-pointer"
+                  id="logout-confirm-yes-button"
+                >
+                  হ্যাঁ (Yes)
                 </button>
               </div>
             </div>
