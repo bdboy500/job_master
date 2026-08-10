@@ -18,6 +18,12 @@ const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_setting
 const LOCAL_STORAGE_KEY = "jobmaster_app_settings_cache";
 
 let memorySettingsCache: AppSettings | null = null;
+let settingsInFlightPromise: Promise<AppSettings> | null = null;
+
+export function invalidateAppSettingsCache() {
+  memorySettingsCache = null;
+  settingsInFlightPromise = null;
+}
 
 export function getCachedAppSettings(): AppSettings {
   if (memorySettingsCache) return memorySettingsCache;
@@ -38,53 +44,69 @@ export function getCachedAppSettings(): AppSettings {
   return DEFAULT_APP_SETTINGS;
 }
 
-export async function fetchAppSettingsFromDb(): Promise<AppSettings> {
+export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppSettings> {
+  if (!forceRefresh && memorySettingsCache) {
+    return memorySettingsCache;
+  }
+
+  if (!forceRefresh && settingsInFlightPromise) {
+    return settingsInFlightPromise;
+  }
+
   const currentLocal = getCachedAppSettings();
 
-  // 1. Try direct Supabase query first
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("app_config")
-        .select("value")
-        .eq("key", "home_display_settings")
-        .maybeSingle();
+  settingsInFlightPromise = (async () => {
+    try {
+      // 1. Try direct Supabase query first
+      try {
+        const supabase = getSupabase();
+        if (supabase) {
+          const { data, error } = await supabase
+            .from("app_config")
+            .select("value")
+            .eq("key", "home_display_settings")
+            .maybeSingle();
 
-      if (!error && data && data.value && typeof data.value.ourCoursesHomeLimit === "number") {
-        memorySettingsCache = data.value;
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.value));
-          } catch (e) {}
+          if (!error && data && data.value && typeof data.value.ourCoursesHomeLimit === "number") {
+            memorySettingsCache = data.value;
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.value));
+              } catch (e) {}
+            }
+            return data.value;
+          }
         }
-        return data.value;
+      } catch (e) {
+        console.warn("Direct Supabase settings fetch error:", e);
       }
-    }
-  } catch (e) {
-    console.warn("Direct Supabase settings fetch error:", e);
-  }
 
-  // 2. Next try API endpoint
-  try {
-    const res = await fetch("/api/app-settings", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.settings && typeof data.settings.ourCoursesHomeLimit === "number") {
-        memorySettingsCache = data.settings;
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.settings));
-          } catch (e) {}
+      // 2. Next try API endpoint
+      try {
+        const res = await fetch("/api/app-settings", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.settings && typeof data.settings.ourCoursesHomeLimit === "number") {
+            memorySettingsCache = data.settings;
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.settings));
+              } catch (e) {}
+            }
+            return data.settings;
+          }
         }
-        return data.settings;
+      } catch (e) {
+        console.warn("Failed to fetch app settings from API:", e);
       }
-    }
-  } catch (e) {
-    console.warn("Failed to fetch app settings from API:", e);
-  }
 
-  return currentLocal;
+      return currentLocal;
+    } finally {
+      settingsInFlightPromise = null;
+    }
+  })();
+
+  return settingsInFlightPromise;
 }
 
 export async function saveAppSettingsToDb(settings: AppSettings): Promise<boolean> {

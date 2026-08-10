@@ -368,9 +368,32 @@ let coursesInFlightPromise: Promise<CourseItem[]> | null = null;
 let prepSubjectsInFlightPromise: Promise<PrepSubjectItem[]> | null = null;
 let proSectionInFlightPromise: Promise<ProSectionItem[]> | null = null;
 
+let coursesMemoryCache: CourseItem[] | null = null;
+let prepMemoryCache: PrepSubjectItem[] | null = null;
+let proMemoryCache: ProSectionItem[] | null = null;
+
+export function invalidateCoursesCache() {
+  coursesMemoryCache = null;
+  coursesInFlightPromise = null;
+}
+
+export function invalidatePrepSubjectsCache() {
+  prepMemoryCache = null;
+  prepSubjectsInFlightPromise = null;
+}
+
+export function invalidateProSectionCache() {
+  proMemoryCache = null;
+  proSectionInFlightPromise = null;
+}
+
 // Global fetcher & sync methods for Courses
-export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
-  if (coursesInFlightPromise) return coursesInFlightPromise;
+export async function fetchCoursesFromDb(forceRefresh = false): Promise<CourseItem[]> {
+  if (!forceRefresh && coursesMemoryCache && coursesMemoryCache.length > 0) {
+    return coursesMemoryCache;
+  }
+
+  if (!forceRefresh && coursesInFlightPromise) return coursesInFlightPromise;
 
   coursesInFlightPromise = (async () => {
     try {
@@ -392,6 +415,7 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(localCached)
               }).catch(() => {});
+              coursesMemoryCache = localCached;
               return localCached;
             }
           }
@@ -402,6 +426,7 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
             if (typeof window !== "undefined") {
               localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
             }
+            coursesMemoryCache = cleanCourses;
             return cleanCourses;
           }
 
@@ -411,6 +436,7 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
             if (typeof window !== "undefined") {
               localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
             }
+            coursesMemoryCache = cleanCourses;
             return cleanCourses;
           }
         }
@@ -419,7 +445,9 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
       }
 
       // 2. Fallback to Local Storage / Default
-      return getCachedCourses();
+      const fallback = getCachedCourses();
+      coursesMemoryCache = fallback;
+      return fallback;
     } finally {
       coursesInFlightPromise = null;
     }
@@ -429,6 +457,7 @@ export async function fetchCoursesFromDb(): Promise<CourseItem[]> {
 }
 
 export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem[]> {
+  invalidateCoursesCache();
   const sorted = [...courses].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
   if (typeof window !== "undefined") {
@@ -497,8 +526,12 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
 }
 
 // Global fetcher & sync methods for Prep Subjects
-export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
-  if (prepSubjectsInFlightPromise) return prepSubjectsInFlightPromise;
+export async function fetchPrepSubjectsFromDb(forceRefresh = false): Promise<PrepSubjectItem[]> {
+  if (!forceRefresh && prepMemoryCache && prepMemoryCache.length > 0) {
+    return prepMemoryCache;
+  }
+
+  if (!forceRefresh && prepSubjectsInFlightPromise) return prepSubjectsInFlightPromise;
 
   prepSubjectsInFlightPromise = (async () => {
     try {
@@ -518,6 +551,7 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(localCached)
               }).catch(() => {});
+              prepMemoryCache = localCached;
               return localCached;
             }
           }
@@ -528,6 +562,7 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
             if (typeof window !== "undefined") {
               localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
             }
+            prepMemoryCache = cleanPrep;
             return cleanPrep;
           }
 
@@ -537,6 +572,7 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
             if (typeof window !== "undefined") {
               localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
             }
+            prepMemoryCache = cleanPrep;
             return cleanPrep;
           }
         }
@@ -544,7 +580,9 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
         console.warn("API prep-subjects fetch note:", e);
       }
 
-      return getCachedPrepSubjects();
+      const fallback = getCachedPrepSubjects();
+      prepMemoryCache = fallback;
+      return fallback;
     } finally {
       prepSubjectsInFlightPromise = null;
     }
@@ -554,6 +592,7 @@ export async function fetchPrepSubjectsFromDb(): Promise<PrepSubjectItem[]> {
 }
 
 export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Promise<PrepSubjectItem[]> {
+  invalidatePrepSubjectsCache();
   const sorted = [...prepSubjects].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
   if (typeof window !== "undefined") {
@@ -634,8 +673,12 @@ export function getCachedProSection(): ProSectionItem[] {
   return DEFAULT_PRO_SECTION;
 }
 
-export async function fetchProSectionFromDb(): Promise<ProSectionItem[]> {
-  if (proSectionInFlightPromise) return proSectionInFlightPromise;
+export async function fetchProSectionFromDb(forceRefresh = false): Promise<ProSectionItem[]> {
+  if (!forceRefresh && proMemoryCache && proMemoryCache.length > 0) {
+    return proMemoryCache;
+  }
+
+  if (!forceRefresh && proSectionInFlightPromise) return proSectionInFlightPromise;
 
   proSectionInFlightPromise = (async () => {
     try {
@@ -648,19 +691,23 @@ export async function fetchProSectionFromDb(): Promise<ProSectionItem[]> {
           if (typeof window !== "undefined") {
             localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(items));
           }
+          proMemoryCache = items;
           return items;
         }
       }
     } catch (e) {} finally {
       proSectionInFlightPromise = null;
     }
-    return getCachedProSection();
+    const fallback = getCachedProSection();
+    proMemoryCache = fallback;
+    return fallback;
   })();
 
   return proSectionInFlightPromise;
 }
 
 export async function saveProSectionToDb(items: ProSectionItem[]): Promise<ProSectionItem[]> {
+  invalidateProSectionCache();
   const sorted = [...items].sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
   if (typeof window !== "undefined") {
@@ -760,6 +807,33 @@ export function subscribeToCoursesAndPrep(
   };
   window.addEventListener("visibilitychange", handleVisibility);
 
+  let supabaseChannel: any = null;
+  let supabaseRef: any = null;
+
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      supabaseRef = supabase;
+      supabaseChannel = supabase
+        .channel("courses_prep_realtime_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "app_courses" }, () => {
+          invalidateCoursesCache();
+          fetchCoursesFromDb(true).then(onCourses);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "app_prep_subjects" }, () => {
+          invalidatePrepSubjectsCache();
+          fetchPrepSubjectsFromDb(true).then(onPrep);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "app_pro_section" }, () => {
+          invalidateProSectionCache();
+          if (onPro) fetchProSectionFromDb(true).then(onPro);
+        })
+        .subscribe();
+    }
+  } catch (err) {
+    console.warn("Courses/Prep realtime sub error:", err);
+  }
+
   return () => {
     window.removeEventListener("jobmaster_courses_updated", handleCourses);
     window.removeEventListener("jobmaster_prep_subjects_updated", handlePrep);
@@ -768,5 +842,12 @@ export function subscribeToCoursesAndPrep(
     window.removeEventListener("storage", handlePrep);
     window.removeEventListener("storage", handlePro);
     window.removeEventListener("visibilitychange", handleVisibility);
+    if (supabaseRef && supabaseChannel) {
+      try {
+        supabaseRef.removeChannel(supabaseChannel);
+      } catch (err) {
+        console.warn("Error removing courses_prep realtime channel:", err);
+      }
+    }
   };
 }

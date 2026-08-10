@@ -1138,6 +1138,7 @@ export default function Home() {
 
   // In-memory cache for questions by subject/key to avoid duplicate fetches
   const questionsCacheRef = useRef<Record<string, Question[]>>({});
+  const questionsInFlightRef = useRef<Record<string, Promise<Question[]>>>({});
 
   // On-demand questions fetcher with local caching and explicit column selection
   const fetchQuestionsOnDemand = useCallback(async (subjectKey: string = "all"): Promise<Question[]> => {
@@ -1146,7 +1147,12 @@ export default function Home() {
       return questionsCacheRef.current[subjectKey];
     }
 
-    // 2. Check Session Storage cache
+    // 2. Check in-flight promise
+    if (questionsInFlightRef.current[subjectKey]) {
+      return questionsInFlightRef.current[subjectKey];
+    }
+
+    // 3. Check Session Storage cache
     if (typeof window !== "undefined") {
       try {
         const stored = sessionStorage.getItem(`jobmaster_questions_${subjectKey}`);
@@ -1160,74 +1166,80 @@ export default function Home() {
       } catch (e) {}
     }
 
-    // 3. Fetch from Supabase with explicit column selection
-    try {
-      const supabase = getSupabase();
-      if (!supabase) return QUIZ_QUESTIONS;
+    const promise = (async () => {
+      try {
+        const supabase = getSupabase();
+        if (!supabase) return QUIZ_QUESTIONS;
 
-      let query = supabase
-        .from("questions")
-        .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
-        .limit(30);
+        let query = supabase
+          .from("questions")
+          .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
+          .limit(30);
 
-      if (subjectKey !== "all" && subjectKey.trim() !== "") {
-        query = query.ilike("subjectName", `%${subjectKey}%`);
-      }
-
-      const { data, error: sbError } = await query;
-      if (sbError || !data || data.length === 0) {
-        return QUIZ_QUESTIONS;
-      }
-
-      const mappedQuestions: Question[] = data.map((q: any) => {
-        let questionText = "Untitled Question";
-        const possibleQuestionKeys = ["questionText", "question_text", "question", "title", "text"];
-        for (const key of possibleQuestionKeys) {
-          if (q[key] !== undefined && q[key] !== null) {
-            questionText = String(q[key]);
-            break;
-          }
+        if (subjectKey !== "all" && subjectKey.trim() !== "") {
+          query = query.ilike("subjectName", `%${subjectKey}%`);
         }
 
-        let rawOptions: any = q.options || q.choices || q.answers || q.option_list;
-        let options: string[] = [];
-        if (Array.isArray(rawOptions)) {
-          options = rawOptions.map(String);
-        } else if (typeof rawOptions === "string") {
+        const { data, error: sbError } = await query;
+        if (sbError || !data || data.length === 0) {
+          return QUIZ_QUESTIONS;
+        }
+
+        const mappedQuestions: Question[] = data.map((q: any) => {
+          let questionText = "Untitled Question";
+          const possibleQuestionKeys = ["questionText", "question_text", "question", "title", "text"];
+          for (const key of possibleQuestionKeys) {
+            if (q[key] !== undefined && q[key] !== null) {
+              questionText = String(q[key]);
+              break;
+            }
+          }
+
+          let rawOptions: any = q.options || q.choices || q.answers || q.option_list;
+          let options: string[] = [];
+          if (Array.isArray(rawOptions)) {
+            options = rawOptions.map(String);
+          } else if (typeof rawOptions === "string") {
+            try {
+              const parsed = JSON.parse(rawOptions);
+              if (Array.isArray(parsed)) options = parsed.map(String);
+            } catch {
+              options = rawOptions.split(",").map((s: string) => s.trim());
+            }
+          } else {
+            options = ["Option 1", "Option 2", "Option 3", "Option 4"];
+          }
+
+          let correctIndex = Number(q.correctIndex ?? q.correct_index ?? q.correctOptionIndex ?? q.correct_option_index ?? 0);
+          if (isNaN(correctIndex) || correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
+
+          return {
+            id: Number(q.id) || Date.now(),
+            question: questionText,
+            options,
+            correctIndex,
+            subject: q.subject || q.subjectName || q.subject_name
+          };
+        });
+
+        // Cache result
+        questionsCacheRef.current[subjectKey] = mappedQuestions;
+        if (typeof window !== "undefined") {
           try {
-            const parsed = JSON.parse(rawOptions);
-            if (Array.isArray(parsed)) options = parsed.map(String);
-          } catch {
-            options = rawOptions.split(",").map((s: string) => s.trim());
-          }
-        } else {
-          options = ["Option 1", "Option 2", "Option 3", "Option 4"];
+            sessionStorage.setItem(`jobmaster_questions_${subjectKey}`, JSON.stringify(mappedQuestions));
+          } catch (e) {}
         }
 
-        let correctIndex = Number(q.correctIndex ?? q.correct_index ?? q.correctOptionIndex ?? q.correct_option_index ?? 0);
-        if (isNaN(correctIndex) || correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
-
-        return {
-          id: Number(q.id) || Date.now(),
-          question: questionText,
-          options,
-          correctIndex,
-          subject: q.subject || q.subjectName || q.subject_name
-        };
-      });
-
-      // Cache result
-      questionsCacheRef.current[subjectKey] = mappedQuestions;
-      if (typeof window !== "undefined") {
-        try {
-          sessionStorage.setItem(`jobmaster_questions_${subjectKey}`, JSON.stringify(mappedQuestions));
-        } catch (e) {}
+        return mappedQuestions;
+      } catch (err) {
+        return QUIZ_QUESTIONS;
+      } finally {
+        delete questionsInFlightRef.current[subjectKey];
       }
+    })();
 
-      return mappedQuestions;
-    } catch (err) {
-      return QUIZ_QUESTIONS;
-    }
+    questionsInFlightRef.current[subjectKey] = promise;
+    return promise;
   }, []);
 
   // No question fetching on mount! Use default initial state to save Egress

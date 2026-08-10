@@ -174,12 +174,17 @@ export function getCachedExamPapers(): ExamPaper[] {
 let examPapersInFlightPromise: Promise<ExamPaper[]> | null = null;
 let examPapersMemoryCache: ExamPaper[] | null = null;
 
-export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
-  if (examPapersMemoryCache && examPapersMemoryCache.length > 0) {
+export function invalidateExamPapersCache() {
+  examPapersMemoryCache = null;
+  examPapersInFlightPromise = null;
+}
+
+export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamPaper[]> {
+  if (!forceRefresh && examPapersMemoryCache && examPapersMemoryCache.length > 0) {
     return examPapersMemoryCache;
   }
 
-  if (examPapersInFlightPromise) {
+  if (!forceRefresh && examPapersInFlightPromise) {
     return examPapersInFlightPromise;
   }
 
@@ -314,6 +319,7 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
 }
 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
+  invalidateExamPapersCache();
   const paperWithTimestamps: ExamPaper = {
     ...paper,
     createdAt: paper.createdAt || new Date().toISOString(),
@@ -383,6 +389,7 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
 }
 
 export async function deleteExamPaperFromDb(id: string): Promise<boolean> {
+  invalidateExamPapersCache();
   let filtered: ExamPaper[] = [];
   if (typeof window !== "undefined") {
     const cached = localStorage.getItem("job_master_exam_papers");
@@ -421,33 +428,38 @@ export function subscribeToExamPapers(onUpdate: (papers: ExamPaper[]) => void) {
   window.addEventListener("jobmaster_exam_papers_updated", handleUpdate);
   window.addEventListener("storage", handleUpdate);
 
-  let removeRealtimeChannel = () => {};
+  let supabaseChannel: any = null;
+  let supabaseRef: any = null;
 
   try {
     const supabase = getSupabase();
     if (supabase) {
-      const channel = supabase
+      supabaseRef = supabase;
+      supabaseChannel = supabase
         .channel("public:exam_papers")
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "exam_papers" },
           async () => {
-            const updatedPapers = await fetchExamPapersFromDb();
+            invalidateExamPapersCache();
+            const updatedPapers = await fetchExamPapersFromDb(true);
             onUpdate(updatedPapers);
           }
         )
         .subscribe();
-
-      removeRealtimeChannel = () => {
-        supabase.removeChannel(channel);
-      };
     }
   } catch (e) {
     console.warn("Realtime subscription setup failed:", e);
   }
 
   return () => {
-    removeRealtimeChannel();
+    if (supabaseRef && supabaseChannel) {
+      try {
+        supabaseRef.removeChannel(supabaseChannel);
+      } catch (err) {
+        console.warn("Error removing exam_papers realtime channel:", err);
+      }
+    }
     window.removeEventListener("jobmaster_exam_papers_updated", handleUpdate);
     window.removeEventListener("storage", handleUpdate);
   };

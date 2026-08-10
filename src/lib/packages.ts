@@ -115,12 +115,17 @@ export function getCachedPackages(): PackageItem[] {
 let packagesInFlightPromise: Promise<PackageItem[]> | null = null;
 let packagesMemoryCache: PackageItem[] | null = null;
 
-export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
-  if (packagesMemoryCache && packagesMemoryCache.length > 0) {
+export function invalidatePackagesCache() {
+  packagesMemoryCache = null;
+  packagesInFlightPromise = null;
+}
+
+export async function fetchPackagesFromDb(forceRefresh = false): Promise<PackageItem[]> {
+  if (!forceRefresh && packagesMemoryCache && packagesMemoryCache.length > 0) {
     return packagesMemoryCache;
   }
 
-  if (packagesInFlightPromise) {
+  if (!forceRefresh && packagesInFlightPromise) {
     return packagesInFlightPromise;
   }
 
@@ -174,6 +179,7 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
 }
 
 export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Promise<{ success: boolean; message: string }> {
+  invalidatePackagesCache();
   try {
     const supabase = getSupabase();
     if (!supabase) return { success: false, message: "Supabase client unavailable" };
@@ -259,6 +265,7 @@ export async function syncAllPackagesToSupabase(pkgsToSync?: PackageItem[]): Pro
 }
 
 export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> {
+  invalidatePackagesCache();
   // 1. Get current local packages list from localStorage or defaults
   let currentList: PackageItem[] = [];
   if (typeof window !== "undefined") {
@@ -348,6 +355,7 @@ export async function savePackageToDb(pkg: PackageItem): Promise<PackageItem[]> 
 }
 
 export async function deletePackageFromDb(id: string): Promise<PackageItem[]> {
+  invalidatePackagesCache();
   // 1. Get current local list
   let currentList: PackageItem[] = [];
   if (typeof window !== "undefined") {
@@ -419,16 +427,19 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
   window.addEventListener("visibilitychange", handleVisibility);
 
   let supabaseChannel: any = null;
+  let supabaseRef: any = null;
   try {
     const supabase = getSupabase();
     if (supabase) {
+      supabaseRef = supabase;
       supabaseChannel = supabase
         .channel("packages_realtime_sync")
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "packages" },
           () => {
-            fetchPackagesFromDb().then(callback);
+            invalidatePackagesCache();
+            fetchPackagesFromDb(true).then(callback);
           }
         )
         .subscribe();
@@ -441,8 +452,12 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
     window.removeEventListener("jobmaster_packages_updated", handleUpdate);
     window.removeEventListener("storage", handleUpdate);
     window.removeEventListener("visibilitychange", handleVisibility);
-    if (supabaseChannel) {
-      supabaseChannel.unsubscribe();
+    if (supabaseRef && supabaseChannel) {
+      try {
+        supabaseRef.removeChannel(supabaseChannel);
+      } catch (err) {
+        console.warn("Error removing packages realtime channel:", err);
+      }
     }
   };
 }
