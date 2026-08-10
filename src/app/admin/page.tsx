@@ -70,7 +70,6 @@ import {
 } from "../../lib/user_profiles";
 import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
-import { getTodayVisitorCount } from "../../lib/visitors";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
 import { 
   CourseItem, 
@@ -470,38 +469,7 @@ export default function AdminPage() {
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
 
-  // Daily Visitor Tracker state
-  const [todayVisitors, setTodayVisitors] = useState<number>(0);
-
-  useEffect(() => {
-    const updateVisitorCount = () => {
-      setTodayVisitors(getTodayVisitorCount());
-    };
-    updateVisitorCount();
-
-    const handleVisitorEvent = (e: any) => {
-      if (e.detail !== undefined) {
-        setTodayVisitors(Number(e.detail));
-      } else {
-        updateVisitorCount();
-      }
-    };
-
-    // Refresh every 1 hour (3600000ms) or on focus or custom storage events
-    const interval = setInterval(updateVisitorCount, 3600000);
-    const handleFocus = () => updateVisitorCount();
-
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("storage", updateVisitorCount);
-    window.addEventListener("job_master_visitor_updated", handleVisitorEvent);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("storage", updateVisitorCount);
-      window.removeEventListener("job_master_visitor_updated", handleVisitorEvent);
-    };
-  }, []);
+  // Offers state
   const [offers, setOffers] = useState<AdminOffer[]>([
     { 
       id: "o-1", 
@@ -1995,19 +1963,16 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Stat Box 3: Today's Visitors Count (12:00 AM to 11:59 PM) */}
+            {/* Stat Box 3: Total Packages */}
             <div className="bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF6A00] opacity-5 rounded-full translate-x-4 -translate-y-4"></div>
               <div className="w-10 h-10 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center shrink-0">
-                <Eye className="w-5 h-5 stroke-[2.2px]" />
+                <Package className="w-5 h-5 stroke-[2.2px]" />
               </div>
               <div className="space-y-0.5 text-left">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">আজকের মোট ভিজিটর</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">মোট প্যাকেজসমূহ</span>
                 <span className="text-base sm:text-lg font-black text-slate-800 leading-none">
-                  {todayVisitors} জন
-                </span>
-                <span className="text-[8px] font-bold text-slate-400 block pt-0.5">
-                  ১২:০০ AM - ১১:৫৯ PM (২৪ ঘন্টা)
+                  {packagesList.length} টি
                 </span>
               </div>
             </div>

@@ -74,7 +74,7 @@ export async function GET() {
       if (supabase) {
         const { data, error } = await supabase
           .from("app_prep_subjects")
-          .select("id, name, bnName, bn_name, icon, bg, text, sub, serial, subSubjects, sub_subjects, active, showQuickTools, show_quick_tools")
+          .select("id, name, bnName, bn_name, icon, bg, text, sub, serial, subSubjects, sub_subjects, active")
           .order("serial", { ascending: true });
 
         if (!error && data && data.length > 0) {

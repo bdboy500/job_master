@@ -73,7 +73,6 @@ import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCa
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
-import { recordVisit } from "../lib/visitors";
 import AuthModal from "../components/AuthModal";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 
@@ -586,8 +585,6 @@ export default function Home() {
   // Load state from local storage on mount (Safe client-side execution)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      recordVisit();
-
       const savedRoutine = localStorage.getItem("job_master_routine");
       if (savedRoutine) {
         try {
@@ -1170,11 +1167,11 @@ export default function Home() {
 
       let query = supabase
         .from("questions")
-        .select("id, questionText, question_text, question, title, text, options, choices, answers, option_list, correctOptionIndex, correct_option_index, correctIndex, explanation, subject, subject_name, subjectName")
+        .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
         .limit(30);
 
       if (subjectKey !== "all" && subjectKey.trim() !== "") {
-        query = query.or(`subject.ilike.%${subjectKey}%,subjectName.ilike.%${subjectKey}%,subject_name.ilike.%${subjectKey}%`);
+        query = query.ilike("subjectName", `%${subjectKey}%`);
       }
 
       const { data, error: sbError } = await query;

@@ -132,7 +132,7 @@ export async function fetchPackagesFromDb(): Promise<PackageItem[]> {
         if (supabase) {
           const { data, error } = await supabase
             .from("packages")
-            .select("id, title, desc, price, oldPrice, oldprice, badge, category, bg, border, order, active")
+            .select("id, title, desc, price, oldPrice, badge, category, bg, border, order, active, created_at")
             .order("order", { ascending: true });
 
           if (!error && data && data.length > 0) {

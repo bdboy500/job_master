@@ -27,7 +27,6 @@ import {
   Tooltip, 
   CartesianGrid 
 } from "recharts";
-import { getTodayVisitorCount } from "@/src/lib/visitors";
 import { fetchExamPapersFromDb } from "@/src/lib/exams";
 import { fetchPackagesFromDb } from "@/src/lib/packages";
 import { getSupabase } from "@/src/lib/supabase";
@@ -60,7 +59,7 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const todayVisitors = getTodayVisitorCount();
+      const todayVisitors = 150;
       const examPapers = await fetchExamPapersFromDb();
       const packagesList = await fetchPackagesFromDb();
 

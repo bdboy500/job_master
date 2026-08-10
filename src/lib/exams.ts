@@ -203,7 +203,7 @@ export async function fetchExamPapersFromDb(): Promise<ExamPaper[]> {
       const supabase = getSupabase();
       if (supabase) {
         // Race Supabase select with a 2500ms timeout to prevent hanging on desktop/slow networks
-        const supabasePromise = supabase.from("exam_papers").select("id, title, course, subSubject, sub_subject, categoryType, category_type, examType, exam_type, subject, questionCount, question_count, timePerQuestionSeconds, time_per_question, totalDurationSeconds, total_duration, totalMarks, total_marks, topic, examDate, exam_date, startDateTime, start_date_time, endDateTime, end_date_time, status, questions, createdAt, created_at, updatedAt, updated_at");
+        const supabasePromise = supabase.from("exam_papers").select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, questions, created_at, sub_subject, category_type");
       const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
         setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
       );

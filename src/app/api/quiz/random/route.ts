@@ -11,12 +11,10 @@ export async function GET(req: NextRequest) {
     const limit = limitParam ? parseInt(limitParam, 10) : 10;
 
     const supabase = getSupabase();
-    let query = supabase.from("questions").select("id, question, questionText, question_text, title, text, options, choices, answers, option_list, correctOptionIndex, correct_option_index, correctIndex, subjectName, subject_name, explanation");
+    let query = supabase.from("questions").select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at");
 
     if (subject) {
-      // Support filtering by subject
-      // Checks both camelCase and snake_case column names dynamically if present
-      query = query.or(`subjectName.eq."${subject}",subject_name.eq."${subject}"`);
+      query = query.eq("subjectName", subject);
     }
 
     const { data, error } = await query;

@@ -40,7 +40,7 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, full_name, phone_number, student_id, role, status, created_at, avatar_url")
+        .select("id, email, full_name, phone_number, student_id, role, status, created_at, updated_at")
         .eq("id", userId)
         .maybeSingle();
 
@@ -55,7 +55,7 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
         role: data.role || "Student",
         status: data.status === "Banned" || data.status === "banned" ? "Banned" : "Active",
         created_at: data.created_at || new Date().toISOString(),
-        avatar_url: data.avatar_url || "",
+        avatar_url: (data as any).avatar_url || "",
       };
 
       profileMemoryCache.set(userId, { data: profile, timestamp: Date.now() });
@@ -108,7 +108,7 @@ export async function fetchAllProfilesFromDb(): Promise<UserProfile[]> {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, full_name, phone_number, student_id, role, status, created_at, avatar_url")
+      .select("id, email, full_name, phone_number, student_id, role, status, created_at, updated_at")
       .order("created_at", { ascending: false });
 
     if (error || !data) {
