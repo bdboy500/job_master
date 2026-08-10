@@ -5,6 +5,7 @@ import { Download, X, Check } from "lucide-react";
 
 interface PwaContextType {
   isStandalone: boolean;
+  isIos: boolean;
   bannerDismissed: boolean;
   installedSuccess: boolean;
   triggerInstall: () => void;
@@ -13,6 +14,7 @@ interface PwaContextType {
 
 const PwaContext = createContext<PwaContextType>({
   isStandalone: false,
+  isIos: false,
   bannerDismissed: false,
   installedSuccess: false,
   triggerInstall: () => {},
@@ -24,6 +26,7 @@ export const usePwa = () => useContext(PwaContext);
 export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
+  const [isIos, setIsIos] = useState<boolean>(false);
   const [bannerDismissed, setBannerDismissed] = useState<boolean>(false);
   const [installedSuccess, setInstalledSuccess] = useState<boolean>(false);
 
@@ -43,7 +46,13 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
       setIsStandalone(isStandaloneMode);
 
-      // 3. Check localStorage for dismissal
+      // 3. Detect iOS / iPhone / iPad
+      const ua = window.navigator.userAgent || "";
+      const isIosDevice = /iPhone|iPad|iPod/i.test(ua) || 
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      setIsIos(isIosDevice);
+
+      // 4. Check localStorage for dismissal
       const lastDismissed = localStorage.getItem("jobmaster_pwa_banner_dismissed");
       const isDismissed = lastDismissed && Date.now() - parseInt(lastDismissed) < 24 * 60 * 60 * 1000;
       if (isDismissed) {
@@ -51,13 +60,13 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 4. Listen for beforeinstallprompt event
+    // 5. Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
 
-    // 5. Listen for appinstalled event (Strict Auto-Hide)
+    // 6. Listen for appinstalled event (Strict Auto-Hide)
     const handleAppInstalled = () => {
       setIsStandalone(true);
       setDeferredPrompt(null);
@@ -101,6 +110,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     <PwaContext.Provider
       value={{
         isStandalone,
+        isIos,
         bannerDismissed,
         installedSuccess,
         triggerInstall,
@@ -114,10 +124,10 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
 /* Bottom Sheet Banner (positioned directly above bottom nav: bottom-16 / bottom-20) */
 export function BottomInstallBanner() {
-  const { isStandalone, bannerDismissed, triggerInstall, dismissBanner } = usePwa();
+  const { isStandalone, isIos, bannerDismissed, triggerInstall, dismissBanner } = usePwa();
 
-  // Strict Auto-Hide: Hide completely if already installed or banner was dismissed
-  if (isStandalone || bannerDismissed) {
+  // Strict Auto-Hide: Hide completely if already installed, running on iOS/iPhone, or banner was dismissed
+  if (isStandalone || isIos || bannerDismissed) {
     return null;
   }
 
