@@ -2079,7 +2079,7 @@ export default function Home() {
                 </div>
 
                 {/* Dynamic Course Grid on Home Screen */}
-                <div className="grid grid-cols-2 gap-1.5 min-[360px]:gap-2 sm:gap-2.5">
+                <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
                   {allCoursesData.slice(0, appSettings.ourCoursesHomeLimit || 5).map((course) => {
                     const CourseIcon = course.icon || BookOpen;
                     return (
@@ -2093,12 +2093,12 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl p-1.5 min-[360px]:p-2 sm:px-3 sm:py-3.5 flex flex-row items-center gap-1 min-[360px]:gap-1.5 sm:gap-2.5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                        className="bg-white border border-slate-100 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
                       >
-                        <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
-                          <CourseIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
+                          <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[11px] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-sm font-extrabold text-[#334155] tracking-tight whitespace-nowrap">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight whitespace-nowrap min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -2112,12 +2112,12 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl p-1.5 min-[360px]:p-2 sm:px-3 sm:py-3.5 flex flex-row items-center justify-center gap-1 min-[360px]:gap-1.5 sm:gap-2 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white"
+                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center justify-center gap-1.5 min-[360px]:gap-2 sm:gap-2 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white min-w-0"
                   >
-                    <div className="w-6 h-6 min-[360px]:w-7 min-[360px]:h-7 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
-                      <Briefcase className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
+                    <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
+                      <Briefcase className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-[11px] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-sm font-extrabold text-white tracking-tight whitespace-nowrap">সকল কোর্স দেখুন</span>
+                    <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-white tracking-tight whitespace-nowrap min-w-0">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
@@ -2164,7 +2164,7 @@ export default function Home() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5 min-[360px]:gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {allPrepSubjectsData.slice(0, appSettings.prepHubHomeLimit || 4).map((subject, idx) => {
                     const SubIcon = subject.icon || BookOpen;
                     return (
@@ -2177,12 +2177,12 @@ export default function Home() {
                           setCurrentScreen("prep-sub");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl p-1.5 min-[360px]:p-2 sm:px-3 sm:py-3.5 flex flex-row items-center gap-1 min-[360px]:gap-1.5 sm:gap-2.5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95"
+                        className="bg-white border border-slate-100 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
                       >
-                        <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
-                          <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
+                          <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[11px] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-sm font-extrabold text-[#334155] tracking-tight whitespace-nowrap">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight whitespace-nowrap min-w-0">
                           {subject.name}
                         </span>
                       </div>
@@ -2203,7 +2203,7 @@ export default function Home() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1.5 min-[360px]:gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {allProSectionData
                       .filter(s => s.active !== false)
                       .slice(0, appSettings.proSectionHomeLimit || 4)
@@ -2219,17 +2219,17 @@ export default function Home() {
                               setPreviousScreen("home");
                               setCurrentScreen("prep-sub");
                             }}
-                            className="bg-white border border-purple-100/80 rounded-2xl p-1.5 min-[360px]:p-2 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1 min-[360px]:gap-1.5 sm:gap-3 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer active:scale-95"
+                            className="bg-white border border-purple-100/80 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer active:scale-95 min-w-0"
                           >
-                            <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 ${subject.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${subject.text || "text-purple-600"} shrink-0 shadow-2xs`}>
-                              <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                            <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${subject.text || "text-purple-600"} shrink-0 shadow-2xs`}>
+                              <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                             </div>
                             <div className="flex flex-col min-w-0 text-left">
-                              <span className="text-[11px] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-sm font-extrabold text-slate-800 tracking-tight whitespace-nowrap">
+                              <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-slate-800 tracking-tight whitespace-nowrap min-w-0">
                                 {subject.name}
                               </span>
                               {subject.sub && (
-                                <span className="text-[9px] min-[360px]:text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                                <span className="text-[10px] min-[360px]:text-[10.5px] sm:text-xs font-bold text-slate-400 whitespace-nowrap min-w-0">
                                   {subject.sub}
                                 </span>
                               )}
@@ -2611,7 +2611,7 @@ export default function Home() {
                   কোনো কোর্স পাওয়া যায়নি।
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-1.5 min-[360px]:gap-2 sm:gap-3 pt-1">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-1">
                   {filteredCoursesList.map((course) => {
                     const CourseIcon = course.icon;
                     return (
@@ -2625,12 +2625,12 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl p-1.5 min-[360px]:p-2 sm:p-3 flex flex-row items-center gap-1 min-[360px]:gap-1.5 sm:gap-3 shadow-sm hover:shadow-md hover:border-orange-200 transition-all cursor-pointer active:scale-95"
+                        className="bg-white border border-slate-100 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:p-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-3 shadow-xs hover:shadow-md hover:border-orange-200 transition-all cursor-pointer active:scale-95 min-w-0"
                       >
-                        <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
-                          <CourseIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
+                          <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[11px] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-sm font-extrabold text-[#334155] tracking-tight whitespace-nowrap">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight whitespace-nowrap min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -2657,7 +2657,7 @@ export default function Home() {
               </div>
 
               {/* Subjects Grid - Apple UI Cards */}
-              <div className="grid grid-cols-2 gap-1.5 min-[360px]:gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {allPrepSubjectsData
                 .filter(s => s.name.toLowerCase().includes(prepSubjectSearchQuery.toLowerCase()) || (s.bnName && s.bnName.includes(prepSubjectSearchQuery)))
                 .map((subject, idx) => {
@@ -2671,13 +2671,13 @@ export default function Home() {
                         setCurrentScreen("prep-sub");
                         if (soundEnabled) quizAudio.playClick();
                       }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl p-1.5 min-[360px]:p-2 sm:px-3 sm:py-3.5 flex flex-row items-center gap-1 min-[360px]:gap-1.5 sm:gap-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left"
+                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left min-w-0"
                     >
-                      <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 ${subject.bg} ${subject.text} rounded-xl flex items-center justify-center shrink-0`}>
-                        <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                      <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg} ${subject.text} rounded-xl flex items-center justify-center shrink-0`}>
+                        <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[11px] min-[360px]:text-[12px] min-[390px]:text-[13px] sm:text-sm font-extrabold text-[#334155] tracking-tight block whitespace-nowrap group-hover:text-[#FF6A00] transition-colors">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight block whitespace-nowrap group-hover:text-[#FF6A00] transition-colors min-w-0">
                           {subject.name}
                         </span>
                       </div>
