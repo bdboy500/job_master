@@ -431,6 +431,7 @@ export default function AdminPage() {
   // 1. QUESTIONS STATE & COMPONENT
   // ==========================================
   const [questions, setQuestions] = useState<any[]>([]);
+  const [totalQuestionsCount, setTotalQuestionsCount] = useState<number>(0);
   const [dbLoading, setDbLoading] = useState<boolean>(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
@@ -518,7 +519,6 @@ export default function AdminPage() {
     if (cachedOffers) setOffers(JSON.parse(cachedOffers));
 
     // Fetch questions & exam papers from Supabase/Storage
-    loadQuestionsFromDb();
     loadExamPapersFromDb();
     const unsubExams = subscribeToExamPapers(setExamPapers);
 
@@ -1119,46 +1119,72 @@ export default function AdminPage() {
   // -------------------------------------------------------------
   // SUPABASE ASYNC CRUD HANDLERS
   // -------------------------------------------------------------
-  const loadQuestionsFromDb = async () => {
+  const loadQuestionsFromDb = async (
+    overrideLimit?: number,
+    overrideSubject?: string,
+    overrideSearch?: string
+  ) => {
+    const limitVal = overrideLimit !== undefined ? overrideLimit : displayLimit;
+    const subjectVal = overrideSubject !== undefined ? overrideSubject : selectedSubjectFilter;
+    const searchVal = overrideSearch !== undefined ? overrideSearch : searchQuery;
+
     try {
       setDbLoading(true);
       setDbError(null);
       const supabase = getSupabase();
       
-      const { data, error } = await supabase
-        .from("questions")
-        .select("*");
+      if (supabase) {
+        // 1. Exact count query for dashboard and stats without downloading table body
+        const { count, error: countErr } = await supabase
+          .from("questions")
+          .select("id", { count: "exact", head: true });
 
-      if (error) {
-        // If table doesn't exist yet, we still allow proceeding but log warn
-        console.warn("Could not load from 'questions' table. Fallback to mock state.", error);
-        setDbError("Supabase 'questions' table not found or query failed.");
-        
-        // Initialize with original mock questions
-        const cachedMock = localStorage.getItem("job_master_admin_questions");
-        if (cachedMock) {
-          try {
-            setQuestions(JSON.parse(cachedMock).map((item: any) => normalizeQuestion(item)));
-          } catch {
-            setQuestions(QUIZ_QUESTIONS.map(item => normalizeQuestion(item)));
-          }
-        } else {
-          setQuestions(QUIZ_QUESTIONS.map(item => normalizeQuestion(item)));
+        if (!countErr && count !== null && count !== undefined) {
+          setTotalQuestionsCount(count);
         }
-      } else if (data) {
-        // Robust in-memory sorting so we don't depend on database column named createdAt
-        const sortedData = [...data].sort((a: any, b: any) => {
-          const aTime = a.createdAt || a.created_at || a.id || 0;
-          const bTime = b.createdAt || b.created_at || b.id || 0;
-          if (typeof aTime === "number" && typeof bTime === "number") {
-            return bTime - aTime;
+
+        // 2. Server-side pagination, on-demand search/filtering & optimized column selection
+        let query = supabase
+          .from("questions")
+          .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
+          .order("created_at", { ascending: false })
+          .limit(limitVal);
+
+        if (subjectVal && subjectVal !== "All") {
+          query = query.eq("subjectName", subjectVal);
+        }
+
+        if (searchVal && searchVal.trim() !== "") {
+          query = query.ilike("questionText", `%${searchVal.trim()}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.warn("Could not load from 'questions' table. Fallback to mock state.", error);
+          setDbError("Supabase 'questions' table not found or query failed.");
+          
+          const cachedMock = localStorage.getItem("job_master_admin_questions");
+          if (cachedMock) {
+            try {
+              const parsed = JSON.parse(cachedMock).map((item: any) => normalizeQuestion(item));
+              setQuestions(parsed.slice(0, limitVal));
+              setTotalQuestionsCount(parsed.length);
+            } catch {
+              const norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
+              setQuestions(norm.slice(0, limitVal));
+              setTotalQuestionsCount(norm.length);
+            }
+          } else {
+            const norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
+            setQuestions(norm.slice(0, limitVal));
+            setTotalQuestionsCount(norm.length);
           }
-          return String(bTime).localeCompare(String(aTime));
-        });
-        
-        const normalized = sortedData.map(item => normalizeQuestion(item));
-        setQuestions(normalized);
-        localStorage.setItem("job_master_admin_questions", JSON.stringify(normalized));
+        } else if (data) {
+          const normalized = data.map(item => normalizeQuestion(item));
+          setQuestions(normalized);
+          localStorage.setItem("job_master_admin_questions", JSON.stringify(normalized));
+        }
       }
     } catch (err: any) {
       console.error("Error connecting to Supabase:", err);
@@ -1167,6 +1193,15 @@ export default function AdminPage() {
       setDbLoading(false);
     }
   };
+
+  // Debounced Effect to handle initial load, limit changes, subject filter changes, and search query typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [displayLimit, selectedSubjectFilter, searchQuery]);
 
   // Handle Add Question to Supabase
   const handleAddQuestion = async (e: React.FormEvent) => {
@@ -1693,7 +1728,7 @@ export default function AdminPage() {
               }`}
             >
               <HelpCircle className={`w-4 h-4 ${activeTab === "questions" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>প্রশ্ন ব্যাংক ({questions.length})</span>
+              <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
             </button>
 
             <button
@@ -1813,7 +1848,7 @@ export default function AdminPage() {
               }`}
             >
               <HelpCircle className="w-4 h-4" />
-              <span>প্রশ্ন ব্যাংক ({questions.length})</span>
+              <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
             </button>
 
             {/* Tab Button 2: Exam Papers / Question Sets */}
@@ -1947,7 +1982,7 @@ export default function AdminPage() {
               </div>
               <div className="space-y-0.5 text-left">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">মোট প্রশ্ন সংখ্যা</span>
-                <span className="text-base sm:text-lg font-black text-slate-800 leading-none">{questions.length} টি</span>
+                <span className="text-base sm:text-lg font-black text-slate-800 leading-none">{totalQuestionsCount || questions.length} টি</span>
               </div>
             </div>
 
@@ -1997,15 +2032,7 @@ export default function AdminPage() {
           {/* VIEW A: QUESTIONS MANAGEMENT                               */}
           {/* ========================================================= */}
           {activeTab === "questions" && (() => {
-            const filteredQuestions = questions.filter((q: any) => {
-              const subName = q.subjectName || q.subject_name || "";
-              const qText = q.questionText || q.question || q.title || q.question_text || "";
-              const matchesSubject = selectedSubjectFilter === "All" || subName === selectedSubjectFilter;
-              const matchesSearch = qText.toLowerCase().includes(searchQuery.toLowerCase());
-              return matchesSubject && matchesSearch;
-            });
-
-            const displayedQuestions = filteredQuestions.slice(0, displayLimit);
+            const displayedQuestions = questions;
 
             return (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-fade-in text-left">
@@ -2151,7 +2178,7 @@ export default function AdminPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Manual Sync */}
                         <button
-                          onClick={loadQuestionsFromDb}
+                          onClick={() => loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery)}
                           disabled={dbLoading}
                           className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                           title="লাইভ Supabase থেকে ডেটা রিফ্রেশ করুন"
@@ -2212,7 +2239,10 @@ export default function AdminPage() {
                           <button
                             key={num}
                             type="button"
-                            onClick={() => setDisplayLimit(num)}
+                            onClick={() => {
+                              setDisplayLimit(num);
+                              loadQuestionsFromDb(num, selectedSubjectFilter, searchQuery);
+                            }}
                             className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
                               displayLimit === num
                                 ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/20"
@@ -2238,10 +2268,10 @@ export default function AdminPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] font-extrabold bg-slate-100 text-slate-500 px-3 py-1 rounded-full">
-                          মোট: {questions.length} টি
+                          মোট: {totalQuestionsCount || questions.length} টি
                         </span>
                         <span className="text-[10px] font-extrabold bg-orange-50 text-[#FF6A00] border border-orange-100 px-3 py-1 rounded-full">
-                          প্রদর্শিত: {displayedQuestions.length} / {filteredQuestions.length} টি (সর্বোচ্চ {displayLimit} টি)
+                          প্রদর্শিত: {displayedQuestions.length} টি (সর্বোচ্চ {displayLimit} টি)
                         </span>
                       </div>
                     </div>
