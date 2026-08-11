@@ -61,8 +61,9 @@ export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
 }
 
 export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive" {
+  const now = new Date();
+
   if (paper.startDateTime && paper.endDateTime) {
-    const now = new Date();
     const start = new Date(paper.startDateTime);
     const end = new Date(paper.endDateTime);
 
@@ -76,10 +77,35 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
       }
     }
   }
-  // Fallback if startDateTime or endDateTime not set
-  const s = (paper.status || "Live").toLowerCase();
+
+  if (paper.endDateTime) {
+    const end = new Date(paper.endDateTime);
+    if (!isNaN(end.getTime())) {
+      if (now > end) {
+        return "Archive";
+      } else {
+        return "Live";
+      }
+    }
+  }
+
+  // Fallback if status is explicitly set to archive/completed/upcoming
+  const s = (paper.status || "").toLowerCase();
   if (s === "archive" || s === "archived" || s === "completed") return "Archive";
   if (s === "upcoming") return "Upcoming";
+
+  // Check examDate string if present (e.g. "Mon, Aug 3, 2026")
+  if (paper.examDate && paper.examDate !== "Today") {
+    const parsedDate = new Date(paper.examDate);
+    if (!isNaN(parsedDate.getTime())) {
+      const endOfExamDate = new Date(parsedDate);
+      endOfExamDate.setHours(23, 59, 59, 999);
+      if (now > endOfExamDate) {
+        return "Archive";
+      }
+    }
+  }
+
   return "Live";
 }
 
@@ -210,7 +236,7 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
         // Fetch ONLY lightweight metadata for homepage cards (excluding heavy 'questions' column)
         const supabasePromise = supabase
           .from("exam_papers")
-          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, sub_subject, category_type");
+          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, questions, created_at, sub_subject, category_type");
         
         const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
           setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
