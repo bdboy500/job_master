@@ -551,6 +551,10 @@ export default function Home() {
       takingExamModal,
       examSubmitted,
       viewingAnswerSheetData,
+      viewingPaperModal,
+      archiveModalOpen,
+      quickToolModal,
+      selectedPurchasePkg,
       quizStarted,
       previousScreen,
       courseOriginScreen,
@@ -580,6 +584,10 @@ export default function Home() {
       setSelectedLiveExamModal,
       setTakingExamModal,
       setViewingAnswerSheetData,
+      setViewingPaperModal,
+      setArchiveModalOpen,
+      setQuickToolModal,
+      setSelectedPurchasePkg,
     }
   );
 

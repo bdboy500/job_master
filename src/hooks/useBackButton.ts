@@ -135,6 +135,10 @@ export function useAppNavigationHistory(
     takingExamModal?: any;
     examSubmitted?: boolean;
     viewingAnswerSheetData?: any;
+    viewingPaperModal?: any;
+    archiveModalOpen?: boolean;
+    quickToolModal?: any;
+    selectedPurchasePkg?: any;
     quizStarted?: boolean;
     isSubmitted?: boolean;
     previousScreen?: string;
@@ -165,6 +169,10 @@ export function useAppNavigationHistory(
     setSelectedLiveExamModal?: (modal: any) => void;
     setTakingExamModal?: (modal: any) => void;
     setViewingAnswerSheetData?: (data: any) => void;
+    setViewingPaperModal?: (modal: any) => void;
+    setArchiveModalOpen?: (open: boolean) => void;
+    setQuickToolModal?: (modal: any) => void;
+    setSelectedPurchasePkg?: (pkg: any) => void;
   }
 ) {
   const isPopstateHandlingRef = useRef<boolean>(false);
@@ -181,7 +189,7 @@ export function useAppNavigationHistory(
     navState.selectedPrepExamTypeFilter || "",
     navState.activeExamSection ? "sec_active" : "",
     navState.drawerOpen ? "drawer_open" : "",
-    navState.activeDrawerModal !== "none" ? `dmodal_${navState.activeDrawerModal}` : "",
+    navState.activeDrawerModal && navState.activeDrawerModal !== "none" ? `dmodal_${navState.activeDrawerModal}` : "",
     navState.showAuthModal ? "auth_open" : "",
     navState.showContactModal ? "contact_open" : "",
     navState.showAboutModal ? "about_open" : "",
@@ -196,10 +204,14 @@ export function useAppNavigationHistory(
     navState.selectedLiveExamModal ? "liveexam_open" : "",
     navState.takingExamModal ? "takingexam_open" : "",
     navState.viewingAnswerSheetData ? "answersheet_open" : "",
+    navState.viewingPaperModal ? "viewpaper_open" : "",
+    navState.archiveModalOpen ? "archive_open" : "",
+    navState.quickToolModal ? "quicktool_open" : "",
+    navState.selectedPurchasePkg ? "pkg_purchase_open" : "",
     navState.quizStarted ? "quiz_started" : "",
   ].join("|");
 
-  // Push history state whenever user navigates or opens modals/drawers
+  // Push / Replace history state whenever user navigates or opens modals/drawers
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -220,6 +232,38 @@ export function useAppNavigationHistory(
       return;
     }
 
+    // Special handling for Home screen when no overlays are active:
+    // If user returns to Home, replace the history state so that pressing back ONCE immediately exits/closes!
+    const isAtHomeClean = navState.currentScreen === "home" && 
+      !navState.drawerOpen &&
+      (!navState.activeDrawerModal || navState.activeDrawerModal === "none") &&
+      !navState.showAuthModal &&
+      !navState.showContactModal &&
+      !navState.showAboutModal &&
+      !navState.showSearchModal &&
+      !navState.showNotificationModal &&
+      !navState.showSettingsModal &&
+      !navState.showLogoutConfirmModal &&
+      !navState.showQuitConfirmModal &&
+      !navState.isEditProfileOpen &&
+      !navState.isChangePasswordOpen &&
+      !navState.selectedLiveExamModal &&
+      !navState.takingExamModal &&
+      !navState.viewingAnswerSheetData &&
+      !navState.viewingPaperModal &&
+      !navState.archiveModalOpen &&
+      !navState.quickToolModal &&
+      !navState.selectedPurchasePkg &&
+      !navState.quizStarted;
+
+    if (isAtHomeClean) {
+      lastStateKeyRef.current = stateKey;
+      try {
+        window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
+      } catch (e) {}
+      return;
+    }
+
     // Only push if the state key actually changed
     if (stateKey !== lastStateKeyRef.current) {
       lastStateKeyRef.current = stateKey;
@@ -227,7 +271,7 @@ export function useAppNavigationHistory(
         window.history.pushState({ appNav: true, key: stateKey }, "", window.location.href);
       } catch (e) {}
     }
-  }, [stateKey]);
+  }, [stateKey, navState]);
 
   // Global popstate listener for back button / swipe back gesture
   useEffect(() => {
@@ -245,11 +289,9 @@ export function useAppNavigationHistory(
 
       // 1. ACTIVE EXAM PROTECTION: If actively taking an exam (and not submitted)
       if (navState.takingExamModal && !navState.examSubmitted) {
-        // Re-push history to trap browser exit
         try {
           window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
         } catch (e) {}
-        // Open the exit warning popup!
         handlers.setShowQuitConfirmModal(true);
         return;
       }
@@ -263,8 +305,39 @@ export function useAppNavigationHistory(
         return;
       }
 
-      // 3. ANSWER SHEET / QUESTION PAPER VIEW (Non-active exam mode)
-      // When viewing question paper/answer sheet, pressing back button closes it 1-by-1 without warning
+      // 3. QUESTION PAPER VIEW ("প্রশ্নপত্র") MODAL
+      if (navState.viewingPaperModal) {
+        if (handlers.setViewingPaperModal) {
+          handlers.setViewingPaperModal(null);
+        }
+        return;
+      }
+
+      // 4. ARCHIVE MODAL ("আর্কাইভড মডেল টেস্ট")
+      if (navState.archiveModalOpen) {
+        if (handlers.setArchiveModalOpen) {
+          handlers.setArchiveModalOpen(false);
+        }
+        return;
+      }
+
+      // 5. QUICK TOOL MODAL
+      if (navState.quickToolModal) {
+        if (handlers.setQuickToolModal) {
+          handlers.setQuickToolModal(null);
+        }
+        return;
+      }
+
+      // 6. PURCHASE PACKAGE MODAL
+      if (navState.selectedPurchasePkg) {
+        if (handlers.setSelectedPurchasePkg) {
+          handlers.setSelectedPurchasePkg(null);
+        }
+        return;
+      }
+
+      // 7. ANSWER SHEET VIEW ("উত্তরপত্র") MODAL
       if (navState.viewingAnswerSheetData) {
         if (handlers.setViewingAnswerSheetData) {
           handlers.setViewingAnswerSheetData(null);
@@ -272,13 +345,13 @@ export function useAppNavigationHistory(
         return;
       }
 
-      // 4. SUBMITTED EXAM SUMMARY MODAL
+      // 8. SUBMITTED EXAM SUMMARY MODAL
       if (navState.takingExamModal && navState.examSubmitted) {
         if (handlers.setTakingExamModal) handlers.setTakingExamModal(null);
         return;
       }
 
-      // 5. MODALS & DRAWERS (Close 1-by-1)
+      // 9. MODALS & DRAWERS (Close 1-by-1)
       if (navState.showExamSubmitConfirmModal && handlers.setShowExamSubmitConfirmModal) {
         handlers.setShowExamSubmitConfirmModal(false);
         return;
@@ -332,7 +405,7 @@ export function useAppNavigationHistory(
         return;
       }
 
-      // 6. SCREEN HIERARCHY & SUB-VIEW BACK NAVIGATION (1-by-1)
+      // 10. SCREEN HIERARCHY & SUB-VIEW BACK NAVIGATION (1-by-1)
       if (navState.activeExamSection) {
         if (handlers.setActiveExamSection) handlers.setActiveExamSection(null);
         return;
@@ -382,13 +455,14 @@ export function useAppNavigationHistory(
         return;
       }
 
-      // If at home, popstate allows natural browser behavior
-      isPopstateHandlingRef.current = false;
+      // 11. If at home, popstate allows natural browser exit/close
+      isPopstateHandlingRef.current = true;
+      lastStateKeyRef.current = stateKey;
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [navState, handlers]);
+  }, [navState, handlers, stateKey]);
 }
