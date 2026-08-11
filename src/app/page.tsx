@@ -76,7 +76,7 @@ import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components
 import AuthModal from "../components/AuthModal";
 import ProfileImage from "../components/ProfileImage";
 import ExamStartModal from "../components/ExamStartModal";
-import { useModalHistory, useExamExitProtection } from "../hooks/useBackButton";
+import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 
 // Type definition for routine items
@@ -524,19 +524,59 @@ export default function Home() {
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
-  // Registered Modal History Hooks (Handles Android/iOS Back Button & Back Swipe)
-  useModalHistory(showContactModal, () => setShowContactModal(false), "contact");
-  useModalHistory(showAboutModal, () => setShowAboutModal(false), "about");
-  useModalHistory(showSearchModal, () => setShowSearchModal(false), "search");
-  useModalHistory(showNotificationModal, () => setShowNotificationModal(false), "notifications");
-  useModalHistory(showSettingsModal, () => setShowSettingsModal(false), "settings");
-  useModalHistory(showLogoutConfirmModal, () => setShowLogoutConfirmModal(false), "logout_confirm");
-  useModalHistory(showQuitConfirmModal, () => setShowQuitConfirmModal(false), "quit_confirm");
-
-  // Active Quiz Exit Protection Hook
-  useExamExitProtection(quizStarted && !isSubmitted, () => {
-    setShowQuitConfirmModal(true);
-  });
+  // Full App PWA Navigation Sync Engine (Handles Android/iOS Back Button & Swipe Gestures across all courses, subjects, topics, and modals)
+  useAppNavigationHistory(
+    {
+      currentScreen,
+      selectedCourseDetail,
+      selectedPrepSubject,
+      selectedPrepSubSubject,
+      selectedLevel3Topic,
+      selectedPrepExamTypeFilter,
+      activeExamSection,
+      drawerOpen,
+      activeDrawerModal,
+      showAuthModal,
+      showContactModal,
+      showAboutModal,
+      showSearchModal,
+      showNotificationModal,
+      showSettingsModal,
+      showLogoutConfirmModal,
+      showQuitConfirmModal,
+      isEditProfileOpen,
+      isChangePasswordOpen,
+      selectedLiveExamModal,
+      takingExamModal,
+      quizStarted,
+      previousScreen,
+      courseOriginScreen,
+      prepSubjectOrigin,
+    },
+    {
+      setCurrentScreen,
+      setSelectedCourseDetail,
+      setSelectedPrepSubject,
+      setSelectedPrepSubSubject,
+      setSelectedLevel3Topic,
+      setSelectedPrepExamTypeFilter,
+      setActiveExamSection,
+      setDrawerOpen,
+      setActiveDrawerModal,
+      setShowAuthModal,
+      setShowContactModal,
+      setShowAboutModal,
+      setShowSearchModal,
+      setShowNotificationModal,
+      setShowSettingsModal,
+      setShowLogoutConfirmModal,
+      setShowQuitConfirmModal,
+      setIsEditProfileOpen,
+      setIsChangePasswordOpen,
+      setSelectedLiveExamModal,
+      setTakingExamModal,
+    }
+  );
 
   // Settings
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
