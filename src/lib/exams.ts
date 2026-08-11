@@ -343,7 +343,7 @@ export function parseRawExamPaper(item: any): ExamPaper {
     examDate: item.examDate || item.exam_date || "Today",
     startDateTime: startDT,
     endDateTime: endDT,
-    status: item.status || "Live",
+    status: item.status || "",
     questions: questionsArr,
     createdAt: createdAt || new Date().toISOString(),
     updatedAt: updatedAt || createdAt || new Date().toISOString()
