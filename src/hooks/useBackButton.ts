@@ -53,7 +53,6 @@ export function useModalHistory(
 
 /**
  * Custom Hook for Active Exam Exit Protection
- * Traps back button / back swipe gesture during an active exam/quiz to prevent accidental exit.
  */
 export function useExamExitProtection(
   isExamActive: boolean,
@@ -105,7 +104,7 @@ export function useExamExitProtection(
 
 /**
  * Full App PWA Navigation Sync Engine
- * Synchronizes screen navigation (Home -> Courses -> Subject -> Topic), Modals, and Drawers
+ * Synchronizes screen navigation (Home -> Courses -> Subject -> Topic), Modals, Drawers, and Exams
  * with the browser's History Stack (`window.history.pushState` and `popstate`).
  * Enables mobile hardware back button and iOS/Android swipe-to-back gestures to step back cleanly
  * through nested pages instead of exiting the browser/PWA.
@@ -129,11 +128,15 @@ export function useAppNavigationHistory(
     showSettingsModal?: boolean;
     showLogoutConfirmModal?: boolean;
     showQuitConfirmModal?: boolean;
+    showExamSubmitConfirmModal?: boolean;
     isEditProfileOpen?: boolean;
     isChangePasswordOpen?: boolean;
     selectedLiveExamModal?: any;
     takingExamModal?: any;
+    examSubmitted?: boolean;
+    viewingAnswerSheetData?: any;
     quizStarted?: boolean;
+    isSubmitted?: boolean;
     previousScreen?: string;
     courseOriginScreen?: string;
     prepSubjectOrigin?: string;
@@ -156,10 +159,12 @@ export function useAppNavigationHistory(
     setShowSettingsModal: (open: boolean) => void;
     setShowLogoutConfirmModal: (open: boolean) => void;
     setShowQuitConfirmModal: (open: boolean) => void;
+    setShowExamSubmitConfirmModal?: (open: boolean) => void;
     setIsEditProfileOpen: (open: boolean) => void;
     setIsChangePasswordOpen: (open: boolean) => void;
     setSelectedLiveExamModal?: (modal: any) => void;
     setTakingExamModal?: (modal: any) => void;
+    setViewingAnswerSheetData?: (data: any) => void;
   }
 ) {
   const isPopstateHandlingRef = useRef<boolean>(false);
@@ -185,10 +190,12 @@ export function useAppNavigationHistory(
     navState.showSettingsModal ? "sett_open" : "",
     navState.showLogoutConfirmModal ? "logout_open" : "",
     navState.showQuitConfirmModal ? "quit_open" : "",
+    navState.showExamSubmitConfirmModal ? "subm_confirm_open" : "",
     navState.isEditProfileOpen ? "editprof_open" : "",
     navState.isChangePasswordOpen ? "chpass_open" : "",
     navState.selectedLiveExamModal ? "liveexam_open" : "",
     navState.takingExamModal ? "takingexam_open" : "",
+    navState.viewingAnswerSheetData ? "answersheet_open" : "",
     navState.quizStarted ? "quiz_started" : "",
   ].join("|");
 
@@ -229,28 +236,53 @@ export function useAppNavigationHistory(
     const handlePopState = (event: PopStateEvent) => {
       isPopstateHandlingRef.current = true;
 
-      // 1. Check Active Exam / Quiz Guard First
-      if (navState.takingExamModal) {
-        // Re-push history to trap exit
-        try {
-          window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
-        } catch (e) {}
-        // ExamStartModal has internal exit confirm
-        isPopstateHandlingRef.current = false;
+      // 0. If Exit Confirmation Warning Popup is OPEN:
+      // Pressing back button closes the popup (equivalent to clicking "Stay / Continue")
+      if (navState.showQuitConfirmModal) {
+        handlers.setShowQuitConfirmModal(false);
         return;
       }
 
-      if (navState.quizStarted) {
-        // Re-push history state to prevent exit
+      // 1. ACTIVE EXAM PROTECTION: If actively taking an exam (and not submitted)
+      if (navState.takingExamModal && !navState.examSubmitted) {
+        // Re-push history to trap browser exit
+        try {
+          window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
+        } catch (e) {}
+        // Open the exit warning popup!
+        handlers.setShowQuitConfirmModal(true);
+        return;
+      }
+
+      // 2. ACTIVE QUIZ PROTECTION: If actively playing a quiz (and not submitted)
+      if (navState.quizStarted && !navState.isSubmitted) {
         try {
           window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
         } catch (e) {}
         handlers.setShowQuitConfirmModal(true);
-        isPopstateHandlingRef.current = false;
         return;
       }
 
-      // 2. Check Modals / Overlays / Drawers First (Close Modal First!)
+      // 3. ANSWER SHEET / QUESTION PAPER VIEW (Non-active exam mode)
+      // When viewing question paper/answer sheet, pressing back button closes it 1-by-1 without warning
+      if (navState.viewingAnswerSheetData) {
+        if (handlers.setViewingAnswerSheetData) {
+          handlers.setViewingAnswerSheetData(null);
+        }
+        return;
+      }
+
+      // 4. SUBMITTED EXAM SUMMARY MODAL
+      if (navState.takingExamModal && navState.examSubmitted) {
+        if (handlers.setTakingExamModal) handlers.setTakingExamModal(null);
+        return;
+      }
+
+      // 5. MODALS & DRAWERS (Close 1-by-1)
+      if (navState.showExamSubmitConfirmModal && handlers.setShowExamSubmitConfirmModal) {
+        handlers.setShowExamSubmitConfirmModal(false);
+        return;
+      }
       if (navState.drawerOpen) {
         handlers.setDrawerOpen(false);
         return;
@@ -261,10 +293,6 @@ export function useAppNavigationHistory(
       }
       if (navState.showAuthModal) {
         handlers.setShowAuthModal(false);
-        return;
-      }
-      if (navState.showQuitConfirmModal) {
-        handlers.setShowQuitConfirmModal(false);
         return;
       }
       if (navState.showLogoutConfirmModal) {
@@ -304,7 +332,7 @@ export function useAppNavigationHistory(
         return;
       }
 
-      // 3. Screen Hierarchy & Sub-View Back Navigation
+      // 6. SCREEN HIERARCHY & SUB-VIEW BACK NAVIGATION (1-by-1)
       if (navState.activeExamSection) {
         if (handlers.setActiveExamSection) handlers.setActiveExamSection(null);
         return;

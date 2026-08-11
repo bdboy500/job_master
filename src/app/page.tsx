@@ -524,7 +524,7 @@ export default function Home() {
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
-  // Full App PWA Navigation Sync Engine (Handles Android/iOS Back Button & Swipe Gestures across all courses, subjects, topics, and modals)
+  // Full App PWA Navigation Sync Engine (Handles Android/iOS Back Button & Swipe Gestures across all courses, subjects, topics, modals, and active exams)
   useAppNavigationHistory(
     {
       currentScreen,
@@ -544,10 +544,13 @@ export default function Home() {
       showSettingsModal,
       showLogoutConfirmModal,
       showQuitConfirmModal,
+      showExamSubmitConfirmModal,
       isEditProfileOpen,
       isChangePasswordOpen,
       selectedLiveExamModal,
       takingExamModal,
+      examSubmitted,
+      viewingAnswerSheetData,
       quizStarted,
       previousScreen,
       courseOriginScreen,
@@ -571,10 +574,12 @@ export default function Home() {
       setShowSettingsModal,
       setShowLogoutConfirmModal,
       setShowQuitConfirmModal,
+      setShowExamSubmitConfirmModal,
       setIsEditProfileOpen,
       setIsChangePasswordOpen,
       setSelectedLiveExamModal,
       setTakingExamModal,
+      setViewingAnswerSheetData,
     }
   );
 
@@ -6069,17 +6074,19 @@ export default function Home() {
 
         {/* Exit Confirmation Modal Popup */}
         {showQuitConfirmModal && (
-          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl space-y-4 border border-slate-100">
               <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto">
                 <AlertCircle className="w-6 h-6 stroke-[2.5px]" />
               </div>
               <div className="space-y-1.5">
                 <h3 className="font-extrabold text-base text-slate-800">
-                  কুইজ থেকে বের হতে চান?
+                  {takingExamModal ? "পরীক্ষা থেকে বের হতে চান?" : "কুইজ থেকে বের হতে চান?"}
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  আপনি এখন বের হয়ে গেলে এ পর্যন্ত দেওয়া আপনার উত্তরগুলোর ({submittedCount}/{questions.length}) ওপর ভিত্তি করে ফলাফল দেখানো হবে।
+                  {takingExamModal
+                    ? "আপনি কি নিশ্চিত যে পরীক্ষাটি বাতিল করতে চান? আপনার অগ্রগতি сохранিত নাও হতে পারে।"
+                    : `আপনি এখন বের হয়ে গেলে এ পর্যন্ত দেওয়া আপনার উত্তরগুলোর (${submittedCount}/${questions.length}) ওপর ভিত্তি করে ফলাফল দেখানো হবে।`}
                 </p>
               </div>
               <div className="flex gap-2.5 pt-1">
@@ -6090,18 +6097,24 @@ export default function Home() {
                   }}
                   className="flex-1 py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer active:scale-95"
                 >
-                  Continue
+                  {takingExamModal ? "পরীক্ষায় থাকুন" : "থাকুন (Continue)"}
                 </button>
                 <button
                   onClick={() => {
                     setShowQuitConfirmModal(false);
                     setPendingNavigation(null);
                     setDrawerOpen(false);
-                    finishQuizEarly();
+                    if (takingExamModal) {
+                      setTakingExamModal(null);
+                      setExamSubmitted(false);
+                      try { window.history.back(); } catch (e) {}
+                    } else {
+                      finishQuizEarly();
+                    }
                   }}
                   className="flex-1 py-3 px-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-red-500/20 cursor-pointer active:scale-95"
                 >
-                  Yes
+                  {takingExamModal ? "পরীক্ষা বাতিল" : "বের হন (Exit)"}
                 </button>
               </div>
             </div>
@@ -6616,9 +6629,7 @@ export default function Home() {
 
                 <button 
                   onClick={() => {
-                    if (confirm("আপনি কি নিশ্চিত যে পরীক্ষাটি বাতিল করতে চান?")) {
-                      setTakingExamModal(null);
-                    }
+                    setShowQuitConfirmModal(true);
                   }}
                   className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
                 >
@@ -7597,7 +7608,7 @@ export default function Home() {
         {/* Offline Exam Start & Execution Component */}
         <ExamStartModal
           paper={takingExamModal}
-          isOpen={!!takingExamModal}
+          isOpen={false}
           onClose={() => setTakingExamModal(null)}
           onSubmitExam={(paper, answers, timeSpent) => {
             setTakingExamModal(null);
