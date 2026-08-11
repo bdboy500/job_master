@@ -370,8 +370,8 @@ export default function AdminPage() {
 
   const resetExamPaperForm = () => {
     setEditingPaperId(null);
-    setPaperTitle("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
-    setPaperTopic('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
+    setPaperTitle("");
+    setPaperTopic("");
     setPaperSubSubject("all");
     setPaperPrepSubSubject("all");
     setPaperQuestions([]);
@@ -382,7 +382,7 @@ export default function AdminPage() {
 
   // Form states for creating/editing paper
   const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub" | "pro_feature">("our_course");
-  const [paperTitle, setPaperTitle] = useState("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
+  const [paperTitle, setPaperTitle] = useState("");
   const [paperCourse, setPaperCourse] = useState("bcs");
   const [paperSubSubject, setPaperSubSubject] = useState("all");
   const [paperPrepSubjectId, setPaperPrepSubjectId] = useState<string>("Bangla");
@@ -391,7 +391,7 @@ export default function AdminPage() {
   const [paperProSubSubject, setPaperProSubSubject] = useState<string>("none");
   const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
-  const [paperTopic, setPaperTopic] = useState('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
+  const [paperTopic, setPaperTopic] = useState("");
   const [paperStartDateTime, setPaperStartDateTime] = useState<string>("2026-07-24T00:00");
   const [paperEndDateTime, setPaperEndDateTime] = useState<string>("2026-07-31T23:59");
   const [paperDate, setPaperDate] = useState(() => formatDisplayDate("2026-07-24T00:00"));
@@ -2451,7 +2451,8 @@ export default function AdminPage() {
                       onClick={() => {
                         setEditingPaperId(null);
                         setPaperQuestions([]);
-                        setPaperTitle("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
+                        setPaperTitle("");
+                        setPaperTopic("");
                         setPaperStatus("Upcoming");
                       }}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all"
@@ -2525,8 +2526,9 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Row 1: Title & Selection */}
+                  {/* Form fields */}
                   <div className="space-y-4">
+                    {/* 1. Exam Title */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
                         ১. পরীক্ষার নাম (Exam Title) *
@@ -2541,11 +2543,26 @@ export default function AdminPage() {
                       />
                     </div>
 
+                    {/* 2. Topic (Moved from 4 to 2) */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        ২. টপিক / বিষয় বিবরণ (Topic)
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder='যেমন: "Award Mania" এর জন্য প্রযোজ্য'
+                        value={paperTopic}
+                        onChange={(e) => setPaperTopic(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                      />
+                    </div>
+
+                    {/* 3. Target Section Selection */}
                     {paperCategoryType === "prep_hub" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                            ২. প্রেপারেশন সাবজেক্ট (Prep Subject) *
+                            ৩. প্রেপারেশন সাবজেক্ট (Prep Subject) *
                           </label>
                           <select
                             value={paperPrepSubjectId}
@@ -2564,7 +2581,7 @@ export default function AdminPage() {
 
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                            ২.১ সাব-সাবজেক্ট / পেপার (Sub-Subject / Paper) *
+                            ৩.১ সাব-সাবজেক্ট / পেপার (Sub-Subject / Paper) *
                           </label>
                           <select
                             value={paperPrepSubSubject}
@@ -2587,7 +2604,7 @@ export default function AdminPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                            ২. প্রো ক্যাটাগরি / মডিউল (Pro Feature Module) *
+                            ৩. প্রো ক্যাটাগরি / মডিউল (Pro Feature Module) *
                           </label>
                           <select
                             value={paperProModule}
@@ -2607,7 +2624,7 @@ export default function AdminPage() {
 
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                            ২.১ টপিক / সাব-ক্যাটাগরি (Sub-Topic)
+                            ৩.১ টপিক / সাব-ক্যাটাগরি (Sub-Topic)
                           </label>
                           <select
                             value={paperProSubSubject}
@@ -2625,7 +2642,7 @@ export default function AdminPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                            ২. কোর্স / ক্যাটাগরি (Course) *
+                            ৩. কোর্স / ক্যাটাগরি (Course) *
                           </label>
                           <select
                             value={paperCourse}
@@ -2644,7 +2661,7 @@ export default function AdminPage() {
 
                         <div className="space-y-1.5 animate-fade-in">
                           <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                            ২.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *
+                            ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *
                           </label>
                           <select
                             value={paperSubSubject}
@@ -2664,11 +2681,11 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  {/* Row 2: Exam Type & Topic */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 4. Exam Type & 5. Status */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ৩. পরীক্ষার ধরন (Type) *
+                        ৪. পরীক্ষার ধরন (Type) *
                       </label>
                       <select
                         value={paperExamType}
@@ -2683,49 +2700,27 @@ export default function AdminPage() {
 
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ৪. টপিক / বিষয় বিবরণ (Topic)
+                        ৫. পরীক্ষার স্ট্যাটাস (Status) *
                       </label>
-                      <input 
-                        type="text"
-                        placeholder='যেমন: "Award Mania" এর জন্য প্রযোজ্য'
-                        value={paperTopic}
-                        onChange={(e) => setPaperTopic(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ৫. ডিসপ্লে টেক্সট (Display Label Text) & স্ট্যাটাস
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="text"
-                          placeholder="যেমন: Fri, Jul 31, 2026"
-                          value={paperDate}
-                          onChange={(e) => setPaperDate(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none text-slate-800"
-                        />
-                        <select
-                          value={paperStatus}
-                          onChange={(e) => {
-                            const newStatus = e.target.value as any;
-                            setPaperStatus(newStatus);
-                            if (newStatus === "Live") {
-                              const nowLocal = getNowLocalDateTimeStr();
-                              const todayEnd = getTodayEndDateTimeStr();
-                              setPaperStartDateTime(nowLocal);
-                              setPaperEndDateTime(todayEnd);
-                              setPaperDate(formatDisplayDate(nowLocal));
-                            }
-                          }}
-                          className="bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-3 text-xs font-bold focus:outline-none text-slate-800 cursor-pointer shrink-0"
-                        >
-                          <option value="Upcoming">Upcoming (আসন্ন)</option>
-                          <option value="Live">Live (লাইভ)</option>
-                          <option value="Archive">Archive (আর্কাইভ)</option>
-                        </select>
-                      </div>
+                      <select
+                        value={paperStatus}
+                        onChange={(e) => {
+                          const newStatus = e.target.value as any;
+                          setPaperStatus(newStatus);
+                          if (newStatus === "Live") {
+                            const nowLocal = getNowLocalDateTimeStr();
+                            const todayEnd = getTodayEndDateTimeStr();
+                            setPaperStartDateTime(nowLocal);
+                            setPaperEndDateTime(todayEnd);
+                            setPaperDate(formatDisplayDate(nowLocal));
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none text-slate-800 cursor-pointer"
+                      >
+                        <option value="Upcoming">Upcoming (আসন্ন)</option>
+                        <option value="Live">Live (লাইভ)</option>
+                        <option value="Archive">Archive (আর্কাইভ)</option>
+                      </select>
                     </div>
                   </div>
 
