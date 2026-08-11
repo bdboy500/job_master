@@ -145,6 +145,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <Link 
               href="/admin" 
+              prefetch={false}
               className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -183,6 +184,7 @@ export default function AdminDashboardPage() {
             <Link
               href="/"
               target="_blank"
+              prefetch={false}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#FF6A00] hover:bg-[#e05d00] text-white rounded-xl text-xs font-extrabold transition-all shadow-2xs cursor-pointer"
             >
               <span>View Site</span>

@@ -1647,7 +1647,7 @@ export default function AdminPage() {
           </form>
 
           <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400">
-            <Link href="/" className="flex items-center gap-1 hover:text-[#FF6A00] transition-colors">
+            <Link href="/" prefetch={false} className="flex items-center gap-1 hover:text-[#FF6A00] transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" /> মেইন সাইটে ফিরুন
             </Link>
             <span>v1.0.0 Stable</span>

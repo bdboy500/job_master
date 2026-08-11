@@ -1031,6 +1031,10 @@ export default function Home() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("job_master_pending_paper_id");
       localStorage.removeItem("job_master_pending_intent");
+      try {
+        localStorage.setItem("jobmaster_active_exam_paper", JSON.stringify(paper));
+        localStorage.setItem("jobmaster_active_exam_answers", JSON.stringify({}));
+      } catch (e) {}
     }
     const currentStatus = getExamStatus(paper);
     if (currentStatus === "Upcoming") {
@@ -1069,12 +1073,27 @@ export default function Home() {
 
   const handleOptionSelectExam = (qIndex: number, optionIdx: number) => {
     if (examSubmitted) return;
-    setExamUserAnswers(prev => ({ ...prev, [qIndex]: optionIdx }));
+    setExamUserAnswers(prev => {
+      const next = { ...prev, [qIndex]: optionIdx };
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("jobmaster_active_exam_answers", JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
     if (soundEnabled) quizAudio.playClick();
   };
 
   const handleFinishExam = () => {
     if (!takingExamModal || examSubmitted) return;
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("jobmaster_active_exam_paper");
+        localStorage.removeItem("jobmaster_active_exam_answers");
+      } catch (e) {}
+    }
 
     const paper = takingExamModal;
     const questionsList = paper.questions || [];
@@ -1166,6 +1185,20 @@ export default function Home() {
       } catch (e) {}
     }
 
+    // 4. Check LocalStorage backup (Offline Support)
+    if (typeof window !== "undefined") {
+      try {
+        const localStored = localStorage.getItem(`jobmaster_questions_local_${subjectKey}`);
+        if (localStored) {
+          const parsed = JSON.parse(localStored);
+          if (Array.isArray(parsed) && parsed.length > 0 && !navigator.onLine) {
+            questionsCacheRef.current[subjectKey] = parsed;
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+
     const promise = (async () => {
       try {
         const supabase = getSupabase();
@@ -1182,6 +1215,13 @@ export default function Home() {
 
         const { data, error: sbError } = await query;
         if (sbError || !data || data.length === 0) {
+          if (typeof window !== "undefined") {
+            const localStored = localStorage.getItem(`jobmaster_questions_local_${subjectKey}`);
+            if (localStored) {
+              const parsed = JSON.parse(localStored);
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+          }
           return QUIZ_QUESTIONS;
         }
 
@@ -1222,16 +1262,26 @@ export default function Home() {
           };
         });
 
-        // Cache result
+        // Cache result for fast load & offline resilience
         questionsCacheRef.current[subjectKey] = mappedQuestions;
         if (typeof window !== "undefined") {
           try {
             sessionStorage.setItem(`jobmaster_questions_${subjectKey}`, JSON.stringify(mappedQuestions));
+            localStorage.setItem(`jobmaster_questions_local_${subjectKey}`, JSON.stringify(mappedQuestions));
           } catch (e) {}
         }
 
         return mappedQuestions;
       } catch (err) {
+        if (typeof window !== "undefined") {
+          try {
+            const localStored = localStorage.getItem(`jobmaster_questions_local_${subjectKey}`);
+            if (localStored) {
+              const parsed = JSON.parse(localStored);
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+          } catch (e) {}
+        }
         return QUIZ_QUESTIONS;
       } finally {
         delete questionsInFlightRef.current[subjectKey];
@@ -1283,6 +1333,7 @@ export default function Home() {
         pool = fetched.length > 0 ? fetched : QUIZ_QUESTIONS;
       }
 
+      let selectedQuestions: Question[] = [];
       if (title === "Live Quiz Game") {
         const allowed = LIVE_QUIZ_ALLOWED_SUBJECTS;
         const filtered = pool.filter(q => {
@@ -1301,10 +1352,19 @@ export default function Home() {
 
         const candidateSet = filtered.length >= 5 ? filtered : pool;
         const randomized = shuffleArray(candidateSet);
-        setQuestions(randomized.slice(0, 10));
+        selectedQuestions = randomized.slice(0, 10);
       } else {
         const randomized = shuffleArray(pool);
-        setQuestions(randomized.slice(0, 10));
+        selectedQuestions = randomized.slice(0, 10);
+      }
+
+      setQuestions(selectedQuestions);
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("jobmaster_active_quiz_questions", JSON.stringify(selectedQuestions));
+          localStorage.setItem("jobmaster_active_quiz_title", title);
+        } catch (e) {}
       }
 
       setQuizStarted(true);
