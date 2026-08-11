@@ -1,6 +1,7 @@
-const CACHE_NAME = 'job-master-pwa-v3';
-const DYNAMIC_API_CACHE = 'job-master-api-v3';
-const PAGE_CACHE = 'job-master-pages-v3';
+const CACHE_NAME = 'job-master-pwa-v4';
+const DYNAMIC_API_CACHE = 'job-master-api-v4';
+const PAGE_CACHE = 'job-master-pages-v4';
+const AVATAR_IMAGE_CACHE = 'jobmaster-avatars-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -26,7 +27,12 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME && cache !== DYNAMIC_API_CACHE && cache !== PAGE_CACHE) {
+          if (
+            cache !== CACHE_NAME &&
+            cache !== DYNAMIC_API_CACHE &&
+            cache !== PAGE_CACHE &&
+            cache !== AVATAR_IMAGE_CACHE
+          ) {
             return caches.delete(cache);
           }
         })
@@ -49,7 +55,43 @@ self.addEventListener('fetch', (event) => {
   // 3. Bypass Next.js hot-reload dev scripts
   if (url.pathname.includes('_next/webpack-hmr')) return;
 
-  // 4. HTML Page Navigations: Network-First Strategy
+  // 4. Avatar & Profile Images Caching (Supabase Storage or Avatar URLs or standard images)
+  const isImageRequest =
+    event.request.destination === 'image' ||
+    url.pathname.match(/\.(png|jpg|jpeg|webp|svg|gif|ico)$/i) ||
+    url.hostname.includes('supabase.co') && url.pathname.includes('/storage/v1/object/public/');
+
+  if (isImageRequest) {
+    event.respondWith(
+      caches.open(AVATAR_IMAGE_CACHE).then(async (cache) => {
+        const cachedResponse = await cache.match(event.request);
+        if (cachedResponse) {
+          // Serve from cache instantly, revalidate in background
+          fetch(event.request)
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                cache.put(event.request, networkResponse.clone());
+              }
+            })
+            .catch(() => {});
+          return cachedResponse;
+        }
+
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (err) {
+          return new Response('', { status: 404 });
+        }
+      })
+    );
+    return;
+  }
+
+  // 5. HTML Page Navigations: Network-First Strategy (Online users get fresh content, offline gets cached page)
   if (
     event.request.mode === 'navigate' ||
     (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))
@@ -75,8 +117,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. Dynamic API & Supabase Requests: Network-First Strategy with Cache Fallback
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
+  // 6. Dynamic API & Supabase REST Endpoint Requests: Network-First Strategy
+  if (url.pathname.startsWith('/api/') || (url.hostname.includes('supabase.co') && url.pathname.startsWith('/rest/'))) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
@@ -100,7 +142,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 6. Static Assets (_next/static, images, fonts, icons): Stale-While-Revalidate Strategy
+  // 7. Static Next.js Bundles & Scripts (_next/static): Stale-While-Revalidate Strategy
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cachedResponse = await cache.match(event.request);

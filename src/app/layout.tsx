@@ -29,6 +29,8 @@ export const viewport: Viewport = {
   themeColor: "#FF6A00",
 };
 
+import ClientProviders from "../components/ClientProviders";
+
 export default function RootLayout({
   children,
 }: {
@@ -44,7 +46,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#FF6A00" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ClientProviders>{children}</ClientProviders>
+      </body>
     </html>
   );
 }

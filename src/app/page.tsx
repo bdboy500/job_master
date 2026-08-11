@@ -74,6 +74,8 @@ import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../li
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import AuthModal from "../components/AuthModal";
+import ProfileImage from "../components/ProfileImage";
+import ExamStartModal from "../components/ExamStartModal";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 
 // Type definition for routine items
@@ -1010,21 +1012,47 @@ export default function Home() {
     }
   };
 
-  // Auth Protection Gatekeeper for Exams & Quizzes
-  const executeWithAuth = (action: () => void, intentType: string = "exams", paperId?: string) => {
+  // Auth Protection Gatekeeper for Exams & Quizzes (Lazy Auth)
+  const executeWithAuth = async (action: () => void, intentType: string = "exams", paperId?: string) => {
     if (isLoggedIn && currentUser && currentUser.status !== "Banned") {
       action();
-    } else if (currentUser && currentUser.status === "Banned") {
+      return;
+    }
+    if (currentUser && currentUser.status === "Banned") {
       alert("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক সাময়িকভাবে নিষিদ্ধ করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।");
-    } else {
+      return;
+    }
+
+    // Perform on-demand check for existing Supabase auth session
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id);
+          if (profile && profile.status !== "Banned") {
+            setCurrentUser(profile);
+            setIsLoggedIn(true);
+            setProfileName(profile.full_name || session.user.email?.split("@")[0] || "শিক্ষার্থী");
+            setProfileEmail(profile.email || session.user.email || "");
+            action();
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Lazy auth check error:", e);
+    }
+
+    if (typeof window !== "undefined") {
       localStorage.setItem("job_master_pending_intent", intentType);
       if (paperId) {
         localStorage.setItem("job_master_pending_paper_id", paperId);
       }
-      setPendingExamAction(() => action);
-      setAuthModalMode("signin");
-      setShowAuthModal(true);
     }
+    setPendingExamAction(() => action);
+    setAuthModalMode("signin");
+    setShowAuthModal(true);
   };
 
   const handleOpenTakeExamDirectly = (paper: ExamPaper) => {
@@ -1930,13 +1958,7 @@ export default function Home() {
                 className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200/80 rounded-xl transition-all cursor-pointer active:scale-95"
                 title="প্রোফাইল"
               >
-                <div className="w-6 h-6 rounded-full bg-[#FF6A00] text-white flex items-center justify-center font-black text-xs overflow-hidden">
-                  {profileAvatarUrl ? (
-                    <img src={profileAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    profileName.substring(0, 1).toUpperCase()
-                  )}
-                </div>
+                <ProfileImage src={profileAvatarUrl} fallbackName={profileName} size={24} className="rounded-full" />
                 <span className="hidden sm:inline-block text-xs font-black text-slate-800 truncate max-w-[80px]">
                   {profileName.split(" ")[0]}
                 </span>
@@ -5404,15 +5426,12 @@ export default function Home() {
 
             {/* Profile Avatar inside Drawer */}
             <div className="flex items-center gap-3 mt-2">
-              <div className="w-12 h-12 rounded-full bg-white text-[#FF4E00] font-black text-xl flex items-center justify-center shadow-inner overflow-hidden shrink-0">
-                {isLoggedIn && profileAvatarUrl ? (
-                  <img src={profileAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                ) : isLoggedIn ? (
-                  (profileName || "S").charAt(0).toUpperCase()
-                ) : (
-                  "G"
-                )}
-              </div>
+              <ProfileImage
+                src={isLoggedIn ? profileAvatarUrl : ""}
+                fallbackName={isLoggedIn ? profileName : "Guest User"}
+                size={48}
+                className="rounded-full shadow-inner"
+              />
               <div className="flex flex-col min-w-0">
                 <span className="font-extrabold text-sm tracking-tight leading-tight truncate">
                   {isLoggedIn ? (profileName || currentUser?.full_name || "শিক্ষার্থী") : "Guest User"}
@@ -7197,15 +7216,12 @@ export default function Home() {
               <div className="space-y-3 pt-1 text-xs">
                 {/* Photo Upload Box */}
                 <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                    {profileAvatarUrl ? (
-                      <img src={profileAvatarUrl} alt={profileName} className="w-full h-full object-cover" />
-                    ) : (
-                      <svg className="w-7 h-7 text-slate-300 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
-                    )}
-                  </div>
+                  <ProfileImage
+                    src={profileAvatarUrl}
+                    fallbackName={profileName}
+                    size={48}
+                    className="rounded-full border border-slate-200"
+                  />
                   <div className="flex flex-col gap-1">
                     <button
                       type="button"
@@ -7521,6 +7537,44 @@ export default function Home() {
           initialMode={authModalMode}
           onClose={() => setShowAuthModal(false)}
           onAuthSuccess={handleAuthSuccess}
+        />
+
+        {/* Offline Exam Start & Execution Component */}
+        <ExamStartModal
+          paper={takingExamModal}
+          isOpen={!!takingExamModal}
+          onClose={() => setTakingExamModal(null)}
+          onSubmitExam={(paper, answers, timeSpent) => {
+            setTakingExamModal(null);
+            setExamUserAnswers(answers);
+            setExamSubmitted(true);
+            // Calculate exam score and result summary
+            const questions = paper.questions || [];
+            let correct = 0;
+            let wrong = 0;
+            let skipped = 0;
+            questions.forEach((q, idx) => {
+              const userAns = answers[idx];
+              const correctIdx = (q as any).correctAnswer ?? (q as any).correctIndex ?? q.correctOptionIndex ?? 0;
+              if (userAns === undefined) {
+                skipped++;
+              } else if (userAns === correctIdx) {
+                correct++;
+              } else {
+                wrong++;
+              }
+            });
+            const marks = correct * 1 - wrong * 0.25;
+            setExamResultSummary({
+              totalQuestions: questions.length,
+              correct,
+              wrong,
+              skipped,
+              marks: Math.max(0, marks),
+              timeSpentSeconds: timeSpent,
+            });
+            if (soundEnabled) quizAudio.playSuccess();
+          }}
         />
 
       </div>
