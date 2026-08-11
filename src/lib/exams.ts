@@ -63,6 +63,7 @@ export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
 export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive" {
   const now = new Date();
 
+  // 1. If startDateTime and endDateTime exist, check exact comparison
   if (paper.startDateTime && paper.endDateTime) {
     const start = new Date(paper.startDateTime);
     const end = new Date(paper.endDateTime);
@@ -78,32 +79,64 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
+  // 2. If endDateTime alone exists
   if (paper.endDateTime) {
     const end = new Date(paper.endDateTime);
     if (!isNaN(end.getTime())) {
       if (now > end) {
         return "Archive";
+      }
+    }
+  }
+
+  // 3. Check explicit paper.status property for Archive or Upcoming
+  const s = (paper.status || "").toLowerCase();
+  if (s === "archive" || s === "archived" || s === "completed") return "Archive";
+  if (s === "upcoming") return "Upcoming";
+
+  // 4. Check examDate string if present (e.g. "Mon, Aug 3, 2026")
+  if (paper.examDate && paper.examDate !== "Today") {
+    const parsedDate = new Date(paper.examDate);
+    if (!isNaN(parsedDate.getTime())) {
+      const startOfExamDate = new Date(parsedDate);
+      startOfExamDate.setHours(0, 0, 0, 0);
+
+      const endOfExamDate = new Date(parsedDate);
+      endOfExamDate.setHours(23, 59, 59, 999);
+
+      if (now > endOfExamDate) {
+        return "Archive";
+      } else if (now < startOfExamDate) {
+        return "Upcoming";
       } else {
         return "Live";
       }
     }
   }
 
-  // Check explicit paper.status property from DB column
-  const s = (paper.status || "").toLowerCase();
-  if (s === "archive" || s === "archived" || s === "completed") return "Archive";
-  if (s === "upcoming") return "Upcoming";
-  if (s === "live") return "Live";
-
-  // Check examDate string if present (e.g. "Mon, Aug 3, 2026")
-  if (paper.examDate && paper.examDate !== "Today") {
-    const parsedDate = new Date(paper.examDate);
-    if (!isNaN(parsedDate.getTime())) {
-      const endOfExamDate = new Date(parsedDate);
-      endOfExamDate.setHours(23, 59, 59, 999);
-      if (now > endOfExamDate) {
+  // 5. If status is explicitly "live" (and date hasn't invalidated it above)
+  if (s === "live") {
+    if (paper.createdAt) {
+      const created = new Date(paper.createdAt).getTime();
+      const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+      if (!isNaN(created) && (now.getTime() - created > threeDaysMs)) {
         return "Archive";
       }
+    }
+    return "Live";
+  }
+
+  // 6. If examDate is "Today", it is Live
+  if (paper.examDate === "Today") {
+    return "Live";
+  }
+
+  // 7. Fallback: Check if createdAt is more than 2 days old
+  if (paper.createdAt) {
+    const created = new Date(paper.createdAt).getTime();
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+    if (!isNaN(created) && (now.getTime() - created > twoDaysMs)) {
+      return "Archive";
     }
   }
 
