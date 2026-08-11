@@ -210,7 +210,7 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
         // Fetch ONLY lightweight metadata for homepage cards (excluding heavy 'questions' column)
         const supabasePromise = supabase
           .from("exam_papers")
-          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, updated_at, sub_subject, category_type, start_date_time, end_date_time");
+          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, sub_subject, category_type");
         
         const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
           setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
