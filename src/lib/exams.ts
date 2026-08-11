@@ -89,10 +89,11 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // Fallback if status is explicitly set to archive/completed/upcoming
+  // Check explicit paper.status property from DB column
   const s = (paper.status || "").toLowerCase();
   if (s === "archive" || s === "archived" || s === "completed") return "Archive";
   if (s === "upcoming") return "Upcoming";
+  if (s === "live") return "Live";
 
   // Check examDate string if present (e.g. "Mon, Aug 3, 2026")
   if (paper.examDate && paper.examDate !== "Today") {
@@ -236,7 +237,7 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
         // Fetch ONLY lightweight metadata for homepage cards (excluding heavy 'questions' column)
         const supabasePromise = supabase
           .from("exam_papers")
-          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, questions, created_at, sub_subject, category_type");
+          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, sub_subject, category_type");
         
         const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
           setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
