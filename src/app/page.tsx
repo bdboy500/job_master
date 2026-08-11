@@ -67,7 +67,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
+import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
@@ -482,6 +482,7 @@ export default function Home() {
 
   // Take Exam Modal ("পরীক্ষা দিন") State
   const [takingExamModal, setTakingExamModal] = useState<ExamPaper | null>(null);
+  const [isPaperLoading, setIsPaperLoading] = useState<boolean>(false);
   const [examUserAnswers, setExamUserAnswers] = useState<Record<number, number>>({});
   const [examInitialTime, setExamInitialTime] = useState<number>(0);
   const [examTimer, setExamTimer] = useState<number>(0);
@@ -1123,14 +1124,29 @@ export default function Home() {
     setShowAuthModal(true);
   };
 
-  const handleOpenTakeExamDirectly = (paper: ExamPaper) => {
+  const ensurePaperQuestionsLoaded = async (paper: ExamPaper): Promise<ExamPaper> => {
+    if (paper.questions && paper.questions.length > 0) {
+      return paper;
+    }
+    setIsPaperLoading(true);
+    try {
+      const fullPaper = await fetchExamPaperById(paper.id);
+      setIsPaperLoading(false);
+      if (fullPaper) {
+        setExamPapers(prev => prev.map(p => p.id === fullPaper.id ? fullPaper : p));
+        return fullPaper;
+      }
+    } catch (e) {
+      setIsPaperLoading(false);
+      console.error("Failed to lazy load questions for paper:", e);
+    }
+    return paper;
+  };
+
+  const handleOpenTakeExamDirectly = async (paper: ExamPaper) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("job_master_pending_paper_id");
       localStorage.removeItem("job_master_pending_intent");
-      try {
-        localStorage.setItem("jobmaster_active_exam_paper", JSON.stringify(paper));
-        localStorage.setItem("jobmaster_active_exam_answers", JSON.stringify({}));
-      } catch (e) {}
     }
     const currentStatus = getExamStatus(paper);
     if (currentStatus === "Upcoming") {
@@ -1141,8 +1157,18 @@ export default function Home() {
       return;
     }
 
-    const duration = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
-    setTakingExamModal(paper);
+    // Lazy load full questions on demand if not loaded yet
+    const fullPaper = await ensurePaperQuestionsLoaded(paper);
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("jobmaster_active_exam_paper", JSON.stringify(fullPaper));
+        localStorage.setItem("jobmaster_active_exam_answers", JSON.stringify({}));
+      } catch (e) {}
+    }
+
+    const duration = fullPaper.totalDurationSeconds || (fullPaper.questions?.length || fullPaper.questionCount || 10) * 36;
+    setTakingExamModal(fullPaper);
     setExamUserAnswers({});
     setExamSubmitted(false);
     setExamResultSummary(null);
@@ -1159,8 +1185,10 @@ export default function Home() {
     executeWithAuth(() => handleOpenTakeExamDirectly(paper), "exams", paper.id);
   };
 
-  const handleOpenViewPaper = (paper: ExamPaper) => {
-    setViewingPaperModal(paper);
+  const handleOpenViewPaper = async (paper: ExamPaper) => {
+    // Lazy load full questions on demand if not loaded yet
+    const fullPaper = await ensurePaperQuestionsLoaded(paper);
+    setViewingPaperModal(fullPaper);
     setPaperFilterSubject("All");
     setRevealedAnswers({});
     setRevealedExplanations({});
@@ -7601,6 +7629,16 @@ export default function Home() {
                   হ্যাঁ (Yes)
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Lazy Loading Question Paper Overlay */}
+        {isPaperLoading && (
+          <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-2xl p-5 shadow-2xl flex items-center gap-3.5 border border-slate-100">
+              <div className="w-6 h-6 border-3 border-[#FF6A00] border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-xs font-black text-slate-800">প্রশ্নপত্র প্রস্তুত করা হচ্ছে...</span>
             </div>
           </div>
         )}

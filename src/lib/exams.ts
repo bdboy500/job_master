@@ -207,115 +207,171 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
     try {
       const supabase = getSupabase();
       if (supabase) {
-        // Race Supabase select with a 2500ms timeout to prevent hanging on desktop/slow networks
-        const supabasePromise = supabase.from("exam_papers").select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, questions, created_at, sub_subject, category_type");
-      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
-        setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
-      );
+        // Fetch ONLY lightweight metadata for homepage cards (excluding heavy 'questions' column)
+        const supabasePromise = supabase
+          .from("exam_papers")
+          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, updated_at, sub_subject, category_type, start_date_time, end_date_time");
+        
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
+        );
 
-      const { data, error } = await Promise.race([supabasePromise, timeoutPromise]);
-      
-      if (!error && data && Array.isArray(data) && data.length > 0) {
-        const parsedSupabaseData: ExamPaper[] = data.map((item: any) => {
-          let questionsArr: Question[] = [];
-          let startDT: string | undefined = item.startDateTime || item.start_date_time || item.startDate;
-          let endDT: string | undefined = item.endDateTime || item.end_date_time || item.endDate;
-          let createdAt: string | undefined = item.createdAt || item.created_at;
-          let updatedAt: string | undefined = item.updatedAt || item.updated_at;
-          let subSubjectVal: string | undefined = item.subSubject || item.sub_subject;
-          let categoryTypeVal: string | undefined = item.categoryType || item.category_type;
-          
-          if (typeof item.questions === "string") {
-            try {
-              const parsed = JSON.parse(item.questions);
-              if (Array.isArray(parsed)) {
-                questionsArr = parsed;
-              } else if (parsed && typeof parsed === "object") {
-                questionsArr = parsed.questions || [];
-                if (parsed.subSubject) subSubjectVal = parsed.subSubject;
-                if (parsed.categoryType) categoryTypeVal = parsed.categoryType;
-                startDT = parsed.startDateTime || startDT;
-                endDT = parsed.endDateTime || endDT;
-                createdAt = parsed.createdAt || createdAt;
-                updatedAt = parsed.updatedAt || updatedAt;
-              }
-            } catch (e) {
-              questionsArr = [];
-            }
-          } else if (Array.isArray(item.questions)) {
-            questionsArr = item.questions;
-          } else if (item.questions && typeof item.questions === "object") {
-            questionsArr = item.questions.questions || [];
-            if (item.questions.subSubject) subSubjectVal = item.questions.subSubject;
-            if (item.questions.categoryType) categoryTypeVal = item.questions.categoryType;
-            startDT = item.questions.startDateTime || startDT;
-            endDT = item.questions.endDateTime || endDT;
-            createdAt = item.questions.createdAt || createdAt;
-            updatedAt = item.questions.updatedAt || updatedAt;
+        const { data, error } = await Promise.race([supabasePromise, timeoutPromise]);
+        
+        if (!error && data && Array.isArray(data) && data.length > 0) {
+          const parsedSupabaseData: ExamPaper[] = data.map((item: any) => parseRawExamPaper(item));
+
+          // Sort parsedSupabaseData by updatedAt / createdAt descending
+          parsedSupabaseData.sort((a, b) => {
+            const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+            const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+            return timeB - timeA;
+          });
+
+          // Store in memory cache
+          if (typeof window !== "undefined") {
+            localStorage.setItem("job_master_exam_papers", JSON.stringify(parsedSupabaseData));
           }
-
-          return {
-            id: item.id,
-            title: item.title,
-            course: item.course,
-            subSubject: subSubjectVal || item.subject,
-            categoryType: (categoryTypeVal as any) || "our_course",
-            examType: item.examType || item.exam_type || "weekly",
-            subject: item.subject,
-            questionCount: item.questionCount || item.question_count || (Array.isArray(questionsArr) ? questionsArr.length : 10),
-            timePerQuestionSeconds: item.timePerQuestionSeconds || item.time_per_question || 36,
-            totalDurationSeconds: item.totalDurationSeconds || item.total_duration || 360,
-            totalMarks: item.totalMarks || item.total_marks || 10,
-            topic: item.topic || "মডেল টেস্ট",
-            examDate: item.examDate || item.exam_date || "Today",
-            startDateTime: startDT,
-            endDateTime: endDT,
-            status: item.status || "Live",
-            questions: questionsArr,
-            createdAt: createdAt || new Date().toISOString(),
-            updatedAt: updatedAt || createdAt || new Date().toISOString()
-          };
-        });
-
-        // Sort parsedSupabaseData by updatedAt / createdAt descending (most recently updated/created first)
-        parsedSupabaseData.sort((a, b) => {
-          const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-          const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-          return timeB - timeA;
-        });
-
-        // Supabase is the source of truth
-        if (typeof window !== "undefined") {
-          localStorage.setItem("job_master_exam_papers", JSON.stringify(parsedSupabaseData));
+          examPapersMemoryCache = parsedSupabaseData;
+          return parsedSupabaseData;
         }
-        examPapersMemoryCache = parsedSupabaseData;
-        return parsedSupabaseData;
+      }
+    } catch (err) {
+      console.warn("Falling back to local exam papers:", err);
+    } finally {
+      examPapersInFlightPromise = null;
+    }
+
+    if (localPapers && localPapers.length > 0) {
+      localPapers.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+      examPapersMemoryCache = localPapers;
+      return localPapers;
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
+    }
+    examPapersMemoryCache = DEFAULT_EXAM_PAPERS;
+    return DEFAULT_EXAM_PAPERS;
+  })();
+
+  return examPapersInFlightPromise;
+}
+
+export function parseRawExamPaper(item: any): ExamPaper {
+  let questionsArr: Question[] = [];
+  let startDT: string | undefined = item.startDateTime || item.start_date_time || item.startDate;
+  let endDT: string | undefined = item.endDateTime || item.end_date_time || item.endDate;
+  let createdAt: string | undefined = item.createdAt || item.created_at;
+  let updatedAt: string | undefined = item.updatedAt || item.updated_at;
+  let subSubjectVal: string | undefined = item.subSubject || item.sub_subject;
+  let categoryTypeVal: string | undefined = item.categoryType || item.category_type;
+  
+  if (typeof item.questions === "string") {
+    try {
+      const parsed = JSON.parse(item.questions);
+      if (Array.isArray(parsed)) {
+        questionsArr = parsed;
+      } else if (parsed && typeof parsed === "object") {
+        questionsArr = parsed.questions || [];
+        if (parsed.subSubject) subSubjectVal = parsed.subSubject;
+        if (parsed.categoryType) categoryTypeVal = parsed.categoryType;
+        startDT = parsed.startDateTime || startDT;
+        endDT = parsed.endDateTime || endDT;
+        createdAt = parsed.createdAt || createdAt;
+        updatedAt = parsed.updatedAt || updatedAt;
+      }
+    } catch (e) {
+      questionsArr = [];
+    }
+  } else if (Array.isArray(item.questions)) {
+    questionsArr = item.questions;
+  } else if (item.questions && typeof item.questions === "object") {
+    questionsArr = item.questions.questions || [];
+    if (item.questions.subSubject) subSubjectVal = item.questions.subSubject;
+    if (item.questions.categoryType) categoryTypeVal = item.questions.categoryType;
+    startDT = item.questions.startDateTime || startDT;
+    endDT = item.questions.endDateTime || endDT;
+    createdAt = item.questions.createdAt || createdAt;
+    updatedAt = item.questions.updatedAt || updatedAt;
+  }
+
+  return {
+    id: item.id,
+    title: item.title,
+    course: item.course,
+    subSubject: subSubjectVal || item.subject,
+    categoryType: (categoryTypeVal as any) || "our_course",
+    examType: item.examType || item.exam_type || "weekly",
+    subject: item.subject,
+    questionCount: item.questionCount || item.question_count || (Array.isArray(questionsArr) && questionsArr.length > 0 ? questionsArr.length : 10),
+    timePerQuestionSeconds: item.timePerQuestionSeconds || item.time_per_question || 36,
+    totalDurationSeconds: item.totalDurationSeconds || item.total_duration || 360,
+    totalMarks: item.totalMarks || item.total_marks || 10,
+    topic: item.topic || "মডেল টেস্ট",
+    examDate: item.examDate || item.exam_date || "Today",
+    startDateTime: startDT,
+    endDateTime: endDT,
+    status: item.status || "Live",
+    questions: questionsArr,
+    createdAt: createdAt || new Date().toISOString(),
+    updatedAt: updatedAt || createdAt || new Date().toISOString()
+  };
+}
+
+export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> {
+  // Check memory cache first
+  if (examPapersMemoryCache) {
+    const cached = examPapersMemoryCache.find(p => p.id === id);
+    if (cached && Array.isArray(cached.questions) && cached.questions.length > 0) {
+      return cached;
+    }
+  }
+
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("exam_papers")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (!error && data) {
+        const fullPaper = parseRawExamPaper(data);
+        // If questions array is empty (e.g., fallback), slice from DEFAULT_EXAM_PAPERS if matching ID exists
+        if (!fullPaper.questions || fullPaper.questions.length === 0) {
+          const defaultMatch = DEFAULT_EXAM_PAPERS.find(p => p.id === id);
+          if (defaultMatch && defaultMatch.questions) {
+            fullPaper.questions = defaultMatch.questions;
+          }
+        }
+        
+        // Update memory cache
+        if (examPapersMemoryCache) {
+          const idx = examPapersMemoryCache.findIndex(p => p.id === id);
+          if (idx >= 0) {
+            examPapersMemoryCache[idx] = fullPaper;
+          } else {
+            examPapersMemoryCache.push(fullPaper);
+          }
+        }
+        return fullPaper;
       }
     }
   } catch (err) {
-    console.warn("Falling back to local exam papers:", err);
-  } finally {
-    examPapersInFlightPromise = null;
+    console.error("Error fetching full exam paper by id:", err);
   }
 
-  if (localPapers && localPapers.length > 0) {
-    localPapers.sort((a, b) => {
-      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-      return timeB - timeA;
-    });
-    examPapersMemoryCache = localPapers;
-    return localPapers;
-  }
+  // Fallback to DEFAULT_EXAM_PAPERS
+  const defaultMatch = DEFAULT_EXAM_PAPERS.find(p => p.id === id);
+  if (defaultMatch) return defaultMatch;
 
-  if (typeof window !== "undefined") {
-    localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
-  }
-  examPapersMemoryCache = DEFAULT_EXAM_PAPERS;
-  return DEFAULT_EXAM_PAPERS;
-})();
-
-  return examPapersInFlightPromise;
+  return null;
 }
 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
