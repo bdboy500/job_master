@@ -381,12 +381,14 @@ export default function AdminPage() {
   };
 
   // Form states for creating/editing paper
-  const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub">("our_course");
+  const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub" | "pro_feature">("our_course");
   const [paperTitle, setPaperTitle] = useState("Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস");
   const [paperCourse, setPaperCourse] = useState("bcs");
   const [paperSubSubject, setPaperSubSubject] = useState("all");
   const [paperPrepSubjectId, setPaperPrepSubjectId] = useState<string>("Bangla");
   const [paperPrepSubSubject, setPaperPrepSubSubject] = useState<string>("all");
+  const [paperProModule, setPaperProModule] = useState<string>("question_bank");
+  const [paperProSubSubject, setPaperProSubSubject] = useState<string>("none");
   const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
   const [paperTopic, setPaperTopic] = useState('"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সকল বিষয়');
@@ -403,7 +405,9 @@ export default function AdminPage() {
 
   const togglePaperSearchSubject = (sub: string) => {
     if (sub === "All") {
-      setPaperSearchSubjects(["All"]);
+      if (paperCategoryType === "our_course") {
+        setPaperSearchSubjects(["All"]);
+      }
       return;
     }
     setPaperSearchSubjects(prev => {
@@ -413,7 +417,7 @@ export default function AdminPage() {
       } else {
         next.push(sub);
       }
-      if (next.length === 0) return ["All"];
+      if (next.length === 0 && paperCategoryType === "our_course") return ["All"];
       return next;
     });
   };
@@ -1013,8 +1017,16 @@ export default function AdminPage() {
       finalStatus = "Upcoming";
     }
 
-    const targetCourse = paperCategoryType === "prep_hub" ? paperPrepSubjectId : paperCourse;
-    const targetSubSubject = paperCategoryType === "prep_hub" ? paperPrepSubSubject : paperSubSubject;
+    let targetCourse = paperCourse;
+    let targetSubSubject = paperSubSubject;
+
+    if (paperCategoryType === "prep_hub") {
+      targetCourse = paperPrepSubjectId;
+      targetSubSubject = paperPrepSubSubject;
+    } else if (paperCategoryType === "pro_feature") {
+      targetCourse = paperProModule;
+      targetSubSubject = paperProSubSubject;
+    }
 
     const newPaper: ExamPaper = {
       id: editingPaperId || `exam-${Date.now()}`,
@@ -1023,7 +1035,7 @@ export default function AdminPage() {
       subSubject: targetSubSubject,
       categoryType: paperCategoryType,
       examType: paperExamType,
-      subject: targetSubSubject !== "all" ? targetSubSubject : paperSubject,
+      subject: targetSubSubject !== "all" && targetSubSubject !== "none" ? targetSubSubject : paperSubject,
       questionCount: normalizedPaperQuestions.length,
       timePerQuestionSeconds: 36,
       totalDurationSeconds: totalSeconds,
@@ -1055,10 +1067,11 @@ export default function AdminPage() {
     setEditingPaperId(paper.id);
     setPaperTitle(paper.title);
     
-    // Determine if it belongs to Preparation Hub or Our Course
-    const isPrep = paper.categoryType === "prep_hub" || prepSubjectsList.some(s => s.id === paper.course || s.name.toLowerCase() === paper.course.toLowerCase() || (s.bnName && s.bnName === paper.course));
-    
-    if (isPrep) {
+    if (paper.categoryType === "pro_feature") {
+      setPaperCategoryType("pro_feature");
+      setPaperProModule(paper.course || "question_bank");
+      setPaperProSubSubject(paper.subSubject || "none");
+    } else if (paper.categoryType === "prep_hub") {
       setPaperCategoryType("prep_hub");
       setPaperPrepSubjectId(paper.course);
       setPaperPrepSubSubject(paper.subSubject || "all");
@@ -2449,21 +2462,22 @@ export default function AdminPage() {
                 </div>
 
                 <form onSubmit={handlePublishExamPaper} className="space-y-6">
-                  {/* Mode Selector: Our Course vs Preparation Hub */}
+                  {/* Mode Selector: Our Course vs Preparation Hub vs Pro Feature */}
                   <div className="p-4 bg-orange-50/60 border border-orange-200/80 rounded-2xl space-y-2">
                     <label className="text-[11px] font-black text-slate-700 uppercase block">
                       প্রশ্নপত্র তৈরির সেকশন সিলেক্ট করুন (Target Section) *
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           setPaperCategoryType("our_course");
+                          if (paperSearchSubjects.includes("All")) setPaperSearchSubjects(["All"]);
                           if (coursesList.length > 0 && !paperCourse) {
                             setPaperCourse(coursesList[0].id);
                           }
                         }}
-                        className={`py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
                           paperCategoryType === "our_course"
                             ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
                             : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -2477,11 +2491,12 @@ export default function AdminPage() {
                         type="button"
                         onClick={() => {
                           setPaperCategoryType("prep_hub");
+                          setPaperSearchSubjects(prev => prev.filter(s => s !== "All"));
                           if (prepSubjectsList.length > 0 && !paperPrepSubjectId) {
-                            setPaperPrepSubjectId(prepSubjectsList[0].name);
+                            setPaperPrepSubjectId(prepSubjectsList[0].id || prepSubjectsList[0].name);
                           }
                         }}
-                        className={`py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
                           paperCategoryType === "prep_hub"
                             ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
                             : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -2489,6 +2504,23 @@ export default function AdminPage() {
                       >
                         <BookOpen className="w-4 h-4" />
                         <span>প্রেপারেশন হাব (Preparation Hub)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaperCategoryType("pro_feature");
+                          setPaperSearchSubjects(prev => prev.filter(s => s !== "All"));
+                          if (!paperProModule) setPaperProModule("question_bank");
+                        }}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          paperCategoryType === "pro_feature"
+                            ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
+                            : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        <span>প্রো ফিচার (Pro Feature)</span>
                       </button>
                     </div>
                   </div>
@@ -2547,6 +2579,44 @@ export default function AdminPage() {
                               [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
                             ).map(s => (
                               <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : paperCategoryType === "pro_feature" ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                            ২. প্রো ক্যাটাগরি / মডিউল (Pro Feature Module) *
+                          </label>
+                          <select
+                            value={paperProModule}
+                            onChange={(e) => {
+                              setPaperProModule(e.target.value);
+                              setPaperProSubSubject("none");
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                          >
+                            <option value="question_bank">📊 প্রশ্ন ব্যাংক (Question Bank)</option>
+                            <option value="job_solution">💼 জব সল্যুশন (Job Solution)</option>
+                            {proSectionList.filter(p => p.id !== "pro-question-bank" && p.id !== "pro-job-solution").map(p => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
+                            ২.১ টপিক / সাব-ক্যাটাগরি (Sub-Topic)
+                          </label>
+                          <select
+                            value={paperProSubSubject}
+                            onChange={(e) => setPaperProSubSubject(e.target.value)}
+                            className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                          >
+                            <option value="none">None (সকল বিষয় / জেনারেল)</option>
+                            {SUBJECTS.map(s => (
+                              <option key={s} value={s}>{s}</option>
                             ))}
                           </select>
                         </div>
@@ -2868,17 +2938,19 @@ export default function AdminPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-32 overflow-y-auto">
-                          <button
-                            type="button"
-                            onClick={() => togglePaperSearchSubject("All")}
-                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
-                              paperSearchSubjects.includes("All")
-                                ? "bg-purple-600 text-white shadow-2xs"
-                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                            }`}
-                          >
-                            {"\uD83C\uDF10"} সকল বিষয় (All)
-                          </button>
+                          {paperCategoryType === "our_course" && (
+                            <button
+                              type="button"
+                              onClick={() => togglePaperSearchSubject("All")}
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
+                                paperSearchSubjects.includes("All")
+                                  ? "bg-purple-600 text-white shadow-2xs"
+                                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                              }`}
+                            >
+                              🌐 সকল বিষয় (All)
+                            </button>
+                          )}
 
                           {SUBJECTS
                             .filter(s => paperExamType === "special" || s !== "BCS Health Question")
@@ -3056,7 +3128,7 @@ export default function AdminPage() {
                                 {computedStatus}
                               </span>
                               <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
-                                {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
+                                {paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
                               </span>
                             </div>
 
@@ -5231,22 +5303,23 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                   <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
                     ১. টার্গেট সেকশন নির্বাচন করুন
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setPaperCategoryType("our_course");
                         setPaperCourse(COURSES[0]?.id || "bcs");
                         setPaperSubSubject("all");
+                        if (!paperSearchSubjects.includes("All")) setPaperSearchSubjects(["All"]);
                       }}
-                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                         paperCategoryType === "our_course"
                           ? "bg-orange-50 border-[#FF6A00] text-[#FF6A00] shadow-sm"
                           : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
                       <BookOpen className="w-4 h-4" />
-                      <span>Our Course (আমাদের কোর্স)</span>
+                      <span>Our Course</span>
                     </button>
 
                     <button
@@ -5255,15 +5328,34 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                         setPaperCategoryType("prep_hub");
                         setPaperPrepSubjectId(prepSubjectsList[0]?.id || "Bangla");
                         setPaperPrepSubSubject("all");
+                        setPaperSearchSubjects(prev => prev.filter(s => s !== "All"));
                       }}
-                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                         paperCategoryType === "prep_hub"
                           ? "bg-purple-50 border-purple-600 text-purple-700 shadow-sm"
                           : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
                       <GraduationCap className="w-4 h-4" />
-                      <span>Preparation Hub (প্রস্তুতি)</span>
+                      <span>Prep Hub</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaperCategoryType("pro_feature");
+                        if (!paperProModule) setPaperProModule("question_bank");
+                        setPaperProSubSubject("none");
+                        setPaperSearchSubjects(prev => prev.filter(s => s !== "All"));
+                      }}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        paperCategoryType === "pro_feature"
+                          ? "bg-blue-50 border-blue-600 text-blue-700 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Pro Feature</span>
                     </button>
                   </div>
                 </div>
@@ -5287,6 +5379,26 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                           <option key={c.id} value={c.id}>
                             {c.name} ({c.id.toUpperCase()})
                           </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : paperCategoryType === "pro_feature" ? (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        প্রো ক্যাটাগরি / মডিউল (Pro Module)
+                      </label>
+                      <select
+                        value={paperProModule}
+                        onChange={(e) => {
+                          setPaperProModule(e.target.value);
+                          setPaperProSubSubject("none");
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none"
+                      >
+                        <option value="question_bank">📊 প্রশ্ন ব্যাংক (Question Bank)</option>
+                        <option value="job_solution">💼 জব সল্যুশন (Job Solution)</option>
+                        {proSectionList.filter(p => p.id !== "pro-question-bank" && p.id !== "pro-job-solution").map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </select>
                     </div>
@@ -5318,10 +5430,12 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                       সাব-সাবজেক্ট / বিষয় ক্যাটাগরি
                     </label>
                     <select
-                      value={paperCategoryType === "our_course" ? paperSubSubject : paperPrepSubSubject}
+                      value={paperCategoryType === "our_course" ? paperSubSubject : paperCategoryType === "pro_feature" ? paperProSubSubject : paperPrepSubSubject}
                       onChange={(e) => {
                         if (paperCategoryType === "our_course") {
                           setPaperSubSubject(e.target.value);
+                        } else if (paperCategoryType === "pro_feature") {
+                          setPaperProSubSubject(e.target.value);
                         } else {
                           setPaperPrepSubSubject(e.target.value);
                         }
@@ -5338,6 +5452,10 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                           <option key={sc.id} value={sc.id}>
                             {sc.name}
                           </option>
+                        ))
+                      ) : paperCategoryType === "pro_feature" ? (
+                        SUBJECTS.map(s => (
+                          <option key={s} value={s}>{s}</option>
                         ))
                       ) : (
                         (

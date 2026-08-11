@@ -2973,6 +2973,20 @@ export default function Home() {
                         const pCourse = (p.course || "").toLowerCase();
                         const pSubject = (p.subSubject || p.subject || "").toLowerCase();
                         const target = selectedPrepSubject.toLowerCase();
+
+                        const isProTarget = target.includes("প্রশ্ন ব্যাংক") || target.includes("question bank") || 
+                                            target.includes("জব সলুশন") || target.includes("job solution") ||
+                                            target.includes("প্রো") || target.includes("pro");
+
+                        if (pCat === "pro_feature" || isProTarget) {
+                          return pCat === "pro_feature" && (
+                            pCourse === target || pSubject === target ||
+                            pCourse.includes(target) || target.includes(pCourse) ||
+                            (target.includes("প্রশ্ন ব্যাংক") && (pCourse === "question_bank" || pCourse.includes("question"))) ||
+                            (target.includes("জব") && (pCourse === "job_solution" || pCourse.includes("job")))
+                          );
+                        }
+
                         return pCat === "prep_hub" && (
                           pCourse === target || pSubject === target ||
                           pCourse.includes(target) || target.includes(pCourse)
@@ -3173,7 +3187,11 @@ export default function Home() {
                           if (status !== "Live") return false;
 
                           const pCat = (p.categoryType || "").toLowerCase();
+                          if (pCat && pCat !== "prep_hub") return false;
+
                           const pCourse = (p.course || "").toLowerCase();
+                          if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
+
                           const pSub = (p.subSubject || p.subject || "").toLowerCase();
 
                           const selectedNorm = selectedPrepSubject.toLowerCase();
@@ -3277,7 +3295,11 @@ export default function Home() {
                       if (currentStatus === "Archive") return false;
 
                       const pCat = (p.categoryType || "").toLowerCase();
+                      if (pCat && pCat !== "prep_hub") return false;
+
                       const pCourse = (p.course || "").toLowerCase();
+                      if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
+
                       const pSub = (p.subSubject || p.subject || "").toLowerCase();
 
                       const selectedNorm = selectedPrepSubject.toLowerCase();
@@ -3601,10 +3623,14 @@ export default function Home() {
                           const status = getExamStatus(p);
                           if (status !== "Live") return false;
                           
+                          const pCat = (p.categoryType || "").toLowerCase();
+                          if (pCat && pCat !== "prep_hub") return false;
+
                           const pCourse = (p.course || "").toLowerCase();
+                          if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
+
                           const pSubject = (p.subject || "").toLowerCase();
                           const pSubSubject = (p.subSubject || "").toLowerCase();
-                          const pCat = (p.categoryType || "").toLowerCase();
 
                           if (pCourse === "all_courses" || (pCourse === "all" && pSubSubject === "all" && pSubject === "all")) return false;
 
@@ -3773,10 +3799,14 @@ export default function Home() {
                       ) || selectedCourseDetail;
 
                       let subPapers = examPapers.filter(paper => {
+                        const pCat = (paper.categoryType || "").toLowerCase();
+                        if (pCat && pCat !== "prep_hub") return false;
+
                         const pCourse = (paper.course || "").toLowerCase();
+                        if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
+
                         const pSubject = (paper.subject || "").toLowerCase();
                         const pSubSubject = (paper.subSubject || "").toLowerCase();
-                        const pCat = (paper.categoryType || "").toLowerCase();
 
                         // Exclude general all_courses or all subjects tests unless specific
                         if (pCourse === "all_courses" || (pCourse === "all" && pSubSubject === "all" && pSubject === "all")) return false;
@@ -4103,6 +4133,10 @@ export default function Home() {
                         const count = examPapers.filter(p => {
                           const status = getExamStatus(p);
                           if (status !== "Live") return false;
+
+                          const pCat = (p.categoryType || "").toLowerCase();
+                          if (pCat === "prep_hub" || pCat === "pro_feature") return false;
+
                           const pCourse = (p.course || "").toLowerCase();
                           const cId = (selectedCourseDetail.id || "").toLowerCase();
                           const cTitle = (selectedCourseDetail.title || "").toLowerCase();
@@ -4265,6 +4299,9 @@ export default function Home() {
                       const currentStatus = getExamStatus(p);
                       // Show Live and Upcoming exams in section list. Archive papers go to archive tab automatically!
                       if (currentStatus === "Archive") return false;
+
+                      const pCat = (p.categoryType || "").toLowerCase();
+                      if (pCat === "prep_hub" || pCat === "pro_feature") return false;
 
                       const pCourse = (p.course || "").toLowerCase();
                       const cId = (selectedCourseDetail.id || "").toLowerCase();
