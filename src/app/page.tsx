@@ -76,6 +76,7 @@ import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components
 import AuthModal from "../components/AuthModal";
 import ProfileImage from "../components/ProfileImage";
 import ExamStartModal from "../components/ExamStartModal";
+import { useModalHistory, useExamExitProtection } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 
 // Type definition for routine items
@@ -522,6 +523,20 @@ export default function Home() {
   // Quit Confirm Modal State
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+
+  // Registered Modal History Hooks (Handles Android/iOS Back Button & Back Swipe)
+  useModalHistory(showContactModal, () => setShowContactModal(false), "contact");
+  useModalHistory(showAboutModal, () => setShowAboutModal(false), "about");
+  useModalHistory(showSearchModal, () => setShowSearchModal(false), "search");
+  useModalHistory(showNotificationModal, () => setShowNotificationModal(false), "notifications");
+  useModalHistory(showSettingsModal, () => setShowSettingsModal(false), "settings");
+  useModalHistory(showLogoutConfirmModal, () => setShowLogoutConfirmModal(false), "logout_confirm");
+  useModalHistory(showQuitConfirmModal, () => setShowQuitConfirmModal(false), "quit_confirm");
+
+  // Active Quiz Exit Protection Hook
+  useExamExitProtection(quizStarted && !isSubmitted, () => {
+    setShowQuitConfirmModal(true);
+  });
 
   // Settings
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);

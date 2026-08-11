@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Lock, Mail, Phone, User, IdCard, LogIn, UserPlus, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import { getSupabase } from "../lib/supabase";
 import { UserProfile, generateStudentId, upsertUserProfile, fetchUserProfile } from "../lib/user_profiles";
+import { useModalHistory } from "../hooks/useBackButton";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -32,6 +33,9 @@ export default function AuthModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Handle browser back button / swipe back gesture for modal
+  useModalHistory(isOpen, onClose, "auth");
 
   useEffect(() => {
     if (isOpen) {

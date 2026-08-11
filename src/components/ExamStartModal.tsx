@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { X, Clock, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck, WifiOff, Send } from "lucide-react";
+import { X, Clock, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck, WifiOff, Send, LogOut } from "lucide-react";
 import { ExamPaper, getExamStatus } from "../lib/exams";
 import MathRenderer from "./MathRenderer";
+import { useExamExitProtection } from "../hooks/useBackButton";
 
 interface ExamStartModalProps {
   paper: ExamPaper | null;
@@ -23,6 +24,12 @@ export default function ExamStartModal({
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState<boolean>(false);
+  const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
+
+  // Active Exam Exit Protection: Trap back button / swipe back gesture during active exam
+  useExamExitProtection(isOpen && !isSubmitted, () => {
+    setShowExitConfirm(true);
+  });
 
   // Timer states
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -191,6 +198,14 @@ export default function ExamStartModal({
             >
               জমা দিন (Submit)
             </button>
+
+            <button
+              onClick={() => setShowExitConfirm(true)}
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+              title="পরীক্ষা ত্যাগ করুন"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -316,6 +331,38 @@ export default function ExamStartModal({
                   className="flex-1 py-2.5 bg-[#FF6A00] hover:bg-[#e05d00] text-white text-xs font-black rounded-xl shadow-md cursor-pointer"
                 >
                   হ্যাঁ, জমা দিন
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Exit Exam Confirmation Modal */}
+        {showExitConfirm && (
+          <div className="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-100 animate-scale-up">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h4 className="font-black text-lg text-slate-900">পরীক্ষা থেকে বের হতে চান?</h4>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                আপনার চলমান পরীক্ষার সকল অগ্রগতি ও উত্তর সংরক্ষিত নাও হতে পারে। আপনি কি নিশ্চিত যে বের হতে চান?
+              </p>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl cursor-pointer"
+                >
+                  পরীক্ষায় থাকুন (Stay)
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExitConfirm(false);
+                    onClose();
+                  }}
+                  className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl shadow-md cursor-pointer"
+                >
+                  বের হয়ে যান (Exit)
                 </button>
               </div>
             </div>
