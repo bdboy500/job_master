@@ -24,9 +24,14 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
   const [userScore, setUserScore] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(10);
 
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
+
   const loadData = async () => {
     setIsLoading(true);
     try {
+      const nowBd = new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Dhaka", hour: "2-digit", minute: "2-digit", hour12: true });
+      setLastUpdatedTime(nowBd);
+
       const supabase = getSupabase();
       if (supabase && currentUserProfile?.id) {
         // Try calling Supabase RPC function
@@ -70,6 +75,13 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
   useEffect(() => {
     setVisibleCount(10);
     loadData();
+
+    // Auto-refresh leaderboard every 30 minutes
+    const interval = setInterval(() => {
+      loadData();
+    }, 1000 * 60 * 30);
+
+    return () => clearInterval(interval);
   }, [activeTab, currentUserProfile?.id]);
 
   // Sort users according to active tab
@@ -155,61 +167,69 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
       
-      {/* HEADER & PODIUM HERO SECTION (Theme Gradient) */}
-      <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-4 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
+      {/* 1. TOP APP BAR - WHITE BACKGROUND LIKE HOME PAGE */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-40">
+        {/* Back Icon & Title */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all active:scale-90 cursor-pointer border border-slate-200/60 shadow-2xs"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
+          </button>
+          <div className="flex flex-col">
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
+              <span>Leaderboard</span>
+              <Trophy className="w-5 h-5 text-[#FF6A00] fill-[#FF6A00]/20" />
+            </h1>
+            <p className="text-[10px] text-slate-500 font-bold">
+              লাইভ কুইজের সর্বোচ্চ স্কোরার তালিকা
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Subscribed / User Profile Avatar */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={loadData}
+            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all active:rotate-180 border border-slate-200/60 shadow-2xs"
+            title="Refresh Leaderboard"
+          >
+            <RefreshCw className={`w-4 h-4 text-slate-600 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+
+          <div className="relative group">
+            <div className="w-9 h-9 rounded-full border-2 border-orange-200 bg-orange-50 overflow-hidden shadow-2xs">
+              {userAvatar ? (
+                <img 
+                  src={userAvatar} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover rounded-full"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserProfile?.full_name || "U")}&background=ffedd5&color=c2410c`;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full text-[#FF6A00] font-black text-sm flex items-center justify-center">
+                  {currentUserProfile?.full_name?.charAt(0) || "U"}
+                </div>
+              )}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white p-0.5 rounded-full ring-2 ring-white" title="Active">
+              <CheckCircle2 className="w-2.5 h-2.5 fill-emerald-500 text-white" />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* PODIUM HERO SECTION (Theme Gradient) */}
+      <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-5 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
         
         {/* Background Subtle Accent Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)] pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-
-        {/* Top App Bar */}
-        <div className="relative z-10 flex items-center justify-between mb-5">
-          {/* Back Icon & Title */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="w-10 h-10 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer shadow-sm border border-white/20"
-              aria-label="Back"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-            <div className="flex flex-col">
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm flex items-center gap-2">
-                <span>Leaderboard</span>
-                <Trophy className="w-5 h-5 text-amber-200 fill-amber-300 animate-pulse" />
-              </h1>
-              <p className="text-[11px] text-white/90 font-bold tracking-wide">
-                লাইভ কুইজের সর্বোচ্চ স্কোরার তালিকা
-              </p>
-            </div>
-          </div>
-
-          {/* Right: Subscribed / User Profile Avatar */}
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={loadData}
-              className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-all active:rotate-180"
-              title="Refresh Leaderboard"
-            >
-              <RefreshCw className={`w-4 h-4 text-white ${isLoading ? "animate-spin" : ""}`} />
-            </button>
-
-            <div className="relative group">
-              <div className="w-10 h-10 rounded-full border-2 border-white/80 p-0.5 bg-white/20 backdrop-blur-md shadow-md overflow-hidden">
-                {userAvatar ? (
-                  <img src={userAvatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  <div className="w-full h-full bg-amber-100 text-[#FF6A00] font-black text-sm flex items-center justify-center rounded-full">
-                    {currentUserProfile?.full_name?.charAt(0) || "U"}
-                  </div>
-                )}
-              </div>
-              <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-0.5 rounded-full ring-2 ring-white" title="Active">
-                <CheckCircle2 className="w-2.5 h-2.5 fill-emerald-500 text-white" />
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* TIME PERIOD TABS - Apple UI Segmented Control Style */}
         <div className="relative z-10 max-w-md mx-auto mb-6">
@@ -253,6 +273,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                     src={getUserAvatarUrl(top2)}
                     alt={top2.name}
                     className="w-full h-full object-cover rounded-full"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.name)}&background=f1f5f9&color=334155`;
+                    }}
                   />
                 </div>
                 {/* Name */}
@@ -266,7 +290,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
             
             {/* Podium Bar 2 */}
             <div className="w-full bg-gradient-to-b from-white/30 to-white/10 backdrop-blur-md border border-white/40 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-28 sm:h-32 justify-between">
-              <span className="text-3xl font-black text-white drop-shadow-md">2</span>
+              <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-lg tracking-tight">2</span>
               <div className="bg-white/90 text-[#FF6A00] px-2.5 py-1 rounded-full text-[11px] font-black shadow-sm border border-white">
                 {getScoreForTab(top2)} pt
               </div>
@@ -288,6 +312,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                     src={getUserAvatarUrl(top1)}
                     alt={top1.name}
                     className="w-full h-full object-cover rounded-full"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.name)}&background=fef3c7&color=d97706`;
+                    }}
                   />
                 </div>
                 {/* Name */}
@@ -301,7 +329,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
             
             {/* Podium Bar 1 */}
             <div className="w-full bg-gradient-to-b from-white/45 to-white/20 backdrop-blur-md border-2 border-white/60 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-2xl h-36 sm:h-40 justify-between">
-              <span className="text-4xl font-black text-white drop-shadow-lg">1</span>
+              <span className="text-6xl sm:text-7xl font-black text-amber-200 drop-shadow-xl tracking-tight">1</span>
               <div className="bg-amber-400 text-slate-950 px-3 py-1 rounded-full text-xs font-black shadow-md border border-amber-200">
                 {getScoreForTab(top1)} pt
               </div>
@@ -322,6 +350,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                     src={getUserAvatarUrl(top3)}
                     alt={top3.name}
                     className="w-full h-full object-cover rounded-full"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.name)}&background=ffedd5&color=c2410c`;
+                    }}
                   />
                 </div>
                 {/* Name */}
@@ -335,7 +367,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
             
             {/* Podium Bar 3 */}
             <div className="w-full bg-gradient-to-b from-white/25 to-white/10 backdrop-blur-md border border-white/30 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-24 sm:h-28 justify-between">
-              <span className="text-3xl font-black text-white drop-shadow-md">3</span>
+              <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-lg tracking-tight">3</span>
               <div className="bg-white/90 text-[#FF6A00] px-2.5 py-1 rounded-full text-[11px] font-black shadow-sm border border-white">
                 {getScoreForTab(top3)} pt
               </div>
@@ -372,7 +404,15 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                 <div className="relative shrink-0">
                   <div className="w-12 h-12 rounded-full border-2 border-[#FF6A00] p-0.5 bg-gradient-to-br from-amber-200 to-orange-400 shadow-md overflow-hidden">
                     {userAvatar ? (
-                      <img src={userAvatar} alt="Your Avatar" className="w-full h-full object-cover rounded-full" />
+                      <img 
+                        src={userAvatar} 
+                        alt="Your Avatar" 
+                        className="w-full h-full object-cover rounded-full"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserProfile.full_name || "U")}&background=ffedd5&color=c2410c`;
+                        }}
+                      />
                     ) : (
                       <div className="w-full h-full bg-amber-100 text-[#FF6A00] font-black text-base flex items-center justify-center rounded-full">
                         {currentUserProfile.full_name?.charAt(0) || "U"}
@@ -405,7 +445,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
 
             {/* Footer Note */}
             <p className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 tracking-wide pt-1.5">
-              র‍্যাঙ্কিং প্রতি ৩০ মিনিটে স্বয়ংক্রিয়ভাবে আপডেট হয়
+              র‍্যাঙ্কিং প্রতি ৩০ মিনিটে স্বয়ংক্রিয়ভাবে আপডেট হয় {lastUpdatedTime ? `(সর্বশেষ: ${lastUpdatedTime})` : ""}
             </p>
           </div>
         )}
@@ -445,6 +485,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                         src={getUserAvatarUrl(user)}
                         alt={user.name}
                         className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=f1f5f9&color=475569`;
+                        }}
                       />
                     </div>
 

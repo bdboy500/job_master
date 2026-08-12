@@ -1154,7 +1154,7 @@ export default function Home() {
     const currentStatus = getExamStatus(paper);
     if (currentStatus === "Upcoming") {
       const startTimeFormatted = paper.startDateTime 
-        ? new Date(paper.startDateTime).toLocaleString("bn-BD", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
+        ? new Date(paper.startDateTime).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka", month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })
         : paper.examDate;
       alert(`⏳ পরীক্ষাটি এখনো শুরু হয়নি!\n\nপরীক্ষা শুরুর সময়:\n${startTimeFormatted}\n\nনির্ধারিত সময় শুরু হলেই আপনি লাইভ পরীক্ষায় অংশ নিতে পারবেন।`);
       return;
@@ -5662,7 +5662,7 @@ export default function Home() {
               id="drawer-item-leaderboard"
             >
               <Trophy className={`w-6 h-6 ${currentScreen === "rankings" ? "text-[#FF6A00]" : "text-slate-500"}`} />
-              <span>Leaderboard (কুইজ র‍্যাঙ্কিং)</span>
+              <span>Leaderboard</span>
             </button>
 
             {/* 2. Package */}

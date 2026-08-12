@@ -135,10 +135,16 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
   }
 ];
 
-// Helper to calculate date boundaries
+// Helper to get Date object forced to Bangladesh Time (Asia/Dhaka, UTC+6)
+export function getBangladeshDate(dateInput?: string | Date): Date {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const bdStr = d.toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
+  return new Date(bdStr);
+}
+
 export function isToday(dateStr: string): boolean {
-  const d = new Date(dateStr);
-  const now = new Date();
+  const d = getBangladeshDate(dateStr);
+  const now = getBangladeshDate();
   return (
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
@@ -147,16 +153,16 @@ export function isToday(dateStr: string): boolean {
 }
 
 export function isThisWeek(dateStr: string): boolean {
-  const d = new Date(dateStr);
-  const now = new Date();
+  const d = getBangladeshDate(dateStr);
+  const now = getBangladeshDate();
   const diffTime = Math.abs(now.getTime() - d.getTime());
   const diffDays = diffTime / (1000 * 60 * 60 * 24);
   return diffDays <= 7;
 }
 
 export function isThisMonth(dateStr: string): boolean {
-  const d = new Date(dateStr);
-  const now = new Date();
+  const d = getBangladeshDate(dateStr);
+  const now = getBangladeshDate();
   return (
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth()

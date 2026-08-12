@@ -124,7 +124,7 @@ export async function fetchAllProfilesFromDb(): Promise<UserProfile[]> {
       student_id: String(item.student_id || item.studentId || `JM-${String(item.id).substring(0, 6)}`),
       role: (item.role as any) || "Student",
       status: item.status === "Banned" || item.status === "banned" ? "Banned" : "Active",
-      created_at: item.created_at ? new Date(item.created_at).toLocaleDateString("bn-BD") : "সাম্প্রতিক",
+      created_at: item.created_at ? new Date(item.created_at).toLocaleDateString("bn-BD", { timeZone: "Asia/Dhaka" }) : "সাম্প্রতিক",
       avatar_url: item.avatar_url || "",
     }));
   } catch (err) {
