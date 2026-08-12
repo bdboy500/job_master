@@ -178,6 +178,7 @@ export function useAppNavigationHistory(
   const isPopstateHandlingRef = useRef<boolean>(false);
   const isInitializedRef = useRef<boolean>(false);
   const lastStateKeyRef = useRef<string>("");
+  const pushedCountRef = useRef<number>(0);
 
   // Create a composite key representing the current UI state
   const stateKey = [
@@ -258,15 +259,25 @@ export function useAppNavigationHistory(
 
     if (isAtHomeClean) {
       lastStateKeyRef.current = stateKey;
-      try {
-        window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
-      } catch (e) {}
+      if (pushedCountRef.current > 0) {
+        const countToUnwind = pushedCountRef.current;
+        pushedCountRef.current = 0;
+        isPopstateHandlingRef.current = true;
+        try {
+          window.history.go(-countToUnwind);
+        } catch (e) {}
+      } else {
+        try {
+          window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
+        } catch (e) {}
+      }
       return;
     }
 
     // Only push if the state key actually changed
     if (stateKey !== lastStateKeyRef.current) {
       lastStateKeyRef.current = stateKey;
+      pushedCountRef.current += 1;
       try {
         window.history.pushState({ appNav: true, key: stateKey }, "", window.location.href);
       } catch (e) {}
@@ -279,6 +290,9 @@ export function useAppNavigationHistory(
 
     const handlePopState = (event: PopStateEvent) => {
       isPopstateHandlingRef.current = true;
+      if (pushedCountRef.current > 0) {
+        pushedCountRef.current -= 1;
+      }
 
       // 0. If Exit Confirmation Warning Popup is OPEN:
       // Pressing back button closes the popup (equivalent to clicking "Stay / Continue")
@@ -291,6 +305,7 @@ export function useAppNavigationHistory(
       if (navState.takingExamModal && !navState.examSubmitted) {
         try {
           window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
+          pushedCountRef.current += 1;
         } catch (e) {}
         handlers.setShowQuitConfirmModal(true);
         return;
@@ -300,6 +315,7 @@ export function useAppNavigationHistory(
       if (navState.quizStarted && !navState.isSubmitted) {
         try {
           window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
+          pushedCountRef.current += 1;
         } catch (e) {}
         handlers.setShowQuitConfirmModal(true);
         return;
@@ -449,7 +465,8 @@ export function useAppNavigationHistory(
         navState.currentScreen === "packages" ||
         navState.currentScreen === "search" ||
         navState.currentScreen === "notice" ||
-        navState.currentScreen === "all-live-exams"
+        navState.currentScreen === "all-live-exams" ||
+        navState.currentScreen === "rankings"
       ) {
         handlers.setCurrentScreen("home");
         return;

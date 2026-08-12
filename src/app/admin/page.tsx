@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
+import { LeaderboardUser, fetchLeaderboard, adminUpdateLeaderboardUser } from "@/src/lib/leaderboard";
 import { 
   Users, 
   Search,
@@ -12,6 +13,7 @@ import {
   LogOut, 
   LogIn, 
   Award, 
+  Trophy,
   Check, 
   X, 
   HelpCircle, 
@@ -219,7 +221,17 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard">("questions");
+
+  // Leaderboard Admin Management State
+  const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
+  const [leaderboardSearchQuery, setLeaderboardSearchQuery] = useState("");
+  const [editingLeaderboardUser, setEditingLeaderboardUser] = useState<LeaderboardUser | null>(null);
+  const [editTodayScore, setEditTodayScore] = useState<number>(0);
+  const [editWeekScore, setEditWeekScore] = useState<number>(0);
+  const [editMonthScore, setEditMonthScore] = useState<number>(0);
+  const [editAllTimeScore, setEditAllTimeScore] = useState<number>(0);
+  const [editUserName, setEditUserName] = useState<string>("");
 
   // Full Exam Paper Viewing State Modal
   const [viewingExamPaper, setViewingExamPaper] = useState<ExamPaper | null>(null);
@@ -545,6 +557,9 @@ export default function AdminPage() {
     });
     fetchProSectionFromDb().then((pro) => {
       if (pro) setProSectionList(pro);
+    });
+    fetchLeaderboard().then((lbUsers) => {
+      if (lbUsers) setAdminLeaderboardUsers(lbUsers);
     });
     const unsubCoursesPrep = subscribeToCoursesAndPrep(setCoursesList, setPrepSubjectsList, setProSectionList);
 
@@ -1603,6 +1618,139 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* EDIT LEADERBOARD USER SCORE MODAL */}
+        {editingLeaderboardUser && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-2xl max-w-md w-full space-y-5 relative animate-fade-in">
+              <button
+                onClick={() => setEditingLeaderboardUser(null)}
+                className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-500 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800">
+                    ইউজার কুইজ স্কোর মডিফাই করুন
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold">
+                    ID: {editingLeaderboardUser.student_id || editingLeaderboardUser.id}
+                  </p>
+                </div>
+              </div>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const updatedUsers = await adminUpdateLeaderboardUser({
+                    userId: editingLeaderboardUser.id,
+                    name: editUserName,
+                    today_score: editTodayScore,
+                    week_score: editWeekScore,
+                    month_score: editMonthScore,
+                    all_time_score: editAllTimeScore
+                  });
+                  setAdminLeaderboardUsers(updatedUsers);
+                  setEditingLeaderboardUser(null);
+                  triggerNotification("success", "ইউজারের কুইজ স্কোর সফলভাবে সার্ভারে আপডেট করা হয়েছে!");
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    ইউজার নাম (Name)
+                  </label>
+                  <input
+                    type="text"
+                    value={editUserName}
+                    onChange={(e) => setEditUserName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      Today Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editTodayScore}
+                      onChange={(e) => setEditTodayScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      Week Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editWeekScore}
+                      onChange={(e) => setEditWeekScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      Month Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editMonthScore}
+                      onChange={(e) => setEditMonthScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      All Time Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editAllTimeScore}
+                      onChange={(e) => setEditAllTimeScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLeaderboardUser(null)}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer"
+                  >
+                    বাতিল
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md shadow-orange-500/20 cursor-pointer transition-all"
+                  >
+                    স্কোর সেভ করুন (Save Changes)
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden">
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF6A00] opacity-5 rounded-full translate-x-12 -translate-y-12"></div>
@@ -1839,6 +1987,18 @@ export default function AdminPage() {
               <Sliders className={`w-4 h-4 ${activeTab === "switches" ? "text-white" : "text-[#FF6A00]"}`} />
               <span>কন্ট্রোল সুইচ</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab("leaderboard")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                activeTab === "leaderboard"
+                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+              }`}
+            >
+              <Trophy className={`w-4 h-4 ${activeTab === "leaderboard" ? "text-white" : "text-[#FF6A00]"}`} />
+              <span>কুইজ লিডারবোর্ড ({adminLeaderboardUsers.length})</span>
+            </button>
           </div>
         </div>
 
@@ -1966,6 +2126,19 @@ export default function AdminPage() {
             >
               <Sliders className="w-4 h-4" />
               <span>কন্ট্রোল সুইচ (Settings)</span>
+            </button>
+
+            {/* Tab Button 9: Quiz Leaderboard */}
+            <button
+              onClick={() => setActiveTab("leaderboard")}
+              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                activeTab === "leaderboard"
+                  ? "bg-orange-50 text-[#FF6A00]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Trophy className="w-4 h-4 text-[#FF6A00]" />
+              <span>কুইজ লিডারবোর্ড ({adminLeaderboardUsers.length})</span>
             </button>
           </div>
 
@@ -5115,6 +5288,114 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
             </div>
           )}
 
+          {/* TAB 9: LEADERBOARD MANAGEMENT */}
+          {activeTab === "leaderboard" && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-[#FF6A00]" />
+                      <span>কুইজ লিডারবোর্ড ও ইউজার র‍্যাঙ্কিং ম্যানেজমেন্ট (Leaderboard)</span>
+                    </h3>
+                    <p className="text-xs font-medium text-slate-500 mt-1">
+                      এখানে লাইভ কুইজ গেমের টপ ইউজারের পয়েন্ট তালিকা দেখা যাবে এবং এডমিন যে কারো পয়েন্ট পরিবর্তন করতে পারবে।
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      const users = await fetchLeaderboard();
+                      setAdminLeaderboardUsers(users);
+                      triggerNotification("success", "লিডারবোর্ড তথ্য রিফ্রেশ করা হয়েছে।");
+                    }}
+                    className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-[#FF6A00]" />
+                    <span>রিফ্রেশ (Refresh)</span>
+                  </button>
+                </div>
+
+                {/* Search Filter */}
+                <div className="relative max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="ইউজার নাম বা স্টুডেন্ট আইডি খুঁজুন..."
+                    value={leaderboardSearchQuery}
+                    onChange={(e) => setLeaderboardSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                  />
+                </div>
+
+                {/* Users Table */}
+                <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-[11px] font-black text-slate-400 uppercase border-b border-slate-100">
+                        <th className="p-3.5">র‍্যাঙ্ক ও ইউজার</th>
+                        <th className="p-3.5">স্টুডেন্ট আইডি</th>
+                        <th className="p-3.5">Today Score</th>
+                        <th className="p-3.5">Week Score</th>
+                        <th className="p-3.5">Month Score</th>
+                        <th className="p-3.5">All Time Score</th>
+                        <th className="p-3.5 text-right">অ্যাকশন</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+                      {adminLeaderboardUsers
+                        .filter(
+                          (u) =>
+                            u.name.toLowerCase().includes(leaderboardSearchQuery.toLowerCase()) ||
+                            u.student_id?.toLowerCase().includes(leaderboardSearchQuery.toLowerCase())
+                        )
+                        .map((user, idx) => (
+                          <tr key={user.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="p-3.5 flex items-center gap-3">
+                              <span className="w-6 text-center font-black text-slate-400">{idx + 1}</span>
+                              <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                <img
+                                  src={
+                                    user.avatar_url ||
+                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=f1f5f9&color=475569`
+                                  }
+                                  alt={user.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="font-extrabold text-slate-900">{user.name}</span>
+                            </td>
+                            <td className="p-3.5 font-mono text-slate-500">{user.student_id || "—"}</td>
+                            <td className="p-3.5 font-black text-emerald-600">{user.today_score || 0} pt</td>
+                            <td className="p-3.5 font-black text-blue-600">{user.week_score || 0} pt</td>
+                            <td className="p-3.5 font-black text-purple-600">{user.month_score || 0} pt</td>
+                            <td className="p-3.5 font-black text-[#FF6A00]">{user.all_time_score || 0} pt</td>
+                            <td className="p-3.5 text-right">
+                              <button
+                                onClick={() => {
+                                  setEditingLeaderboardUser(user);
+                                  setEditUserName(user.name);
+                                  setEditTodayScore(user.today_score || 0);
+                                  setEditWeekScore(user.week_score || 0);
+                                  setEditMonthScore(user.month_score || 0);
+                                  setEditAllTimeScore(user.all_time_score || 0);
+                                }}
+                                className="bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-black px-3.5 py-1.5 rounded-xl border border-orange-200/60 cursor-pointer transition-all inline-flex items-center gap-1.5"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>স্কোর মডিফাই</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+          )}
+
         </main>
 
         {/* 3. EDIT QUESTION MODAL */}
@@ -5903,6 +6184,139 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                 </button>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* EDIT LEADERBOARD USER SCORE MODAL */}
+        {editingLeaderboardUser && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-2xl max-w-md w-full space-y-5 relative animate-fade-in">
+              <button
+                onClick={() => setEditingLeaderboardUser(null)}
+                className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-500 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800">
+                    ইউজার কুইজ স্কোর মডিফাই করুন
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold">
+                    ID: {editingLeaderboardUser.student_id || editingLeaderboardUser.id}
+                  </p>
+                </div>
+              </div>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const updatedUsers = await adminUpdateLeaderboardUser({
+                    userId: editingLeaderboardUser.id,
+                    name: editUserName,
+                    today_score: editTodayScore,
+                    week_score: editWeekScore,
+                    month_score: editMonthScore,
+                    all_time_score: editAllTimeScore
+                  });
+                  setAdminLeaderboardUsers(updatedUsers);
+                  setEditingLeaderboardUser(null);
+                  triggerNotification("success", "ইউজারের কুইজ স্কোর সফলভাবে সার্ভারে আপডেট করা হয়েছে!");
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    ইউজার নাম (Name)
+                  </label>
+                  <input
+                    type="text"
+                    value={editUserName}
+                    onChange={(e) => setEditUserName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      Today Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editTodayScore}
+                      onChange={(e) => setEditTodayScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      Week Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editWeekScore}
+                      onChange={(e) => setEditWeekScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      Month Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editMonthScore}
+                      onChange={(e) => setEditMonthScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                      All Time Score
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editAllTimeScore}
+                      onChange={(e) => setEditAllTimeScore(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLeaderboardUser(null)}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer"
+                  >
+                    বাতিল
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md shadow-orange-500/20 cursor-pointer transition-all"
+                  >
+                    স্কোর সেভ করুন (Save Changes)
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

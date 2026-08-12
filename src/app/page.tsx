@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
+import LeaderboardView from "@/src/components/LeaderboardView";
+import { submitLiveQuizScore } from "@/src/lib/leaderboard";
 import { 
   Play, 
   RotateCcw, 
@@ -9,6 +11,7 @@ import {
   X, 
   Timer, 
   Award, 
+  Trophy,
   AlertTriangle, 
   AlertCircle,
   ChevronRight,
@@ -379,13 +382,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -1547,6 +1550,16 @@ export default function Home() {
 
       const updatedHistory = [newTestLog, ...takenTests];
       saveTakenTests(updatedHistory);
+
+      if (activeQuizTitle === "Live Quiz Game") {
+        submitLiveQuizScore({
+          userId: currentUser?.id || "user_" + Date.now(),
+          userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
+          studentId: profileId || undefined,
+          avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
+          score: scoreObtained
+        });
+      }
     }
 
     setCurrentQuestionIndex((prev) => prev + 1);
@@ -2321,13 +2334,13 @@ export default function Home() {
                       Live Quiz Game
                     </h3>
                     <p className="text-white/95 text-sm sm:text-xs font-extrabold tracking-wide truncate max-w-full">
-                      খেলতে খেলতে শিখুন
+                      কুইজ খেলে Gift জিতুন
                     </p>
                   </div>
 
                   {/* RIGHT SIDE: Start Quiz CTA button */}
                   <button 
-                    onClick={() => startQuizFlow("Live Quiz Game", "খেলতে খেলতে শিখুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
+                    onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
                     className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
                   >
                     <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
@@ -2649,7 +2662,7 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
                   <span className="text-xs font-extrabold text-slate-700 tracking-wide">
-                    খেলতে খেলতে শিখুন
+                    কুইজ খেলে Gift জিতুন
                   </span>
                 </div>
 
@@ -5523,6 +5536,17 @@ export default function Home() {
             );
           })()}
 
+          {/* ========================================================= */}
+          {/* 9. SCREEN: LEADERBOARD / RANKINGS VIEW                    */}
+          {/* ========================================================= */}
+          {currentScreen === "rankings" && (
+            <LeaderboardView
+              onBack={() => setCurrentScreen("home")}
+              currentUserProfile={currentUser}
+              profileAvatarUrl={profileAvatarUrl}
+            />
+          )}
+
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -5617,6 +5641,26 @@ export default function Home() {
             >
               <CircleUser className={`w-6 h-6 ${currentScreen === "profile" ? "text-[#FF6A00]" : "text-slate-500"}`} />
               <span>Profile</span>
+            </button>
+
+            {/* 1.5 Leaderboard */}
+            <button
+              onClick={() => {
+                attemptExitQuiz(() => {
+                  setDrawerOpen(false);
+                  setCurrentScreen("rankings");
+                });
+                if (soundEnabled) quizAudio.playClick();
+              }}
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all ${
+                currentScreen === "rankings"
+                  ? "bg-orange-50 text-[#FF6A00] font-black"
+                  : "text-slate-800 hover:bg-slate-100 font-extrabold"
+              } text-base sm:text-lg`}
+              id="drawer-item-leaderboard"
+            >
+              <Trophy className={`w-6 h-6 ${currentScreen === "rankings" ? "text-[#FF6A00]" : "text-slate-500"}`} />
+              <span>Leaderboard (কুইজ র‍্যাঙ্কিং)</span>
             </button>
 
             {/* 2. Package */}
@@ -6049,27 +6093,27 @@ export default function Home() {
             </span>
           </button>
 
-          {/* Results Tab */}
+          {/* Rankings Tab */}
           <button
             onClick={() => {
               setDrawerOpen(false);
-              attemptExitQuiz(() => setCurrentScreen("tests"));
+              attemptExitQuiz(() => setCurrentScreen("rankings"));
               if (soundEnabled) quizAudio.playClick();
             }}
             className="flex flex-col items-center justify-center flex-1 py-1 active:scale-95 transition-transform cursor-pointer"
-            id="bottom-nav-results"
+            id="bottom-nav-rankings"
           >
-            <ClipboardList 
+            <Trophy 
               className={`w-5 h-5 transition-colors ${
-                currentScreen === "tests" ? "text-[#FF6A00]" : "text-slate-400"
+                currentScreen === "rankings" ? "text-[#FF6A00]" : "text-slate-400"
               }`} 
             />
             <span 
               className={`text-[9px] mt-1 font-bold transition-colors ${
-                currentScreen === "tests" ? "text-[#FF6A00]" : "text-slate-500"
+                currentScreen === "rankings" ? "text-[#FF6A00]" : "text-slate-500"
               }`}
             >
-              Result
+              Rankings
             </span>
           </button>
 
