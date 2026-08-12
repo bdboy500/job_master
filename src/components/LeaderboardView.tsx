@@ -113,6 +113,23 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
 
   const userAvatar = profileAvatarUrl || currentUserProfile?.avatar_url || "";
 
+  // Helper to get avatar URL for any user in the leaderboard (preferring Google/profile avatar if available)
+  const getUserAvatarUrl = (user?: LeaderboardUser) => {
+    if (!user) return "";
+    const isCurrentUser =
+      (currentUserProfile?.id && user.id === currentUserProfile.id) ||
+      (currentUserProfile?.student_id && user.student_id === currentUserProfile.student_id) ||
+      (currentUserProfile?.full_name && user.name === currentUserProfile.full_name);
+
+    if (isCurrentUser && userAvatar) {
+      return userAvatar;
+    }
+    if (user.avatar_url && user.avatar_url.trim() !== "") {
+      return user.avatar_url;
+    }
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || "U")}&background=ffedd5&color=c2410c`;
+  };
+
   // Calculate user rank and score dynamically
   const userInListIndex = sortedUsers.findIndex(
     (u) =>
@@ -126,14 +143,14 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       ? userRank
       : userInListIndex !== -1
       ? userInListIndex + 1
-      : 18;
+      : null;
 
   const displayScore =
     userScore !== null
       ? userScore
       : userInListIndex !== -1
       ? getScoreForTab(sortedUsers[userInListIndex])
-      : 120;
+      : 0;
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
@@ -231,9 +248,9 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                   <Crown className="w-6 h-6 text-slate-200 fill-slate-300 drop-shadow-md animate-bounce" />
                 </div>
                 {/* Profile Image */}
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-slate-200 shadow-lg">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-slate-200 shadow-lg overflow-hidden">
                   <img
-                    src={top2.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.name)}&background=e2e8f0&color=334155`}
+                    src={getUserAvatarUrl(top2)}
                     alt={top2.name}
                     className="w-full h-full object-cover rounded-full"
                   />
@@ -266,15 +283,12 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                   <Sparkles className="w-3.5 h-3.5 text-amber-200 absolute -top-1 -right-1 animate-ping" />
                 </div>
                 {/* Profile Image */}
-                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 bg-gradient-to-tr from-amber-300 to-amber-500 border-3 border-amber-300 shadow-2xl">
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 bg-gradient-to-tr from-amber-300 to-amber-500 border-3 border-amber-300 shadow-2xl overflow-hidden">
                   <img
-                    src={top1.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.name)}&background=fef3c7&color=d97706`}
+                    src={getUserAvatarUrl(top1)}
                     alt={top1.name}
                     className="w-full h-full object-cover rounded-full"
                   />
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow border border-amber-300 uppercase tracking-wider">
-                    TOP 1
-                  </span>
                 </div>
                 {/* Name */}
                 <span className="text-xs sm:text-sm font-black text-white mt-2 truncate max-w-[90px] text-center drop-shadow-md">
@@ -303,9 +317,9 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                   <Crown className="w-6 h-6 text-amber-600 fill-amber-700 drop-shadow-md animate-bounce" />
                 </div>
                 {/* Profile Image */}
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-amber-600/60 shadow-lg">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-amber-600/60 shadow-lg overflow-hidden">
                   <img
-                    src={top3.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.name)}&background=ffedd5&color=c2410c`}
+                    src={getUserAvatarUrl(top3)}
                     alt={top3.name}
                     className="w-full h-full object-cover rounded-full"
                   />
@@ -337,14 +351,20 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         
         {/* "YOUR POSITION" HIGHLIGHTED HORIZONTAL CARD COMPONENT */}
         {currentUserProfile && (
-          <div className="space-y-1 animate-fade-in">
-            <div className="bg-gradient-to-r from-purple-950/5 via-amber-500/10 to-orange-500/10 backdrop-blur-md bg-white border-2 border-[#FF6A00]/40 rounded-3xl p-3.5 sm:p-4 shadow-lg shadow-orange-500/10 flex items-center justify-between transition-all hover:border-[#FF6A00] hover:shadow-xl">
-              {/* Left: Rank & Profile Avatar & Name + Badge */}
+          <div className="relative pt-3 mb-1 animate-fade-in">
+            {/* Floating badge sitting directly on the top border line */}
+            <div className="absolute -top-0.5 left-6 sm:left-8 z-10 flex items-center gap-1.5 bg-gradient-to-r from-[#FF5500] to-[#FF6A00] text-white text-[10px] font-black px-3 py-0.5 rounded-full shadow-md border border-white uppercase tracking-wider">
+              <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200" />
+              <span>Your Position</span>
+            </div>
+
+            <div className="bg-gradient-to-r from-orange-50/90 via-amber-50/60 to-orange-50/90 backdrop-blur-md bg-white border-2 border-[#FF6A00]/50 rounded-3xl p-3.5 sm:p-4 shadow-lg shadow-orange-500/10 flex items-center justify-between transition-all hover:border-[#FF6A00]">
+              {/* Left: Rank & Profile Avatar & Name */}
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 {/* 1. Rank Number */}
                 <div className="flex flex-col items-center justify-center shrink-0 w-8">
                   <span className="text-base sm:text-lg font-black text-[#FF6A00] tracking-tight">
-                    #{displayRank}
+                    {displayRank ? `#${displayRank}` : "#"}
                   </span>
                 </div>
 
@@ -364,24 +384,18 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                   </span>
                 </div>
 
-                {/* Name & Badge */}
+                {/* Name & ID */}
                 <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[120px] sm:max-w-[180px]">
-                      {currentUserProfile.full_name || "ইউজার"}
-                    </span>
-                    {/* 3. Small "Your Position" Badge */}
-                    <span className="bg-gradient-to-r from-[#FF5500] to-[#FF6A00] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs uppercase tracking-wider shrink-0">
-                      Your Position
-                    </span>
-                  </div>
+                  <span className="text-sm sm:text-base font-black text-slate-900 truncate max-w-[130px] sm:max-w-[200px]">
+                    {currentUserProfile.full_name || "ইউজার"}
+                  </span>
                   <span className="text-[11px] font-bold text-slate-500 truncate">
                     {currentUserProfile.student_id || "Your Account"}
                   </span>
                 </div>
               </div>
 
-              {/* 4. Total Points (Right Aligned) */}
+              {/* 3. Total Points (Right Aligned) */}
               <div className="flex flex-col items-end shrink-0 pl-2">
                 <div className="bg-[#FF6A00] text-white px-3.5 py-1.5 rounded-2xl text-xs sm:text-sm font-black shadow-md shadow-orange-500/20 border border-orange-400">
                   {displayScore} pt
@@ -390,7 +404,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
             </div>
 
             {/* Footer Note */}
-            <p className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 tracking-wide pt-1">
+            <p className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 tracking-wide pt-1.5">
               র‍্যাঙ্কিং প্রতি ৩০ মিনিটে স্বয়ংক্রিয়ভাবে আপডেট হয়
             </p>
           </div>
@@ -428,7 +442,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                     {/* Avatar Image */}
                     <div className="w-11 h-11 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shrink-0 shadow-2xs">
                       <img
-                        src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=f1f5f9&color=475569`}
+                        src={getUserAvatarUrl(user)}
                         alt={user.name}
                         className="w-full h-full object-cover"
                       />

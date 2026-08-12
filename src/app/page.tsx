@@ -1822,6 +1822,7 @@ export default function Home() {
         <div className="w-full max-w-full bg-slate-50 h-[100dvh] md:h-screen md:max-h-screen rounded-none border-none shadow-none flex flex-col justify-between relative overflow-hidden z-10">
 
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
+        {currentScreen !== "rankings" && (
         <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-20 lg:px-48 xl:px-72 2xl:px-96 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
           {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
           <div className="flex items-center gap-2">
@@ -2087,6 +2088,7 @@ export default function Home() {
             )}
           </div>
         </header>
+        )}
 
         {/* Scrollable Main Content Frame */}
         <div className="flex-1 overflow-y-auto overscroll-y-auto pb-2 md:pb-0 bg-slate-50/60 relative touch-pan-y md:px-20 lg:px-48 xl:px-72 2xl:px-96">
