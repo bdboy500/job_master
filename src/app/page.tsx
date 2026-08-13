@@ -65,7 +65,8 @@ import {
   Database,
   PlayCircle,
   Tv,
-  Film
+  Film,
+  WifiOff
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -528,6 +529,18 @@ export default function Home() {
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
+  // Offline warning popup state
+  const [showOfflineWarning, setShowOfflineWarning] = useState<boolean>(false);
+  const offlineTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerOfflineWarning = () => {
+    if (offlineTimerRef.current) clearTimeout(offlineTimerRef.current);
+    setShowOfflineWarning(true);
+    offlineTimerRef.current = setTimeout(() => {
+      setShowOfflineWarning(false);
+    }, 3000);
+  };
+
   // Full App PWA Navigation Sync Engine (Handles Android/iOS Back Button & Swipe Gestures across all courses, subjects, topics, modals, and active exams)
   useAppNavigationHistory(
     {
@@ -638,6 +651,16 @@ export default function Home() {
         percentage: pct
       };
       saveTakenTests([newTestLog, ...takenTests]);
+    }
+
+    if (activeQuizTitle === "Live Quiz Game" && scoreObtained > 0) {
+      submitLiveQuizScore({
+        userId: currentUser?.id || profileId || "user_" + Date.now(),
+        userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
+        studentId: profileId || undefined,
+        avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
+        score: scoreObtained
+      });
     }
 
     setCurrentQuestionIndex(questions.length);
@@ -1446,42 +1469,64 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [currentScreen, quizStarted, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal]);
 
+  // Helper function to shuffle options for any question
+  const shuffleQuestionOptions = (q: Question): Question => {
+    if (!q.options || q.options.length === 0) return q;
+    const originalOptions = [...q.options];
+    const correctOptionText = originalOptions[q.correctIndex] ?? originalOptions[0];
+
+    const shuffledOptions = [...originalOptions];
+    for (let i = shuffledOptions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+    }
+
+    const newCorrectIndex = shuffledOptions.indexOf(correctOptionText);
+
+    return {
+      ...q,
+      options: shuffledOptions,
+      correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0
+    };
+  };
+
   // Handle start quiz action (Sets screen to 'quiz' and resets statistics)
   const startQuizFlow = (title: string, subtitle: string, customQuestionSet?: Question[]) => {
     executeWithAuth(async () => {
+      // Offline check for Live Quiz Game
+      if (title === "Live Quiz Game" && typeof navigator !== "undefined" && !navigator.onLine) {
+        triggerOfflineWarning();
+        return;
+      }
+
       setActiveQuizTitle(title);
       setActiveQuizSubtitle(subtitle);
       
-      let pool: Question[] = [];
-      if (customQuestionSet && customQuestionSet.length > 0) {
-        pool = customQuestionSet;
-      } else {
-        const fetched = await fetchQuestionsOnDemand(title);
-        pool = fetched.length > 0 ? fetched : QUIZ_QUESTIONS;
-      }
-
       let selectedQuestions: Question[] = [];
-      if (title === "Live Quiz Game") {
-        const allowed = LIVE_QUIZ_ALLOWED_SUBJECTS;
-        const filtered = pool.filter(q => {
-          if (!q.subject) return true;
-          const s = q.subject.toLowerCase();
-          return allowed.some(a => 
-            s.includes(a.toLowerCase()) || 
-            (a === "Bangladesh Affairs" && (s.includes("bangladesh") || s.includes("বাংলাদেশ"))) ||
-            (a === "International Affairs" && (s.includes("international") || s.includes("আন্তর্জাতিক"))) ||
-            (a === "Geography" && (s.includes("geography") || s.includes("ভূগোল"))) ||
-            (a === "General Science" && (s.includes("science") || s.includes("বিজ্ঞান"))) ||
-            (a === "Technology" && (s.includes("tech") || s.includes("ict") || s.includes("প্রযুক্তি") || s.includes("কম্পিউটার"))) ||
-            (a === "Mental Ability" && (s.includes("mental") || s.includes("iq") || s.includes("মানসিক")))
-          );
-        });
 
-        const candidateSet = filtered.length >= 5 ? filtered : pool;
-        const randomized = shuffleArray(candidateSet);
-        selectedQuestions = randomized.slice(0, 10);
+      if (title === "Live Quiz Game") {
+        try {
+          const res = await fetch("/api/quiz/random?mode=live_quiz", { cache: "no-store" });
+          if (!res.ok) throw new Error("Fetch failed");
+          const data = await res.json();
+          if (Array.isArray(data.questions) && data.questions.length > 0) {
+            selectedQuestions = data.questions.map(q => shuffleQuestionOptions(q));
+          } else {
+            throw new Error("Empty response");
+          }
+        } catch (err) {
+          triggerOfflineWarning();
+          return;
+        }
       } else {
-        const randomized = shuffleArray(pool);
+        let pool: Question[] = [];
+        if (customQuestionSet && customQuestionSet.length > 0) {
+          pool = customQuestionSet;
+        } else {
+          const fetched = await fetchQuestionsOnDemand(title);
+          pool = fetched.length > 0 ? fetched : QUIZ_QUESTIONS;
+        }
+        const randomized = shuffleArray(pool).map(q => shuffleQuestionOptions(q));
         selectedQuestions = randomized.slice(0, 10);
       }
 
@@ -1566,28 +1611,39 @@ export default function Home() {
   };
 
   // Handle restart quiz with fresh random questions from allowed subjects
-  const handleRestart = () => {
-    let pool = allRawQuestions.length > 0 ? allRawQuestions : QUIZ_QUESTIONS;
+  const handleRestart = async () => {
     if (activeQuizTitle === "Live Quiz Game") {
-      const allowed = LIVE_QUIZ_ALLOWED_SUBJECTS;
-      const filtered = pool.filter(q => {
-        if (!q.subject) return true;
-        const s = q.subject.toLowerCase();
-        return allowed.some(a => 
-          s.includes(a.toLowerCase()) || 
-          (a === "Bangladesh Affairs" && (s.includes("bangladesh") || s.includes("বাংলাদেশ"))) ||
-          (a === "International Affairs" && (s.includes("international") || s.includes("আন্তর্জাতিক"))) ||
-          (a === "Geography" && (s.includes("geography") || s.includes("ভূগোল"))) ||
-          (a === "General Science" && (s.includes("science") || s.includes("বিজ্ঞান"))) ||
-          (a === "Technology" && (s.includes("tech") || s.includes("ict") || s.includes("প্রযুক্তি") || s.includes("কম্পিউটার"))) ||
-          (a === "Mental Ability" && (s.includes("mental") || s.includes("iq") || s.includes("মানসিক")))
-        );
-      });
-      const candidateSet = filtered.length >= 5 ? filtered : pool;
-      const randomized = shuffleArray(candidateSet);
-      setQuestions(randomized.slice(0, 10));
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        triggerOfflineWarning();
+        return;
+      }
+
+      if (score > 0) {
+        submitLiveQuizScore({
+          userId: currentUser?.id || profileId || "user_" + Date.now(),
+          userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
+          studentId: profileId || undefined,
+          avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
+          score: score
+        });
+      }
+
+      try {
+        const res = await fetch("/api/quiz/random?mode=live_quiz", { cache: "no-store" });
+        if (!res.ok) throw new Error("Fetch failed");
+        const data = await res.json();
+        if (Array.isArray(data.questions) && data.questions.length > 0) {
+          setQuestions(data.questions.map(q => shuffleQuestionOptions(q)));
+        } else {
+          throw new Error("Empty response");
+        }
+      } catch (err) {
+        triggerOfflineWarning();
+        return;
+      }
     } else {
-      const randomized = shuffleArray(pool);
+      let pool = allRawQuestions.length > 0 ? allRawQuestions : QUIZ_QUESTIONS;
+      const randomized = shuffleArray(pool).map(q => shuffleQuestionOptions(q));
       setQuestions(randomized.slice(0, 10));
     }
 
@@ -2342,7 +2398,7 @@ export default function Home() {
 
                   {/* RIGHT SIDE: Start Quiz CTA button */}
                   <button 
-                    onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন", isUsingFallback ? QUIZ_QUESTIONS : questions)}
+                    onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
                     className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
                   >
                     <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
@@ -6190,6 +6246,27 @@ export default function Home() {
             </span>
           </button>
         </nav>
+
+        {/* Offline Connection Warning Modal Popup */}
+        {showOfflineWarning && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[300] max-w-sm w-[92%] bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl border border-red-500/50 backdrop-blur-md flex items-center gap-3 animate-fade-in">
+            <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30">
+              <WifiOff className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div className="flex-1 space-y-0.5">
+              <h4 className="text-xs font-black text-red-400 tracking-wide">ইন্টারনেট কানেকশন নেই!</h4>
+              <p className="text-[11px] font-bold text-slate-200 leading-snug">
+                লাইভ কুইজে অংশ নিতে দয়া করে ইন্টারনেট কানেক্ট করুন।
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowOfflineWarning(false)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Exit Confirmation Modal Popup */}
         {showQuitConfirmModal && (
