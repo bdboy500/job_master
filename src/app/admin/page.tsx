@@ -70,7 +70,7 @@ import {
   deleteUserProfileFromDb, 
   UserProfile 
 } from "../../lib/user_profiles";
-import { ExamPaper, fetchExamPapersFromDb, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
 import { 
@@ -485,7 +485,7 @@ export default function AdminPage() {
     setPaperPrepSubSubject("all");
     setPaperQuestions([]);
     setPaperSearchQuery("");
-    setPaperSearchSubjects(["All"]);
+    setPaperSearchSubjects(paperCategoryType === "prep_hub" ? [] : ["All"]);
     setPaperStatus("Upcoming");
   };
 
@@ -613,6 +613,7 @@ export default function AdminPage() {
   const togglePaperSearchSubject = (sub: string) => {
     let next: string[] = [];
     if (sub === "All") {
+      if (paperCategoryType === "prep_hub") return;
       next = ["All"];
     } else {
       let prev = paperSearchSubjects.filter(s => s !== "All");
@@ -621,11 +622,19 @@ export default function AdminPage() {
       } else {
         next = [...prev, sub];
       }
-      if (next.length === 0) next = ["All"];
+      if (next.length === 0 && paperCategoryType !== "prep_hub") {
+        next = ["All"];
+      }
     }
     setPaperSearchSubjects(next);
     loadPaperQuestionsFromDb(next, paperSearchQuery);
   };
+
+  useEffect(() => {
+    if (paperCategoryType === "prep_hub" && paperSearchSubjects.includes("All")) {
+      setPaperSearchSubjects(prev => prev.filter(s => s !== "All"));
+    }
+  }, [paperCategoryType, paperSearchSubjects]);
 
   useEffect(() => {
     if (!paperHasFetched) return;
@@ -639,10 +648,10 @@ export default function AdminPage() {
     if (paperExamType !== "special" && paperSearchSubjects.includes("BCS Health Question")) {
       setPaperSearchSubjects(prev => {
         const filtered = prev.filter(s => s !== "BCS Health Question");
-        return filtered.length === 0 ? ["All"] : filtered;
+        return filtered.length === 0 ? (paperCategoryType === "prep_hub" ? [] : ["All"]) : filtered;
       });
     }
-  }, [paperExamType, paperSearchSubjects]);
+  }, [paperExamType, paperSearchSubjects, paperCategoryType]);
 
   // ==========================================
   // 1. QUESTIONS STATE & COMPONENT
@@ -1286,7 +1295,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleEditExamPaper = (paper: ExamPaper) => {
+  const handleEditExamPaper = async (paper: ExamPaper) => {
     setEditingPaperId(paper.id);
     setPaperTitle(paper.title);
     
@@ -1311,12 +1320,49 @@ export default function AdminPage() {
     setPaperStartDateTime(paper.startDateTime || "2026-07-24T00:00");
     setPaperEndDateTime(paper.endDateTime || "2026-07-31T23:59");
     setPaperStatus(paper.status);
-    setPaperTargetCount(paper.questionCount || (paper.questions || []).length || 10);
-    setPaperQuestions(paper.questions || []);
     setActiveTab("exam_papers");
+
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }, 50);
+
+    if (Array.isArray(paper.questions) && paper.questions.length > 0) {
+      setPaperTargetCount(paper.questionCount || paper.questions.length || 10);
+      setPaperQuestions(paper.questions);
+    } else {
+      setPaperLoadingQuestions(true);
+      setPaperQuestions([]);
+      try {
+        const fullPaper = await fetchExamPaperById(paper.id);
+        if (fullPaper && Array.isArray(fullPaper.questions) && fullPaper.questions.length > 0) {
+          setPaperQuestions(fullPaper.questions);
+          setPaperTargetCount(fullPaper.questionCount || fullPaper.questions.length || 10);
+          paper.questions = fullPaper.questions;
+        } else {
+          setPaperTargetCount(paper.questionCount || 10);
+        }
+      } catch (err) {
+        console.error("Error loading exam paper questions for edit:", err);
+      } finally {
+        setPaperLoadingQuestions(false);
+      }
+    }
+  };
+
+  const handleViewExamPaperDetails = async (paper: ExamPaper) => {
+    setViewingExamPaper(paper);
+
+    if (!paper.questions || paper.questions.length === 0) {
+      try {
+        const fullPaper = await fetchExamPaperById(paper.id);
+        if (fullPaper) {
+          setViewingExamPaper(fullPaper);
+          paper.questions = fullPaper.questions;
+        }
+      } catch (err) {
+        console.error("Error fetching full exam paper for view:", err);
+      }
+    }
   };
 
   const handleDeleteExamPaper = async (id: string) => {
@@ -3378,27 +3424,39 @@ export default function AdminPage() {
                         <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pl-0.5">
                           <span>বিষয় ফিল্টার (একাধিক সাবজেক্ট সিলেক্ট করা যাবে):</span>
                           <span className="text-[#FF6A00] font-extrabold">
-                            {paperSearchSubjects.includes("All") ? "সকল বিষয় (All)" : `সিলেক্টেড: ${paperSearchSubjects.length} টি বিষয়`}
+                            {paperCategoryType === "prep_hub" ? (
+                              paperSearchSubjects.length === 0 
+                                ? "কোনো বিষয় সিলেক্ট করা নেই" 
+                                : `সিলেক্টেড: ${paperSearchSubjects.length} টি বিষয়`
+                            ) : (
+                              paperSearchSubjects.includes("All") 
+                                ? "সকল বিষয় (All)" 
+                                : `সিলেক্টেড: ${paperSearchSubjects.length} টি বিষয়`
+                            )}
                           </span>
                         </div>
 
                         <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-32 overflow-y-auto">
-                          <button
-                            type="button"
-                            onClick={() => togglePaperSearchSubject("All")}
-                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
-                              paperSearchSubjects.includes("All")
-                                ? "bg-purple-600 text-white shadow-2xs"
-                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                            }`}
-                          >
-                            🌐 সকল বিষয় (All)
-                          </button>
+                          {paperCategoryType !== "prep_hub" && (
+                            <button
+                              type="button"
+                              onClick={() => togglePaperSearchSubject("All")}
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
+                                paperSearchSubjects.includes("All")
+                                  ? "bg-purple-600 text-white shadow-2xs"
+                                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                              }`}
+                            >
+                              🌐 সকল বিষয় (All)
+                            </button>
+                          )}
 
                           {SUBJECTS
                             .filter(s => paperExamType === "special" || s !== "BCS Health Question")
                             .map(s => {
-                              const isSelected = !paperSearchSubjects.includes("All") && paperSearchSubjects.includes(s);
+                              const isSelected = paperCategoryType === "prep_hub"
+                                ? paperSearchSubjects.includes(s)
+                                : (!paperSearchSubjects.includes("All") && paperSearchSubjects.includes(s));
                               return (
                                 <button
                                   type="button"
@@ -3485,7 +3543,12 @@ export default function AdminPage() {
                       <span>৮. প্রশ্নপত্রে যুক্ত প্রশ্নসমূহ ({paperQuestions.length} টি):</span>
                     </h4>
 
-                    {paperQuestions.length === 0 ? (
+                    {paperLoadingQuestions ? (
+                      <div className="p-6 border-2 border-dashed border-purple-200 bg-purple-50/50 rounded-2xl text-center text-xs font-bold text-purple-700 flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
+                        <span>সংরক্ষিত প্রশ্নসমূহ লোড করা হচ্ছে...</span>
+                      </div>
+                    ) : paperQuestions.length === 0 ? (
                       <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl text-center text-xs font-bold text-slate-400">
                         এখনো কোনো প্রশ্ন যোগ করা হয়নি! উপরের সার্চ বক্স থেকে অথবা "অটো সিলেক্ট" বাটনে ক্লিক করে প্রশ্ন যোগ করুন।
                       </div>
@@ -3569,7 +3632,7 @@ export default function AdminPage() {
                       return (
                         <div 
                           key={paper.id}
-                          onClick={() => setViewingExamPaper(paper)}
+                          onClick={() => handleViewExamPaperDetails(paper)}
                           className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all cursor-pointer group"
                         >
                           <div className="space-y-1 text-left">
@@ -3597,7 +3660,13 @@ export default function AdminPage() {
                               <span>প্রশ্ন: {paper.questionCount} টি</span>
                               <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
                               <span>তারিখ: {paper.examDate}</span>
-                              <span className="text-[10px] font-bold text-slate-400 underline group-hover:text-orange-500">
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewExamPaperDetails(paper);
+                                }}
+                                className="text-[10px] font-bold text-slate-400 underline group-hover:text-orange-500 cursor-pointer"
+                              >
                                 🔍 বিস্তারিত দেখতে ক্লিক করুন
                               </span>
                             </div>
@@ -5903,7 +5972,12 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
 
               {/* Questions List with Correct Answers Highlighted in Green */}
               <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-left">
-                {(!viewingExamPaper.questions || viewingExamPaper.questions.length === 0) ? (
+                {!viewingExamPaper.questions ? (
+                  <div className="py-12 text-center text-purple-600 font-bold flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5 animate-spin text-purple-600" />
+                    <span>প্রশ্নপত্র লোড করা হচ্ছে...</span>
+                  </div>
+                ) : viewingExamPaper.questions.length === 0 ? (
                   <div className="py-12 text-center text-slate-400 font-bold">
                     এই প্রশ্নপত্রে কোনো প্রশ্ন সংরক্ষিত নেই।
                   </div>
