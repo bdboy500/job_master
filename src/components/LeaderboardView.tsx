@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
 import { LeaderboardUser, fetchLeaderboard } from "@/src/lib/leaderboard";
 import { getSupabase } from "@/src/lib/supabase";
 
@@ -189,15 +189,19 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       
       {/* 1. TOP APP BAR - WHITE BACKGROUND LIKE HOME PAGE */}
       <div className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-40">
-        {/* Back Icon & Title */}
-        <div className="flex items-center gap-3">
+        {/* Back Icon, Site Logo Icon & Title */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onBack}
-            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all active:scale-90 cursor-pointer border border-slate-200/60 shadow-2xs"
+            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all active:scale-90 cursor-pointer border border-slate-200/60 shadow-2xs shrink-0"
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
+          {/* Site Logo Icon */}
+          <div className="bg-[#FF6A00] p-1.5 sm:p-2 rounded-xl shadow-md shadow-orange-500/20 flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
           <div className="flex flex-col">
             <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
               <span>Leaderboard</span>

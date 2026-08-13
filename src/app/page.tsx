@@ -2178,7 +2178,7 @@ export default function Home() {
                     }}
                     className="text-xs font-bold text-[#FF6A00] hover:underline active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    <span>সব পরীক্ষা দেখুন</span>
+                    <span>সকল পরীক্ষা দেখুন</span>
                     <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
                 </div>
@@ -2366,19 +2366,19 @@ export default function Home() {
                     );
                   })}
 
-                  {/* Grid Item: All Job / সকল কোর্স দেখুন (Orange background, centered icon and text) */}
+                  {/* Grid Item: All Job / সকল কোর্স দেখুন (Light Orange background, centered icon and text) */}
                   <div 
                     onClick={() => {
                       setPreviousScreen("home");
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="bg-[#FF6A00] hover:bg-[#FF5500] border border-orange-500 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center justify-center gap-1.5 min-[360px]:gap-2 sm:gap-2 shadow-md shadow-orange-500/20 transition-all cursor-pointer active:scale-95 text-white min-w-0"
+                    className="bg-orange-100/90 hover:bg-orange-200/80 border border-orange-200/90 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center justify-center gap-1.5 min-[360px]:gap-2 sm:gap-2 shadow-2xs transition-all cursor-pointer active:scale-95 text-[#FF6A00] min-w-0"
                   >
-                    <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0">
+                    <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-[#FF6A00]/10 rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
                       <Briefcase className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-white tracking-tight whitespace-nowrap min-w-0">সকল কোর্স দেখুন</span>
+                    <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#FF6A00] tracking-tight whitespace-nowrap min-w-0">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
