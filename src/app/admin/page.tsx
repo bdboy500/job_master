@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
 import { LeaderboardUser, fetchLeaderboard, adminUpdateLeaderboardUser } from "@/src/lib/leaderboard";
 import { 
@@ -194,6 +194,27 @@ function normalizeQuestion(q: any): Question {
     options: opts,
     explanation: String(q.explanation || "").trim()
   };
+}
+
+function matchesSubject(questionSubject: string, targetSubjects: string[]): boolean {
+  if (!targetSubjects || targetSubjects.length === 0 || targetSubjects.includes("All")) return true;
+  
+  const qSub = (questionSubject || "").toLowerCase().trim();
+  if (!qSub) return true;
+  
+  return targetSubjects.some(target => {
+    const tSub = target.toLowerCase().trim();
+    if (!tSub) return true;
+    if (qSub === tSub || qSub.includes(tSub) || tSub.includes(qSub)) return true;
+    
+    // Keyword match groups
+    if (tSub.includes("bangla") && qSub.includes("bangla")) return true;
+    if (tSub.includes("english") && qSub.includes("english")) return true;
+    if (tSub.includes("math") && (qSub.includes("math") || qSub.includes("arithmetic") || qSub.includes("algebra") || qSub.includes("geometry"))) return true;
+    if ((tSub.includes("science") || tSub.includes("technology") || tSub.includes("ict")) && (qSub.includes("science") || qSub.includes("technology") || qSub.includes("ict"))) return true;
+    if ((tSub.includes("affairs") || tSub.includes("gk") || tSub.includes("general knowledge")) && (qSub.includes("affairs") || qSub.includes("gk") || qSub.includes("general knowledge") || qSub.includes("geography"))) return true;
+    return false;
+  });
 }
 
 interface AdminUser {
@@ -414,25 +435,119 @@ export default function AdminPage() {
   // Search & filter within question bank for adding to paper
   const [paperSearchQuery, setPaperSearchQuery] = useState("");
   const [paperSearchSubjects, setPaperSearchSubjects] = useState<string[]>(["All"]);
+  const [paperAvailableQuestions, setPaperAvailableQuestions] = useState<Question[]>([]);
+  const [paperLoadingQuestions, setPaperLoadingQuestions] = useState<boolean>(false);
+  const [paperHasFetched, setPaperHasFetched] = useState<boolean>(false);
+  const paperQuestionsCacheRef = useRef<Map<string, Question[]>>(new Map());
+
+  const loadPaperQuestionsFromDb = async (
+    overrideSubjects?: string[],
+    overrideQuery?: string
+  ): Promise<Question[]> => {
+    const targetSubjects = overrideSubjects !== undefined ? overrideSubjects : paperSearchSubjects;
+    const targetQuery = overrideQuery !== undefined ? overrideQuery : paperSearchQuery;
+
+    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${targetQuery.trim().toLowerCase()}`;
+
+    if (paperQuestionsCacheRef.current.has(cacheKey)) {
+      const cached = paperQuestionsCacheRef.current.get(cacheKey)!;
+      setPaperAvailableQuestions(cached);
+      setPaperHasFetched(true);
+      return cached;
+    }
+
+    setPaperLoadingQuestions(true);
+    let fetchedList: Question[] = [];
+
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        let query = supabase
+          .from("questions")
+          .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        if (targetQuery && targetQuery.trim() !== "") {
+          query = query.ilike("questionText", `%${targetQuery.trim()}%`);
+        }
+
+        const { data, error } = await query;
+        if (!error && Array.isArray(data) && data.length > 0) {
+          fetchedList = data.map(q => normalizeQuestion(q));
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load paper questions from Supabase, using local pool fallback:", err);
+    }
+
+    // Always merge with local QUIZ_QUESTIONS fallback
+    const localPool = QUIZ_QUESTIONS.map(q => normalizeQuestion(q));
+    const combinedMap = new Map<string, Question>();
+
+    fetchedList.forEach(q => {
+      const norm = normalizeQuestion(q);
+      const key = String(norm.id || norm.question);
+      if (key) combinedMap.set(key, norm);
+    });
+
+    localPool.forEach(q => {
+      const norm = normalizeQuestion(q);
+      const key = String(norm.id || norm.question);
+      if (key && !combinedMap.has(key)) {
+        combinedMap.set(key, norm);
+      }
+    });
+
+    let merged = Array.from(combinedMap.values());
+
+    // Exclude BCS Health Question if not special exam
+    if (paperExamType !== "special") {
+      merged = merged.filter(q => (q.subject || q.subjectName) !== "BCS Health Question");
+    }
+
+    // Filter by subject
+    if (!targetSubjects.includes("All") && targetSubjects.length > 0) {
+      merged = merged.filter(q => matchesSubject(q.subject || q.subjectName || "", targetSubjects));
+    }
+
+    // Filter by search query
+    if (targetQuery && targetQuery.trim() !== "") {
+      const lowerQ = targetQuery.trim().toLowerCase();
+      merged = merged.filter(q => (q.question || q.questionText || "").toLowerCase().includes(lowerQ));
+    }
+
+    paperQuestionsCacheRef.current.set(cacheKey, merged);
+    setPaperAvailableQuestions(merged);
+    setPaperHasFetched(true);
+    setPaperLoadingQuestions(false);
+    return merged;
+  };
 
   const togglePaperSearchSubject = (sub: string) => {
+    let next: string[] = [];
     if (sub === "All") {
-      if (paperCategoryType === "our_course") {
-        setPaperSearchSubjects(["All"]);
-      }
-      return;
-    }
-    setPaperSearchSubjects(prev => {
-      let next = prev.filter(s => s !== "All");
-      if (next.includes(sub)) {
-        next = next.filter(s => s !== sub);
+      next = ["All"];
+    } else {
+      let prev = paperSearchSubjects.filter(s => s !== "All");
+      if (prev.includes(sub)) {
+        next = prev.filter(s => s !== sub);
       } else {
-        next.push(sub);
+        next = [...prev, sub];
       }
-      if (next.length === 0 && paperCategoryType === "our_course") return ["All"];
-      return next;
-    });
+      if (next.length === 0) next = ["All"];
+    }
+    setPaperSearchSubjects(next);
+    loadPaperQuestionsFromDb(next, paperSearchQuery);
   };
+
+  useEffect(() => {
+    if (!paperHasFetched) return;
+    const timer = setTimeout(() => {
+      loadPaperQuestionsFromDb(paperSearchSubjects, paperSearchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [paperSearchQuery]);
 
   useEffect(() => {
     if (paperExamType !== "special" && paperSearchSubjects.includes("BCS Health Question")) {
@@ -965,38 +1080,51 @@ export default function AdminPage() {
     setPaperQuestions(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAutoFillQuestions = () => {
-    // Filter questions by subject if selected
-    const availablePool = (questions.length > 0 ? questions : QUIZ_QUESTIONS).map(q => normalizeQuestion(q));
-    let available = availablePool;
-
-    // BCS Health Question is only included if paper type is BCS Health Quiz (special)
-    if (paperExamType !== "special") {
-      available = available.filter(q => (q.subject || q.subjectName) !== "BCS Health Question");
-    }
-
-    if (!paperSearchSubjects.includes("All") && paperSearchSubjects.length > 0) {
-      available = available.filter(q => paperSearchSubjects.includes(q.subject || q.subjectName));
-    }
-    
-    // Pick required number
+  const handleAutoFillQuestions = async () => {
     const needed = paperTargetCount - paperQuestions.length;
     if (needed <= 0) {
       triggerNotification("error", `প্রশ্নপত্র ইতিমধ্যেই ${paperQuestions.length} টি প্রশ্নে পূর্ণ!`);
       return;
     }
 
-    const unselected = available.filter(q => !paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question));
-    const shuffled = [...unselected].sort(() => 0.5 - Math.random());
-    const toAdd = shuffled.slice(0, needed);
+    setPaperLoadingQuestions(true);
 
-    if (toAdd.length === 0) {
-      triggerNotification("error", "সার্ভারে আর নতুন কোনো উপযুক্ত প্রশ্ন পাওয়া যায়নি।");
+    let pool = paperAvailableQuestions;
+    if (!paperHasFetched || pool.length === 0) {
+      pool = await loadPaperQuestionsFromDb();
+    }
+
+    let candidates = pool.filter(q => 
+      !paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question)
+    );
+
+    if (candidates.length < needed) {
+      const extraLocal = QUIZ_QUESTIONS
+        .map(q => normalizeQuestion(q))
+        .filter(q => {
+          if (paperExamType !== "special" && (q.subject || q.subjectName) === "BCS Health Question") return false;
+          if (!paperSearchSubjects.includes("All") && paperSearchSubjects.length > 0) {
+            if (!matchesSubject(q.subject || q.subjectName || "", paperSearchSubjects)) return false;
+          }
+          const alreadyInPaper = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question);
+          const alreadyInCandidates = candidates.some(cq => cq.id === q.id || (cq.question || cq.questionText) === q.question);
+          return !alreadyInPaper && !alreadyInCandidates;
+        });
+      candidates = [...candidates, ...extraLocal];
+    }
+
+    if (candidates.length === 0) {
+      setPaperLoadingQuestions(false);
+      triggerNotification("error", "সিলেক্টেড বিষয় বা ফিল্টারে নতুন কোনো প্রশ্ন পাওয়া যায়নি। অন্য বিষয় সিলেক্ট করুন বা সার্চ পরিবর্তন করুন।");
       return;
     }
 
+    const shuffled = [...candidates].sort(() => 0.5 - Math.random());
+    const toAdd = shuffled.slice(0, needed);
+
     setPaperQuestions(prev => [...prev, ...toAdd]);
-    triggerNotification("success", `${toAdd.length} টি প্রশ্ন অটোম্যাটিক যোগ করা হয়েছে!`);
+    setPaperLoadingQuestions(false);
+    triggerNotification("success", `${toAdd.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে প্রশ্নপত্রে যোগ করা হয়েছে!`);
   };
 
   const handlePublishExamPaper = async (e: React.FormEvent) => {
@@ -3077,21 +3205,34 @@ export default function AdminPage() {
                         <span>৭. সার্ভার প্রশ্ন ব্যাংক থেকে সার্চ ও প্রশ্ন যোগ করুন:</span>
                       </h4>
 
-                      <button
-                        type="button"
-                        onClick={handleAutoFillQuestions}
-                        className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>অটো সিলেক্ট / র‍্যান্ডম ফিল (Auto Fill)</span>
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => loadPaperQuestionsFromDb()}
+                          disabled={paperLoadingQuestions}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${paperLoadingQuestions ? "animate-spin" : ""}`} />
+                          <span>{paperLoadingQuestions ? "লোড হচ্ছে..." : "🔍 প্রশ্ন লোড করুন"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleAutoFillQuestions}
+                          disabled={paperLoadingQuestions}
+                          className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                          <span>অটো সিলেক্ট / র‍্যান্ডম ফিল (Auto Fill)</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Filter controls & Multi-subject Selection Chips */}
                     <div className="space-y-2">
                       <input 
                         type="text"
-                        placeholder="প্রশ্ন দিয়ে খুঁজুন..."
+                        placeholder="প্রশ্ন দিয়ে খুঁজুন (টাইপ করলেই ফিল্টার হবে)..."
                         value={paperSearchQuery}
                         onChange={(e) => setPaperSearchQuery(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
@@ -3101,24 +3242,22 @@ export default function AdminPage() {
                         <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pl-0.5">
                           <span>বিষয় ফিল্টার (একাধিক সাবজেক্ট সিলেক্ট করা যাবে):</span>
                           <span className="text-[#FF6A00] font-extrabold">
-                            {paperSearchSubjects.includes("All") ? "সকল বিষয়" : `সিলেক্টেড: ${paperSearchSubjects.length} টি বিষয়`}
+                            {paperSearchSubjects.includes("All") ? "সকল বিষয় (All)" : `সিলেক্টেড: ${paperSearchSubjects.length} টি বিষয়`}
                           </span>
                         </div>
 
                         <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-32 overflow-y-auto">
-                          {paperCategoryType === "our_course" && (
-                            <button
-                              type="button"
-                              onClick={() => togglePaperSearchSubject("All")}
-                              className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
-                                paperSearchSubjects.includes("All")
-                                  ? "bg-purple-600 text-white shadow-2xs"
-                                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                              }`}
-                            >
-                              🌐 সকল বিষয় (All)
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => togglePaperSearchSubject("All")}
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
+                              paperSearchSubjects.includes("All")
+                                ? "bg-purple-600 text-white shadow-2xs"
+                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            🌐 সকল বিষয় (All)
+                          </button>
 
                           {SUBJECTS
                             .filter(s => paperExamType === "special" || s !== "BCS Health Question")
@@ -3146,46 +3285,60 @@ export default function AdminPage() {
                     </div>
 
                     {/* Searched Results Box */}
-                    <div className="max-h-52 overflow-y-auto border border-slate-100 rounded-2xl bg-slate-50/50 p-2 space-y-2">
-                      {questions
-                        .map(q => normalizeQuestion(q))
-                        .filter(q => {
-                          const qSub = q.subject || q.subjectName || "";
-                          const qText = q.question || q.questionText || "";
-                          if (paperExamType !== "special" && qSub === "BCS Health Question") {
-                            return false;
-                          }
-                          const matchesSub = paperSearchSubjects.includes("All") || paperSearchSubjects.length === 0 || paperSearchSubjects.includes(qSub);
-                          const matchesText = !paperSearchQuery || qText.toLowerCase().includes(paperSearchQuery.toLowerCase());
-                          return matchesSub && matchesText;
-                        })
-                        .slice(0, 12)
-                        .map((q, idx) => {
-                          const isAdded = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question);
-                          return (
-                            <div key={q.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-100 flex items-center justify-between gap-3">
-                              <div className="text-xs text-slate-800 font-semibold line-clamp-1">
-                                <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-1.5 py-0.5 rounded mr-1.5">
-                                  {q.subject || q.subjectName || "General"}
-                                </span>
-                                {q.question || q.questionText}
-                              </div>
+                    <div className="max-h-56 overflow-y-auto border border-slate-100 rounded-2xl bg-slate-50/50 p-2 space-y-2">
+                      {paperLoadingQuestions ? (
+                        <div className="p-6 text-center text-xs font-bold text-purple-600 flex items-center justify-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>সার্ভার থেকে প্রশ্ন লোড করা হচ্ছে...</span>
+                        </div>
+                      ) : !paperHasFetched && paperAvailableQuestions.length === 0 ? (
+                        <div className="p-5 bg-purple-50/60 border border-purple-100 rounded-xl text-center space-y-2">
+                          <p className="text-xs font-bold text-slate-700">
+                            বিষয় ফিল্টারে ক্লিক করুন অথবা 'প্রশ্ন লোড করুন' বাটনে ক্লিক করে প্রশ্ন দেখুন
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => loadPaperQuestionsFromDb()}
+                            className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>🔍 প্রশ্ন লোড করুন</span>
+                          </button>
+                        </div>
+                      ) : paperAvailableQuestions.length === 0 ? (
+                        <div className="p-5 text-center text-xs font-bold text-slate-400">
+                          সিলেক্টেড ফিল্টার বা সার্চে কোনো প্রশ্ন পাওয়া যায়নি।
+                        </div>
+                      ) : (
+                        paperAvailableQuestions
+                          .slice(0, 30)
+                          .map((q, idx) => {
+                            const isAdded = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question);
+                            return (
+                              <div key={q.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-100 flex items-center justify-between gap-3 shadow-2xs hover:border-orange-200">
+                                <div className="text-xs text-slate-800 font-semibold line-clamp-1 flex-1">
+                                  <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-1.5 py-0.5 rounded mr-1.5">
+                                    {q.subject || q.subjectName || "General"}
+                                  </span>
+                                  {q.question || q.questionText}
+                                </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleAddQuestionToPaper(q)}
-                                disabled={isAdded}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer shrink-0 ${
-                                  isAdded
-                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                }`}
-                              >
-                                {isAdded ? "যোগ করা হয়েছে ✓" : "+ যোগ করুন"}
-                              </button>
-                            </div>
-                          );
-                        })}
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddQuestionToPaper(q)}
+                                  disabled={isAdded}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer shrink-0 ${
+                                    isAdded
+                                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                      : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {isAdded ? "যোগ করা হয়েছে ✓" : "+ যোগ করুন"}
+                                </button>
+                              </div>
+                            );
+                          })
+                      )}
                     </div>
                   </div>
 
@@ -5910,24 +6063,8 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        const remainingNeeded = paperTargetCount - paperQuestions.length;
-                        if (remainingNeeded <= 0) {
-                          alert(`ইতিমধ্যে ${paperTargetCount} টি প্রশ্ন যুক্ত করা হয়েছে!`);
-                          return;
-                        }
-                        const existingIds = new Set(paperQuestions.map(q => q.id));
-                        const pool = questions.length > 0 ? questions : QUIZ_QUESTIONS;
-                        const available = pool.filter(q => !existingIds.has(q.id));
-                        const shuffled = [...available].sort(() => 0.5 - Math.random());
-                        const toAdd = shuffled.slice(0, remainingNeeded);
-                        if (toAdd.length === 0) {
-                          alert("প্রশ্ন ব্যাংকে যুক্ত করার মতো নতুন আর কোনো প্রশ্ন নেই!");
-                          return;
-                        }
-                        setPaperQuestions(prev => [...prev, ...toAdd]);
-                        triggerNotification("success", `${toAdd.length} টি র্যান্ডম প্রশ্ন স্বয়ংক্রিয়ভাবে যুক্ত হয়েছে!`);
-                      }}
+                      onClick={handleAutoFillQuestions}
+                      disabled={paperLoadingQuestions}
                       className="px-3 py-1.5 bg-[#FF6A00]/10 hover:bg-[#FF6A00]/20 text-[#FF6A00] rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1"
                     >
                       <Zap className="w-3.5 h-3.5" />
@@ -5945,39 +6082,47 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
 
                   {/* Filtered questions list */}
                   <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                    {questions
-                      .filter((q) => {
-                        const qText = (q.questionText || q.question || "").toLowerCase();
-                        return qText.includes(paperSearchQuery.toLowerCase());
-                      })
-                      .slice(0, 15)
-                      .map((q) => {
-                        const isAdded = paperQuestions.some((pq) => pq.id === q.id);
-                        return (
-                          <div
-                            key={q.id}
-                            className="p-2 bg-white border border-slate-100 rounded-xl flex items-center justify-between text-xs font-medium gap-2 hover:border-slate-300"
-                          >
-                            <span className="truncate text-slate-800 font-semibold flex-1">
-                              {q.questionText || q.question}
-                            </span>
-                            <button
-                              type="button"
-                              disabled={isAdded}
-                              onClick={() => {
-                                setPaperQuestions((prev) => [...prev, q]);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 transition-all cursor-pointer ${
-                                isAdded
-                                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                              }`}
+                    {paperLoadingQuestions ? (
+                      <div className="p-4 text-center text-xs font-bold text-purple-600 flex items-center justify-center gap-2">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>প্রশ্ন লোড হচ্ছে...</span>
+                      </div>
+                    ) : paperAvailableQuestions.length === 0 ? (
+                      <div className="p-4 text-center text-xs font-bold text-slate-400">
+                        উপরে ফিল্টারে বিষয় নির্বাচন করুন অথবা অটো ফিল এ ক্লিক করুন।
+                      </div>
+                    ) : (
+                      paperAvailableQuestions
+                        .slice(0, 20)
+                        .map((q) => {
+                          const isAdded = paperQuestions.some((pq) => pq.id === q.id || (pq.question || pq.questionText) === (q.question || q.questionText));
+                          return (
+                            <div
+                              key={q.id}
+                              className="p-2 bg-white border border-slate-100 rounded-xl flex items-center justify-between text-xs font-medium gap-2 hover:border-slate-300"
                             >
-                              {isAdded ? "যুক্ত হয়েছে" : "+ যোগ করুন"}
-                            </button>
-                          </div>
-                        );
-                      })}
+                              <span className="truncate text-slate-800 font-semibold flex-1">
+                                <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-1.5 py-0.5 rounded mr-1.5">
+                                  {q.subject || q.subjectName || "General"}
+                                </span>
+                                {q.questionText || q.question}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={isAdded}
+                                onClick={() => handleAddQuestionToPaper(q)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 transition-all cursor-pointer ${
+                                  isAdded
+                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                    : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                }`}
+                              >
+                                {isAdded ? "যুক্ত হয়েছে" : "+ যোগ করুন"}
+                              </button>
+                            </div>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
 
