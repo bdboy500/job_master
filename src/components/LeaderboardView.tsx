@@ -32,73 +32,109 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       const nowBd = new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Dhaka", hour: "2-digit", minute: "2-digit", hour12: true });
       setLastUpdatedTime(nowBd);
 
+      // Always load comprehensive server store & DB aggregated leaderboard users
+      const users = await fetchLeaderboard();
+
+      // Check user rank & score via Supabase RPC if logged in
       const supabase = getSupabase();
       if (supabase && currentUserProfile?.id) {
-        // Try calling Supabase RPC function
-        const periodMap: Record<string, string> = {
-          Today: "today",
-          Week: "week",
-          Month: "month",
-          "All Time": "all_time",
-        };
-        const { data, error } = await supabase.rpc("get_leaderboard_with_user_rank", {
-          p_user_id: currentUserProfile.id,
-          p_period: periodMap[activeTab] || "week",
-          p_limit: 50,
-          p_offset: 0,
-        });
+        try {
+          const periodMap: Record<string, string> = {
+            Today: "today",
+            Week: "week",
+            Month: "month",
+            "All Time": "all_time",
+          };
+          const { data, error } = await supabase.rpc("get_leaderboard_with_user_rank", {
+            p_user_id: currentUserProfile.id,
+            p_period: periodMap[activeTab] || "week",
+            p_limit: 50,
+            p_offset: 0,
+          });
 
-        if (!error && data) {
-          if (typeof data.user_rank === "number" && data.user_rank > 0) {
-            setUserRank(data.user_rank);
+          if (!error && data) {
+            if (typeof data.user_rank === "number" && data.user_rank > 0) {
+              setUserRank(data.user_rank);
+            }
+            if (typeof data.user_score === "number") {
+              setUserScore(data.user_score);
+            }
           }
-          if (typeof data.user_score === "number") {
-            setUserScore(data.user_score);
-          }
-          if (Array.isArray(data.leaderboard) && data.leaderboard.length > 0) {
-            setLeaderboardUsers(data.leaderboard);
-            setIsLoading(false);
-            return;
-          }
+        } catch (rpcErr) {
+          console.warn("Supabase RPC error, fallback to client calculation:", rpcErr);
         }
       }
-    } catch (err) {
-      console.warn("Supabase RPC load error, falling back:", err);
-    }
 
-    // Fallback to API / Store
-    const users = await fetchLeaderboard();
-    setLeaderboardUsers(users);
-    setIsLoading(false);
+      setLeaderboardUsers(users);
+      setIsLoading(false);
+    } catch (err) {
+      console.warn("Error loading leaderboard data:", err);
+      const fallbackUsers = await fetchLeaderboard();
+      setLeaderboardUsers(fallbackUsers);
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     setVisibleCount(10);
     loadData();
 
-    // Auto-refresh leaderboard every 30 minutes
-    const interval = setInterval(() => {
-      loadData();
-    }, 1000 * 60 * 30);
+    let timeoutId: NodeJS.Timeout | null = null;
+    let intervalId: NodeJS.Timeout | null = null;
 
-    return () => clearInterval(interval);
+    // Automatically trigger update at every 30-minute boundary in Bangladesh Time (e.g. 9:00, 9:30, 10:00, 10:30)
+    const schedule30MinClockUpdate = () => {
+      const bdNowStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
+      const bdNow = new Date(bdNowStr);
+      const minutes = bdNow.getMinutes();
+      const seconds = bdNow.getSeconds();
+      const ms = bdNow.getMilliseconds();
+
+      const minutesToBoundary = 30 - (minutes % 30);
+      const msToNextBoundary = minutesToBoundary * 60 * 1000 - (seconds * 1000 + ms);
+
+      timeoutId = setTimeout(() => {
+        loadData();
+        intervalId = setInterval(() => {
+          loadData();
+        }, 30 * 60 * 1000);
+      }, msToNextBoundary);
+    };
+
+    schedule30MinClockUpdate();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [activeTab, currentUserProfile?.id]);
 
-  // Sort users according to active tab
-  const getSortedUsers = () => {
-    const sorted = [...leaderboardUsers];
+  const getScoreForTab = (user?: any) => {
+    if (!user) return 0;
+    let val = 0;
     switch (activeTab) {
       case "Today":
-        return sorted.sort((a, b) => (b.today_score || 0) - (a.today_score || 0));
+        val = user.today_score ?? user.score ?? user.points ?? user.total_score ?? 0;
+        break;
       case "Week":
-        return sorted.sort((a, b) => (b.week_score || 0) - (a.week_score || 0));
+        val = user.week_score ?? user.score ?? user.points ?? user.total_score ?? 0;
+        break;
       case "Month":
-        return sorted.sort((a, b) => (b.month_score || 0) - (a.month_score || 0));
+        val = user.month_score ?? user.score ?? user.points ?? user.total_score ?? 0;
+        break;
       case "All Time":
-        return sorted.sort((a, b) => (b.all_time_score || 0) - (a.all_time_score || 0));
+        val = user.all_time_score ?? user.score ?? user.points ?? user.total_score ?? 0;
+        break;
       default:
-        return sorted;
+        val = user.score ?? user.today_score ?? user.week_score ?? 0;
     }
+    return typeof val === "number" && !isNaN(val) ? val : Number(val) || 0;
+  };
+
+  // Sort users according to active tab score
+  const getSortedUsers = () => {
+    const sorted = [...leaderboardUsers];
+    return sorted.sort((a, b) => getScoreForTab(b) - getScoreForTab(a));
   };
 
   const sortedUsers = getSortedUsers();
@@ -106,22 +142,6 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
   const top2 = sortedUsers[1];
   const top3 = sortedUsers[2];
   const restUsers = sortedUsers.slice(3, visibleCount);
-
-  const getScoreForTab = (user?: LeaderboardUser) => {
-    if (!user) return 0;
-    switch (activeTab) {
-      case "Today":
-        return user.today_score || 0;
-      case "Week":
-        return user.week_score || 0;
-      case "Month":
-        return user.month_score || 0;
-      case "All Time":
-        return user.all_time_score || 0;
-      default:
-        return 0;
-    }
-  };
 
   const userAvatar = profileAvatarUrl || currentUserProfile?.avatar_url || "";
 
@@ -158,10 +178,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       : null;
 
   const displayScore =
-    userScore !== null
-      ? userScore
-      : userInListIndex !== -1
+    userInListIndex !== -1
       ? getScoreForTab(sortedUsers[userInListIndex])
+      : userScore !== null
+      ? userScore
       : 0;
 
   return (
