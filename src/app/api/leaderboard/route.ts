@@ -87,7 +87,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
     if (supabase) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, student_id, avatar_url");
+        .select("id, full_name, student_id");
 
       const { data: quizScores } = await supabase
         .from("quiz_scores")
@@ -119,7 +119,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
           const uid = p.id;
           const pName = p.full_name || "শিক্ষার্থী";
           const pStudentId = p.student_id || `JM-${uid.substring(0, 6)}`;
-          const pAvatar = p.avatar_url || "";
+          const pAvatar = (p as any).avatar_url || "";
           const agg = userScoresAgg.get(uid) || { today: 0, week: 0, month: 0, allTime: 0 };
 
           const existingIdx = baseUsers.findIndex(
