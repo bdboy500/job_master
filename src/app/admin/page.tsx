@@ -200,20 +200,96 @@ function matchesSubject(questionSubject: string, targetSubjects: string[]): bool
   if (!targetSubjects || targetSubjects.length === 0 || targetSubjects.includes("All")) return true;
   
   const qSub = (questionSubject || "").toLowerCase().trim();
-  if (!qSub) return true;
+  if (!qSub) return false;
   
   return targetSubjects.some(target => {
     const tSub = target.toLowerCase().trim();
-    if (!tSub) return true;
-    if (qSub === tSub || qSub.includes(tSub) || tSub.includes(qSub)) return true;
-    
-    // Keyword match groups
-    if (tSub.includes("bangla") && qSub.includes("bangla")) return true;
-    if (tSub.includes("english") && qSub.includes("english")) return true;
-    if (tSub.includes("math") && (qSub.includes("math") || qSub.includes("arithmetic") || qSub.includes("algebra") || qSub.includes("geometry"))) return true;
-    if ((tSub.includes("science") || tSub.includes("technology") || tSub.includes("ict")) && (qSub.includes("science") || qSub.includes("technology") || qSub.includes("ict"))) return true;
-    if ((tSub.includes("affairs") || tSub.includes("gk") || tSub.includes("general knowledge")) && (qSub.includes("affairs") || qSub.includes("gk") || qSub.includes("general knowledge") || qSub.includes("geography"))) return true;
-    return false;
+    if (!tSub || tSub === "all") return true;
+
+    // Direct exact match
+    if (qSub === tSub) return true;
+
+    // 1. Bangla Literature
+    if (tSub.includes("bangla literature") || tSub.includes("বাংলা সাহিত্য")) {
+      if (qSub.includes("gramm") || qSub.includes("ব্যাকরণ")) return false;
+      return qSub.includes("bangla literature") || qSub.includes("বাংলা সাহিত্য") || qSub.includes("bangla lit");
+    }
+
+    // 2. Bangla Grammer / Grammar
+    if (tSub.includes("bangla gramm") || tSub.includes("বাংলা ব্যাকরণ")) {
+      if (qSub.includes("literat") || qSub.includes("সাহিত্য")) return false;
+      return qSub.includes("bangla gramm") || qSub.includes("bangla gram") || qSub.includes("বাংলা ব্যাকরণ");
+    }
+
+    // 3. English Literature
+    if (tSub.includes("english literature") || tSub.includes("ইংরেজি সাহিত্য")) {
+      if (qSub.includes("gramm") || qSub.includes("ব্যাকরণ")) return false;
+      return qSub.includes("english literature") || qSub.includes("ইংরেজি সাহিত্য") || qSub.includes("eng lit");
+    }
+
+    // 4. English Grammer / Grammar
+    if (tSub.includes("english gramm") || tSub.includes("ইংরেজি ব্যাকরণ")) {
+      if (qSub.includes("literat") || qSub.includes("সাহিত্য")) return false;
+      return qSub.includes("english gramm") || qSub.includes("english gram") || qSub.includes("ইংরেজি ব্যাকরণ");
+    }
+
+    // 5. Bangladesh Affairs
+    if (tSub.includes("bangladesh affairs") || tSub.includes("বাংলাদেশ বিষয়াবলী")) {
+      if (qSub.includes("international") || qSub.includes("আন্তর্জাতিক")) return false;
+      return qSub.includes("bangladesh affairs") || qSub.includes("বাংলাদেশ বিষয়াবলী") || qSub === "bangladesh";
+    }
+
+    // 6. International Affairs
+    if (tSub.includes("international affairs") || tSub.includes("আন্তর্জাতিক বিষয়াবলী")) {
+      if (qSub.includes("bangladesh") || qSub.includes("বাংলাদেশ")) return false;
+      return qSub.includes("international affairs") || qSub.includes("আন্তর্জাতিক বিষয়াবলী") || qSub === "international";
+    }
+
+    // 7. Geography
+    if (tSub.includes("geography") || tSub.includes("ভূগোল")) {
+      return qSub.includes("geography") || qSub.includes("ভূগোল") || qSub.includes("environment");
+    }
+
+    // 8. General Science
+    if (tSub.includes("general science") || tSub.includes("সাধারণ বিজ্ঞান")) {
+      if (qSub.includes("computer") || qSub.includes("technology") || qSub.includes("ict") || qSub.includes("কম্পিউটার") || qSub.includes("তথ্যপ্রযুক্তি")) return false;
+      return qSub.includes("general science") || qSub.includes("সাধারণ বিজ্ঞান") || qSub === "science";
+    }
+
+    // 9. Technology
+    if (tSub.includes("technology") || tSub.includes("computer") || tSub.includes("ict") || tSub.includes("তথ্যপ্রযুক্তি")) {
+      return qSub.includes("technology") || qSub.includes("computer") || qSub.includes("ict") || qSub.includes("কম্পিউটার") || qSub.includes("তথ্যপ্রযুক্তি");
+    }
+
+    // 10. Mathematics (Arithmetic)
+    if (tSub.includes("arithmetic") || tSub.includes("পাটিগণিত")) {
+      if (qSub.includes("algebra") || qSub.includes("geometry") || qSub.includes("বীজগণিত") || qSub.includes("জ্যামিতি")) return false;
+      return qSub.includes("arithmetic") || qSub.includes("পাটিগণিত");
+    }
+
+    // 11. Mathematics (Algebra)
+    if (tSub.includes("algebra") || tSub.includes("বীজগণিত")) {
+      if (qSub.includes("arithmetic") || qSub.includes("geometry") || qSub.includes("পাটিগণিত") || qSub.includes("জ্যামিতি")) return false;
+      return qSub.includes("algebra") || qSub.includes("বীজগণিত");
+    }
+
+    // 12. Mathematics (Geometry)
+    if (tSub.includes("geometry") || tSub.includes("জ্যামিতি")) {
+      if (qSub.includes("arithmetic") || qSub.includes("algebra") || qSub.includes("পাটিগণিত") || qSub.includes("বীজগণিত")) return false;
+      return qSub.includes("geometry") || qSub.includes("জ্যামিতি");
+    }
+
+    // 13. Mental Ability
+    if (tSub.includes("mental ability") || tSub.includes("মানসিক দক্ষতা")) {
+      return qSub.includes("mental ability") || qSub.includes("মানসিক দক্ষতা") || qSub.includes("mental");
+    }
+
+    // 14. Good Governance
+    if (tSub.includes("good governance") || tSub.includes("governance") || tSub.includes("ethics") || tSub.includes("সুশাসন")) {
+      return qSub.includes("governance") || qSub.includes("ethics") || qSub.includes("সুশাসন") || qSub.includes("নৈতিকতা");
+    }
+
+    return qSub.includes(tSub) || tSub.includes(qSub);
   });
 }
 
@@ -439,19 +515,27 @@ export default function AdminPage() {
   const [paperLoadingQuestions, setPaperLoadingQuestions] = useState<boolean>(false);
   const [paperHasFetched, setPaperHasFetched] = useState<boolean>(false);
   const paperQuestionsCacheRef = useRef<Map<string, Question[]>>(new Map());
+  const questionsCacheRef = useRef<Map<string, { questions: Question[]; totalCount: number }>>(new Map());
 
   const loadPaperQuestionsFromDb = async (
     overrideSubjects?: string[],
-    overrideQuery?: string
+    overrideQuery?: string,
+    overrideForceRefresh: boolean = false
   ): Promise<Question[]> => {
     const targetSubjects = overrideSubjects !== undefined ? overrideSubjects : paperSearchSubjects;
     const targetQuery = overrideQuery !== undefined ? overrideQuery : paperSearchQuery;
+    const cleanQuery = targetQuery.trim();
 
-    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${targetQuery.trim().toLowerCase()}`;
+    // Min 3 char requirement for text search (Point 4 & 5)
+    const effectiveQuery = cleanQuery.length >= 3 ? cleanQuery.toLowerCase() : "";
 
-    if (paperQuestionsCacheRef.current.has(cacheKey)) {
+    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${effectiveQuery}`;
+
+    if (!overrideForceRefresh && paperQuestionsCacheRef.current.has(cacheKey)) {
       const cached = paperQuestionsCacheRef.current.get(cacheKey)!;
-      setPaperAvailableQuestions(cached);
+      // Shuffle & pick top 10 random for display (Point 2)
+      const random10 = [...cached].sort(() => 0.5 - Math.random()).slice(0, 10);
+      setPaperAvailableQuestions(random10);
       setPaperHasFetched(true);
       return cached;
     }
@@ -468,8 +552,8 @@ export default function AdminPage() {
           .order("created_at", { ascending: false })
           .limit(200);
 
-        if (targetQuery && targetQuery.trim() !== "") {
-          query = query.ilike("questionText", `%${targetQuery.trim()}%`);
+        if (effectiveQuery.length >= 3) {
+          query = query.ilike("questionText", `%${effectiveQuery}%`);
         }
 
         const { data, error } = await query;
@@ -506,19 +590,21 @@ export default function AdminPage() {
       merged = merged.filter(q => (q.subject || q.subjectName) !== "BCS Health Question");
     }
 
-    // Filter by subject
+    // Filter STRICTLY by subject using matchesSubject (Point 1)
     if (!targetSubjects.includes("All") && targetSubjects.length > 0) {
       merged = merged.filter(q => matchesSubject(q.subject || q.subjectName || "", targetSubjects));
     }
 
-    // Filter by search query
-    if (targetQuery && targetQuery.trim() !== "") {
-      const lowerQ = targetQuery.trim().toLowerCase();
-      merged = merged.filter(q => (q.question || q.questionText || "").toLowerCase().includes(lowerQ));
+    // Filter by search query if length >= 3
+    if (effectiveQuery.length >= 3) {
+      merged = merged.filter(q => (q.question || q.questionText || "").toLowerCase().includes(effectiveQuery));
     }
 
     paperQuestionsCacheRef.current.set(cacheKey, merged);
-    setPaperAvailableQuestions(merged);
+
+    // Pick max 10 random questions from those selected subject(s) to show in search list (Point 2)
+    const random10 = [...merged].sort(() => 0.5 - Math.random()).slice(0, 10);
+    setPaperAvailableQuestions(random10);
     setPaperHasFetched(true);
     setPaperLoadingQuestions(false);
     return merged;
@@ -1089,13 +1175,11 @@ export default function AdminPage() {
 
     setPaperLoadingQuestions(true);
 
-    let pool = paperAvailableQuestions;
-    if (!paperHasFetched || pool.length === 0) {
-      pool = await loadPaperQuestionsFromDb();
-    }
+    // Fetch candidate pool matching selected subjects
+    const fullCandidates = await loadPaperQuestionsFromDb(paperSearchSubjects, paperSearchQuery, true);
 
-    let candidates = pool.filter(q => 
-      !paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question)
+    let candidates = fullCandidates.filter(q => 
+      !paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === (q.question || q.questionText))
     );
 
     if (candidates.length < needed) {
@@ -1106,8 +1190,8 @@ export default function AdminPage() {
           if (!paperSearchSubjects.includes("All") && paperSearchSubjects.length > 0) {
             if (!matchesSubject(q.subject || q.subjectName || "", paperSearchSubjects)) return false;
           }
-          const alreadyInPaper = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question);
-          const alreadyInCandidates = candidates.some(cq => cq.id === q.id || (cq.question || cq.questionText) === q.question);
+          const alreadyInPaper = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === (q.question || q.questionText));
+          const alreadyInCandidates = candidates.some(cq => cq.id === q.id || (cq.question || cq.questionText) === (q.question || q.questionText));
           return !alreadyInPaper && !alreadyInCandidates;
         });
       candidates = [...candidates, ...extraLocal];
@@ -1124,7 +1208,7 @@ export default function AdminPage() {
 
     setPaperQuestions(prev => [...prev, ...toAdd]);
     setPaperLoadingQuestions(false);
-    triggerNotification("success", `${toAdd.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে প্রশ্নপত্রে যোগ করা হয়েছে!`);
+    triggerNotification("success", `${toAdd.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে যোগ করা হয়েছে! (মোট: ${paperQuestions.length + toAdd.length}/${paperTargetCount})`);
   };
 
   const handlePublishExamPaper = async (e: React.FormEvent) => {
@@ -1278,11 +1362,25 @@ export default function AdminPage() {
   const loadQuestionsFromDb = async (
     overrideLimit?: number,
     overrideSubject?: string,
-    overrideSearch?: string
+    overrideSearch?: string,
+    overrideForceRefresh: boolean = false
   ) => {
     const limitVal = overrideLimit !== undefined ? overrideLimit : displayLimit;
     const subjectVal = overrideSubject !== undefined ? overrideSubject : selectedSubjectFilter;
     const searchVal = overrideSearch !== undefined ? overrideSearch : searchQuery;
+    const cleanSearch = searchVal.trim();
+
+    // Min 3 char threshold for search query
+    const effectiveSearch = cleanSearch.length >= 3 ? cleanSearch.toLowerCase() : "";
+
+    const cacheKey = `${limitVal}_${subjectVal}_${effectiveSearch}`;
+
+    if (!overrideForceRefresh && questionsCacheRef.current.has(cacheKey)) {
+      const cached = questionsCacheRef.current.get(cacheKey)!;
+      setQuestions(cached.questions);
+      setTotalQuestionsCount(cached.totalCount);
+      return;
+    }
 
     try {
       setDbLoading(true);
@@ -1295,6 +1393,7 @@ export default function AdminPage() {
           .from("questions")
           .select("id", { count: "exact", head: true });
 
+        let currentTotal = count || 0;
         if (!countErr && count !== null && count !== undefined) {
           setTotalQuestionsCount(count);
         }
@@ -1310,8 +1409,8 @@ export default function AdminPage() {
           query = query.eq("subjectName", subjectVal);
         }
 
-        if (searchVal && searchVal.trim() !== "") {
-          query = query.ilike("questionText", `%${searchVal.trim()}%`);
+        if (effectiveSearch.length >= 3) {
+          query = query.ilike("questionText", `%${effectiveSearch}%`);
         }
 
         const { data, error } = await query;
@@ -1323,22 +1422,51 @@ export default function AdminPage() {
           const cachedMock = localStorage.getItem("job_master_admin_questions");
           if (cachedMock) {
             try {
-              const parsed = JSON.parse(cachedMock).map((item: any) => normalizeQuestion(item));
-              setQuestions(parsed.slice(0, limitVal));
+              let parsed = JSON.parse(cachedMock).map((item: any) => normalizeQuestion(item));
+              if (subjectVal && subjectVal !== "All") {
+                parsed = parsed.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
+              }
+              if (effectiveSearch.length >= 3) {
+                parsed = parsed.filter((q: any) => (q.question || q.questionText || "").toLowerCase().includes(effectiveSearch));
+              }
+              const sliced = parsed.slice(0, limitVal);
+              setQuestions(sliced);
               setTotalQuestionsCount(parsed.length);
+              questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: parsed.length });
             } catch {
-              const norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
-              setQuestions(norm.slice(0, limitVal));
+              let norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
+              if (subjectVal && subjectVal !== "All") {
+                norm = norm.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
+              }
+              if (effectiveSearch.length >= 3) {
+                norm = norm.filter((q: any) => (q.question || q.questionText || "").toLowerCase().includes(effectiveSearch));
+              }
+              const sliced = norm.slice(0, limitVal);
+              setQuestions(sliced);
               setTotalQuestionsCount(norm.length);
+              questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: norm.length });
             }
           } else {
-            const norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
-            setQuestions(norm.slice(0, limitVal));
+            let norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
+            if (subjectVal && subjectVal !== "All") {
+              norm = norm.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
+            }
+            if (effectiveSearch.length >= 3) {
+              norm = norm.filter((q: any) => (q.question || q.questionText || "").toLowerCase().includes(effectiveSearch));
+            }
+            const sliced = norm.slice(0, limitVal);
+            setQuestions(sliced);
             setTotalQuestionsCount(norm.length);
+            questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: norm.length });
           }
         } else if (data) {
-          const normalized = data.map(item => normalizeQuestion(item));
+          let normalized = data.map(item => normalizeQuestion(item));
+          if (subjectVal && subjectVal !== "All") {
+            normalized = normalized.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
+          }
           setQuestions(normalized);
+          const finalCount = currentTotal || normalized.length;
+          questionsCacheRef.current.set(cacheKey, { questions: normalized, totalCount: finalCount });
           localStorage.setItem("job_master_admin_questions", JSON.stringify(normalized));
         }
       }
@@ -2520,11 +2648,16 @@ export default function AdminPage() {
                         <label className="text-[10px] font-bold text-slate-400 uppercase pl-1 block">কীওয়ার্ড খুঁজুন</label>
                         <input 
                           type="text"
-                          placeholder="প্রশ্ন টেক্সট দিয়ে সার্চ করুন..."
+                          placeholder="প্রশ্ন টেক্সট দিয়ে সার্চ করুন (কমপক্ষে ৩ অক্ষর)..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none transition-all text-slate-800"
                         />
+                        {searchQuery.trim().length > 0 && searchQuery.trim().length < 3 && (
+                          <p className="text-[10px] font-bold text-amber-600 pl-1 flex items-center gap-1">
+                            <span>⚠️ অনুসন্ধানের জন্য অন্তত ৩ টি অক্ষর টাইপ করুন (কমপক্ষে ৩ ক্যারেক্টার)</span>
+                          </p>
+                        )}
                       </div>
 
                       {/* Subject Filter Dropdown */}
@@ -3232,11 +3365,16 @@ export default function AdminPage() {
                     <div className="space-y-2">
                       <input 
                         type="text"
-                        placeholder="প্রশ্ন দিয়ে খুঁজুন (টাইপ করলেই ফিল্টার হবে)..."
+                        placeholder="প্রশ্ন দিয়ে খুঁজুন (কমপক্ষে ৩ অক্ষর লিখুন)..."
                         value={paperSearchQuery}
                         onChange={(e) => setPaperSearchQuery(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
                       />
+                      {paperSearchQuery.trim().length > 0 && paperSearchQuery.trim().length < 3 && (
+                        <p className="text-[10px] font-bold text-amber-600 pl-1 flex items-center gap-1">
+                          <span>⚠️ অনুসন্ধানের জন্য অন্তত ৩ টি অক্ষর টাইপ করুন (কমপক্ষে ৩ ক্যারেক্টার)</span>
+                        </p>
+                      )}
 
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pl-0.5">
