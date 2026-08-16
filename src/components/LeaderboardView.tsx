@@ -187,70 +187,39 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
       
-      {/* 1. TOP APP BAR - WHITE BACKGROUND LIKE HOME PAGE */}
-      <div className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-40">
-        {/* Back Icon, Site Logo Icon & Title */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={onBack}
-            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all active:scale-90 cursor-pointer border border-slate-200/60 shadow-2xs shrink-0"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
-          </button>
-          {/* Site Logo Icon */}
-          <div className="bg-[#FF6A00] p-1.5 sm:p-2 rounded-xl shadow-md shadow-orange-500/20 flex items-center justify-center shrink-0">
-            <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+      {/* 1. TOP HERO SECTION WITH BACK & REFRESH ACTION BAR */}
+      <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-4 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
+        
+        {/* Top Action Row with Back Button, Title, and Refresh */}
+        <div className="relative z-10 flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={onBack}
+              className="w-8.5 h-8.5 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all active:scale-90 cursor-pointer border border-white/20 shadow-xs shrink-0"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-4.5 h-4.5 text-white" />
+            </button>
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-tight">
+                <span>Leaderboard</span>
+                <Trophy className="w-4 h-4 text-amber-200 fill-amber-300/30" />
+              </h1>
+              <p className="text-[10px] text-white/80 font-bold">
+                লাইভ কুইজের সর্বোচ্চ স্কোরার তালিকা
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
-              <span>Leaderboard</span>
-              <Trophy className="w-5 h-5 text-[#FF6A00] fill-[#FF6A00]/20" />
-            </h1>
-            <p className="text-[10px] text-slate-500 font-bold">
-              লাইভ কুইজের সর্বোচ্চ স্কোরার তালিকা
-            </p>
-          </div>
-        </div>
 
-        {/* Right: Subscribed / User Profile Avatar */}
-        <div className="flex items-center gap-2">
           <button 
             onClick={loadData}
-            className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all active:rotate-180 border border-slate-200/60 shadow-2xs"
+            className="w-8.5 h-8.5 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all active:rotate-180 border border-white/20 shadow-xs cursor-pointer"
             title="Refresh Leaderboard"
           >
-            <RefreshCw className={`w-4 h-4 text-slate-600 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 text-white ${isLoading ? "animate-spin" : ""}`} />
           </button>
-
-          <div className="relative group">
-            <div className="w-9 h-9 rounded-full border-2 border-orange-200 bg-orange-50 overflow-hidden shadow-2xs">
-              {userAvatar ? (
-                <img 
-                  src={userAvatar} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover rounded-full"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserProfile?.full_name || "U")}&background=ffedd5&color=c2410c`;
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full text-[#FF6A00] font-black text-sm flex items-center justify-center">
-                  {currentUserProfile?.full_name?.charAt(0) || "U"}
-                </div>
-              )}
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white p-0.5 rounded-full ring-2 ring-white" title="Active">
-              <CheckCircle2 className="w-2.5 h-2.5 fill-emerald-500 text-white" />
-            </span>
-          </div>
         </div>
-      </div>
 
-      {/* PODIUM HERO SECTION (Theme Gradient) */}
-      <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-5 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
-        
         {/* Background Subtle Accent Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)] pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />

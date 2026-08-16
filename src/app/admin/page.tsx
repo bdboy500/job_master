@@ -59,7 +59,17 @@ import {
   Database as DbIcon,
   PlayCircle,
   Tv,
-  Film
+  Film,
+  User,
+  Mail,
+  UserCheck,
+  UserX,
+  UserPlus,
+  UserCog,
+  ShieldAlert,
+  KeyRound,
+  EyeOff,
+  RotateCw
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -92,6 +102,33 @@ import {
   subscribeToCoursesAndPrep,
   sanitizeSubSubjects
 } from "../../lib/courses_and_subjects";
+import {
+  AdminRole,
+  AdminAccountStatus,
+  AdminStaffUser,
+  MASTER_ADMIN_EMAIL,
+  canManageStaff,
+  canManageSettings,
+  canManageUsers,
+  canManageExams,
+  canManagePackages,
+  canManageCourses,
+  canManageOffers,
+  canManageLeaderboard,
+  canManageQuestions,
+  getRoleLabelBangla,
+  getStatusLabelBangla,
+  fetchAdminStaffFromDb,
+  saveAdminStaffToDb,
+  getCurrentAdminSession,
+  loginAdminWithCredentials,
+  registerAdminStaffRequest,
+  approveStaffRequest,
+  updateStaffRole,
+  toggleStaffStatus,
+  deleteStaffAccount,
+  clearAdminSession
+} from "../../lib/admin_auth";
 
 // Interfaces for local state types
 function renderPrepIcon(iconName?: string, className = "w-5 h-5 stroke-[2.2px]") {
@@ -159,6 +196,27 @@ function getTodayEndDateTimeStr(): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}T23:59`;
+}
+
+function toDateTimeLocalInput(dateInput?: string | Date | null, fallback?: string): string {
+  if (!dateInput) return fallback || getNowLocalDateTimeStr();
+  try {
+    if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateInput)) {
+      return dateInput;
+    }
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) {
+      return fallback || getNowLocalDateTimeStr();
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  } catch {
+    return fallback || getNowLocalDateTimeStr();
+  }
 }
 
 function normalizeQuestion(q: any): Question {
@@ -312,13 +370,35 @@ interface AdminOffer {
 }
 
 export default function AdminPage() {
-  // Authentication states
+  // Authentication & RBAC states
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentStaffSession, setCurrentStaffSession] = useState<AdminStaffUser | null>(null);
+  const [adminStaffList, setAdminStaffList] = useState<AdminStaffUser[]>([]);
+  const [adminAuthMode, setAdminAuthMode] = useState<"login" | "register">("login");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regRequestedRole, setRegRequestedRole] = useState<AdminRole>("editor");
+  const [authLoading, setAuthLoading] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
 
+  // Staff Management State
+  const [staffSearchQuery, setStaffSearchQuery] = useState("");
+  const [staffRoleFilter, setStaffRoleFilter] = useState<string>("all");
+  const [staffStatusFilter, setStaffStatusFilter] = useState<string>("all");
+  const [newStaffModalOpen, setNewStaffModalOpen] = useState(false);
+  const [newStaffName, setNewStaffName] = useState("");
+  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffPhone, setNewStaffPhone] = useState("");
+  const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [newStaffRole, setNewStaffRole] = useState<AdminRole>("editor");
+
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard" | "staff">("questions");
 
   // Leaderboard Admin Management State
   const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
@@ -477,6 +557,15 @@ export default function AdminPage() {
   const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
   const [examPaperDisplayLimit, setExamPaperDisplayLimit] = useState<number>(10);
 
+  // Dynamic Filtering for Published Exam Papers
+  const [filterPaperCategory, setFilterPaperCategory] = useState<"all" | "our_course" | "prep_hub" | "pro_feature">("all");
+  const [filterPaperCourse, setFilterPaperCourse] = useState<string>("all");
+  const [filterPaperSubSubject, setFilterPaperSubSubject] = useState<string>("all");
+  const [filterPaperExamType, setFilterPaperExamType] = useState<string>("all");
+  const [filterPaperStatus, setFilterPaperStatus] = useState<string>("all");
+  const [filterPaperSearch, setFilterPaperSearch] = useState<string>("");
+  const [isSyncingPapers, setIsSyncingPapers] = useState<boolean>(false);
+
   const resetExamPaperForm = () => {
     setEditingPaperId(null);
     setPaperTitle("");
@@ -486,6 +575,9 @@ export default function AdminPage() {
     setPaperQuestions([]);
     setPaperSearchQuery("");
     setPaperSearchSubjects(paperCategoryType === "prep_hub" ? [] : ["All"]);
+    setPaperStartDateTime(getNowLocalDateTimeStr());
+    setPaperEndDateTime(getTodayEndDateTimeStr());
+    setPaperDate(formatDisplayDate(getNowLocalDateTimeStr()));
     setPaperStatus("Upcoming");
   };
 
@@ -501,9 +593,9 @@ export default function AdminPage() {
   const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
   const [paperTopic, setPaperTopic] = useState("");
-  const [paperStartDateTime, setPaperStartDateTime] = useState<string>("2026-07-24T00:00");
-  const [paperEndDateTime, setPaperEndDateTime] = useState<string>("2026-07-31T23:59");
-  const [paperDate, setPaperDate] = useState(() => formatDisplayDate("2026-07-24T00:00"));
+  const [paperStartDateTime, setPaperStartDateTime] = useState<string>(() => getNowLocalDateTimeStr());
+  const [paperEndDateTime, setPaperEndDateTime] = useState<string>(() => getTodayEndDateTimeStr());
+  const [paperDate, setPaperDate] = useState(() => formatDisplayDate(getNowLocalDateTimeStr()));
   const [paperStatus, setPaperStatus] = useState<"Live" | "Upcoming" | "Completed" | "Archive">("Upcoming");
   const [paperTargetCount, setPaperTargetCount] = useState<number>(20);
   const [paperQuestions, setPaperQuestions] = useState<Question[]>([]);
@@ -723,13 +815,25 @@ export default function AdminPage() {
 
   // Load state and auth status from localStorage on mount
   useEffect(() => {
-    // Check authentication
-    const loggedIn = localStorage.getItem("job_master_admin_auth");
-    if (loggedIn === "true") {
+    // Check authentication and RBAC session
+    const session = getCurrentAdminSession();
+    if (session && session.status === "active") {
+      setCurrentStaffSession(session);
       setIsAuthenticated(true);
+      if (session.role === "editor") {
+        setActiveTab("questions");
+      }
     } else {
       setIsAuthenticated(false);
+      setCurrentStaffSession(null);
     }
+
+    // Load admin staff list from Supabase/cache
+    fetchAdminStaffFromDb().then((staff) => {
+      if (staff && staff.length > 0) {
+        setAdminStaffList(staff);
+      }
+    });
 
     // Load users from Supabase DB or cache
     fetchAllProfilesFromDb().then((dbProfiles) => {
@@ -1316,9 +1420,15 @@ export default function AdminPage() {
     setPaperExamType(paper.examType);
     setPaperSubject(paper.subject || "All Subjects");
     setPaperTopic(paper.topic);
-    setPaperDate(paper.examDate);
-    setPaperStartDateTime(paper.startDateTime || "2026-07-24T00:00");
-    setPaperEndDateTime(paper.endDateTime || "2026-07-31T23:59");
+    
+    // Parse preserved exam paper dates properly
+    const resolvedStartDT = toDateTimeLocalInput(paper.startDateTime || paper.examDate || paper.createdAt, getNowLocalDateTimeStr());
+    const resolvedEndDT = toDateTimeLocalInput(paper.endDateTime, getTodayEndDateTimeStr());
+    const resolvedDateStr = paper.examDate || formatDisplayDate(resolvedStartDT);
+    
+    setPaperDate(resolvedDateStr);
+    setPaperStartDateTime(resolvedStartDT);
+    setPaperEndDateTime(resolvedEndDT);
     setPaperStatus(paper.status);
     setActiveTab("exam_papers");
 
@@ -1784,25 +1894,154 @@ export default function AdminPage() {
     setEditOptions(updated);
   };
 
-  // Handle Login passcode submit
-  const handleLogin = (e: React.FormEvent) => {
+  // Handle Login authentication
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode === "123456") {
-      localStorage.setItem("job_master_admin_auth", "true");
+    setLoginError("");
+    setAuthLoading(true);
+
+    const identifier = (loginIdentifier || passcode).trim();
+    const pass = (loginPassword || passcode).trim();
+
+    const result = await loginAdminWithCredentials(identifier, pass);
+    setAuthLoading(false);
+
+    if (result.success && result.user) {
+      setCurrentStaffSession(result.user);
       setIsAuthenticated(true);
-      setLoginError("");
-      triggerNotification("success", "স্বাগতম! আপনি সফলভাবে অ্যাডমিন প্যানেলে লগইন করেছেন।");
+      if (result.user.role === "editor") {
+        setActiveTab("questions");
+      }
+      setLoginIdentifier("");
+      setLoginPassword("");
+      setPasscode("");
+      // Refresh staff list
+      const staff = await fetchAdminStaffFromDb();
+      setAdminStaffList(staff);
+      triggerNotification("success", `স্বাগতম ${result.user.name}! (${getRoleLabelBangla(result.user.role)})`);
     } else {
-      setLoginError("ভুল পাসকোড! দয়া করে সঠিক কোডটি দিন (Demo: 123456)।");
-      triggerNotification("error", "লগইন ব্যর্থ হয়েছে!");
+      setLoginError(result.error || "লগইন ব্যর্থ হয়েছে! ইমেইল/ফোন ও পাসওয়ার্ড চেক করুন।");
+      triggerNotification("error", result.error || "লগইন ব্যর্থ হয়েছে!");
+    }
+  };
+
+  // Handle Staff Access Request / Registration
+  const handleRegisterStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setAuthLoading(true);
+
+    const res = await registerAdminStaffRequest(regName, regEmail, regPhone, regPassword, regRequestedRole);
+    setAuthLoading(false);
+
+    if (res.success) {
+      setRegName("");
+      setRegEmail("");
+      setRegPhone("");
+      setRegPassword("");
+      setAdminAuthMode("login");
+      const staff = await fetchAdminStaffFromDb();
+      setAdminStaffList(staff);
+      triggerNotification("success", res.message || "আবেদন সফলভাবে গৃহীত হয়েছে! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।");
+    } else {
+      setLoginError(res.error || "আবেদন জমা দিতে সমস্যা হয়েছে।");
+      triggerNotification("error", res.error || "আবেদন জমা দিতে সমস্যা হয়েছে।");
+    }
+  };
+
+  // Handle Staff Direct Create (Admin modal)
+  const handleAddNewStaffDirect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()) {
+      triggerNotification("error", "দয়া করে নাম, ইমেইল ও পাসওয়ার্ড প্রদান করুন।");
+      return;
+    }
+
+    const newStaff: AdminStaffUser = {
+      id: `staff_${Date.now()}`,
+      name: newStaffName.trim(),
+      email: newStaffEmail.trim().toLowerCase(),
+      phone: newStaffPhone.trim() || undefined,
+      passwordHash: newStaffPassword.trim(),
+      password: newStaffPassword.trim(),
+      role: newStaffRole,
+      status: "active",
+      createdAt: new Date().toISOString(),
+      approvedAt: new Date().toISOString(),
+      approvedBy: currentStaffSession?.email || "admin"
+    };
+
+    const updated = await saveAdminStaffToDb([...adminStaffList.filter(s => s.email !== newStaff.email), newStaff]);
+    setAdminStaffList(updated);
+    setNewStaffModalOpen(false);
+    setNewStaffName("");
+    setNewStaffEmail("");
+    setNewStaffPhone("");
+    setNewStaffPassword("");
+    setNewStaffRole("editor");
+    triggerNotification("success", `নতুন ${getRoleLabelBangla(newStaff.role)} (${newStaff.name}) সফলভাবে যুক্ত করা হয়েছে!`);
+  };
+
+  // Handle Approve Staff Request
+  const handleApproveStaff = async (staffId: string, role?: AdminRole) => {
+    const target = adminStaffList.find(s => s.id === staffId);
+    if (!target) return;
+    const targetRole = role || target.role || "editor";
+    const updated = await approveStaffRequest(staffId, targetRole, currentStaffSession?.email || "admin");
+    setAdminStaffList(updated);
+    triggerNotification("success", `${target.name}-এর আবেদন (${getRoleLabelBangla(targetRole)}) সফলভাবে অনুমোদিত হয়েছে!`);
+  };
+
+  // Handle Update Staff Role
+  const handleUpdateStaffRole = async (staffId: string, newRole: AdminRole) => {
+    const target = adminStaffList.find(s => s.id === staffId);
+    if (!target) return;
+    if (target.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()) {
+      triggerNotification("error", "মূল মাস্টার অ্যাডমিনের রোল পরিবর্তনযোগ্য নয়!");
+      return;
+    }
+    const updated = await updateStaffRole(staffId, newRole);
+    setAdminStaffList(updated);
+    triggerNotification("success", `${target.name}-এর রোল সফলভাবে "${getRoleLabelBangla(newRole)}" হিসেবে আপডেট করা হয়েছে!`);
+  };
+
+  // Handle Toggle Staff Active/Suspended
+  const handleToggleStaffStatus = async (staffId: string) => {
+    const target = adminStaffList.find(s => s.id === staffId);
+    if (!target) return;
+    if (target.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()) {
+      triggerNotification("error", "মূল মাস্টার অ্যাডমিনকে সাসপেন্ড করা যাবে না!");
+      return;
+    }
+    const updated = await toggleStaffStatus(staffId);
+    setAdminStaffList(updated);
+    const newStatus = updated.find(s => s.id === staffId)?.status;
+    triggerNotification("success", `${target.name}-এর একাউন্ট স্ট্যাটাস: ${newStatus === "active" ? "সক্রিয়" : "স্থগিত"} করা হয়েছে।`);
+  };
+
+  // Handle Delete Staff
+  const handleDeleteStaff = async (staffId: string) => {
+    const target = adminStaffList.find(s => s.id === staffId);
+    if (!target) return;
+    if (target.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()) {
+      triggerNotification("error", "মূল মাস্টার অ্যাডমিন একাউন্ট মুছে ফেলা যাবে না!");
+      return;
+    }
+    if (window.confirm(`আপনি কি নিশ্চিত যে "${target.name}" (${target.email}) এর অ্যাডমিন একাউন্ট মুছে ফেলতে চান?`)) {
+      const updated = await deleteStaffAccount(staffId);
+      setAdminStaffList(updated);
+      triggerNotification("success", `${target.name}-এর একাউন্ট সফলভাবে মুছে ফেলা হয়েছে।`);
     }
   };
 
   // Handle Logout
   const handleLogout = () => {
-    localStorage.removeItem("job_master_admin_auth");
+    clearAdminSession();
     setIsAuthenticated(false);
+    setCurrentStaffSession(null);
     setPasscode("");
+    setLoginIdentifier("");
+    setLoginPassword("");
     triggerNotification("success", "সফলভাবে লগআউট করা হয়েছে।");
   };
 
@@ -2051,7 +2290,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="w-full max-w-md bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden">
+        <div className="w-full max-w-lg bg-white border border-slate-200 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF6A00] opacity-5 rounded-full translate-x-12 -translate-y-12"></div>
           
@@ -2061,57 +2300,225 @@ export default function AdminPage() {
             </div>
             
             <h2 className="text-xl font-black text-slate-800 tracking-tight">
-              অ্যাডমিন <span className="text-[#FF6A00]">প্যানেল লগইন</span>
+              Job Master <span className="text-[#FF6A00]">Admin Hub</span>
             </h2>
             <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-              Job Master MCQ Hub Admin Control
+              Role-Based Access Control (Admin • Supervisor • Editor)
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-black text-slate-700 block pl-1">
-                পাসকোড (Passcode)
-              </label>
-              <div className="relative">
-                <input 
-                  type="password"
-                  placeholder="৬ ডিজিটের কোডটি দিন..."
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent transition-all font-mono tracking-widest text-center"
-                  required
-                />
-                <div className="absolute left-3.5 top-3.5 text-slate-400">
-                  <Lock className="w-4 h-4" />
+          {/* Auth Tab Switcher */}
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
+            <button
+              type="button"
+              onClick={() => { setAdminAuthMode("login"); setLoginError(""); }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                adminAuthMode === "login"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>লগইন (Sign In)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAdminAuthMode("register"); setLoginError(""); }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                adminAuthMode === "register"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>এক্সেস আবেদন (Request Access)</span>
+            </button>
+          </div>
+
+          {adminAuthMode === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 block pl-1">
+                  ইমেইল / মোবাইল নম্বর / পাসকোড
+                </label>
+                <div className="relative">
+                  <input 
+                    type="text"
+                    placeholder="যেমন: mobileseba247@gmail.com বা 123456"
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent transition-all font-semibold"
+                    required
+                  />
+                  <div className="absolute left-3.5 top-3.5 text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400 pl-1 font-semibold">
-                ডিপ্লয়মেন্ট বাইপাস ডেমো কোড: <span className="text-[#FF6A00] font-mono font-bold">123456</span>
-              </p>
-            </div>
 
-            {loginError && (
-              <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold rounded-2xl p-3 flex items-center gap-2">
-                <AlertOctagon className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{loginError}</span>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between pl-1">
+                  <label className="text-xs font-black text-slate-700">
+                    পাসওয়ার্ড (Password)
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-semibold">ডেমো পাসকোড: 123456</span>
+                </div>
+                <div className="relative">
+                  <input 
+                    type="password"
+                    placeholder="পাসওয়ার্ড বা পাসকোড দিন..."
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent transition-all font-semibold"
+                  />
+                  <div className="absolute left-3.5 top-3.5 text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="w-full bg-[#FF6A00] hover:bg-orange-600 active:scale-95 text-white font-black py-3.5 rounded-2xl text-xs sm:text-sm tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer"
-            >
-              <LogIn className="w-4 h-4" />
-              লগইন করুন (ADMIN ACCESS)
-            </button>
-          </form>
+              {loginError && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold rounded-2xl p-3 flex items-center gap-2">
+                  <AlertOctagon className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              {/* Master Admin Quick Click */}
+              <div className="p-2.5 bg-orange-50/70 border border-orange-100/80 rounded-2xl flex items-center justify-between text-[11px]">
+                <div className="text-orange-950 font-bold">
+                  <span className="text-orange-600 font-black">মাস্টার অ্যাডমিন:</span> mobileseba247@gmail.com
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginIdentifier("mobileseba247@gmail.com");
+                    setLoginPassword("admin123");
+                  }}
+                  className="px-2 py-1 bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-[10px] rounded-lg cursor-pointer transition-all"
+                >
+                  অটো ফিল
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-[#FF6A00] hover:bg-orange-600 active:scale-95 text-white font-black py-3.5 rounded-2xl text-xs sm:text-sm tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {authLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>লগইন করুন (ADMIN ACCESS)</span>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegisterStaff} className="space-y-3.5">
+              <div>
+                <label className="text-[11px] font-extrabold text-slate-600 block mb-1">
+                  আপনার পূর্ণ নাম (Full Name)
+                </label>
+                <input 
+                  type="text"
+                  placeholder="যেমন: তানভীর আহমেদ"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-600 block mb-1">
+                    ইমেইল (Email Address)
+                  </label>
+                  <input 
+                    type="email"
+                    placeholder="name@example.com"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-600 block mb-1">
+                    মোবাইল নম্বর (Phone)
+                  </label>
+                  <input 
+                    type="tel"
+                    placeholder="017xxxxxxxx"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-extrabold text-slate-600 block mb-1">
+                  পাসওয়ার্ড সেট করুন
+                </label>
+                <input 
+                  type="password"
+                  placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড..."
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-extrabold text-slate-600 block mb-1">
+                  কাঙ্ক্ষিত পদবী (Requested Role)
+                </label>
+                <select
+                  value={regRequestedRole}
+                  onChange={(e) => setRegRequestedRole(e.target.value as AdminRole)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                >
+                  <option value="editor">এডিটর (Editor - শুধুমাত্র প্রশ্ন ব্যাংক তৈরি ও এডিট)</option>
+                  <option value="supervisor">সুপারভাইজার (Supervisor - ইউজার, অফার ও প্রশ্ন ম্যানেজ)</option>
+                  <option value="admin">অ্যাডমিন (Admin - সম্পূর্ণ ক্ষমতা)</option>
+                </select>
+              </div>
+
+              {loginError && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold rounded-2xl p-3 flex items-center gap-2">
+                  <AlertOctagon className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-[#FF6A00] hover:bg-orange-600 active:scale-95 text-white font-black py-3 rounded-2xl text-xs tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {authLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>এক্সেস আবেদন জমা দিন (Submit Request)</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
 
           <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400">
             <Link href="/" prefetch={false} className="flex items-center gap-1 hover:text-[#FF6A00] transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" /> মেইন সাইটে ফিরুন
             </Link>
-            <span>v1.0.0 Stable</span>
+            <span className="font-mono">RBAC Security v2.0</span>
           </div>
         </div>
       </div>
@@ -2160,8 +2567,23 @@ export default function AdminPage() {
         <div className="flex items-center gap-2.5">
           {/* User profile identifier */}
           <div className="hidden md:flex flex-col text-right">
-            <span className="text-xs font-black text-slate-800">Super Admin</span>
-            <span className="text-[10px] font-bold text-slate-400">mobileseba247@gmail.com</span>
+            <div className="flex items-center justify-end gap-1.5">
+              <span className="text-xs font-black text-slate-800">
+                {currentStaffSession?.name || "Super Admin"}
+              </span>
+              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                (currentStaffSession?.role || "admin") === "admin"
+                  ? "bg-purple-100 text-purple-800 border border-purple-200"
+                  : (currentStaffSession?.role || "admin") === "supervisor"
+                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                  : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+              }`}>
+                {getRoleLabelBangla(currentStaffSession?.role || "admin")}
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              {currentStaffSession?.email || "mobileseba247@gmail.com"}
+            </span>
           </div>
 
           <button
@@ -2180,125 +2602,157 @@ export default function AdminPage() {
         {/* Navigation Tabs - Mobile Lazy Row UI */}
         <div className="block md:hidden w-full bg-white border-b border-slate-100 p-2.5 overflow-x-auto shrink-0 shadow-2xs">
           <div className="flex items-center gap-2 min-w-max px-1">
-            <button
-              onClick={() => setActiveTab("questions")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "questions"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <HelpCircle className={`w-4 h-4 ${activeTab === "questions" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
-            </button>
+            {canManageQuestions(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("questions")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "questions"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <HelpCircle className={`w-4 h-4 ${activeTab === "questions" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("exam_papers")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "exam_papers"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <FileText className={`w-4 h-4 ${activeTab === "exam_papers" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
-            </button>
+            {canManageExams(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("exam_papers")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "exam_papers"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <FileText className={`w-4 h-4 ${activeTab === "exam_papers" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "users"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Users className={`w-4 h-4 ${activeTab === "users" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>ইউজার লিস্ট ({users.length})</span>
-            </button>
+            {canManageUsers(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("users")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "users"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Users className={`w-4 h-4 ${activeTab === "users" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>ইউজার লিস্ট ({users.length})</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("offers")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "offers"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Megaphone className={`w-4 h-4 ${activeTab === "offers" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>ব্যানার ও অফার ({offers.length})</span>
-            </button>
+            {canManageOffers(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("offers")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "offers"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Megaphone className={`w-4 h-4 ${activeTab === "offers" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>ব্যানার ও অফার ({offers.length})</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("packages")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "packages"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Package className={`w-4 h-4 ${activeTab === "packages" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
-            </button>
+            {canManagePackages(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("packages")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "packages"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Package className={`w-4 h-4 ${activeTab === "packages" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("courses")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "courses"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Compass className={`w-4 h-4 ${activeTab === "courses" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>কোর্সসমূহ ({coursesList.length})</span>
-            </button>
+            {canManageCourses(currentStaffSession) && (
+              <>
+                <button
+                  onClick={() => setActiveTab("courses")}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                    activeTab === "courses"
+                      ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                      : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                  }`}
+                >
+                  <Compass className={`w-4 h-4 ${activeTab === "courses" ? "text-white" : "text-[#FF6A00]"}`} />
+                  <span>কোর্সসমূহ ({coursesList.length})</span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab("prep_hub")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "prep_hub"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <BookOpen className={`w-4 h-4 ${activeTab === "prep_hub" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
-            </button>
+                <button
+                  onClick={() => setActiveTab("prep_hub")}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                    activeTab === "prep_hub"
+                      ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                      : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                  }`}
+                >
+                  <BookOpen className={`w-4 h-4 ${activeTab === "prep_hub" ? "text-white" : "text-[#FF6A00]"}`} />
+                  <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab("pro_section")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "pro_section"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Briefcase className={`w-4 h-4 ${activeTab === "pro_section" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>প্রো সেকশন ({proSectionList.length})</span>
-            </button>
+                <button
+                  onClick={() => setActiveTab("pro_section")}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                    activeTab === "pro_section"
+                      ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                      : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                  }`}
+                >
+                  <Briefcase className={`w-4 h-4 ${activeTab === "pro_section" ? "text-white" : "text-[#FF6A00]"}`} />
+                  <span>প্রো সেকশন ({proSectionList.length})</span>
+                </button>
+              </>
+            )}
 
-            <button
-              onClick={() => setActiveTab("switches")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "switches"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Sliders className={`w-4 h-4 ${activeTab === "switches" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>কন্ট্রোল সুইচ</span>
-            </button>
+            {canManageSettings(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("switches")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "switches"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Sliders className={`w-4 h-4 ${activeTab === "switches" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>কন্ট্রোল সুইচ</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab("leaderboard")}
-              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                activeTab === "leaderboard"
-                  ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                  : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-              }`}
-            >
-              <Trophy className={`w-4 h-4 ${activeTab === "leaderboard" ? "text-white" : "text-[#FF6A00]"}`} />
-              <span>কুইজ লিডারবোর্ড ({adminLeaderboardUsers.length})</span>
-            </button>
+            {canManageLeaderboard(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("leaderboard")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "leaderboard"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Trophy className={`w-4 h-4 ${activeTab === "leaderboard" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>কুইজ লিডারবোর্ড ({adminLeaderboardUsers.length})</span>
+              </button>
+            )}
+
+            {canManageStaff(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("staff")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "staff"
+                    ? "bg-purple-600 text-white border-purple-600 shadow-sm shadow-purple-500/30 scale-[1.02]"
+                    : "bg-purple-50 text-purple-700 border-purple-200/70 hover:bg-purple-100"
+                }`}
+              >
+                <ShieldCheck className={`w-4 h-4 ${activeTab === "staff" ? "text-white" : "text-purple-600"}`} />
+                <span>স্টাফ ও রোল ({adminStaffList.length})</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -2312,134 +2766,167 @@ export default function AdminPage() {
             </h3>
 
             {/* Tab Button 1: Questions */}
-            <button
-              onClick={() => setActiveTab("questions")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "questions"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
-            </button>
+            {canManageQuestions(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("questions")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "questions"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
+              </button>
+            )}
 
             {/* Tab Button 2: Exam Papers / Question Sets */}
-            <button
-              onClick={() => setActiveTab("exam_papers")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "exam_papers"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
-            </button>
+            {canManageExams(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("exam_papers")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "exam_papers"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
+              </button>
+            )}
 
             {/* Tab Button 3: Users */}
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "users"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>ইউজার লিস্ট ({users.length})</span>
-            </button>
+            {canManageUsers(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("users")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "users"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>ইউজার লিস্ট ({users.length})</span>
+              </button>
+            )}
 
             {/* Tab Button 4: Offers */}
-            <button
-              onClick={() => setActiveTab("offers")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "offers"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Megaphone className="w-4 h-4" />
-              <span>ব্যানার ও অফার ({offers.length})</span>
-            </button>
+            {canManageOffers(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("offers")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "offers"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Megaphone className="w-4 h-4" />
+                <span>ব্যানার ও অফার ({offers.length})</span>
+              </button>
+            )}
 
             {/* Tab Button 5: Packages Management */}
-            <button
-              onClick={() => setActiveTab("packages")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "packages"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
-            </button>
+            {canManagePackages(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("packages")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "packages"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                <span>প্যাকেজ কন্ট্রোল ({packagesList.length})</span>
+              </button>
+            )}
 
             {/* Tab Button 6: Our Courses Management */}
-            <button
-              onClick={() => setActiveTab("courses")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "courses"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              <span>কোর্সসমূহ ({coursesList.length})</span>
-            </button>
+            {canManageCourses(currentStaffSession) && (
+              <>
+                <button
+                  onClick={() => setActiveTab("courses")}
+                  className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                    activeTab === "courses"
+                      ? "bg-orange-50 text-[#FF6A00]"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  <Compass className="w-4 h-4" />
+                  <span>কোর্সসমূহ ({coursesList.length})</span>
+                </button>
 
-            {/* Tab Button 7: Preparation Hub Management */}
-            <button
-              onClick={() => setActiveTab("prep_hub")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "prep_hub"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
-            </button>
+                <button
+                  onClick={() => setActiveTab("prep_hub")}
+                  className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                    activeTab === "prep_hub"
+                      ? "bg-orange-50 text-[#FF6A00]"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>প্রিপারেশন হাব ({prepSubjectsList.length})</span>
+                </button>
 
-            {/* Tab Button 8: Pro Section Management */}
-            <button
-              onClick={() => setActiveTab("pro_section")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "pro_section"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>প্রো সেকশন ({proSectionList.length})</span>
-            </button>
+                <button
+                  onClick={() => setActiveTab("pro_section")}
+                  className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                    activeTab === "pro_section"
+                      ? "bg-orange-50 text-[#FF6A00]"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>প্রো সেকশন ({proSectionList.length})</span>
+                </button>
+              </>
+            )}
 
             {/* Tab Button 8: Control Switches */}
-            <button
-              onClick={() => setActiveTab("switches")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "switches"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              <span>কন্ট্রোল সুইচ (Settings)</span>
-            </button>
+            {canManageSettings(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("switches")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "switches"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Sliders className="w-4 h-4" />
+                <span>কন্ট্রোল সুইচ (Settings)</span>
+              </button>
+            )}
 
             {/* Tab Button 9: Quiz Leaderboard */}
-            <button
-              onClick={() => setActiveTab("leaderboard")}
-              className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                activeTab === "leaderboard"
-                  ? "bg-orange-50 text-[#FF6A00]"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <Trophy className="w-4 h-4 text-[#FF6A00]" />
-              <span>কুইজ লিডারবোর্ড ({adminLeaderboardUsers.length})</span>
-            </button>
+            {canManageLeaderboard(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("leaderboard")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "leaderboard"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Trophy className="w-4 h-4 text-[#FF6A00]" />
+                <span>কুইজ লিডারবোর্ড ({adminLeaderboardUsers.length})</span>
+              </button>
+            )}
+
+            {/* Tab Button 10: Staff & RBAC Management */}
+            {canManageStaff(currentStaffSession) && (
+              <div className="pt-2 mt-2 border-t border-slate-100">
+                <button
+                  onClick={() => setActiveTab("staff")}
+                  className={`w-full flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                    activeTab === "staff"
+                      ? "bg-purple-100 text-purple-900 shadow-sm"
+                      : "text-purple-700 bg-purple-50/70 hover:bg-purple-100"
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                  <span>স্টাফ ও এডমিন এক্সেস ({adminStaffList.length})</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Infrastructure status - desktop footer */}
