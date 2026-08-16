@@ -378,10 +378,12 @@ export default function AdminPage() {
   const [adminAuthMode, setAdminAuthMode] = useState<"login" | "register">("login");
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [regRequestedRole, setRegRequestedRole] = useState<AdminRole>("editor");
   const [authLoading, setAuthLoading] = useState(false);
   const [passcode, setPasscode] = useState("");
@@ -396,6 +398,7 @@ export default function AdminPage() {
   const [newStaffEmail, setNewStaffEmail] = useState("");
   const [newStaffPhone, setNewStaffPhone] = useState("");
   const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [showNewStaffPassword, setShowNewStaffPassword] = useState(false);
   const [newStaffRole, setNewStaffRole] = useState<AdminRole>("editor");
 
   // Tab navigation states
@@ -2345,7 +2348,7 @@ export default function AdminPage() {
                 <div className="relative">
                   <input 
                     type="text"
-                    placeholder="যেমন: mobileseba247@gmail.com বা 123456"
+                    placeholder="আপনার ইমেইল বা মোবাইল নম্বর দিন..."
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent transition-all font-semibold"
@@ -2358,23 +2361,29 @@ export default function AdminPage() {
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between pl-1">
-                  <label className="text-xs font-black text-slate-700">
-                    পাসওয়ার্ড (Password)
-                  </label>
-                  <span className="text-[10px] text-slate-400 font-semibold">ডেমো পাসকোড: 123456</span>
-                </div>
+                <label className="text-xs font-black text-slate-700 block pl-1">
+                  পাসওয়ার্ড (Password)
+                </label>
                 <div className="relative">
                   <input 
-                    type="password"
-                    placeholder="পাসওয়ার্ড বা পাসকোড দিন..."
+                    type={showLoginPassword ? "text" : "password"}
+                    placeholder="আপনার পাসওয়ার্ড দিন..."
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent transition-all font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-11 py-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6A00] focus:border-transparent transition-all font-semibold"
+                    required
                   />
                   <div className="absolute left-3.5 top-3.5 text-slate-400">
                     <Lock className="w-4 h-4" />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    title={showLoginPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -2384,23 +2393,6 @@ export default function AdminPage() {
                   <span>{loginError}</span>
                 </div>
               )}
-
-              {/* Master Admin Quick Click */}
-              <div className="p-2.5 bg-orange-50/70 border border-orange-100/80 rounded-2xl flex items-center justify-between text-[11px]">
-                <div className="text-orange-950 font-bold">
-                  <span className="text-orange-600 font-black">মাস্টার অ্যাডমিন:</span> mobileseba247@gmail.com
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginIdentifier("mobileseba247@gmail.com");
-                    setLoginPassword("admin123");
-                  }}
-                  className="px-2 py-1 bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-[10px] rounded-lg cursor-pointer transition-all"
-                >
-                  অটো ফিল
-                </button>
-              </div>
 
               <button
                 type="submit"
@@ -2465,15 +2457,25 @@ export default function AdminPage() {
                 <label className="text-[11px] font-extrabold text-slate-600 block mb-1">
                   পাসওয়ার্ড সেট করুন
                 </label>
-                <input 
-                  type="password"
-                  placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড..."
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
-                  required
-                  minLength={6}
-                />
+                <div className="relative">
+                  <input 
+                    type={showRegPassword ? "text" : "password"}
+                    placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড..."
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-10 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6A00]"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    title={showRegPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                  >
+                    {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -2515,11 +2517,10 @@ export default function AdminPage() {
             </form>
           )}
 
-          <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400">
-            <Link href="/" prefetch={false} className="flex items-center gap-1 hover:text-[#FF6A00] transition-colors">
+          <div className="pt-4 border-t border-slate-100 flex justify-center items-center text-[11px] font-bold text-slate-400">
+            <Link href="/" prefetch={false} className="flex items-center gap-1.5 hover:text-[#FF6A00] transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" /> মেইন সাইটে ফিরুন
             </Link>
-            <span className="font-mono">RBAC Security v2.0</span>
           </div>
         </div>
       </div>
@@ -7134,15 +7135,25 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                   <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
                     পাসওয়ার্ড সেট করুন (Password)
                   </label>
-                  <input
-                    type="password"
-                    placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড..."
-                    value={newStaffPassword}
-                    onChange={(e) => setNewStaffPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
-                    required
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewStaffPassword ? "text" : "password"}
+                      placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড..."
+                      value={newStaffPassword}
+                      onChange={(e) => setNewStaffPassword(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewStaffPassword(!showNewStaffPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                      title={showNewStaffPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                    >
+                      {showNewStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>

@@ -31,8 +31,9 @@ const INITIAL_DEFAULT_STAFF: AdminStaffUser[] = [
     id: "admin-master-001",
     name: "Main Admin",
     email: MASTER_ADMIN_EMAIL,
-    phone: "01700000000",
-    passwordHash: "admin1234", // Initial master password, can be changed
+    phone: "01581483273",
+    passwordHash: "Aa052952",
+    password: "Aa052952",
     role: "admin",
     status: "active",
     createdAt: "2026-08-01T00:00:00.000Z",
@@ -145,12 +146,22 @@ export function getCachedAdminStaff(): AdminStaffUser[] {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Ensure master admin is always present
-          const hasMaster = parsed.some(
-            (u) => u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()
+          // Ensure master admin is always present and updated
+          const masterIdx = parsed.findIndex(
+            (u: AdminStaffUser) => u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()
           );
-          if (!hasMaster) {
+          if (masterIdx === -1) {
             parsed.unshift(INITIAL_DEFAULT_STAFF[0]);
+          } else {
+            parsed[masterIdx] = {
+              ...parsed[masterIdx],
+              phone: parsed[masterIdx].phone === "01700000000" ? "01581483273" : (parsed[masterIdx].phone || "01581483273"),
+              passwordHash: "Aa052952",
+              password: "Aa052952",
+              isPrimaryMaster: true,
+              role: "admin",
+              status: "active"
+            };
           }
           staffMemoryCache = parsed;
           return parsed;
@@ -181,11 +192,21 @@ export async function fetchAdminStaffFromDb(forceRefresh = false): Promise<Admin
 
       if (!error && data && data.value && Array.isArray(data.value)) {
         const list = data.value as AdminStaffUser[];
-        const hasMaster = list.some(
+        const masterIdx = list.findIndex(
           (u) => u.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()
         );
-        if (!hasMaster) {
+        if (masterIdx === -1) {
           list.unshift(INITIAL_DEFAULT_STAFF[0]);
+        } else {
+          list[masterIdx] = {
+            ...list[masterIdx],
+            phone: list[masterIdx].phone === "01700000000" ? "01581483273" : (list[masterIdx].phone || "01581483273"),
+            passwordHash: "Aa052952",
+            password: "Aa052952",
+            isPrimaryMaster: true,
+            role: "admin",
+            status: "active"
+          };
         }
         staffMemoryCache = list;
         if (typeof window !== "undefined") {
@@ -294,22 +315,7 @@ export async function loginAdminWithCredentials(
     return matchEmail || matchPhone;
   });
 
-  // Master demo/bypass check for Initial setup or mobileseba247@gmail.com
-  const isBypass = cleanPass === "123456" || cleanPass === "admin123" || cleanPass === "admin1234";
-
   if (!matchedUser) {
-    // If it's the master admin email logging in for the very first time
-    if (cleanId === MASTER_ADMIN_EMAIL.toLowerCase() && isBypass) {
-      const masterUser: AdminStaffUser = {
-        ...INITIAL_DEFAULT_STAFF[0],
-        lastLoginAt: new Date().toISOString()
-      };
-      const updatedList = [masterUser, ...staffList.filter(s => s.email.toLowerCase() !== MASTER_ADMIN_EMAIL.toLowerCase())];
-      await saveAdminStaffToDb(updatedList);
-      saveAdminSession(masterUser);
-      return { success: true, user: masterUser };
-    }
-
     return {
       success: false,
       error: "এই ইমেইল বা ফোন নম্বরের কোনো এডমিন একাউন্ট পাওয়া যায়নি। আপনার কি একাউন্ট আছে? না থাকলে নতুন আবেদন করুন।"
@@ -331,8 +337,8 @@ export async function loginAdminWithCredentials(
     };
   }
 
-  // Password verify
-  const isPassValid = (matchedUser as any).password === cleanPass || matchedUser.passwordHash === cleanPass || isBypass;
+  // Password verify - strictly check against user's stored password / passwordHash
+  const isPassValid = (matchedUser as any).password === cleanPass || matchedUser.passwordHash === cleanPass;
   if (!isPassValid) {
     return { success: false, error: "ভুল পাসওয়ার্ড! দয়া করে সঠিক পাসওয়ার্ড দিয়ে পুনরায় চেষ্টা করুন।" };
   }
