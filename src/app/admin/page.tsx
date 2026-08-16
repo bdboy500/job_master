@@ -1430,10 +1430,19 @@ export default function AdminPage() {
     const resolvedEndDT = toDateTimeLocalInput(paper.endDateTime, getTodayEndDateTimeStr());
     const resolvedDateStr = paper.examDate || formatDisplayDate(resolvedStartDT);
     
+    // Resolve computed actual status based on dates
+    const resolvedStatus = paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
+      ? "Archive"
+      : getExamStatus({
+          ...paper,
+          startDateTime: resolvedStartDT,
+          endDateTime: resolvedEndDT
+        });
+
     setPaperDate(resolvedDateStr);
     setPaperStartDateTime(resolvedStartDT);
     setPaperEndDateTime(resolvedEndDT);
-    setPaperStatus(paper.status);
+    setPaperStatus(resolvedStatus);
     setActiveTab("exam_papers");
 
     setTimeout(() => {
@@ -3763,6 +3772,7 @@ export default function AdminPage() {
                             setPaperStartDateTime(nowLocal);
                             setPaperEndDateTime(todayEnd);
                             setPaperDate(formatDisplayDate(nowLocal));
+                            setPaperStatus("Live");
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
@@ -3780,7 +3790,8 @@ export default function AdminPage() {
                             const endVal = `${year}-${month}-${day}T23:59`;
                             setPaperStartDateTime(nowLocal);
                             setPaperEndDateTime(endVal);
-                            setPaperDate(formatDisplayDate(nowLocal));
+                            setPaperDate(`${formatDisplayDate(nowLocal)} - ${formatDisplayDate(endVal)}`);
+                            setPaperStatus("Live");
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
@@ -3798,7 +3809,8 @@ export default function AdminPage() {
                             const endVal = `${year}-${month}-${day}T23:59`;
                             setPaperStartDateTime(nowLocal);
                             setPaperEndDateTime(endVal);
-                            setPaperDate(formatDisplayDate(nowLocal));
+                            setPaperDate(`${formatDisplayDate(nowLocal)} - ${formatDisplayDate(endVal)}`);
+                            setPaperStatus("Live");
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-200 hover:border-purple-300 rounded-lg text-slate-700 cursor-pointer active:scale-95 transition-all"
                         >
@@ -4082,127 +4094,401 @@ export default function AdminPage() {
               {/* Published Exam Papers Table / List */}
               <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                  <h3 className="font-extrabold text-sm text-slate-800 tracking-tight flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-[#FF6A00]" />
-                    <span>পাবলিশকৃত প্রশ্ন পত্রসমূহের তালিকা ({examPapers.length} টি)</span>
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-[#FF6A00]" />
+                    <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                      পাবলিশকৃত প্রশ্ন পত্রসমূহের তালিকা ({examPapers.length} টি)
+                    </h3>
+                  </div>
 
-                  {/* Display Limit Selector: 10 / 20 / 30 / 40 / 50 */}
-                  <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-50 p-1 rounded-xl border border-slate-200/60">
-                    <span className="text-[10px] font-bold text-slate-500 px-2">দেখান:</span>
-                    {[10, 20, 30, 40, 50].map((limit) => (
-                      <button
-                        key={limit}
-                        type="button"
-                        onClick={() => setExamPaperDisplayLimit(limit)}
-                        className={`px-2.5 py-1 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                          examPaperDisplayLimit === limit
-                            ? "bg-[#FF6A00] text-white shadow-2xs"
-                            : "text-slate-600 hover:bg-slate-200/60"
-                        }`}
-                      >
-                        {limit}
-                      </button>
-                    ))}
+                  {/* Top Actions: Sync from Server & Display Limit */}
+                  <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsSyncingPapers(true);
+                        try {
+                          const refreshed = await fetchExamPapersFromDb(true);
+                          setExamPapers(refreshed);
+                          triggerNotification("success", `✅ সার্ভারের সাথে সফলভাবে সিঙ্ক্রোনাইজ হয়েছে! মোট ${refreshed.length} টি প্রশ্নপত্র সংরক্ষিত রয়েছে।`);
+                        } catch (err) {
+                          console.error("Sync error:", err);
+                          triggerNotification("error", "⚠️ সিঙ্ক করতে সমস্যা হয়েছে।");
+                        } finally {
+                          setIsSyncingPapers(false);
+                        }
+                      }}
+                      disabled={isSyncingPapers}
+                      className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#FF6A00] text-xs font-black rounded-xl transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                      title="সার্ভার থেকে সর্বশেষ প্রশ্নপত্রের তালিকা রিফ্রেশ ও সিঙ্ক করুন"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncingPapers ? "animate-spin" : ""}`} />
+                      <span>{isSyncingPapers ? "সিঙ্ক হচ্ছে..." : "সিঙ্ক্রোনাইজ"}</span>
+                    </button>
+
+                    {/* Display Limit Selector: 10 / 20 / 30 / 40 / 50 */}
+                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+                      <span className="text-[10px] font-bold text-slate-500 px-1.5">দেখান:</span>
+                      {[10, 20, 30, 40, 50].map((limit) => (
+                        <button
+                          key={limit}
+                          type="button"
+                          onClick={() => setExamPaperDisplayLimit(limit)}
+                          className={`px-2 py-1 text-xs font-black rounded-lg transition-all cursor-pointer ${
+                            examPaperDisplayLimit === limit
+                              ? "bg-[#FF6A00] text-white shadow-2xs"
+                              : "text-slate-600 hover:bg-slate-200/60"
+                          }`}
+                        >
+                          {limit}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {(() => {
-                    const sortedAdminPapers = sortExamPapersForDisplay(examPapers);
-                    const visibleAdminPapers = sortedAdminPapers.slice(0, examPaperDisplayLimit);
+                {/* DYNAMIC FILTER CONTROLS BAR (Zero Server Load, 0 Extra Egress) */}
+                <div className="bg-slate-50/90 border border-slate-200/70 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-slate-600" />
+                      <span className="text-xs font-black text-slate-700">প্রশ্নপত্র ফিল্টার করুন:</span>
+                    </div>
 
-                    return visibleAdminPapers.map((paper) => {
-                      // Dynamically calculate actual status based on start/end date-time unless explicitly set to Archive
+                    {(filterPaperCategory !== "all" || filterPaperCourse !== "all" || filterPaperSubSubject !== "all" || filterPaperExamType !== "all" || filterPaperStatus !== "all" || filterPaperSearch.trim() !== "") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterPaperCategory("all");
+                          setFilterPaperCourse("all");
+                          setFilterPaperSubSubject("all");
+                          setFilterPaperExamType("all");
+                          setFilterPaperStatus("all");
+                          setFilterPaperSearch("");
+                        }}
+                        className="text-[11px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 cursor-pointer flex items-center gap-1 transition-all"
+                      >
+                        <X className="w-3 h-3" />
+                        <span>ফিল্টার রিসেট</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter Selectors Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+                    {/* 1. Category Filter */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">ক্যাটাগরি / সেকশন:</label>
+                      <select
+                        value={filterPaperCategory}
+                        onChange={(e) => {
+                          setFilterPaperCategory(e.target.value as any);
+                          setFilterPaperCourse("all");
+                          setFilterPaperSubSubject("all");
+                        }}
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
+                      >
+                        <option value="all">সকল ক্যাটাগরি</option>
+                        <option value="our_course">আওয়ার কোর্স (Our Course)</option>
+                        <option value="prep_hub">প্রিপারেশন হাব (Prep Hub)</option>
+                        <option value="pro_feature">প্রো ফিচার (Pro Feature)</option>
+                      </select>
+                    </div>
+
+                    {/* 2. Course / Subject Filter */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">কোর্স / বিষয়:</label>
+                      <select
+                        value={filterPaperCourse}
+                        onChange={(e) => {
+                          setFilterPaperCourse(e.target.value);
+                          setFilterPaperSubSubject("all");
+                        }}
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
+                      >
+                        <option value="all">সকল কোর্স ও বিষয়</option>
+                        {filterPaperCategory !== "prep_hub" && filterPaperCategory !== "pro_feature" && (
+                          <optgroup label="── আওয়ার কোর্স ──">
+                            <option value="all_courses">🌐 সকল কোর্স (All Courses)</option>
+                            {coursesList.map(c => (
+                              <option key={c.id} value={c.id}>{c.name} ({c.title})</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {filterPaperCategory !== "our_course" && filterPaperCategory !== "pro_feature" && (
+                          <optgroup label="── প্রিপারেশন হাব (বিষয়সমূহ) ──">
+                            {prepSubjectsList.map(p => (
+                              <option key={p.id} value={p.id}>{p.bnName || p.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {filterPaperCategory !== "our_course" && filterPaperCategory !== "prep_hub" && (
+                          <optgroup label="── প্রো ফিচার মডিউল ──">
+                            {proSectionList.map(pro => (
+                              <option key={pro.id} value={pro.id}>{pro.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* 3. Sub-Subject / Topic Filter */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">সাব-সাবজেক্ট / অধ্যায়:</label>
+                      <select
+                        value={filterPaperSubSubject}
+                        onChange={(e) => setFilterPaperSubSubject(e.target.value)}
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
+                      >
+                        <option value="all">সকল সাব-সাবজেক্ট</option>
+                        {(() => {
+                          if (filterPaperCourse !== "all") {
+                            const subs = SUB_SUBJECTS_MAP[filterPaperCourse] || [];
+                            return subs.filter(s => s.id !== "none").map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ));
+                          }
+                          // Collect all available sub-subjects across map
+                          const allSubs: { id: string; name: string }[] = [];
+                          const seen = new Set<string>();
+                          Object.values(SUB_SUBJECTS_MAP).forEach(items => {
+                            items.forEach(item => {
+                              if (item.id !== "none" && !seen.has(item.id)) {
+                                seen.add(item.id);
+                                allSubs.push(item);
+                              }
+                            });
+                          });
+                          return allSubs.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ));
+                        })()}
+                      </select>
+                    </div>
+
+                    {/* 4. Exam Type Filter */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">পরীক্ষার ধরন:</label>
+                      <select
+                        value={filterPaperExamType}
+                        onChange={(e) => setFilterPaperExamType(e.target.value)}
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
+                      >
+                        <option value="all">সকল ধরন</option>
+                        <option value="weekly">🗓️ সাপ্তাহিক মডেল টেস্ট (Weekly)</option>
+                        <option value="daily">⚡ ডেইলি কুইক টেস্ট (Daily)</option>
+                        <option value="subject">📖 বিষয়ভিত্তিক পরীক্ষা (Subject-wise)</option>
+                        <option value="special">⭐ স্পেশাল মডেল টেস্ট (Special)</option>
+                      </select>
+                    </div>
+
+                    {/* 5. Live / Status Filter */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">স্ট্যাটাস:</label>
+                      <select
+                        value={filterPaperStatus}
+                        onChange={(e) => setFilterPaperStatus(e.target.value)}
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
+                      >
+                        <option value="all">সকল স্ট্যাটাস</option>
+                        <option value="live">🔴 Live (লাইভ পরীক্ষা)</option>
+                        <option value="upcoming">⏳ Upcoming (আসন্ন পরীক্ষা)</option>
+                        <option value="archive">📁 Archive (আর্কাইভকৃত)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Search Query Input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={filterPaperSearch}
+                      onChange={(e) => setFilterPaperSearch(e.target.value)}
+                      placeholder="প্রশ্নপত্রের শিরোনাম, বিষয় বা টপিক দিয়ে সার্চ করুন..."
+                      className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:border-orange-500"
+                    />
+                    {filterPaperSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterPaperSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter Results Counter Banner */}
+                {(() => {
+                  // Perform client-side filter computation
+                  const filteredList = examPapers.filter((paper) => {
+                    // Category Filter
+                    if (filterPaperCategory !== "all") {
+                      const pCat = paper.categoryType || "our_course";
+                      if (pCat !== filterPaperCategory) return false;
+                    }
+
+                    // Course Filter
+                    if (filterPaperCourse !== "all") {
+                      if (filterPaperCourse === "all_courses") {
+                        if (paper.course && paper.course !== "all_courses") return false;
+                      } else {
+                        const matches = paper.course === filterPaperCourse ||
+                          paper.course?.toLowerCase() === filterPaperCourse.toLowerCase();
+                        if (!matches) return false;
+                      }
+                    }
+
+                    // Sub-Subject Filter
+                    if (filterPaperSubSubject !== "all") {
+                      const pSub = (paper.subSubject || paper.subject || "").toLowerCase();
+                      const targetSub = filterPaperSubSubject.toLowerCase();
+                      if (!pSub.includes(targetSub) && targetSub !== pSub) return false;
+                    }
+
+                    // Exam Type Filter
+                    if (filterPaperExamType !== "all") {
+                      if (paper.examType !== filterPaperExamType) return false;
+                    }
+
+                    // Status Filter
+                    if (filterPaperStatus !== "all") {
                       const computedStatus = paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
                         ? "Archive"
                         : getExamStatus(paper);
+                      if (computedStatus.toLowerCase() !== filterPaperStatus.toLowerCase()) return false;
+                    }
 
-                      return (
-                        <div 
-                          key={paper.id}
-                          onClick={() => handleViewExamPaperDetails(paper)}
-                          className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all cursor-pointer group"
-                        >
-                          <div className="space-y-1 text-left">
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1 ${
-                                computedStatus === "Live" 
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold animate-pulse" 
-                                  : computedStatus === "Upcoming"
-                                  ? "bg-blue-50 text-blue-700 border border-blue-200 font-extrabold"
-                                  : "bg-slate-100 text-slate-600 border border-slate-200 font-bold"
-                              }`}>
-                                {computedStatus === "Live" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>}
-                                {computedStatus}
-                              </span>
-                              <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
-                                {paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
-                              </span>
+                    // Search Query Filter
+                    if (filterPaperSearch.trim()) {
+                      const q = filterPaperSearch.trim().toLowerCase();
+                      const titleMatch = (paper.title || "").toLowerCase().includes(q);
+                      const topicMatch = (paper.topic || "").toLowerCase().includes(q);
+                      const subjectMatch = (paper.subject || "").toLowerCase().includes(q);
+                      const subSubjectMatch = (paper.subSubject || "").toLowerCase().includes(q);
+                      const courseMatch = (COURSES.find(c => c.id === paper.course)?.name || paper.course || "").toLowerCase().includes(q);
+                      if (!titleMatch && !topicMatch && !subjectMatch && !subSubjectMatch && !courseMatch) return false;
+                    }
+
+                    return true;
+                  });
+
+                  const sortedAdminPapers = sortExamPapersForDisplay(filteredList);
+                  const visibleAdminPapers = sortedAdminPapers.slice(0, examPaperDisplayLimit);
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Active Filter Counter */}
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
+                        <span>
+                          মোট {examPapers.length} টির মধ্যে ফিল্টার অনুযায়ী <strong className="text-[#FF6A00] font-black">{filteredList.length}</strong> টি প্রশ্নপত্র পাওয়া গেছে
+                        </span>
+                        {filteredList.length > examPaperDisplayLimit && (
+                          <span className="text-[11px] text-slate-400">
+                            (প্রথম {examPaperDisplayLimit} টি দেখানো হচ্ছে)
+                          </span>
+                        )}
+                      </div>
+
+                      {visibleAdminPapers.map((paper) => {
+                        // Dynamically calculate actual status based on start/end date-time unless explicitly set to Archive
+                        const computedStatus = paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
+                          ? "Archive"
+                          : getExamStatus(paper);
+
+                        return (
+                          <div 
+                            key={paper.id}
+                            onClick={() => handleViewExamPaperDetails(paper)}
+                            className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all cursor-pointer group"
+                          >
+                            <div className="space-y-1 text-left">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1 ${
+                                  computedStatus === "Live" 
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold animate-pulse" 
+                                    : computedStatus === "Upcoming"
+                                    ? "bg-blue-50 text-blue-700 border border-blue-200 font-extrabold"
+                                    : "bg-slate-100 text-slate-600 border border-slate-200 font-bold"
+                                }`}>
+                                  {computedStatus === "Live" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>}
+                                  {computedStatus}
+                                </span>
+                                <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
+                                  {paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
+                                </span>
+                                {paper.subSubject && paper.subSubject !== "all" && paper.subSubject !== "none" && (
+                                  <span className="text-[9px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded">
+                                    {paper.subSubject}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#FF6A00] transition-colors">
+                                {paper.title}
+                              </h4>
+
+                              <div className="text-[11px] font-bold text-slate-500 flex flex-wrap items-center gap-3 pt-0.5">
+                                <span>প্রশ্ন: {paper.questionCount} টি</span>
+                                <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
+                                <span>তারিখ: {paper.examDate}</span>
+                                <span 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewExamPaperDetails(paper);
+                                  }}
+                                  className="text-[10px] font-bold text-slate-400 underline group-hover:text-orange-500 cursor-pointer"
+                                >
+                                  🔍 বিস্তারিত দেখতে ক্লিক করুন
+                                </span>
+                              </div>
                             </div>
 
-                            <h4 className="text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#FF6A00] transition-colors">
-                              {paper.title}
-                            </h4>
-
-                            <div className="text-[11px] font-bold text-slate-500 flex flex-wrap items-center gap-3 pt-0.5">
-                              <span>প্রশ্ন: {paper.questionCount} টি</span>
-                              <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
-                              <span>তারিখ: {paper.examDate}</span>
-                              <span 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewExamPaperDetails(paper);
-                                }}
-                                className="text-[10px] font-bold text-slate-400 underline group-hover:text-orange-500 cursor-pointer"
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleArchiveExamPaper(paper); }}
+                                className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                                  computedStatus === "Archive"
+                                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                    : "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
+                                }`}
+                                title={computedStatus === "Archive" ? "লাইভ করুন" : "আর্কাইভ করুন"}
                               >
-                                🔍 বিস্তারিত দেখতে ক্লিক করুন
-                              </span>
+                                <Archive className="w-3.5 h-3.5" />
+                                <span>{computedStatus === "Archive" ? "লাইভ করুন" : "আর্কাইভ"}</span>
+                              </button>
+
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditExamPaper(paper); }}
+                                className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>এডিট</span>
+                              </button>
+
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteExamPaper(paper.id); }}
+                                className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                                title="ডিলেট করুন"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
+                        );
+                      })}
 
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleToggleArchiveExamPaper(paper); }}
-                              className={`px-3 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                                computedStatus === "Archive"
-                                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                  : "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200"
-                              }`}
-                              title={computedStatus === "Archive" ? "লাইভ করুন" : "আর্কাইভ করুন"}
-                            >
-                              <Archive className="w-3.5 h-3.5" />
-                              <span>{computedStatus === "Archive" ? "লাইভ করুন" : "আর্কাইভ"}</span>
-                            </button>
-
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleEditExamPaper(paper); }}
-                              className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              <span>এডিট</span>
-                            </button>
-
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteExamPaper(paper.id); }}
-                              className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
-                              title="ডিলেট করুন"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                      {filteredList.length === 0 && (
+                        <div className="p-8 text-center text-xs font-bold text-slate-400 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                          কোনো প্রশ্ন পত্র পাওয়া যায়নি। ফিল্টারের মান পরিবর্তন করে আবার চেষ্টা করুন অথবা নতুন প্রশ্ন পত্র তৈরি করুন।
                         </div>
-                      );
-                    });
-                  })()}
-
-                  {examPapers.length === 0 && (
-                    <div className="p-8 text-center text-xs font-bold text-slate-400">
-                      এখনো কোনো প্রশ্ন পত্র তৈরি করা হয়নি। উপরের ফর্ম পূরণ করে আপনার প্রথম প্রশ্ন পত্র পাবলিশ করুন!
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
 
             </div>

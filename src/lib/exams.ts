@@ -63,7 +63,11 @@ export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
 export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive" {
   const now = new Date();
 
-  // 1. If startDateTime and endDateTime exist, check exact comparison
+  // 1. Explicit archive check
+  const s = (paper.status || "").toLowerCase();
+  if (s === "archive" || s === "archived" || s === "completed") return "Archive";
+
+  // 2. If startDateTime and endDateTime exist, strictly compare with now
   if (paper.startDateTime && paper.endDateTime) {
     const start = new Date(paper.startDateTime);
     const end = new Date(paper.endDateTime);
@@ -79,24 +83,39 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // 2. If endDateTime alone exists
+  // 3. If endDateTime alone exists
   if (paper.endDateTime) {
     const end = new Date(paper.endDateTime);
     if (!isNaN(end.getTime())) {
       if (now > end) {
         return "Archive";
+      } else if (paper.startDateTime) {
+        const start = new Date(paper.startDateTime);
+        if (!isNaN(start.getTime()) && now < start) {
+          return "Upcoming";
+        }
       }
+      return "Live";
     }
   }
 
-  // 3. Check explicit paper.status property for Archive or Upcoming
-  const s = (paper.status || "").toLowerCase();
-  if (s === "archive" || s === "archived" || s === "completed") return "Archive";
+  // 4. If startDateTime alone exists
+  if (paper.startDateTime) {
+    const start = new Date(paper.startDateTime);
+    if (!isNaN(start.getTime())) {
+      if (now < start) return "Upcoming";
+      return "Live";
+    }
+  }
+
+  // 5. If status is explicitly upcoming
   if (s === "upcoming") return "Upcoming";
 
-  // 4. Check examDate string if present (e.g. "Mon, Aug 3, 2026")
+  // 6. Check examDate string if present (e.g. "Mon, Aug 3, 2026")
   if (paper.examDate && paper.examDate !== "Today") {
-    const parsedDate = new Date(paper.examDate);
+    // If date string contains a range or date tag, clean it first
+    const cleanDateStr = paper.examDate.replace(/\[.*\]/, "").trim();
+    const parsedDate = new Date(cleanDateStr);
     if (!isNaN(parsedDate.getTime())) {
       const startOfExamDate = new Date(parsedDate);
       startOfExamDate.setHours(0, 0, 0, 0);
@@ -114,30 +133,9 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // 5. If status is explicitly "live" (and date hasn't invalidated it above)
+  // 7. If status is explicitly live
   if (s === "live") {
-    if (paper.createdAt) {
-      const created = new Date(paper.createdAt).getTime();
-      const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-      if (!isNaN(created) && (now.getTime() - created > threeDaysMs)) {
-        return "Archive";
-      }
-    }
     return "Live";
-  }
-
-  // 6. If examDate is "Today", it is Live
-  if (paper.examDate === "Today") {
-    return "Live";
-  }
-
-  // 7. Fallback: Check if createdAt is more than 2 days old
-  if (paper.createdAt) {
-    const created = new Date(paper.createdAt).getTime();
-    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-    if (!isNaN(created) && (now.getTime() - created > twoDaysMs)) {
-      return "Archive";
-    }
   }
 
   return "Live";
@@ -330,7 +328,18 @@ export function parseRawExamPaper(item: any): ExamPaper {
   let updatedAt: string | undefined = item.updatedAt || item.updated_at;
   let subSubjectVal: string | undefined = item.subSubject || item.sub_subject;
   let categoryTypeVal: string | undefined = item.categoryType || item.category_type;
+  let rawExamDate = item.examDate || item.exam_date || "Today";
   
+  // Extract encoded start & end datetime from exam_date tag if present
+  if (typeof rawExamDate === "string" && rawExamDate.includes("[") && rawExamDate.includes("__") && rawExamDate.includes("]")) {
+    const match = rawExamDate.match(/\[([0-9T:-]+)__([0-9T:-]+)\]/);
+    if (match) {
+      if (!startDT) startDT = match[1];
+      if (!endDT) endDT = match[2];
+      rawExamDate = rawExamDate.replace(/\s*\[[0-9T:-]+__[0-9T:-]+\]/, "").trim();
+    }
+  }
+
   if (typeof item.questions === "string") {
     try {
       const parsed = JSON.parse(item.questions);
@@ -360,7 +369,7 @@ export function parseRawExamPaper(item: any): ExamPaper {
     updatedAt = item.questions.updatedAt || updatedAt;
   }
 
-  return {
+  const paperObj: ExamPaper = {
     id: item.id,
     title: item.title,
     course: item.course,
@@ -373,7 +382,7 @@ export function parseRawExamPaper(item: any): ExamPaper {
     totalDurationSeconds: item.totalDurationSeconds || item.total_duration || 360,
     totalMarks: item.totalMarks || item.total_marks || 10,
     topic: item.topic || "মডেল টেস্ট",
-    examDate: item.examDate || item.exam_date || "Today",
+    examDate: rawExamDate || "Today",
     startDateTime: startDT,
     endDateTime: endDT,
     status: item.status || "",
@@ -381,6 +390,13 @@ export function parseRawExamPaper(item: any): ExamPaper {
     createdAt: createdAt || new Date().toISOString(),
     updatedAt: updatedAt || createdAt || new Date().toISOString()
   };
+
+  // Re-compute status dynamically if status is not explicitly "Archive"
+  if (paperObj.status !== "Archive" && (paperObj.status as string).toLowerCase() !== "archived") {
+    paperObj.status = getExamStatus(paperObj);
+  }
+
+  return paperObj;
 }
 
 export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> {
@@ -436,8 +452,15 @@ export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> 
 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
   invalidateExamPapersCache();
+  
+  // Dynamically resolve actual status based on dates unless explicitly marked Archive
+  const computedStatus = paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
+    ? "Archive"
+    : getExamStatus(paper);
+
   const paperWithTimestamps: ExamPaper = {
     ...paper,
+    status: computedStatus,
     createdAt: paper.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -473,6 +496,12 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
         updatedAt: paperWithTimestamps.updatedAt
       });
 
+      // Encode start & end date-time tag in exam_date string for lightweight queries
+      const cleanExamDate = (paperWithTimestamps.examDate || "Today").replace(/\[.*\]/, "").trim();
+      const taggedExamDate = paperWithTimestamps.startDateTime && paperWithTimestamps.endDateTime
+        ? `${cleanExamDate} [${paperWithTimestamps.startDateTime}__${paperWithTimestamps.endDateTime}]`
+        : cleanExamDate;
+
       const payload: any = {
         id: paperWithTimestamps.id,
         title: paperWithTimestamps.title,
@@ -486,7 +515,7 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
         total_duration: paperWithTimestamps.totalDurationSeconds,
         total_marks: paperWithTimestamps.totalMarks,
         topic: paperWithTimestamps.topic,
-        exam_date: paperWithTimestamps.examDate,
+        exam_date: taggedExamDate,
         status: paperWithTimestamps.status,
         questions: questionsData
       };
