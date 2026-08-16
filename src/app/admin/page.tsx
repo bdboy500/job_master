@@ -118,6 +118,7 @@ import {
   canManageQuestions,
   getRoleLabelBangla,
   getStatusLabelBangla,
+  getCachedAdminStaff,
   fetchAdminStaffFromDb,
   saveAdminStaffToDb,
   getCurrentAdminSession,
@@ -373,7 +374,7 @@ export default function AdminPage() {
   // Authentication & RBAC states
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentStaffSession, setCurrentStaffSession] = useState<AdminStaffUser | null>(null);
-  const [adminStaffList, setAdminStaffList] = useState<AdminStaffUser[]>([]);
+  const [adminStaffList, setAdminStaffList] = useState<AdminStaffUser[]>(() => getCachedAdminStaff());
   const [adminAuthMode, setAdminAuthMode] = useState<"login" | "register">("login");
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -829,7 +830,7 @@ export default function AdminPage() {
     }
 
     // Load admin staff list from Supabase/cache
-    fetchAdminStaffFromDb().then((staff) => {
+    fetchAdminStaffFromDb(true).then((staff) => {
       if (staff && staff.length > 0) {
         setAdminStaffList(staff);
       }
@@ -6241,6 +6242,391 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
             </div>
           )}
 
+          {/* TAB 10: STAFF & RBAC MANAGEMENT */}
+          {activeTab === "staff" && (
+            <div className="space-y-6 animate-fade-in text-left">
+              {/* Header & Quick Stats */}
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                        RBAC Security
+                      </span>
+                      <span className="text-[11px] font-black text-slate-400">
+                        মোট {adminStaffList.length} জন কর্মী
+                      </span>
+                    </div>
+                    <h3 className="font-extrabold text-base sm:text-lg text-slate-800 flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-purple-600" />
+                      <span>স্টাফ ও রোল-বেসড এক্সেস কন্ট্রোল (Staff & RBAC Directory)</span>
+                    </h3>
+                    <p className="text-xs font-medium text-slate-500">
+                      অ্যাডমিন, সুপারভাইজার ও এডিটরদের এক্সেস ম্যানেজমেন্ট, রোল অনুমোদন ও পারমিশন কন্ট্রোল করুন।
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <button
+                      onClick={async () => {
+                        const fresh = await fetchAdminStaffFromDb(true);
+                        setAdminStaffList(fresh);
+                        triggerNotification("success", "স্টাফ তালিকা রিলোড করা হয়েছে!");
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all active:scale-95"
+                    >
+                      <RotateCw className="w-3.5 h-3.5 text-purple-600" />
+                      <span>রিফ্রেশ (Sync DB)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setNewStaffModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all shadow-md shadow-purple-500/20 active:scale-95"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>+ নতুন স্টাফ যোগ করুন</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stat Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  <div className="p-3.5 bg-purple-50/70 border border-purple-100 rounded-2xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold text-purple-800 uppercase block">প্রধান অ্যাডমিন</span>
+                      <span className="text-base font-black text-purple-950">
+                        {adminStaffList.filter(s => s.role === "admin").length} জন
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-2xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black">
+                      <UserCog className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold text-blue-800 uppercase block">সুপারভাইজার</span>
+                      <span className="text-base font-black text-blue-950">
+                        {adminStaffList.filter(s => s.role === "supervisor").length} জন
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold text-emerald-800 uppercase block">এডিটর</span>
+                      <span className="text-base font-black text-emerald-950">
+                        {adminStaffList.filter(s => s.role === "editor").length} জন
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-amber-50/70 border border-amber-100 rounded-2xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold text-amber-800 uppercase block">পেন্ডিং আবেদন</span>
+                      <span className="text-base font-black text-amber-950">
+                        {adminStaffList.filter(s => s.status === "pending").length} টি
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pending Requests Banner (if any) */}
+                {adminStaffList.some(s => s.status === "pending") && (
+                  <div className="p-4 sm:p-5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+                      <h4 className="font-extrabold text-xs sm:text-sm text-amber-900">
+                        অপেক্ষমাণ এক্সেস আবেদন ({adminStaffList.filter(s => s.status === "pending").length} টি)
+                      </h4>
+                    </div>
+                    <div className="divide-y divide-amber-200/70">
+                      {adminStaffList.filter(s => s.status === "pending").map((pending) => (
+                        <div key={pending.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-xs text-slate-900">{pending.name}</span>
+                              <span className="text-[10px] font-extrabold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">
+                                কাঙ্ক্ষিত রোল: {getRoleLabelBangla(pending.role)}
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-3 flex-wrap">
+                              <span>✉ {pending.email}</span>
+                              {pending.phone && <span>☎ {pending.phone}</span>}
+                              <span>আবেদনের সময়: {formatDisplayDate(pending.createdAt)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => handleApproveStaff(pending.id, "editor")}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>এডিটর হিসেবে অনুমোদন</span>
+                            </button>
+                            <button
+                              onClick={() => handleApproveStaff(pending.id, "supervisor")}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>সুপারভাইজার অনুমোদন</span>
+                            </button>
+                            <button
+                              onClick={() => handleApproveStaff(pending.id, "admin")}
+                              className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>অ্যাডমিন অনুমোদন</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStaff(pending.id)}
+                              className="bg-rose-100 hover:bg-rose-200 text-rose-700 text-[11px] font-black px-2.5 py-1.5 rounded-lg cursor-pointer transition-all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="নাম, ইমেইল বা ফোন নম্বর দিয়ে খুঁজুন..."
+                      value={staffSearchQuery}
+                      onChange={(e) => setStaffSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={staffRoleFilter}
+                      onChange={(e) => setStaffRoleFilter(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                    >
+                      <option value="all">সকল রোল (All Roles)</option>
+                      <option value="admin">প্রধান এডমিন (Admin)</option>
+                      <option value="supervisor">সুপারভাইজার (Supervisor)</option>
+                      <option value="editor">এডিটর (Editor)</option>
+                    </select>
+
+                    <select
+                      value={staffStatusFilter}
+                      onChange={(e) => setStaffStatusFilter(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                    >
+                      <option value="all">সকল স্ট্যাটাস (All Status)</option>
+                      <option value="active">সক্রিয় (Active)</option>
+                      <option value="pending">পেন্ডিং (Pending)</option>
+                      <option value="suspended">স্থগিত (Suspended)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Staff Table */}
+                <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-[11px] font-black text-slate-400 uppercase border-b border-slate-100">
+                        <th className="p-3.5">স্টাফ মেম্বার</th>
+                        <th className="p-3.5">যোগাযোগ</th>
+                        <th className="p-3.5">রোল / পদবী</th>
+                        <th className="p-3.5">স্ট্যাটাস</th>
+                        <th className="p-3.5">অনুমতি ও এক্সেস</th>
+                        <th className="p-3.5">লাস্ট লগইন</th>
+                        <th className="p-3.5 text-right">অ্যাকশন</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+                      {adminStaffList
+                        .filter((staff) => {
+                          const q = staffSearchQuery.toLowerCase();
+                          const matchSearch =
+                            !q ||
+                            staff.name.toLowerCase().includes(q) ||
+                            staff.email.toLowerCase().includes(q) ||
+                            (staff.phone && staff.phone.includes(q));
+                          const matchRole = staffRoleFilter === "all" || staff.role === staffRoleFilter;
+                          const matchStatus = staffStatusFilter === "all" || staff.status === staffStatusFilter;
+                          return matchSearch && matchRole && matchStatus;
+                        })
+                        .map((staff, idx) => {
+                          const isMaster =
+                            staff.isPrimaryMaster ||
+                            staff.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
+                          const statusMeta = getStatusLabelBangla(staff.status);
+
+                          return (
+                            <tr key={staff.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                              {/* Member Info */}
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center font-black text-xs shrink-0">
+                                    {staff.name ? staff.name.charAt(0).toUpperCase() : "U"}
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-extrabold text-slate-900">{staff.name}</span>
+                                      {isMaster && (
+                                        <span className="text-[9px] font-black bg-purple-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                          Master
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] text-slate-400 block font-mono">
+                                      {staff.email}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Phone / Contact */}
+                              <td className="p-3.5 font-mono text-slate-600">
+                                {staff.phone || "—"}
+                              </td>
+
+                              {/* Role Selector */}
+                              <td className="p-3.5">
+                                {isMaster ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-black bg-purple-100 text-purple-900 border border-purple-200 px-2.5 py-1 rounded-xl">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                                    <span>প্রধান অ্যাডমিন</span>
+                                  </span>
+                                ) : (
+                                  <select
+                                    value={staff.role}
+                                    onChange={(e) => handleUpdateStaffRole(staff.id, e.target.value as AdminRole)}
+                                    className={`text-[11px] font-black px-2.5 py-1 rounded-xl border focus:outline-none cursor-pointer ${
+                                      staff.role === "admin"
+                                        ? "bg-purple-50 text-purple-900 border-purple-200"
+                                        : staff.role === "supervisor"
+                                        ? "bg-blue-50 text-blue-900 border-blue-200"
+                                        : "bg-emerald-50 text-emerald-900 border-emerald-200"
+                                    }`}
+                                  >
+                                    <option value="editor">এডিটর (Editor)</option>
+                                    <option value="supervisor">সুপারভাইজার (Supervisor)</option>
+                                    <option value="admin">প্রধান এডমিন (Admin)</option>
+                                  </select>
+                                )}
+                              </td>
+
+                              {/* Status Badge */}
+                              <td className="p-3.5">
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full border ${statusMeta.bg} ${statusMeta.textCol}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    staff.status === "active" ? "bg-emerald-500" : staff.status === "pending" ? "bg-amber-500" : "bg-rose-500"
+                                  }`}></span>
+                                  <span>{statusMeta.text}</span>
+                                </span>
+                              </td>
+
+                              {/* Permissions summary */}
+                              <td className="p-3.5 text-[11px]">
+                                {staff.role === "admin" ? (
+                                  <span className="text-purple-700 font-extrabold">পূর্ণ ক্ষমতা (Full Control)</span>
+                                ) : staff.role === "supervisor" ? (
+                                  <span className="text-blue-700 font-extrabold">প্রশ্ন, ইউজার, অফার ও কোর্স</span>
+                                ) : (
+                                  <span className="text-emerald-700 font-extrabold">শুধুমাত্র প্রশ্ন তৈরি ও এডিট</span>
+                                )}
+                              </td>
+
+                              {/* Last Login / Joined */}
+                              <td className="p-3.5 text-[11px] text-slate-500 font-medium">
+                                {staff.lastLoginAt ? formatDisplayDate(staff.lastLoginAt) : "লগইন হয়নি"}
+                              </td>
+
+                              {/* Actions */}
+                              <td className="p-3.5 text-right">
+                                <div className="inline-flex items-center gap-1.5">
+                                  {!isMaster && (
+                                    <>
+                                      <button
+                                        onClick={() => handleToggleStaffStatus(staff.id)}
+                                        title={staff.status === "active" ? "সাসপেন্ড করুন" : "সক্রিয় করুন"}
+                                        className={`px-2.5 py-1 rounded-xl text-[11px] font-black border transition-all cursor-pointer ${
+                                          staff.status === "active"
+                                            ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200"
+                                            : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                        }`}
+                                      >
+                                        {staff.status === "active" ? "সাসপেন্ড" : "সক্রিয় করুন"}
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleDeleteStaff(staff.id)}
+                                        title="অ্যাকাউন্ট ডিলিট করুন"
+                                        className="p-1.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-xl transition-all cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                  {isMaster && (
+                                    <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">
+                                      রক্ষিত (Protected)
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Role Matrix Helper Cards */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-3">
+                  <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-purple-600" />
+                    <span>রোল ও পারমিশন গাইডলাইন (RBAC Access Levels)</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
+                    <div className="bg-white p-3.5 rounded-xl border border-purple-100 space-y-1">
+                      <span className="font-black text-purple-800 block">১. প্রধান অ্যাডমিন (Super Admin)</span>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        সকল ফিচারে পূর্ণ নিয়ন্ত্রণ: প্রশ্ন তৈরি/এডিট, ইউজার ব্যান/আনব্যান, অফার, প্যাকেজ, কোর্স, সুইচ সেটিংস এবং নতুন স্টাফ যোগ ও রোল পরিবর্তন।
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-3.5 rounded-xl border border-blue-100 space-y-1">
+                      <span className="font-black text-blue-800 block">২. সুপারভাইজার (Supervisor)</span>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        প্রশ্নপত্র তৈরি, প্রশ্ন এডিট, ইউজার পরিচালনা, ব্যানার-অফার, প্যাকেজ ও কোর্স ম্যানেজ করতে পারবেন। স্টাফ পরিবর্তন করতে পারবেন না।
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1">
+                      <span className="font-black text-emerald-800 block">৩. এডিটর (Editor)</span>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        শুধুমাত্র প্রশ্ন ব্যাংকে নতুন প্রশ্ন যুক্ত করা এবং বিদ্যমান প্রশ্ন এডিট করার ক্ষমতা পাবেন। অন্যান্য স্পর্শকাতর মেনু দেখতে পাবেন না।
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
         </main>
 
         {/* 3. EDIT QUESTION MODAL */}
@@ -6670,6 +7056,123 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                     className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md shadow-orange-500/20 cursor-pointer transition-all"
                   >
                     স্কোর সেভ করুন (Save Changes)
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* DIRECT ADD NEW STAFF MODAL */}
+        {newStaffModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-2xl max-w-md w-full space-y-5 relative animate-fade-in text-left">
+              <button
+                onClick={() => setNewStaffModalOpen(false)}
+                className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-500 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800">
+                    নতুন স্টাফ মেম্বার যোগ করুন
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold">
+                    সরাসরি সক্রিয় একাউন্ট তৈরি করে ভূমিকা বরাদ্দ করুন
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAddNewStaffDirect} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    পুরো নাম (Full Name)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: মোঃ কামরুল ইসলাম"
+                    value={newStaffName}
+                    onChange={(e) => setNewStaffName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    ইমেইল এড্রেস (Email)
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="staff@example.com"
+                    value={newStaffEmail}
+                    onChange={(e) => setNewStaffEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    মোবাইল নম্বর (Phone - ঐচ্ছিক)
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="017xxxxxxxx"
+                    value={newStaffPhone}
+                    onChange={(e) => setNewStaffPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    পাসওয়ার্ড সেট করুন (Password)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড..."
+                    value={newStaffPassword}
+                    onChange={(e) => setNewStaffPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-extrabold text-slate-500 uppercase block mb-1">
+                    রোল / পদবী নির্ধারণ করুন
+                  </label>
+                  <select
+                    value={newStaffRole}
+                    onChange={(e) => setNewStaffRole(e.target.value as AdminRole)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-purple-600 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  >
+                    <option value="editor">এডিটর (Editor - শুধুমাত্র প্রশ্ন তৈরি ও এডিট)</option>
+                    <option value="supervisor">সুপারভাইজার (Supervisor - প্রশ্ন, অফার, প্যাকেজ, ইউজার)</option>
+                    <option value="admin">প্রধান এডমিন (Super Admin - সম্পূর্ণ ক্ষমতা)</option>
+                  </select>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewStaffModalOpen(false)}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer"
+                  >
+                    বাতিল
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md shadow-purple-500/20 cursor-pointer transition-all active:scale-95"
+                  >
+                    স্টাফ যুক্ত করুন (Add Staff)
                   </button>
                 </div>
               </form>
