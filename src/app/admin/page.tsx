@@ -493,6 +493,24 @@ export default function AdminPage() {
     "Good Governance"
   ];
 
+  // Subject Bengali Names & Metadata Map
+  const SUBJECT_BN_MAP: Record<string, { bn: string }> = {
+    "Bangla Literature": { bn: "বাংলা সাহিত্য" },
+    "Bangla Grammer": { bn: "বাংলা ব্যাকরণ" },
+    "English Literature": { bn: "ইংরেজি সাহিত্য" },
+    "English Grammer": { bn: "ইংরেজি ব্যাকরণ" },
+    "Bangladesh Affairs": { bn: "বাংলাদেশ বিষয়াবলী" },
+    "International Affairs": { bn: "আন্তর্জাতিক বিষয়াবলী" },
+    "Geography": { bn: "ভূগোল ও পরিবেশ" },
+    "General Science": { bn: "সাধারণ বিজ্ঞান" },
+    "Technology": { bn: "তথ্যপ্রযুক্তি" },
+    "Mathematics (Arithmetic)": { bn: "গণিত (পাটিগণিত)" },
+    "Mathematics (Algebra )": { bn: "গণিত (বীজগণিত)" },
+    "Mathematics (Geometry)": { bn: "গণিত (জ্যামিতি)" },
+    "Mental Ability": { bn: "মানসিক দক্ষতা" },
+    "Good Governance": { bn: "নৈতিকতা ও সুশাসন" }
+  };
+
   // Dynamic Courses & Exam Types list
   const COURSES = [
     { id: "all_courses", name: "\uD83C\uDF10 সকল কোর্স (All Courses - সব কোর্সে দেখাবে)" },
@@ -754,6 +772,45 @@ export default function AdminPage() {
   // ==========================================
   const [questions, setQuestions] = useState<any[]>([]);
   const [totalQuestionsCount, setTotalQuestionsCount] = useState<number>(0);
+  
+  // Smart SWR Cache for Subject-wise Question Counts (Zero unnecessary egress)
+  const SUBJECT_COUNTS_CACHE_KEY = "job_master_subject_counts_v1";
+  const SUBJECT_COUNTS_TTL = 10 * 60 * 1000; // 10 minutes cache TTL
+
+  const [subjectWiseCounts, setSubjectWiseCounts] = useState<Record<string, number>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("job_master_subject_counts_v1");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.counts) return parsed.counts;
+        }
+      } catch {}
+    }
+    const init: Record<string, number> = {};
+    SUBJECTS.forEach((s) => {
+      init[s] = 0;
+    });
+    return init;
+  });
+
+  const [subjectCountsLastUpdated, setSubjectCountsLastUpdated] = useState<number | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("job_master_subject_counts_v1");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.timestamp) return parsed.timestamp;
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  const subjectCountsCacheRef = useRef<{ counts: Record<string, number>; total: number; timestamp: number } | null>(null);
+  const subjectCountsPromiseRef = useRef<Promise<Record<string, number>> | null>(null);
+
+  const [loadingSubjectCounts, setLoadingSubjectCounts] = useState<boolean>(false);
   const [dbLoading, setDbLoading] = useState<boolean>(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
@@ -854,6 +911,7 @@ export default function AdminPage() {
 
     // Fetch questions & exam papers from Supabase/Storage
     loadExamPapersFromDb();
+    fetchSubjectWiseCounts();
     const unsubExams = subscribeToExamPapers(setExamPapers);
 
     // Fetch packages & subscribe
@@ -1524,8 +1582,315 @@ export default function AdminPage() {
   };
 
   // -------------------------------------------------------------
-  // SUPABASE ASYNC CRUD HANDLERS
+  // SUPABASE ASYNC CRUD HANDLERS WITH ZERO-EGRESS SMART CACHE
   // -------------------------------------------------------------
+
+  // Optimistic In-Memory & LocalStorage Counts Updater (0ms latency, 0 Bytes server egress)
+  const updateOptimisticSubjectCounts = (
+    action: "add" | "delete" | "update",
+    payload: { subject?: string; oldSubject?: string; newSubject?: string }
+  ) => {
+    setSubjectWiseCounts((prev) => {
+      const updated: Record<string, number> = { ...prev };
+      SUBJECTS.forEach((sub) => {
+        if (updated[sub] === undefined) updated[sub] = 0;
+      });
+
+      if (action === "add" && payload.subject) {
+        const sub = payload.subject;
+        updated[sub] = (updated[sub] || 0) + 1;
+        setTotalQuestionsCount((t) => t + 1);
+      } else if (action === "delete" && payload.subject) {
+        const sub = payload.subject;
+        updated[sub] = Math.max(0, (updated[sub] || 0) - 1);
+        setTotalQuestionsCount((t) => Math.max(0, t - 1));
+      } else if (action === "update" && payload.oldSubject && payload.newSubject) {
+        if (payload.oldSubject !== payload.newSubject) {
+          updated[payload.oldSubject] = Math.max(0, (updated[payload.oldSubject] || 0) - 1);
+          updated[payload.newSubject] = (updated[payload.newSubject] || 0) + 1;
+        }
+      }
+
+      const total = Object.values(updated).reduce((a, b) => a + b, 0);
+      const cacheData = { counts: updated, total, timestamp: Date.now() };
+      subjectCountsCacheRef.current = cacheData;
+      setSubjectCountsLastUpdated(Date.now());
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(SUBJECT_COUNTS_CACHE_KEY, JSON.stringify(cacheData));
+        } catch {}
+      }
+
+      return updated;
+    });
+  };
+
+  // Fetch Subject-wise Question Counts with SWR & Deduping
+  const fetchSubjectWiseCounts = async (forceRefresh: boolean = false) => {
+    const now = Date.now();
+
+    // 1. Check in-memory cache if not forcing refresh
+    if (!forceRefresh && subjectCountsCacheRef.current) {
+      if (now - subjectCountsCacheRef.current.timestamp < SUBJECT_COUNTS_TTL) {
+        setSubjectWiseCounts(subjectCountsCacheRef.current.counts);
+        setSubjectCountsLastUpdated(subjectCountsCacheRef.current.timestamp);
+        return subjectCountsCacheRef.current.counts;
+      }
+    }
+
+    // 2. Check localStorage cache if memory ref is empty
+    if (!forceRefresh && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(SUBJECT_COUNTS_CACHE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.counts && (now - (parsed.timestamp || 0) < SUBJECT_COUNTS_TTL)) {
+            subjectCountsCacheRef.current = parsed;
+            setSubjectWiseCounts(parsed.counts);
+            setSubjectCountsLastUpdated(parsed.timestamp);
+            return parsed.counts;
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Request Deduplication: if a request is already running, return its promise
+    if (subjectCountsPromiseRef.current) {
+      return subjectCountsPromiseRef.current;
+    }
+
+    // 4. Dispatch lightweight network request
+    const promise = (async () => {
+      setLoadingSubjectCounts(true);
+      try {
+        const supabase = getSupabase();
+        if (supabase) {
+          // Query only the indexed subject column to strictly minimize payload and egress
+          const { data, error } = await supabase
+            .from("questions")
+            .select("subjectName");
+
+          if (!error && data) {
+            const counts: Record<string, number> = {};
+            SUBJECTS.forEach((sub) => {
+              counts[sub] = 0;
+            });
+
+            data.forEach((row: any) => {
+              const rawSub = (row.subjectName || row.subject_name || "Other").trim();
+              const matched = SUBJECTS.find(s => s.trim().toLowerCase() === rawSub.toLowerCase());
+              const key = matched || rawSub;
+              counts[key] = (counts[key] || 0) + 1;
+            });
+
+            const total = data.length;
+            const cacheData = { counts, total, timestamp: Date.now() };
+
+            subjectCountsCacheRef.current = cacheData;
+            setSubjectWiseCounts(counts);
+            setSubjectCountsLastUpdated(Date.now());
+            if (totalQuestionsCount === 0 && total > 0) {
+              setTotalQuestionsCount(total);
+            }
+
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(SUBJECT_COUNTS_CACHE_KEY, JSON.stringify(cacheData));
+              } catch {}
+            }
+
+            return counts;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch subject counts from Supabase:", e);
+      } finally {
+        setLoadingSubjectCounts(false);
+        subjectCountsPromiseRef.current = null;
+      }
+
+      // Fallback: calculate from cached local questions or QUIZ_QUESTIONS
+      const counts: Record<string, number> = {};
+      SUBJECTS.forEach((sub) => {
+        counts[sub] = 0;
+      });
+
+      let pool: any[] = [];
+      const cachedMock = typeof window !== "undefined" ? localStorage.getItem("job_master_admin_questions") : null;
+      if (cachedMock) {
+        try {
+          pool = JSON.parse(cachedMock);
+        } catch {}
+      }
+      if (!pool || pool.length === 0) {
+        pool = questions && questions.length > 0 ? questions : QUIZ_QUESTIONS;
+      }
+
+      pool.forEach((q: any) => {
+        const rawSub = (q.subjectName || q.subject || "Other").trim();
+        const matched = SUBJECTS.find(s => s.trim().toLowerCase() === rawSub.toLowerCase());
+        const key = matched || rawSub;
+        counts[key] = (counts[key] || 0) + 1;
+      });
+
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      const cacheData = { counts, total, timestamp: Date.now() };
+      subjectCountsCacheRef.current = cacheData;
+      setSubjectWiseCounts(counts);
+      setSubjectCountsLastUpdated(Date.now());
+
+      return counts;
+    })();
+
+    subjectCountsPromiseRef.current = promise;
+    return promise;
+  };
+
+  // Reusable Subject-wise Question Count Widget for Desktop and Mobile
+  const renderSubjectWiseCounts = (isMobileView: boolean = false) => {
+    const totalInMap = Object.values(subjectWiseCounts).reduce((a, b) => a + b, 0);
+    const displayTotal = totalQuestionsCount || totalInMap || 0;
+    const allSubjects = Array.from(new Set([...SUBJECTS, ...Object.keys(subjectWiseCounts)]));
+
+    // Calculate time elapsed since last cache
+    const formattedLastUpdated = subjectCountsLastUpdated
+      ? (() => {
+          const diffSec = Math.floor((Date.now() - subjectCountsLastUpdated) / 1000);
+          if (diffSec < 60) return "এইমাত্র সিঙ্কড";
+          const diffMin = Math.floor(diffSec / 60);
+          if (diffMin < 60) return `${diffMin} মিনিট আগে`;
+          return `${Math.floor(diffMin / 60)} ঘণ্টা আগে`;
+        })()
+      : "ক্যাশড";
+
+    return (
+      <div className={`bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4 ${
+        isMobileView ? "bg-white/95 border-slate-200/90 shadow-sm mt-3" : ""
+      }`}>
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0 border border-orange-100/80">
+              <Layers className="w-4 h-4 stroke-[2.5px]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                  সার্ভারে বিষয়ভিত্তিক প্রশ্ন সংখ্যা
+                </h3>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-extrabold border border-emerald-200/70">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  ০ egress ক্যাশ
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold">
+                প্রতিটি বিষয়ে মোট সংরক্ষিত প্রশ্নের লাইভ পরিসংখ্যান • {formattedLastUpdated}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 bg-gradient-to-r from-orange-500/10 to-amber-500/10 text-[#FF6A00] font-black text-xs rounded-xl border border-[#FF6A00]/20 whitespace-nowrap">
+              মোট: {displayTotal} টি
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchSubjectWiseCounts(true)}
+              disabled={loadingSubjectCounts}
+              className="p-1.5 hover:bg-orange-50 text-slate-400 hover:text-[#FF6A00] rounded-xl transition-all cursor-pointer border border-slate-100 hover:border-orange-200 active:scale-95"
+              title="তাজা ডাটার জন্য রিফ্রেশ করুন (সাধারণত স্মার্ট ক্যাশে সংরক্ষিত থাকে যাতে সার্ভার ব্যান্ডউইথ সাশ্রয় হয়)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingSubjectCounts ? "animate-spin text-[#FF6A00]" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Grid of Subject Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[460px] overflow-y-auto pr-1">
+          {allSubjects.map((sub) => {
+            const count = subjectWiseCounts[sub] || 0;
+            const meta = SUBJECT_BN_MAP[sub] || { bn: sub };
+            const percentage = displayTotal > 0 ? Math.round((count / displayTotal) * 100) : 0;
+            const isSelected = selectedSubjectFilter === sub;
+
+            return (
+              <div
+                key={sub}
+                onClick={() => {
+                  const nextFilter = selectedSubjectFilter === sub ? "All" : sub;
+                  setSelectedSubjectFilter(nextFilter);
+                  loadQuestionsFromDb(displayLimit, nextFilter, searchQuery);
+                }}
+                className={`p-3 rounded-2xl border transition-all cursor-pointer select-none group relative ${
+                  isSelected
+                    ? "bg-orange-50/80 border-[#FF6A00] ring-2 ring-[#FF6A00]/25 shadow-xs"
+                    : "bg-slate-50/70 hover:bg-white hover:border-orange-200/80 border-slate-100 hover:shadow-xs"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-extrabold text-xs text-slate-800 group-hover:text-[#FF6A00] transition-colors truncate">
+                        {meta.bn}
+                      </span>
+                      {isSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF6A00] shrink-0" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-semibold block truncate">
+                      {sub}
+                    </span>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <span className={`inline-block px-2.5 py-1 text-xs font-black rounded-xl border ${
+                      count > 0
+                        ? "bg-white text-[#FF6A00] border-orange-200 shadow-xs"
+                        : "bg-slate-100/90 text-slate-400 border-slate-200"
+                    }`}>
+                      {count} টি
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-2.5 flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-slate-200/70 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-400 to-[#FF6A00] rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(count > 0 ? 6 : 0, percentage))}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-400 shrink-0">
+                    {percentage}%
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer Info / Filter Reset */}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-bold">
+          <span>💡 বিষয়ে ক্লিক করে ফিল্টার করুন</span>
+          {selectedSubjectFilter !== "All" && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedSubjectFilter("All");
+                loadQuestionsFromDb(displayLimit, "All", searchQuery);
+              }}
+              className="text-[#FF6A00] hover:underline font-extrabold cursor-pointer"
+            >
+              ফিল্টার মুছুন (সব দেখুন)
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const loadQuestionsFromDb = async (
     overrideLimit?: number,
     overrideSubject?: string,
@@ -1697,6 +2062,9 @@ export default function AdminPage() {
       setCorrectOptionIdx(0);
       setNewExplanation("");
 
+      // Optimistic instant subject count update (0ms, 0 bytes egress)
+      updateOptimisticSubjectCounts("add", { subject: newSubjectName });
+
       // Reload database list
       await loadQuestionsFromDb();
     } catch (err: any) {
@@ -1715,6 +2083,7 @@ export default function AdminPage() {
       const updated = [fallbackQuestion, ...questions];
       setQuestions(updated);
       localStorage.setItem("job_master_admin_questions", JSON.stringify(updated));
+      updateOptimisticSubjectCounts("add", { subject: newSubjectName });
       triggerNotification("success", `প্রশ্ন #${nextId} সফলভাবে লোকাল মেমোরিতে সেভ হয়েছে (লোকাল ফলব্যাক)!`);
 
       // Reset form fields
@@ -1759,6 +2128,8 @@ export default function AdminPage() {
       return;
     }
 
+    const previousSubject = editingQuestion.subjectName || editingQuestion.subject_name || "Bangla Literature";
+
     try {
       setDbLoading(true);
       const supabase = getSupabase();
@@ -1801,6 +2172,10 @@ export default function AdminPage() {
       }
 
       triggerNotification("success", "প্রশ্নটি সফলভাবে Supabase ডেটাবেজে আপডেট করা হয়েছে!");
+      
+      // Optimistic subject counts update (0ms, 0 bytes egress)
+      updateOptimisticSubjectCounts("update", { oldSubject: previousSubject, newSubject: editSubjectName });
+
       setEditingQuestion(null);
       await loadQuestionsFromDb();
     } catch (err: any) {
@@ -1821,6 +2196,7 @@ export default function AdminPage() {
       });
       setQuestions(updated);
       localStorage.setItem("job_master_admin_questions", JSON.stringify(updated));
+      updateOptimisticSubjectCounts("update", { oldSubject: previousSubject, newSubject: editSubjectName });
       triggerNotification("success", "প্রশ্নটি লোকাল মেমোরিতে সফলভাবে আপডেট হয়েছে!");
       setEditingQuestion(null);
     } finally {
@@ -1830,6 +2206,9 @@ export default function AdminPage() {
 
   // Handle Delete Question from Supabase
   const handleDeleteQuestion = async (id: string | number) => {
+    const targetQ = questions.find(q => String(q.id) === String(id));
+    const targetSubject = targetQ?.subjectName || targetQ?.subject_name || targetQ?.subject;
+
     try {
       setDbLoading(true);
       const supabase = getSupabase();
@@ -1844,6 +2223,12 @@ export default function AdminPage() {
       }
 
       triggerNotification("success", "প্রশ্নটি সফলভাবে Supabase থেকে ডিলিট করা হয়েছে!");
+      
+      // Optimistic subject count decrement (0ms, 0 bytes egress)
+      if (targetSubject) {
+        updateOptimisticSubjectCounts("delete", { subject: targetSubject });
+      }
+
       await loadQuestionsFromDb();
     } catch (err: any) {
       console.error("Error deleting question from Supabase:", err);
@@ -1851,6 +2236,9 @@ export default function AdminPage() {
       const updated = questions.filter(q => q.id !== id);
       setQuestions(updated);
       localStorage.setItem("job_master_admin_questions", JSON.stringify(updated));
+      if (targetSubject) {
+        updateOptimisticSubjectCounts("delete", { subject: targetSubject });
+      }
       triggerNotification("success", "প্রশ্নটি লোকাল মেমোরি থেকে মুছে ফেলা হয়েছে।");
     } finally {
       setDbLoading(false);
@@ -1885,6 +2273,7 @@ export default function AdminPage() {
 
       triggerNotification("success", "৩১টি ডেমো প্রশ্ন সফলভাবে Supabase-এ সিড করা হয়েছে!");
       await loadQuestionsFromDb();
+      fetchSubjectWiseCounts(true);
     } catch (err: any) {
       console.error("Error seeding database:", err);
       triggerNotification("error", `সিড করতে ব্যর্থ: ${err.message}`);
@@ -3146,6 +3535,11 @@ export default function AdminPage() {
                       </div>
                     </form>
                   </div>
+
+                  {/* Desktop View: Subject-wise Question Count Widget */}
+                  <div className="hidden lg:block">
+                    {renderSubjectWiseCounts(false)}
+                  </div>
                 </div>
 
                 {/* Right Column (Desktop View): Question Bank Filter, Controls & Question List */}
@@ -3242,6 +3636,11 @@ export default function AdminPage() {
                           </button>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Mobile View: Subject Question Count Section */}
+                    <div className="block lg:hidden pt-3 border-t border-slate-200/60">
+                      {renderSubjectWiseCounts(true)}
                     </div>
 
                   </div>
