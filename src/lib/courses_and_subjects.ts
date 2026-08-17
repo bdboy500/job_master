@@ -240,6 +240,39 @@ export const DEFAULT_PREP_SUBJECTS: PrepSubjectItem[] = [
     sub: "মূল্যবোধ, সুশাসন ও নীতি",
     serial: 10,
     subSubjects: []
+  },
+  {
+    id: "prep-physics",
+    name: "Physics",
+    bnName: "পদার্থবিজ্ঞান",
+    icon: "Atom",
+    bg: "bg-[#EFF6FF]",
+    text: "text-blue-600",
+    sub: "বলবিদ্যা, আলো, তাপ ও আধুনিক পদার্থবিজ্ঞান",
+    serial: 11,
+    subSubjects: []
+  },
+  {
+    id: "prep-chemistry",
+    name: "Chemistry",
+    bnName: "রসায়ন",
+    icon: "FlaskConical",
+    bg: "bg-[#FDF2F8]",
+    text: "text-pink-600",
+    sub: "জৈব, অজৈব ও পরিবেশ রসায়ন",
+    serial: 12,
+    subSubjects: []
+  },
+  {
+    id: "prep-biology",
+    name: "Biology",
+    bnName: "জীববিজ্ঞান",
+    icon: "Sparkles",
+    bg: "bg-[#ECFDF5]",
+    text: "text-emerald-600",
+    sub: "উদ্ভিদ ও প্রাণিবিজ্ঞান, মানবদেহ",
+    serial: 13,
+    subSubjects: []
   }
 ];
 

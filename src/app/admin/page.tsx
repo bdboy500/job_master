@@ -348,6 +348,21 @@ function matchesSubject(questionSubject: string, targetSubjects: string[]): bool
       return qSub.includes("governance") || qSub.includes("ethics") || qSub.includes("সুশাসন") || qSub.includes("নৈতিকতা");
     }
 
+    // 15. Physics
+    if (tSub.includes("physics") || tSub.includes("পদার্থবিজ্ঞান") || tSub.includes("পদার্থ")) {
+      return qSub.includes("physics") || qSub.includes("পদার্থবিজ্ঞান") || qSub.includes("পদার্থ");
+    }
+
+    // 16. Chemistry
+    if (tSub.includes("chemistry") || tSub.includes("রসায়ন") || tSub.includes("রসায়নবিজ্ঞান")) {
+      return qSub.includes("chemistry") || qSub.includes("রসায়ন") || qSub.includes("রসায়নবিজ্ঞান");
+    }
+
+    // 17. Biology
+    if (tSub.includes("biology") || tSub.includes("জীববিজ্ঞান") || tSub.includes("জীব")) {
+      return qSub.includes("biology") || qSub.includes("জীববিজ্ঞান") || qSub.includes("জীব");
+    }
+
     return qSub.includes(tSub) || tSub.includes(qSub);
   });
 }
@@ -490,7 +505,10 @@ export default function AdminPage() {
     "Mathematics (Algebra )",
     "Mathematics (Geometry)",
     "Mental Ability",
-    "Good Governance"
+    "Good Governance",
+    "Physics",
+    "Chemistry",
+    "Biology"
   ];
 
   // Subject Bengali Names & Metadata Map
@@ -508,7 +526,10 @@ export default function AdminPage() {
     "Mathematics (Algebra )": { bn: "গণিত (বীজগণিত)" },
     "Mathematics (Geometry)": { bn: "গণিত (জ্যামিতি)" },
     "Mental Ability": { bn: "মানসিক দক্ষতা" },
-    "Good Governance": { bn: "নৈতিকতা ও সুশাসন" }
+    "Good Governance": { bn: "নৈতিকতা ও সুশাসন" },
+    "Physics": { bn: "পদার্থবিজ্ঞান" },
+    "Chemistry": { bn: "রসায়ন" },
+    "Biology": { bn: "জীববিজ্ঞান" }
   };
 
   // Dynamic Courses & Exam Types list
