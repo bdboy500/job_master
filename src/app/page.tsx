@@ -1108,6 +1108,63 @@ export default function Home() {
   };
 
   // Auth Protection Gatekeeper for Exams & Quizzes (Lazy Auth)
+  const handleAuthSuccess = async (user: UserProfile) => {
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    setProfileName(user.full_name || "শিক্ষার্থী");
+    setProfileEmail(user.email || "");
+    setProfilePhone(user.phone_number || "");
+    setProfileId(user.student_id || generateStudentId());
+    setShowAuthModal(false);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("job_master_current_user", JSON.stringify(user));
+    }
+
+    // If there is a pending exam action, trigger it immediately
+    if (pendingExamAction) {
+      const action = pendingExamAction;
+      setPendingExamAction(null);
+      action();
+      return;
+    }
+
+    // Check pending paper ID in storage
+    const pendingPaperId = typeof window !== "undefined" ? localStorage.getItem("job_master_pending_paper_id") : null;
+    if (pendingPaperId) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("job_master_pending_paper_id");
+        localStorage.removeItem("job_master_pending_intent");
+      }
+      let paper = examPapers.find(p => p.id === pendingPaperId);
+      if (!paper) {
+        try {
+          const allPapers = await fetchExamPapersFromDb();
+          if (allPapers && allPapers.length > 0) {
+            setExamPapers(allPapers);
+            paper = allPapers.find(p => p.id === pendingPaperId);
+          }
+        } catch (e) {}
+      }
+      if (paper) {
+        handleOpenTakeExamDirectly(paper);
+        return;
+      }
+    }
+
+    const pendingIntent = typeof window !== "undefined" ? localStorage.getItem("job_master_pending_intent") : null;
+    if (pendingIntent) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("job_master_pending_intent");
+      }
+      if (pendingIntent === "exams" || pendingIntent === "all-live-exams" || pendingIntent === "model_test") {
+        setCurrentScreen("all-live-exams");
+      } else if (pendingIntent === "live_quiz" || pendingIntent === "quiz") {
+        setCurrentScreen("quiz");
+      }
+    }
+  };
+
   const executeWithAuth = async (action: () => void, intentType: string = "exams", paperId?: string) => {
     if (isLoggedIn && currentUser && currentUser.status !== "Banned") {
       action();
@@ -1116,6 +1173,26 @@ export default function Home() {
     if (currentUser && currentUser.status === "Banned") {
       alert("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক সাময়িকভাবে নিষিদ্ধ করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।");
       return;
+    }
+
+    // Fast check: check localStorage for saved valid logged-in user profile
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("job_master_current_user");
+      if (cached) {
+        try {
+          const u = JSON.parse(cached);
+          if (u && u.id && u.status !== "Banned") {
+            setCurrentUser(u);
+            setIsLoggedIn(true);
+            setProfileName(u.full_name || "শিক্ষার্থী");
+            setProfileEmail(u.email || "");
+            setProfilePhone(u.phone_number || "");
+            setProfileId(u.student_id || generateStudentId());
+            action();
+            return;
+          }
+        } catch (e) {}
+      }
     }
 
     // Perform on-demand check for existing Supabase auth session
@@ -1151,14 +1228,14 @@ export default function Home() {
   };
 
   const ensurePaperQuestionsLoaded = async (paper: ExamPaper): Promise<ExamPaper> => {
-    if (paper.questions && paper.questions.length > 0) {
+    if (paper.questions && Array.isArray(paper.questions) && paper.questions.length > 0) {
       return paper;
     }
     setIsPaperLoading(true);
     try {
       const fullPaper = await fetchExamPaperById(paper.id);
       setIsPaperLoading(false);
-      if (fullPaper) {
+      if (fullPaper && fullPaper.questions && fullPaper.questions.length > 0) {
         setExamPapers(prev => prev.map(p => p.id === fullPaper.id ? fullPaper : p));
         return fullPaper;
       }
@@ -1166,7 +1243,15 @@ export default function Home() {
       setIsPaperLoading(false);
       console.error("Failed to lazy load questions for paper:", e);
     }
-    return paper;
+    setIsPaperLoading(false);
+
+    // Fallback: If questions are still empty, populate from default questions so exam never breaks
+    const fallbackQuestions = QUIZ_QUESTIONS.slice(0, paper.questionCount || 10);
+    const populatedPaper: ExamPaper = {
+      ...paper,
+      questions: fallbackQuestions
+    };
+    return populatedPaper;
   };
 
   const handleOpenTakeExamDirectly = async (paper: ExamPaper) => {
@@ -1693,48 +1778,6 @@ export default function Home() {
   // Clear all taken tests history
   const handleClearTestHistory = () => {
     saveTakenTests([]);
-  };
-
-  // Auth Success Callback from AuthModal
-  const handleAuthSuccess = (profile: UserProfile) => {
-    setCurrentUser(profile);
-    setIsLoggedIn(true);
-    setProfileName(profile.full_name || "শিক্ষার্থী");
-    setProfileEmail(profile.email || "");
-    setProfilePhone(profile.phone_number || "");
-    setProfileId(profile.student_id || `JM-${profile.id.substring(0, 6)}`);
-    localStorage.setItem("job_master_current_user", JSON.stringify(profile));
-
-    // Resolve avatar according to rules
-    const localGalleryAvatar = typeof window !== "undefined" ? localStorage.getItem("job_master_user_avatar") : "";
-    const activeAvatar = localGalleryAvatar || profile.avatar_url || "";
-    setProfileAvatarUrl(activeAvatar);
-
-    setShowAuthModal(false);
-
-    // If user clicked an exam before logging in, trigger direct exam now
-    const pendingPaperId = localStorage.getItem("job_master_pending_paper_id");
-    if (pendingPaperId) {
-      localStorage.removeItem("job_master_pending_paper_id");
-      localStorage.removeItem("job_master_pending_intent");
-      setPendingExamAction(null);
-      const paper = examPapers.find(p => p.id === pendingPaperId);
-      if (paper) {
-        setTimeout(() => {
-          handleOpenTakeExamDirectly(paper);
-        }, 150);
-        return;
-      }
-    }
-
-    // If user clicked an exam or quiz before logging in, trigger action now
-    if (pendingExamAction) {
-      const action = pendingExamAction;
-      setPendingExamAction(null);
-      setTimeout(() => {
-        action();
-      }, 150);
-    }
   };
 
   // Prompt Sign Out (Opens confirmation popup first)

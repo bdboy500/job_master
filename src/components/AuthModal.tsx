@@ -34,9 +34,6 @@ export default function AuthModal({
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle browser back button / swipe back gesture for modal
-  useModalHistory(isOpen, onClose, "auth");
-
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);

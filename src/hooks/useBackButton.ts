@@ -233,8 +233,7 @@ export function useAppNavigationHistory(
       return;
     }
 
-    // Special handling for Home screen when no overlays are active:
-    // If user returns to Home, replace the history state so that pressing back ONCE immediately exits/closes!
+    // Special handling for Home screen when no overlays are active
     const isAtHomeClean = navState.currentScreen === "home" && 
       !navState.drawerOpen &&
       (!navState.activeDrawerModal || navState.activeDrawerModal === "none") &&
@@ -259,18 +258,9 @@ export function useAppNavigationHistory(
 
     if (isAtHomeClean) {
       lastStateKeyRef.current = stateKey;
-      if (pushedCountRef.current > 0) {
-        const countToUnwind = pushedCountRef.current;
-        pushedCountRef.current = 0;
-        isPopstateHandlingRef.current = true;
-        try {
-          window.history.go(-countToUnwind);
-        } catch (e) {}
-      } else {
-        try {
-          window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
-        } catch (e) {}
-      }
+      try {
+        window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
+      } catch (e) {}
       return;
     }
 
