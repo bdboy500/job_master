@@ -1,29 +1,82 @@
 {
   "name": "Job Master - চাকরি এখন হাতের মুঠোয়!",
   "short_name": "Job Master",
-  "description": "Job Master - চাকরি এখন হাতের মুঠোয়! বিসিএস, ব্যাংক, প্রাইমারi শিক্ষক নিয়োগ ও অন্যান্য পরীক্ষার প্রস্তুতি।",
+  "description": "Job Master - চাকরি এখন হাতের মুঠোয়! বিসিএস, ব্যাংক, প্রাইমারি শিক্ষক নিয়োগ ও অন্যান্য পরীক্ষার পূর্ণাঙ্গ প্রস্তুতি ও লাইভ মডেল টেস্ট।",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay"
+  ],
   "background_color": "#FAF9F6",
   "theme_color": "#FF6A00",
   "orientation": "portrait",
+  "dir": "ltr",
+  "lang": "bn",
+  "prefer_related_applications": false,
+  "categories": [
+    "education",
+    "books",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "লাইভ পরীক্ষা",
+      "short_name": "পরীক্ষা",
+      "description": "চলমান ও আসন্ন লাইভ মডেল টেস্টসমূহ",
+      "url": "/?view=all-live-exams",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "দৈনিক রুটিন",
+      "short_name": "রুটিন",
+      "description": "আজকের পড়ার রুটিন ও রিভিশন",
+      "url": "/?view=routine",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
