@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { User } from "lucide-react";
+import { useCachedImage } from "@/src/hooks/useImageCache";
 
 interface ProfileImageProps {
   src?: string;
@@ -18,34 +19,29 @@ export default function ProfileImage({
   fallbackName = "U",
   size = 40,
 }: ProfileImageProps) {
-  const [imageSrc, setImageSrc] = useState<string>("");
+  const [resolvedSrc, setResolvedSrc] = useState<string>("");
   const [hasError, setHasError] = useState<boolean>(false);
 
   useEffect(() => {
     setHasError(false);
 
-    // 1. Check local storage cache first
+    // Check local storage avatar
     let localAvatar = "";
     if (typeof window !== "undefined") {
       localAvatar = localStorage.getItem("job_master_user_avatar") || localStorage.getItem("job_master_cached_avatar") || "";
     }
 
     const effectiveSrc = (src && src.trim()) || localAvatar;
+    setResolvedSrc(effectiveSrc);
 
-    if (!effectiveSrc) {
-      setImageSrc("");
-      return;
-    }
-
-    // 2. Save effective avatar to localStorage if it came from Google/Gmail metadata
     if (typeof window !== "undefined" && src && src.trim()) {
       try {
         localStorage.setItem("job_master_user_avatar", src.trim());
       } catch (e) {}
     }
-
-    setImageSrc(effectiveSrc);
   }, [src]);
+
+  const { cachedUrl, isError: cacheError } = useCachedImage(resolvedSrc);
 
   // Extract initials from fallback name
   const getInitials = (name: string) => {
@@ -57,7 +53,9 @@ export default function ProfileImage({
     return name.substring(0, 2).toUpperCase();
   };
 
-  if (!imageSrc || hasError) {
+  const finalSrc = cachedUrl || resolvedSrc;
+
+  if (!finalSrc || hasError || cacheError) {
     return (
       <div
         className={`${className} bg-gradient-to-br from-[#FF6A00] to-[#FF4E00] text-white flex items-center justify-center font-black select-none shrink-0 border border-orange-200 shadow-2xs`}
@@ -78,7 +76,7 @@ export default function ProfileImage({
   return (
     <div className={`relative overflow-hidden shrink-0 ${className}`} style={{ width: size, height: size }}>
       <img
-        src={imageSrc}
+        src={finalSrc}
         alt={alt}
         className="w-full h-full object-cover rounded-full"
         referrerPolicy="no-referrer"

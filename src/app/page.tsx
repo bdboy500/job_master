@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import MathRenderer from "@/src/components/MathRenderer";
-import LeaderboardView from "@/src/components/LeaderboardView";
 import { submitLiveQuizScore } from "@/src/lib/leaderboard";
 import { 
   Play, 
@@ -77,11 +77,17 @@ import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCa
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
-import AuthModal from "../components/AuthModal";
 import ProfileImage from "../components/ProfileImage";
-import ExamStartModal from "../components/ExamStartModal";
 import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
+import { useOneSignal } from "../hooks/useOneSignal";
+
+// Code-split heavy interactive modals & components via next/dynamic
+const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { ssr: false });
+const AuthModal = dynamic(() => import("../components/AuthModal"), { ssr: false });
+const ExamStartModal = dynamic(() => import("../components/ExamStartModal"), { ssr: false });
+const IntroOffer = dynamic(() => import("../components/intro-offer"), { ssr: false });
+const PushPermissionModal = dynamic(() => import("../components/PushPermissionModal"), { ssr: false });
 
 // Type definition for routine items
 interface RoutineItem {
@@ -607,6 +613,33 @@ export default function Home() {
       setSelectedPurchasePkg,
     }
   );
+
+  // OneSignal Native & Web Push Notification Hook
+  const {
+    showSoftPrompt,
+    triggerContextualSoftPrompt,
+    handleAcceptSoftPrompt,
+    handleDismissSoftPrompt,
+    handleUserLogout: handleOneSignalLogout,
+  } = useOneSignal({
+    currentUserId: currentUser?.id || null,
+    userRole: currentUser?.role || "user",
+    userEmail: currentUser?.email,
+    onDeepLink: (data) => {
+      if (data?.type === "live_exam" && data?.targetId) {
+        const targetPaper = examPapers.find((p) => p.id === data.targetId);
+        if (targetPaper) {
+          handleOpenTakeExam(targetPaper);
+        } else {
+          setCurrentScreen("all-live-exams");
+        }
+      } else if (data?.type === "courses" || data?.type === "course") {
+        setCurrentScreen("courses");
+      } else if (data?.type === "routine") {
+        setCurrentScreen("routine");
+      }
+    },
+  });
 
   // Settings
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
@@ -1373,6 +1406,9 @@ export default function Home() {
       timeTakenSecs
     });
 
+    // Contextually prompt for push notifications upon completing an exam (Store compliant)
+    triggerContextualSoftPrompt();
+
     // Save to test history log
     const newLog: TakenTest = {
       id: "exam_" + Date.now(),
@@ -1790,6 +1826,7 @@ export default function Home() {
   // Sign Out Handler
   const handleSignOut = async () => {
     try {
+      await handleOneSignalLogout();
       const supabase = getSupabase();
       if (supabase) {
         await supabase.auth.signOut();
@@ -7905,6 +7942,16 @@ export default function Home() {
             });
             if (soundEnabled) quizAudio.playSuccess();
           }}
+        />
+
+        {/* Intro Special Offer Popup Modal */}
+        <IntroOffer onAction={() => setCurrentScreen("all-live-exams")} />
+
+        {/* Soft-Prompt Push Notification Modal */}
+        <PushPermissionModal
+          isOpen={showSoftPrompt}
+          onAccept={handleAcceptSoftPrompt}
+          onDismiss={handleDismissSoftPrompt}
         />
 
       </div>
