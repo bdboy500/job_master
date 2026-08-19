@@ -99,6 +99,11 @@ export function canManageLeaderboard(userOrRole?: AdminStaffUser | AdminRole | s
   return role === "admin" || role === "supervisor";
 }
 
+export function canManageNotifications(userOrRole?: AdminStaffUser | AdminRole | string | null): boolean {
+  const role = resolveRole(userOrRole);
+  return role === "admin" || role === "supervisor";
+}
+
 export function canManageQuestions(userOrRole?: AdminStaffUser | AdminRole | string | null): boolean {
   const role = resolveRole(userOrRole);
   // Admin, Supervisor, and Editor can manage questions

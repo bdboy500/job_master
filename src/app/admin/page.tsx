@@ -115,6 +115,7 @@ import {
   canManageCourses,
   canManageOffers,
   canManageLeaderboard,
+  canManageNotifications,
   canManageQuestions,
   getRoleLabelBangla,
   getStatusLabelBangla,
@@ -130,6 +131,7 @@ import {
   deleteStaffAccount,
   clearAdminSession
 } from "../../lib/admin_auth";
+import AdminPushNotificationTab from "@/src/components/AdminPushNotificationTab";
 
 // Interfaces for local state types
 function renderPrepIcon(iconName?: string, className = "w-5 h-5 stroke-[2.2px]") {
@@ -417,7 +419,7 @@ export default function AdminPage() {
   const [newStaffRole, setNewStaffRole] = useState<AdminRole>("editor");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard" | "staff">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard" | "notifications" | "staff">("questions");
 
   // Leaderboard Admin Management State
   const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
@@ -3167,6 +3169,20 @@ export default function AdminPage() {
               </button>
             )}
 
+            {canManageNotifications(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("notifications")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "notifications"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Bell className={`w-4 h-4 ${activeTab === "notifications" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>পুশ নোটিফিকেশন</span>
+              </button>
+            )}
+
             {canManageStaff(currentStaffSession) && (
               <button
                 onClick={() => setActiveTab("staff")}
@@ -3338,7 +3354,22 @@ export default function AdminPage() {
               </button>
             )}
 
-            {/* Tab Button 10: Staff & RBAC Management */}
+            {/* Tab Button 10: Push Notifications Dispatcher */}
+            {canManageNotifications(currentStaffSession) && (
+              <button
+                onClick={() => setActiveTab("notifications")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "notifications"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Bell className="w-4 h-4 text-[#FF6A00]" />
+                <span>পুশ নোটিফিকেশন হাব</span>
+              </button>
+            )}
+
+            {/* Tab Button 11: Staff & RBAC Management */}
             {canManageStaff(currentStaffSession) && (
               <div className="pt-2 mt-2 border-t border-slate-100">
                 <button
@@ -7375,6 +7406,16 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
 
               </div>
             </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW K: PUSH NOTIFICATIONS BROADCAST HUB                  */}
+          {/* ========================================================= */}
+          {activeTab === "notifications" && canManageNotifications(currentStaffSession) && (
+            <AdminPushNotificationTab
+              examPapers={examPapers}
+              triggerNotification={triggerNotification}
+            />
           )}
 
         </main>
