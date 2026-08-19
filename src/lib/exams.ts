@@ -63,11 +63,7 @@ export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
 export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive" {
   const now = new Date();
 
-  // 1. Explicit archive check
-  const s = (paper.status || "").toLowerCase();
-  if (s === "archive" || s === "archived" || s === "completed") return "Archive";
-
-  // 2. If startDateTime and endDateTime exist, strictly compare with now
+  // 1. If startDateTime and endDateTime exist, strictly compare with now
   if (paper.startDateTime && paper.endDateTime) {
     const start = new Date(paper.startDateTime);
     const end = new Date(paper.endDateTime);
@@ -83,7 +79,7 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // 3. If endDateTime alone exists
+  // 2. If endDateTime alone exists
   if (paper.endDateTime) {
     const end = new Date(paper.endDateTime);
     if (!isNaN(end.getTime())) {
@@ -99,7 +95,7 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // 4. If startDateTime alone exists
+  // 3. If startDateTime alone exists
   if (paper.startDateTime) {
     const start = new Date(paper.startDateTime);
     if (!isNaN(start.getTime())) {
@@ -108,10 +104,7 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // 5. If status is explicitly upcoming
-  if (s === "upcoming") return "Upcoming";
-
-  // 6. Check examDate string if present (e.g. "Mon, Aug 3, 2026")
+  // 4. Check examDate string if present (e.g. "Mon, Aug 3, 2026")
   if (paper.examDate && paper.examDate !== "Today") {
     // If date string contains a range or date tag, clean it first
     const cleanDateStr = paper.examDate.replace(/\[.*\]/, "").trim();
@@ -133,10 +126,11 @@ export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive"
     }
   }
 
-  // 7. If status is explicitly live
-  if (s === "live") {
-    return "Live";
-  }
+  // 5. Fallback on explicit status string
+  const s = (paper.status || "").toLowerCase();
+  if (s === "archive" || s === "archived" || s === "completed") return "Archive";
+  if (s === "upcoming") return "Upcoming";
+  if (s === "live") return "Live";
 
   return "Live";
 }
@@ -153,9 +147,9 @@ export const DEFAULT_EXAM_PAPERS: ExamPaper[] = [
     totalDurationSeconds: 20 * 36,
     totalMarks: 20,
     topic: '"Award Mania: Season - 20" এর জন্য প্রযোজ্য ও সাম্প্রতিক বিষয়াবলী',
-    examDate: "Mon, Aug 3, 2026",
+    examDate: "Live Now",
     startDateTime: "2026-08-01T00:00",
-    endDateTime: "2026-08-15T23:59",
+    endDateTime: "2026-08-31T23:59",
     status: "Live",
     questions: QUIZ_QUESTIONS.slice(0, 20)
   },
@@ -170,11 +164,28 @@ export const DEFAULT_EXAM_PAPERS: ExamPaper[] = [
     totalDurationSeconds: 10 * 36,
     totalMarks: 10,
     topic: "মুক্তিযুদ্ধ, মুজিবনগর সরকার ও সাম্প্রতিক আন্তর্জাতিক ঘটনাপ্রবাহ",
-    examDate: "Mon, Aug 3, 2026",
-    startDateTime: "2026-08-01T00:00",
-    endDateTime: "2026-08-10T23:59",
+    examDate: "Live Now",
+    startDateTime: "2026-08-15T00:00",
+    endDateTime: "2026-08-25T23:59",
     status: "Live",
     questions: QUIZ_QUESTIONS.filter(q => q.subject === "Bangladesh Affairs" || q.subject === "International Affairs").slice(0, 10)
+  },
+  {
+    id: "exam-upcoming-01",
+    title: "আসন্ন স্পেশাল বিষয়ভিত্তিক মডেল টেস্ট: পদার্থ ও রসায়ন",
+    course: "bcs",
+    examType: "subject",
+    subject: "Physics",
+    questionCount: 15,
+    timePerQuestionSeconds: 36,
+    totalDurationSeconds: 15 * 36,
+    totalMarks: 15,
+    topic: "পদার্থবিজ্ঞান, রসায়ন ও জীববিজ্ঞানের গুরুত্বপূর্ণ প্রশ্নাবলী",
+    examDate: "Tue, Sep 1, 2026",
+    startDateTime: "2026-09-01T09:00",
+    endDateTime: "2026-09-07T23:59",
+    status: "Upcoming",
+    questions: QUIZ_QUESTIONS.slice(10, 25)
   },
   {
     id: "exam-bank-weekly-01",
@@ -453,10 +464,8 @@ export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> 
 export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
   invalidateExamPapersCache();
   
-  // Dynamically resolve actual status based on dates unless explicitly marked Archive
-  const computedStatus = paper.status === "Archive" || (paper.status as string).toLowerCase() === "archived"
-    ? "Archive"
-    : getExamStatus(paper);
+  // Dynamically resolve actual status based on dates
+  const computedStatus = getExamStatus(paper);
 
   const paperWithTimestamps: ExamPaper = {
     ...paper,
