@@ -80,18 +80,32 @@
   ],
   "screenshots": [
     {
-      "src": "/api/icons/screenshot-mobile.png",
-      "sizes": "540x960",
+      "src": "/api/icons/screenshot-1.png",
+      "sizes": "540x1200",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Job Master Mobile Dashboard"
+      "label": "Job Master Home Dashboard"
     },
     {
-      "src": "/api/icons/screenshot-desktop.png",
-      "sizes": "1280x720",
+      "src": "/api/icons/screenshot-2.png",
+      "sizes": "540x1200",
       "type": "image/png",
-      "form_factor": "wide",
-      "label": "Job Master Desktop Exam Portal"
+      "form_factor": "narrow",
+      "label": "Job Master Live Exams List"
+    },
+    {
+      "src": "/api/icons/screenshot-3.png",
+      "sizes": "540x1200",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Job Master BCS Course Details"
+    },
+    {
+      "src": "/api/icons/screenshot-4.png",
+      "sizes": "540x1200",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Job Master Live Model Test Exam"
     }
   ],
   "shortcuts": [
