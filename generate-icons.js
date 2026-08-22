@@ -126,46 +126,36 @@ const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512
 `;
 
 async function buildAllIcons() {
-  console.log('Generating crisp icons...');
+  console.log('Generating crisp multi-resolution icons...');
   fs.writeFileSync('public/icon.svg', svgContent.trim());
 
   const svgBuffer = Buffer.from(svgContent);
 
-  // 1. icon-512.png (512x512)
-  const img512 = await sharp(svgBuffer)
-    .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png({ compressionLevel: 9, adaptiveFiltering: true, quality: 100 })
-    .toBuffer();
-  fs.writeFileSync('public/icon-512.png', img512);
-  fs.writeFileSync('public/icon.png', img512);
-  console.log('Created icon-512.png and icon.png');
+  const iconSizes = [
+    { name: 'launchericon-48x48.png', size: 48 },
+    { name: 'launchericon-72x72.png', size: 72 },
+    { name: 'launchericon-96x96.png', size: 96 },
+    { name: 'launchericon-144x144.png', size: 144 },
+    { name: 'launchericon-192x192.png', size: 192 },
+    { name: 'launchericon-512x512.png', size: 512 },
+    { name: 'icon-192.png', size: 192 },
+    { name: 'icon-512.png', size: 512 },
+    { name: 'icon.png', size: 512 },
+    { name: 'apple-icon.png', size: 180 },
+    { name: 'favicon.png', size: 64 },
+    { name: 'favicon.ico', size: 64 },
+  ];
 
-  // 2. icon-192.png (192x192)
-  const img192 = await sharp(svgBuffer)
-    .resize(192, 192, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png({ compressionLevel: 9, adaptiveFiltering: true, quality: 100 })
-    .toBuffer();
-  fs.writeFileSync('public/icon-192.png', img192);
-  console.log('Created icon-192.png');
+  for (const item of iconSizes) {
+    const buffer = await sharp(svgBuffer)
+      .resize(item.size, item.size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png({ compressionLevel: 9, adaptiveFiltering: true, quality: 100 })
+      .toBuffer();
+    fs.writeFileSync(path.join('public', item.name), buffer);
+    console.log(`Generated public/${item.name} (${item.size}x${item.size})`);
+  }
 
-  // 3. apple-icon.png (180x180)
-  const imgApple = await sharp(svgBuffer)
-    .resize(180, 180, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png({ compressionLevel: 9, adaptiveFiltering: true, quality: 100 })
-    .toBuffer();
-  fs.writeFileSync('public/apple-icon.png', imgApple);
-  console.log('Created apple-icon.png');
-
-  // 4. favicon.png and favicon.ico (64x64)
-  const imgFav = await sharp(svgBuffer)
-    .resize(64, 64, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png({ compressionLevel: 9, adaptiveFiltering: true, quality: 100 })
-    .toBuffer();
-  fs.writeFileSync('public/favicon.png', imgFav);
-  fs.writeFileSync('public/favicon.ico', imgFav);
-  console.log('Created favicon.png and favicon.ico');
-
-  console.log('All icons generated and validated successfully!');
+  console.log('All launcher and PWA icons generated and validated successfully!');
 }
 
 buildAllIcons().catch(err => {
