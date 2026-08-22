@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/src/lib/supabase";
+import { DEFAULT_APP_SETTINGS, DEFAULT_POPUP_NOTIFICATION } from "@/src/lib/app_settings";
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_settings_v2";
 
@@ -14,7 +15,15 @@ export async function GET() {
         .maybeSingle();
 
       if (!error && data && data.value) {
-        return NextResponse.json({ settings: data.value });
+        const merged = {
+          ...DEFAULT_APP_SETTINGS,
+          ...data.value,
+          popupNotification: {
+            ...DEFAULT_POPUP_NOTIFICATION,
+            ...(data.value.popupNotification || {})
+          }
+        };
+        return NextResponse.json({ settings: merged });
       }
     }
 
@@ -23,7 +32,15 @@ export async function GET() {
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data.ourCoursesHomeLimit === "number") {
-        return NextResponse.json({ settings: data });
+        const merged = {
+          ...DEFAULT_APP_SETTINGS,
+          ...data,
+          popupNotification: {
+            ...DEFAULT_POPUP_NOTIFICATION,
+            ...(data.popupNotification || {})
+          }
+        };
+        return NextResponse.json({ settings: merged });
       }
     }
   } catch (e) {
@@ -31,12 +48,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    settings: {
-      ourCoursesHomeLimit: 5,
-      prepHubHomeLimit: 4,
-      proSectionActive: true,
-      proSectionHomeLimit: 4
-    }
+    settings: DEFAULT_APP_SETTINGS
   });
 }
 
@@ -47,7 +59,19 @@ export async function POST(req: NextRequest) {
       ourCoursesHomeLimit: Math.min(12, Math.max(1, Number(body.ourCoursesHomeLimit) || 5)),
       prepHubHomeLimit: Math.min(12, Math.max(1, Number(body.prepHubHomeLimit) || 4)),
       proSectionActive: body.proSectionActive !== false,
-      proSectionHomeLimit: Math.min(12, Math.max(1, Number(body.proSectionHomeLimit) || 4))
+      proSectionHomeLimit: Math.min(12, Math.max(1, Number(body.proSectionHomeLimit) || 4)),
+      popupNotification: {
+        enabled: body.popupNotification?.enabled !== false,
+        badgeText: body.popupNotification?.badgeText || DEFAULT_POPUP_NOTIFICATION.badgeText,
+        title: body.popupNotification?.title || DEFAULT_POPUP_NOTIFICATION.title,
+        description: body.popupNotification?.description || DEFAULT_POPUP_NOTIFICATION.description,
+        perk1: body.popupNotification?.perk1 || DEFAULT_POPUP_NOTIFICATION.perk1,
+        perk2: body.popupNotification?.perk2 || DEFAULT_POPUP_NOTIFICATION.perk2,
+        buttonText: body.popupNotification?.buttonText || DEFAULT_POPUP_NOTIFICATION.buttonText,
+        actionType: body.popupNotification?.actionType || DEFAULT_POPUP_NOTIFICATION.actionType,
+        customUrl: body.popupNotification?.customUrl || "",
+        showOncePerDay: body.popupNotification?.showOncePerDay !== false
+      }
     };
 
     const supabase = getSupabase();

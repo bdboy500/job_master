@@ -9,6 +9,9 @@ export interface LeaderboardUser {
   week_score: number;
   month_score: number;
   all_time_score: number;
+  daily_cycle_key?: string; // e.g. "2026-08-22"
+  weekly_cycle_key?: string; // e.g. "2026-08-21" (Friday start)
+  monthly_cycle_key?: string; // e.g. "2026-08"
   updated_at?: string;
 }
 
@@ -22,6 +25,63 @@ export interface QuizScoreRecord {
   created_at: string; // ISO string timestamp
 }
 
+// Helper to get Date object forced to Bangladesh Time (Asia/Dhaka, UTC+6)
+export function getBangladeshDate(dateInput?: string | Date): Date {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const bdStr = d.toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
+  return new Date(bdStr);
+}
+
+// Daily cycle key in BD time (YYYY-MM-DD) - Resets daily at 12:00 AM midnight
+export function getBDDailyCycleKey(dateInput?: string | Date): string {
+  const d = getBangladeshDate(dateInput);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Weekly cycle start (Friday 00:00:00 BD time) - Resets every Friday at 12:00 AM midnight
+export function getBDWeekCycleStart(dateInput?: string | Date): Date {
+  const d = getBangladeshDate(dateInput);
+  // Day of week in JS: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  const day = d.getDay();
+  // Days elapsed since the most recent Friday (where Friday = 0 days ago)
+  const daysSinceFriday = day >= 5 ? day - 5 : day + 2;
+  const friday = new Date(d);
+  friday.setDate(d.getDate() - daysSinceFriday);
+  friday.setHours(0, 0, 0, 0);
+  return friday;
+}
+
+export function getBDWeeklyCycleKey(dateInput?: string | Date): string {
+  const friday = getBDWeekCycleStart(dateInput);
+  return getBDDailyCycleKey(friday);
+}
+
+// Monthly cycle key in BD time (YYYY-MM) - Resets on the last day of month at 12:00 AM midnight
+export function getBDMonthlyCycleKey(dateInput?: string | Date): string {
+  const d = getBangladeshDate(dateInput);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+// 1. Is Today in BD time (Resets daily at 12:00 AM midnight)
+export function isToday(dateStr: string): boolean {
+  return getBDDailyCycleKey(dateStr) === getBDDailyCycleKey();
+}
+
+// 2. Is This Week in BD time (Resets every Friday at 12:00 AM midnight)
+export function isThisWeek(dateStr: string): boolean {
+  return getBDWeeklyCycleKey(dateStr) === getBDWeeklyCycleKey();
+}
+
+// 3. Is This Month in BD time (Resets on the last day of the month at 12:00 AM midnight)
+export function isThisMonth(dateStr: string): boolean {
+  return getBDMonthlyCycleKey(dateStr) === getBDMonthlyCycleKey();
+}
+
 export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
   {
     id: "user_top_1",
@@ -32,6 +92,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 145,
     month_score: 450,
     all_time_score: 820,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -43,6 +106,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 138,
     month_score: 420,
     all_time_score: 790,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -54,6 +120,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 130,
     month_score: 395,
     all_time_score: 740,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -65,6 +134,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 110,
     month_score: 320,
     all_time_score: 610,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -76,6 +148,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 98,
     month_score: 280,
     all_time_score: 540,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -87,6 +162,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 85,
     month_score: 250,
     all_time_score: 490,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -98,6 +176,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 74,
     month_score: 210,
     all_time_score: 410,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -109,6 +190,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 65,
     month_score: 180,
     all_time_score: 360,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -120,6 +204,9 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 55,
     month_score: 150,
     all_time_score: 310,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   },
   {
@@ -131,43 +218,12 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
     week_score: 42,
     month_score: 120,
     all_time_score: 250,
+    daily_cycle_key: getBDDailyCycleKey(),
+    weekly_cycle_key: getBDWeeklyCycleKey(),
+    monthly_cycle_key: getBDMonthlyCycleKey(),
     updated_at: new Date().toISOString()
   }
 ];
-
-// Helper to get Date object forced to Bangladesh Time (Asia/Dhaka, UTC+6)
-export function getBangladeshDate(dateInput?: string | Date): Date {
-  const d = dateInput ? new Date(dateInput) : new Date();
-  const bdStr = d.toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
-  return new Date(bdStr);
-}
-
-export function isToday(dateStr: string): boolean {
-  const d = getBangladeshDate(dateStr);
-  const now = getBangladeshDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
-
-export function isThisWeek(dateStr: string): boolean {
-  const d = getBangladeshDate(dateStr);
-  const now = getBangladeshDate();
-  const diffTime = Math.abs(now.getTime() - d.getTime());
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-  return diffDays <= 7;
-}
-
-export function isThisMonth(dateStr: string): boolean {
-  const d = getBangladeshDate(dateStr);
-  const now = getBangladeshDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth()
-  );
-}
 
 // Client helper API calls
 export async function fetchLeaderboard(): Promise<LeaderboardUser[]> {

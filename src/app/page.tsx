@@ -5854,6 +5854,27 @@ export default function Home() {
               <span>Settings</span>
             </button>
 
+            {/* 6. Install Job Master App */}
+            <button
+              onClick={() => {
+                setDrawerOpen(false);
+                if (soundEnabled) quizAudio.playClick();
+                // Trigger PWA install
+                const installBtn = document.getElementById("bottom-banner-install-btn");
+                if (installBtn) {
+                  installBtn.click();
+                } else {
+                  // Dispatch custom event to trigger guide modal
+                  window.dispatchEvent(new CustomEvent("trigger-pwa-install"));
+                }
+              }}
+              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] font-black text-base sm:text-lg border border-orange-200/60"
+              id="drawer-item-install-app"
+            >
+              <Download className="w-6 h-6 text-[#FF6A00]" />
+              <span>Install Job Master App</span>
+            </button>
+
             {/* 7. Contact Us */}
             <button
               onClick={() => {
@@ -7948,8 +7969,27 @@ export default function Home() {
           }}
         />
 
+        {/* Bottom PWA Install Banner */}
+        <BottomInstallBanner />
+
         {/* Intro Special Offer Popup Modal */}
-        <IntroOffer onAction={() => setCurrentScreen("all-live-exams")} />
+        <IntroOffer 
+          onAction={(actionType, customUrl) => {
+            if (actionType === "packages") {
+              setCurrentScreen("packages");
+            } else if (actionType === "prep_hub") {
+              setCurrentScreen("prep-all-subjects");
+            } else if (actionType === "courses") {
+              setCurrentScreen("courses");
+            } else if (actionType === "leaderboard") {
+              setCurrentScreen("rankings");
+            } else if (actionType === "custom_url" && customUrl) {
+              window.location.href = customUrl;
+            } else {
+              setCurrentScreen("all-live-exams");
+            }
+          }} 
+        />
 
         {/* Soft-Prompt Push Notification Modal */}
         <PushPermissionModal
