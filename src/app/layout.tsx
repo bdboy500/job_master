@@ -7,12 +7,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/favicon.ico" }
+      { url: "/api/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/api/icons/favicon.ico" }
     ],
-    shortcut: "/favicon.ico",
-    apple: "/apple-icon.png",
+    shortcut: "/api/icons/favicon.ico",
+    apple: "/api/icons/apple-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -40,9 +39,8 @@ export default function RootLayout({
     <html lang="bn">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/api/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/api/icons/apple-icon.png" />
         <meta name="theme-color" content="#FF6A00" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
