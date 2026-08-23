@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, createContext, useContext } from "react";
-import { Download, X, Check } from "lucide-react";
+import { Download, X, Check, Info } from "lucide-react";
 
 interface PwaContextType {
   isStandalone: boolean;
@@ -28,6 +28,32 @@ export const usePwa = () => useContext(PwaContext);
 // Global installer function callable anywhere
 export const triggerNativePwaInstall = async () => {
   if (typeof window !== "undefined") {
+    // 1. Check if running inside iframe (e.g., Preview window)
+    // Chrome strictly disables beforeinstallprompt in iframes by security policy
+    try {
+      if (window.self !== window.top) {
+        window.open(window.location.href, "_blank");
+        return;
+      }
+    } catch {
+      window.open(window.location.href, "_blank");
+      return;
+    }
+
+    // 2. Check if already installed
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true;
+    if (isStandalone) {
+      window.dispatchEvent(
+        new CustomEvent("pwa-toast-notify", {
+          detail: { message: "Job Master অ্যাপটি ইতিমধ্যে আপনার ফোনে ইনস্টল রয়েছে।" },
+        })
+      );
+      return;
+    }
+
+    // 3. Try to prompt native OS install
     const promptEvent = (window as any).__pwaInstallPrompt;
     if (promptEvent && typeof promptEvent.prompt === "function") {
       try {
@@ -40,6 +66,16 @@ export const triggerNativePwaInstall = async () => {
       } catch (err) {
         console.warn("Direct PWA install prompt error:", err);
       }
+    } else {
+      // Prompt not ready or in browser without beforeinstallprompt support
+      window.dispatchEvent(
+        new CustomEvent("pwa-toast-notify", {
+          detail: {
+            message:
+              "ইনস্টল করতে ব্রাউজারের ৩-ডট (⋮) মেনু থেকে 'Install app' বা 'Add to Home screen' চাপুন।",
+          },
+        })
+      );
     }
   }
 };
@@ -50,6 +86,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [isIos, setIsIos] = useState<boolean>(false);
   const [bannerDismissed, setBannerDismissed] = useState<boolean>(false);
   const [installedSuccess, setInstalledSuccess] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // 1. Register Service Worker
@@ -84,51 +121,45 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       if (isDismissed) {
         setBannerDismissed(true);
       }
+
+      // 5. Toast event listener
+      const handleToast = (e: any) => {
+        if (e.detail?.message) {
+          setToastMessage(e.detail.message);
+          setTimeout(() => setToastMessage(null), 4000);
+        }
+      };
+      window.addEventListener("pwa-toast-notify", handleToast);
+
+      // 6. Listen for beforeinstallprompt event
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        (window as any).__pwaInstallPrompt = e;
+        setDeferredPrompt(e);
+      };
+
+      // 7. Listen for appinstalled event
+      const handleAppInstalled = () => {
+        setIsStandalone(true);
+        setDeferredPrompt(null);
+        (window as any).__pwaInstallPrompt = null;
+        setInstalledSuccess(true);
+        setTimeout(() => setInstalledSuccess(false), 5000);
+      };
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.addEventListener("appinstalled", handleAppInstalled);
+
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+        window.removeEventListener("appinstalled", handleAppInstalled);
+        window.removeEventListener("pwa-toast-notify", handleToast);
+      };
     }
-
-    // 5. Listen for beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      (window as any).__pwaInstallPrompt = e;
-      setDeferredPrompt(e);
-    };
-
-    // 6. Listen for appinstalled event
-    const handleAppInstalled = () => {
-      setIsStandalone(true);
-      setDeferredPrompt(null);
-      (window as any).__pwaInstallPrompt = null;
-      setInstalledSuccess(true);
-      setTimeout(() => setInstalledSuccess(false), 5000);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleAppInstalled);
-    };
   }, []);
 
   const triggerInstall = async () => {
-    const promptEvent = deferredPrompt || (typeof window !== "undefined" ? (window as any).__pwaInstallPrompt : null);
-    if (promptEvent && typeof promptEvent.prompt === "function") {
-      try {
-        await promptEvent.prompt();
-        const choice = await promptEvent.userChoice;
-        if (choice && choice.outcome === "accepted") {
-          setIsStandalone(true);
-          setInstalledSuccess(true);
-        }
-        setDeferredPrompt(null);
-        if (typeof window !== "undefined") {
-          (window as any).__pwaInstallPrompt = null;
-        }
-      } catch (err) {
-        console.warn("Deferred install prompt error:", err);
-      }
-    }
+    await triggerNativePwaInstall();
   };
 
   const dismissBanner = () => {
@@ -152,6 +183,14 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
       <InstallPwaPopup />
+      {toastMessage && (
+        <div className="fixed top-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-md z-[99999] bg-slate-900/95 text-white border border-slate-700 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-bold animate-fade-in backdrop-blur-md">
+          <div className="w-6 h-6 bg-[#FF6A00]/20 text-[#FF6A00] rounded-lg flex items-center justify-center shrink-0">
+            <Info className="w-4 h-4" />
+          </div>
+          <span className="leading-snug">{toastMessage}</span>
+        </div>
+      )}
     </PwaContext.Provider>
   );
 }
