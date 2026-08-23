@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, createContext, useContext } from "react";
 import { Download, X, Check, Info } from "lucide-react";
+import JobMasterLogo from "./JobMasterLogo";
 
 interface PwaContextType {
   isStandalone: boolean;
@@ -213,13 +214,7 @@ export function BottomInstallBanner() {
         
         {/* Left: App Icon & Info */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-slate-700 bg-[#FAF9F6] shadow-sm">
-            <img 
-              src="/icon-192.png" 
-              alt="Job Master Logo" 
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <JobMasterLogo size={40} className="w-10 h-10 shrink-0" />
           <div className="min-w-0 leading-tight">
             <h4 className="font-extrabold text-xs text-white truncate tracking-tight flex items-center gap-1">
               Install Job Master App

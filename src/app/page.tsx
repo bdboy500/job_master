@@ -81,6 +81,7 @@ import ProfileImage from "../components/ProfileImage";
 import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { useOneSignal } from "../hooks/useOneSignal";
+import JobMasterLogo from "../components/JobMasterLogo";
 
 // Code-split heavy interactive modals & components via next/dynamic
 const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { ssr: false });
@@ -2432,7 +2433,7 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer shadow-2xs"
                   >
                     সকল কোর্স দেখুন
                   </button>
@@ -2518,7 +2519,7 @@ export default function Home() {
                       setCurrentScreen("prep-all-subjects");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer shadow-2xs"
                   >
                     সকল বিষয় দেখুন
                   </button>
@@ -2558,9 +2559,17 @@ export default function Home() {
                     <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
                       Pro Feature
                     </h3>
-                    <span className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60">
-                      Pro Features
-                    </span>
+                    <button
+                      onClick={() => {
+                        setPreviousScreen("home");
+                        setCurrentScreen("packages");
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60 hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                    >
+                      <span>Pro Features</span>
+                      <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -5861,11 +5870,12 @@ export default function Home() {
                 if (soundEnabled) quizAudio.playClick();
                 triggerNativePwaInstall();
               }}
-              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] font-black text-base sm:text-lg border border-orange-200/60"
+              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] font-black text-base sm:text-lg border border-orange-200/60 cursor-pointer"
               id="drawer-item-install-app"
             >
-              <Download className="w-6 h-6 text-[#FF6A00]" />
-              <span>Install Job Master App</span>
+              <JobMasterLogo size={28} className="w-7 h-7 shrink-0 rounded-lg shadow-2xs border border-orange-200" />
+              <span className="flex-1 truncate">Install Job Master App</span>
+              <Download className="w-5 h-5 text-[#FF6A00] shrink-0" />
             </button>
 
             {/* 7. Contact Us */}
