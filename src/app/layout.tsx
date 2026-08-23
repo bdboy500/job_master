@@ -39,17 +39,37 @@ export default function RootLayout({
     <html lang="bn">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/api/icons/icon-192.png" />
-        <link rel="apple-touch-icon" href="/api/icons/apple-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
         <meta name="theme-color" content="#FF6A00" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.addEventListener('beforeinstallprompt', function(e) {
-                e.preventDefault();
-                window.__pwaInstallPrompt = e;
-              });
+              if (typeof window !== 'undefined') {
+                // 1. Capture beforeinstallprompt immediately
+                window.addEventListener('beforeinstallprompt', function(e) {
+                  e.preventDefault();
+                  window.__pwaInstallPrompt = e;
+                  window.dispatchEvent(new CustomEvent('pwa-prompt-available', { detail: e }));
+                });
+
+                // 2. Register Service Worker on load
+                if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                      .then(function(reg) {
+                        // Check for updates
+                        reg.update();
+                      })
+                      .catch(function(err) {
+                        console.log('SW registration note:', err);
+                      });
+                  });
+                }
+              }
             `,
           }}
         />
