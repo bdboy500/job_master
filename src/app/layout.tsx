@@ -43,6 +43,16 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/api/icons/apple-icon.png" />
         <meta name="theme-color" content="#FF6A00" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+              });
+            `,
+          }}
+        />
       </head>
       <body>
         <ClientProviders>{children}</ClientProviders>

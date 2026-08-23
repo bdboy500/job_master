@@ -76,7 +76,7 @@ import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
-import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
+import { PwaProvider, BottomInstallBanner, InstallPwaPopup, triggerNativePwaInstall } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
 import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
@@ -5859,14 +5859,7 @@ export default function Home() {
               onClick={() => {
                 setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
-                // Trigger PWA install
-                const installBtn = document.getElementById("bottom-banner-install-btn");
-                if (installBtn) {
-                  installBtn.click();
-                } else {
-                  // Dispatch custom event to trigger guide modal
-                  window.dispatchEvent(new CustomEvent("trigger-pwa-install"));
-                }
+                triggerNativePwaInstall();
               }}
               className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] font-black text-base sm:text-lg border border-orange-200/60"
               id="drawer-item-install-app"

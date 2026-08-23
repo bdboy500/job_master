@@ -18,61 +18,61 @@
   ],
   "icons": [
     {
-      "src": "/api/icons/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/api/icons/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/api/icons/launchericon-48x48.png",
+      "src": "/launchericon-48x48.png",
       "sizes": "48x48",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/launchericon-72x72.png",
+      "src": "/launchericon-72x72.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/launchericon-96x96.png",
+      "src": "/launchericon-96x96.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/launchericon-144x144.png",
+      "src": "/launchericon-144x144.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/launchericon-192x192.png",
+      "src": "/launchericon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icons/launchericon-512x512.png",
+      "src": "/launchericon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
@@ -80,28 +80,28 @@
   ],
   "screenshots": [
     {
-      "src": "/api/icons/screenshot-1.png",
+      "src": "/screenshot-1.png",
       "sizes": "540x1200",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Job Master Home Dashboard"
     },
     {
-      "src": "/api/icons/screenshot-2.png",
+      "src": "/screenshot-2.png",
       "sizes": "540x1200",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Job Master Live Exams List"
     },
     {
-      "src": "/api/icons/screenshot-3.png",
+      "src": "/screenshot-3.png",
       "sizes": "540x1200",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Job Master BCS Course Details"
     },
     {
-      "src": "/api/icons/screenshot-4.png",
+      "src": "/screenshot-4.png",
       "sizes": "540x1200",
       "type": "image/png",
       "form_factor": "narrow",
@@ -116,7 +116,7 @@
       "url": "/?view=all-live-exams",
       "icons": [
         {
-          "src": "/api/icons/icon-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -129,7 +129,7 @@
       "url": "/?view=routine",
       "icons": [
         {
-          "src": "/api/icons/icon-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
