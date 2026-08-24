@@ -2,18 +2,12 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-// Delete extra screenshot images from public directory
+// Clean legacy artifacts if any
 const extraFilesToDelete = [
   'screenshot-1.png',
   'screenshot-2.png',
   'screenshot-3.png',
   'screenshot-4.png',
-  'launchericon-48x48.png',
-  'launchericon-72x72.png',
-  'launchericon-96x96.png',
-  'launchericon-144x144.png',
-  'launchericon-192x192.png',
-  'launchericon-512x512.png',
 ];
 
 extraFilesToDelete.forEach(file => {
@@ -150,6 +144,12 @@ async function generateAll() {
     { name: 'icon-512.png', size: 512 },
     { name: 'apple-icon.png', size: 180 },
     { name: 'favicon.ico', size: 64 },
+    { name: 'launchericon-48x48.png', size: 48 },
+    { name: 'launchericon-72x72.png', size: 72 },
+    { name: 'launchericon-96x96.png', size: 96 },
+    { name: 'launchericon-144x144.png', size: 144 },
+    { name: 'launchericon-192x192.png', size: 192 },
+    { name: 'launchericon-512x512.png', size: 512 },
   ];
 
   for (const t of targets) {
@@ -197,6 +197,8 @@ async function generateAll() {
   for (const t of targets) {
     base64Obj[t.name] = fs.readFileSync(path.join('public', t.name)).toString('base64');
   }
+  base64Obj['screenshot-wide.png'] = wideBuf.toString('base64');
+  base64Obj['screenshot-narrow.png'] = narrowBuf.toString('base64');
   base64Obj['icon.svg'] = svgBuffer.toString('base64');
 
   const tsContent = `export const ICON_BASE64: Record<string, string> = ${JSON.stringify(base64Obj, null, 2)};\n`;

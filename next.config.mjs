@@ -4,6 +4,42 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/icon-192.png',
+        destination: '/api/icons/icon-192.png',
+      },
+      {
+        source: '/icon-512.png',
+        destination: '/api/icons/icon-512.png',
+      },
+      {
+        source: '/apple-icon.png',
+        destination: '/api/icons/apple-icon.png',
+      },
+      {
+        source: '/favicon.ico',
+        destination: '/api/icons/favicon.ico',
+      },
+      {
+        source: '/icon.svg',
+        destination: '/api/icons/icon.svg',
+      },
+      {
+        source: '/launchericon-:size.png',
+        destination: '/api/icons/launchericon-:size.png',
+      },
+      {
+        source: '/screenshot-wide.png',
+        destination: '/api/icons/screenshot-wide.png',
+      },
+      {
+        source: '/screenshot-narrow.png',
+        destination: '/api/icons/screenshot-narrow.png',
+      },
+    ];
+  },
   async headers() {
     return [
       {
