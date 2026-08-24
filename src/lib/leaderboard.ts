@@ -190,20 +190,29 @@ export function isThisMonth(dateStr?: string): boolean {
   return scoreDate.getTime() >= cycleStart.getTime();
 }
 
-// Client helper API calls
-export async function fetchLeaderboard(): Promise<LeaderboardUser[]> {
+// Client helper API calls with in-memory TTL caching
+let clientLeaderboardCache: { users: LeaderboardUser[]; timestamp: number } | null = null;
+const CLIENT_CACHE_TTL_MS = 30000; // 30 seconds client-side cache
+
+export async function fetchLeaderboard(forceRefresh = false): Promise<LeaderboardUser[]> {
+  const now = Date.now();
+  if (!forceRefresh && clientLeaderboardCache && (now - clientLeaderboardCache.timestamp) < CLIENT_CACHE_TTL_MS) {
+    return clientLeaderboardCache.users;
+  }
+
   try {
     const res = await fetch("/api/leaderboard", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.users) && data.users.length > 0) {
+        clientLeaderboardCache = { users: data.users, timestamp: Date.now() };
         return data.users;
       }
     }
   } catch (e) {
     console.error("Failed to fetch leaderboard:", e);
   }
-  return INITIAL_LEADERBOARD_USERS;
+  return clientLeaderboardCache?.users || INITIAL_LEADERBOARD_USERS;
 }
 
 export async function submitLiveQuizScore(payload: {
@@ -213,18 +222,47 @@ export async function submitLiveQuizScore(payload: {
   avatarUrl?: string;
   score: number;
 }): Promise<LeaderboardUser[]> {
+  // Strategy 1 & 2: Smart Single-Record Upsert without creating endless duplicate rows
   try {
     const supabase = getSupabase();
     if (supabase && payload.userId && !payload.userId.startsWith("user_")) {
-      await supabase.from("quiz_scores").insert([
-        {
-          user_id: payload.userId,
-          score: payload.score,
-        },
-      ]);
+      // Check if user already has a score record in quiz_scores
+      const { data: existingRows } = await supabase
+        .from("quiz_scores")
+        .select("id, score")
+        .eq("user_id", payload.userId)
+        .order("created_at", { ascending: false });
+
+      if (existingRows && existingRows.length > 0) {
+        // Update existing primary record instead of inserting a new row
+        const primaryRow = existingRows[0];
+        const newScore = Math.max(Number(primaryRow.score) || 0, payload.score);
+        await supabase
+          .from("quiz_scores")
+          .update({
+            score: newScore,
+            created_at: new Date().toISOString()
+          })
+          .eq("id", primaryRow.id);
+
+        // If there were historical duplicate rows from previous runs, clean them up (Strategy 3)
+        if (existingRows.length > 1) {
+          const duplicateIds = existingRows.slice(1).map(r => r.id);
+          await supabase.from("quiz_scores").delete().in("id", duplicateIds);
+        }
+      } else {
+        // Insert initial single row
+        await supabase.from("quiz_scores").insert([
+          {
+            user_id: payload.userId,
+            score: payload.score,
+            created_at: new Date().toISOString()
+          },
+        ]);
+      }
     }
   } catch (err) {
-    console.warn("Supabase direct insert error into quiz_scores:", err);
+    console.warn("Supabase compact score update warning:", err);
   }
 
   try {
@@ -236,13 +274,14 @@ export async function submitLiveQuizScore(payload: {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.users)) {
+        clientLeaderboardCache = { users: data.users, timestamp: Date.now() };
         return data.users;
       }
     }
   } catch (e) {
     console.error("Failed to submit live quiz score:", e);
   }
-  return INITIAL_LEADERBOARD_USERS;
+  return clientLeaderboardCache?.users || INITIAL_LEADERBOARD_USERS;
 }
 
 export async function adminUpdateLeaderboardUser(payload: {

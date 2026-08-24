@@ -14,11 +14,20 @@ import {
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_leaderboard_v2";
 
-// In-memory cache for server persistence fallback
+// In-memory cache for server persistence & lightning-fast SWR caching (Strategy 4)
 let globalLeaderboardStore: LeaderboardUser[] = [...INITIAL_LEADERBOARD_USERS];
 let isStoreInitialized = false;
+let lastDbSyncTime = 0;
+const DB_SYNC_INTERVAL_MS = 45000; // 45s server cache TTL to prevent Supabase egress spam
 
-async function loadServerStore(): Promise<LeaderboardUser[]> {
+async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> {
+  const now = Date.now();
+
+  // If already initialized and within cache TTL, return instantly without hitting DB
+  if (!forceDbSync && isStoreInitialized && globalLeaderboardStore.length > 0 && (now - lastDbSyncTime < DB_SYNC_INTERVAL_MS)) {
+    return globalLeaderboardStore;
+  }
+
   let baseUsers: LeaderboardUser[] = [];
 
   if (isStoreInitialized && globalLeaderboardStore.length > 0) {
@@ -59,7 +68,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
     }
   }
 
-  // Synchronize with Supabase profiles and quiz_scores if available
+  // Strategy 1, 2 & 3: Synchronize with Supabase profiles and quiz_scores with Auto-Deduplication
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -69,10 +78,12 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
 
       const { data: quizScores } = await supabase
         .from("quiz_scores")
-        .select("user_id, score, created_at");
+        .select("id, user_id, score, created_at")
+        .order("created_at", { ascending: false });
 
-      // Aggregate quiz scores per user according to cycles
-      const userScoresAgg = new Map<string, { today: number; week: number; month: number; allTime: number }>();
+      // Aggregate quiz scores per user according to cycles and detect duplicates to clean
+      const userScoresAgg = new Map<string, { today: number; week: number; month: number; allTime: number; primaryId: string; duplicateIds: string[] }>();
+      
       if (Array.isArray(quizScores)) {
         for (const qs of quizScores) {
           const uid = qs.user_id;
@@ -81,13 +92,45 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
           const createdAt = qs.created_at || new Date().toISOString();
 
           if (!userScoresAgg.has(uid)) {
-            userScoresAgg.set(uid, { today: 0, week: 0, month: 0, allTime: 0 });
+            userScoresAgg.set(uid, { 
+              today: 0, 
+              week: 0, 
+              month: 0, 
+              allTime: 0,
+              primaryId: qs.id,
+              duplicateIds: []
+            });
+          } else {
+            // Found a duplicate row for this user! (Strategy 3: auto cleanup)
+            const agg = userScoresAgg.get(uid)!;
+            if (qs.id && qs.id !== agg.primaryId) {
+              agg.duplicateIds.push(qs.id);
+            }
           }
+
           const agg = userScoresAgg.get(uid)!;
-          agg.allTime += sc;
-          if (isBDToday(createdAt)) agg.today += sc;
-          if (isBDThisWeek(createdAt)) agg.week += sc;
-          if (isBDThisMonth(createdAt)) agg.month += sc;
+          agg.allTime = Math.max(agg.allTime, sc);
+          if (isBDToday(createdAt)) agg.today = Math.max(agg.today, sc);
+          if (isBDThisWeek(createdAt)) agg.week = Math.max(agg.week, sc);
+          if (isBDThisMonth(createdAt)) agg.month = Math.max(agg.month, sc);
+        }
+
+        // Background cleanup of duplicate IDs if found (keeps DB lean and compact)
+        const allDuplicateIds: string[] = [];
+        userScoresAgg.forEach((agg) => {
+          if (agg.duplicateIds.length > 0) {
+            allDuplicateIds.push(...agg.duplicateIds);
+          }
+        });
+
+        if (allDuplicateIds.length > 0) {
+          // Asynchronously prune redundant duplicates
+          void Promise.resolve(
+            supabase.from("quiz_scores").delete().in("id", allDuplicateIds.slice(0, 100))
+          ).then(
+            () => console.log(`[Auto-Clean] Pruned ${allDuplicateIds.length} duplicate quiz_scores rows`),
+            (err) => console.warn("Prune error:", err)
+          );
         }
       }
 
@@ -98,7 +141,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
           const pName = p.full_name || "শিক্ষার্থী";
           const pStudentId = p.student_id || `JM-${uid.substring(0, 6)}`;
           const pAvatar = (p as any).avatar_url || "";
-          const agg = userScoresAgg.get(uid) || { today: 0, week: 0, month: 0, allTime: 0 };
+          const agg = userScoresAgg.get(uid) || { today: 0, week: 0, month: 0, allTime: 0, primaryId: "", duplicateIds: [] };
 
           const existingIdx = baseUsers.findIndex(
             (u) => u.id === uid || (pStudentId && u.student_id === pStudentId) || u.name === pName
@@ -160,12 +203,14 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
   });
 
   globalLeaderboardStore = sanitizedUsers;
+  lastDbSyncTime = Date.now();
   return globalLeaderboardStore;
 }
 
 async function saveServerStore(users: LeaderboardUser[]) {
   globalLeaderboardStore = users;
   isStoreInitialized = true;
+  lastDbSyncTime = Date.now();
 
   try {
     const supabase = getSupabase();
@@ -186,13 +231,15 @@ async function saveServerStore(users: LeaderboardUser[]) {
   }
 }
 
-// GET /api/leaderboard
-export async function GET() {
-  const users = await loadServerStore();
+// GET /api/leaderboard - with 45s server cache
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const force = searchParams.get("force") === "true";
+  const users = await loadServerStore(force);
   return NextResponse.json({ users });
 }
 
-// POST /api/leaderboard - Submit Live Quiz score
+// POST /api/leaderboard - Submit Live Quiz score with Single-Row Upsert & Aggregation
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -202,7 +249,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const currentUsers = await loadServerStore();
+    const currentUsers = await loadServerStore(false);
     const existingIndex = currentUsers.findIndex(
       (u) => u.id === userId || (studentId && u.student_id === studentId) || u.name === userName
     );
@@ -239,11 +286,101 @@ export async function POST(req: NextRequest) {
       currentUsers.push(newUser);
     }
 
+    // Save in server store / app_config
     await saveServerStore(currentUsers);
+
+    // Strategy 1 & 2: Update Supabase quiz_scores as a compact single-row upsert
+    try {
+      const supabase = getSupabase();
+      if (supabase && userId && !userId.startsWith("user_")) {
+        const { data: existingRows } = await supabase
+          .from("quiz_scores")
+          .select("id, score")
+          .eq("user_id", userId);
+
+        if (existingRows && existingRows.length > 0) {
+          const primary = existingRows[0];
+          await supabase
+            .from("quiz_scores")
+            .update({ score: score, created_at: nowIso })
+            .eq("id", primary.id);
+
+          if (existingRows.length > 1) {
+            const dups = existingRows.slice(1).map(r => r.id);
+            await supabase.from("quiz_scores").delete().in("id", dups);
+          }
+        } else {
+          await supabase.from("quiz_scores").insert([
+            { user_id: userId, score: score, created_at: nowIso }
+          ]);
+        }
+      }
+    } catch (dbErr) {
+      console.warn("DB compact write notice:", dbErr);
+    }
+
     return NextResponse.json({ success: true, users: currentUsers });
   } catch (e) {
     console.error("POST /api/leaderboard error:", e);
     return NextResponse.json({ error: "Failed to submit score" }, { status: 500 });
+  }
+}
+
+// DELETE /api/leaderboard - Admin Trigger to Clean & Consolidate Database Scores (Strategy 3)
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    }
+
+    // Fetch all quiz_scores
+    const { data: allScores, error } = await supabase
+      .from("quiz_scores")
+      .select("id, user_id, score, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    let deletedCount = 0;
+    const userMap = new Map<string, string>(); // user_id -> primary row id
+    const duplicateIdsToDelete: string[] = [];
+
+    if (Array.isArray(allScores)) {
+      for (const row of allScores) {
+        if (!row.user_id) {
+          duplicateIdsToDelete.push(row.id);
+          continue;
+        }
+        if (!userMap.has(row.user_id)) {
+          userMap.set(row.user_id, row.id);
+        } else {
+          duplicateIdsToDelete.push(row.id);
+        }
+      }
+    }
+
+    if (duplicateIdsToDelete.length > 0) {
+      const batchSize = 100;
+      for (let i = 0; i < duplicateIdsToDelete.length; i += batchSize) {
+        const batch = duplicateIdsToDelete.slice(i, i + batchSize);
+        await supabase.from("quiz_scores").delete().in("id", batch);
+        deletedCount += batch.length;
+      }
+    }
+
+    // Reload and clean store
+    await loadServerStore(true);
+
+    return NextResponse.json({
+      success: true,
+      message: `ক্লিনআপ সম্পন্ন হয়েছে! ${deletedCount} টি অপ্রয়োজনীয় ডুপ্লিকেট রেকর্ড মুছে ফেলা হয়েছে এবং ১ ইউজার = ১ রেকর্ড বজায় রাখা হয়েছে।`,
+      deletedCount,
+      uniqueUsersCount: userMap.size
+    });
+  } catch (e: any) {
+    console.error("DELETE /api/leaderboard error:", e);
+    return NextResponse.json({ error: e.message || "Cleanup failed" }, { status: 500 });
   }
 }
 

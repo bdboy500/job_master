@@ -873,6 +873,7 @@ export default function AdminPage() {
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
+  const [isCleaningScores, setIsCleaningScores] = useState(false);
 
   // Offers state
   const [offers, setOffers] = useState<AdminOffer[]>([
@@ -2480,6 +2481,27 @@ export default function AdminPage() {
     setLoginIdentifier("");
     setLoginPassword("");
     triggerNotification("success", "সফলভাবে লগআউট করা হয়েছে।");
+  };
+
+  // Handle Clean & Optimize Quiz Scores in Database (Strategies 1-4)
+  const handleCleanQuizScores = async () => {
+    if (!confirm("আপনি কি Supabase এর কুইজ স্কোর টেবিল অপ্টিমাইজ ও অপ্রয়োজনীয় ডুপ্লিকেট রেকর্ড ক্লিন করতে চান? এতে ১ ইউজার = ১ রেকর্ড বজায় থাকবে এবং ডাটাবেজ হালকা ও দ্রুত থাকবে।")) return;
+    setIsCleaningScores(true);
+    try {
+      const res = await fetch("/api/leaderboard", { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        triggerNotification("success", data.message || "কুইজ স্কোর ডাটাবেজ সফলভাবে ক্লিন ও অপ্টিমাইজ করা হয়েছে!");
+        const freshUsers = await fetchLeaderboard(true);
+        setAdminLeaderboardUsers(freshUsers);
+      } else {
+        triggerNotification("error", data.error || "ক্লিনআপ সম্পন্ন হয়নি");
+      }
+    } catch (err: any) {
+      triggerNotification("error", "ক্লিনআপ রিকোয়েস্ট ব্যর্থ হয়েছে: " + err.message);
+    } finally {
+      setIsCleaningScores(false);
+    }
   };
 
   // Handle User Status Change (Ban/Unban toggle) with Supabase DB sync
@@ -5022,6 +5044,15 @@ export default function AdminPage() {
                       নিষিদ্ধ: {users.filter(u => u.status === "Banned").length}
                     </span>
                     <button
+                      onClick={handleCleanQuizScores}
+                      disabled={isCleaningScores}
+                      className="text-[10px] font-black bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50"
+                      title="ডুপ্লিকেট স্কোর মুছে ফেলে ১ ইউজার = ১ রেকর্ড অপ্টিমাইজ করুন"
+                    >
+                      <Sparkles className="w-3 h-3 text-emerald-600" />
+                      <span>{isCleaningScores ? "অপ্টিমাইজ হচ্ছে..." : "কুইজ স্কোর অপ্টিমাইজ"}</span>
+                    </button>
+                    <button
                       onClick={() => setShowSqlModal(!showSqlModal)}
                       className="text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/80 px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1"
                     >
@@ -5291,7 +5322,21 @@ CREATE TRIGGER on_auth_user_created
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
 CREATE INDEX IF NOT EXISTS idx_profiles_phone ON public.profiles(phone_number);
 CREATE INDEX IF NOT EXISTS idx_profiles_student_id ON public.profiles(student_id);
-CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);`}</pre>
+CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
+
+-- 5. Optimized Quiz Scores Table (1 User = 1 Record constraint & RLS)
+CREATE TABLE IF NOT EXISTS public.quiz_scores (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  score NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_user_quiz_score UNIQUE (user_id)
+);
+
+ALTER TABLE public.quiz_scores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public quiz scores viewable by all" ON public.quiz_scores FOR SELECT USING (true);
+CREATE POLICY "Users can upsert own quiz score" ON public.quiz_scores FOR ALL USING (auth.uid() = user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_scores_user_id ON public.quiz_scores(user_id);`}</pre>
                   </div>
                 </div>
               )}
@@ -7290,17 +7335,28 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                     </p>
                   </div>
 
-                  <button
-                    onClick={async () => {
-                      const users = await fetchLeaderboard();
-                      setAdminLeaderboardUsers(users);
-                      triggerNotification("success", "লিডারবোর্ড তথ্য রিফ্রেশ করা হয়েছে।");
-                    }}
-                    className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-[#FF6A00]" />
-                    <span>রিফ্রেশ (Refresh)</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleCleanQuizScores}
+                      disabled={isCleaningScores}
+                      className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 px-3.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                      title="ডুপ্লিকেট স্কোর মুছে ফেলে ১ ইউজার = ১ রেকর্ড বজায় রাখুন"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isCleaningScores ? "অপ্টিমাইজ হচ্ছে..." : "স্কোর ডাটাবেজ অপ্টিমাইজ"}</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const users = await fetchLeaderboard(true);
+                        setAdminLeaderboardUsers(users);
+                        triggerNotification("success", "লিডারবোর্ড তথ্য রিফ্রেশ করা হয়েছে।");
+                      }}
+                      className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-[#FF6A00]" />
+                      <span>রিফ্রেশ (Refresh)</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Search Filter */}
