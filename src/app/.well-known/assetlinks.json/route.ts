@@ -19,8 +19,8 @@ export async function GET() {
     : (process.env.ANDROID_SHA256_FINGERPRINTS 
         ? process.env.ANDROID_SHA256_FINGERPRINTS.split(",").map((s: string) => s.trim()) 
         : [
-            // Standard PWABuilder default / placeholder signatures
-            "14:6D:E9:7D:0F:52:AB:E0:47:66:3A:43:2D:E2:B6:81:49:EE:4B:E8:2C:9A:BB:2E:7C:1E:E7:57:9F:8B:2A:42"
+            // Job Master official PWABuilder SHA256 signature
+            "43:9A:CF:62:2E:66:B6:F6:DE:ED:69:FD:9C:D4:CD:88:83:AA:89:AD:8A:A1:37:82:8C:3C:50:51:B5:EA:3C:3E"
           ]);
 
   const assetLinks = [
