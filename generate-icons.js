@@ -180,14 +180,14 @@ async function generateAll() {
 
   const wideBuf = await sharp(Buffer.from(screenshotWideSvg))
     .resize(1280, 720)
-    .png({ quality: 90 })
+    .png({ palette: false, quality: 90 })
     .toBuffer();
   fs.writeFileSync('public/screenshot-wide.png', wideBuf);
   console.log('Generated public/screenshot-wide.png (1280x720)');
 
   const narrowBuf = await sharp(Buffer.from(screenshotNarrowSvg))
     .resize(540, 960)
-    .png({ quality: 90 })
+    .png({ palette: false, quality: 90 })
     .toBuffer();
   fs.writeFileSync('public/screenshot-narrow.png', narrowBuf);
   console.log('Generated public/screenshot-narrow.png (540x960)');
