@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "bd.com.jobmaster.twa",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:E0:47:66:3A:43:2D:E2:B6:81:49:EE:4B:E8:2C:9A:BB:2E:7C:1E:E7:57:9F:8B:2A:42"
+      ]
+    }
+  }
+]

@@ -2019,7 +2019,11 @@ export default function Home() {
                   setDrawerOpen(false);
                   const dest = (previousScreen && previousScreen !== "all-live-exams") ? previousScreen : "home";
                   setCurrentScreen(dest);
-                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "packages" || currentScreen === "rankings" || currentScreen === "notice") {
+                } else if (currentScreen === "packages") {
+                  setDrawerOpen(false);
+                  const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
+                  setCurrentScreen(dest);
+                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
                 } else {
@@ -2030,7 +2034,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -2041,7 +2045,12 @@ export default function Home() {
             
             <button 
               onClick={() => {
-                attemptExitQuiz(() => setCurrentScreen("home"));
+                if (currentScreen === "packages") {
+                  const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
+                  setCurrentScreen(dest);
+                } else {
+                  attemptExitQuiz(() => setCurrentScreen("home"));
+                }
                 if (soundEnabled) quizAudio.playClick();
               }}
               className="flex items-center gap-2 ml-1 text-left cursor-pointer active:scale-95 transition-all"
@@ -2077,6 +2086,10 @@ export default function Home() {
                     <>
                       Live <span className="text-[#FF6A00]">Exams</span>
                     </>
+                  ) : currentScreen === "packages" ? (
+                    <>
+                      Packages
+                    </>
                   ) : currentScreen === "profile" ? (
                     <>
                       Profile
@@ -2108,6 +2121,8 @@ export default function Home() {
                     ? (activeQuizSubtitle || "Live Exam") 
                     : currentScreen === "all-live-exams"
                     ? "সকল লাইভ পরীক্ষা (ALL LIVE EXAMS)"
+                    : currentScreen === "packages"
+                    ? "PRICING & MEMBERSHIP"
                     : currentScreen === "profile"
                     ? "STUDENT ACCOUNT & STATS"
                     : currentScreen === "rankings"

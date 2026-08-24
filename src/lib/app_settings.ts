@@ -16,12 +16,18 @@ export interface PopupNotificationConfig {
   updated_at?: string;
 }
 
+export interface PwaAssetLinksConfig {
+  packageName?: string;
+  sha256Fingerprints?: string[];
+}
+
 export interface AppSettings {
   ourCoursesHomeLimit: number; // 1 - 12
   prepHubHomeLimit: number;   // 1 - 12
   proSectionHomeLimit?: number; // 1 - 12
   proSectionActive?: boolean;
   popupNotification?: PopupNotificationConfig;
+  pwaAssetLinks?: PwaAssetLinksConfig;
 }
 
 export const DEFAULT_POPUP_CONFIG: PopupNotificationConfig = {

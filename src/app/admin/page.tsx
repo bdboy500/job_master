@@ -70,7 +70,8 @@ import {
   ShieldAlert,
   KeyRound,
   EyeOff,
-  RotateCw
+  RotateCw,
+  Smartphone
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -7175,6 +7176,95 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                   >
                     <Check className="w-4 h-4 stroke-[3]" />
                     <span>সেটিংস সেভ করুন (Save Settings)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* MOBILE APK & PWA DIGITAL ASSET LINKS SETTINGS */}
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                      <Smartphone className="w-5 h-5 text-[#FF6A00]" />
+                      <span>মোবাইল APK অ্যাপ ফুলস্ক্রিন ও লিংক বার রিমুভ সেটিংস (Digital Asset Links)</span>
+                    </h3>
+                    <p className="text-xs font-medium text-slate-500 mt-1">
+                      PWABuilder দিয়ে তৈরি করা Android APK এপে উপরে লিংক বার (Address Bar / X button) গোপন করতে এখানে আপনার APK প্যাকেজ নাম ও SHA-256 ফিঙ্গারপ্রিন্ট যুক্ত করুন।
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-black px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-full shrink-0">
+                    Auto Active (/.well-known/assetlinks.json)
+                  </span>
+                </div>
+
+                <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-5 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+                        Android Package Name (প্যাকেজ নাম)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: bd.com.jobmaster.twa বা com.jobmaster.app"
+                        value={appSettings.pwaAssetLinks?.packageName || ""}
+                        onChange={(e) => {
+                          const current = appSettings.pwaAssetLinks || {};
+                          setAppSettings({
+                            ...appSettings,
+                            pwaAssetLinks: { ...current, packageName: e.target.value }
+                          });
+                        }}
+                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none font-mono"
+                      />
+                      <span className="text-[10px] text-slate-400 font-medium block pl-1">
+                        PWABuilder এ যে Package ID দিয়েছেন। ডিফল্ট: <code className="text-slate-600">bd.com.jobmaster.twa</code>
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+                        SHA-256 Certificate Fingerprints (কমা দিয়ে আলাদা করুন)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="14:6D:E9:7D:0F:...:2A:42"
+                        value={(appSettings.pwaAssetLinks?.sha256Fingerprints || []).join(", ")}
+                        onChange={(e) => {
+                          const current = appSettings.pwaAssetLinks || {};
+                          const list = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                          setAppSettings({
+                            ...appSettings,
+                            pwaAssetLinks: { ...current, sha256Fingerprints: list }
+                          });
+                        }}
+                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none font-mono"
+                      />
+                      <span className="text-[10px] text-slate-400 font-medium block pl-1">
+                        PWABuilder জেনারেট করা জিপ ফাইলের <code className="text-slate-600">assetlinks.json</code> এর SHA256 কোড।
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 text-[11px] text-amber-900 font-medium leading-relaxed">
+                    💡 <strong>কেন মোবাইলে লিংক শো করে?</strong> Android Trusted Web Activity (TWA) সিকিউরিটির জন্য ওয়েবসাইটের সাথে অ্যাপের ডিজিটাল স্বাক্ষর (AssetLinks) মিলিয়ে নেয়। সার্ভারে <code className="font-mono bg-amber-100/70 px-1 rounded">/.well-known/assetlinks.json</code> রুটটি অটোমেটিক একটিভ আছে। আপনার ডোমেইনে প্যাকেজ নাম ও SHA256 মিললেই ওপরের অ্যাড্রেস বার চিরতরে অদৃশ্য হয়ে যাবে।
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const success = await saveAppSettingsToDb(appSettings);
+                      if (success) {
+                        triggerNotification("success", "APK AssetLinks সেটিংস সফলভাবে আপডেট হয়েছে!");
+                      } else {
+                        triggerNotification("error", "সেটিংস সেভ করতে সমস্যা হয়েছে।");
+                      }
+                    }}
+                    className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>APK সেটিংস সেভ করুন (Save APK Settings)</span>
                   </button>
                 </div>
               </div>
