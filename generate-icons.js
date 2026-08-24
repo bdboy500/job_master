@@ -8,7 +8,6 @@ const extraFilesToDelete = [
   'screenshot-2.png',
   'screenshot-3.png',
   'screenshot-4.png',
-  'screenshot-wide.png',
   'launchericon-48x48.png',
   'launchericon-72x72.png',
   'launchericon-96x96.png',
@@ -161,6 +160,37 @@ async function generateAll() {
     fs.writeFileSync(path.join('public', t.name), buf);
     console.log(`Generated public/${t.name} (${t.size}x${t.size})`);
   }
+
+  // Generate PWA Manifest screenshots
+  const screenshotWideSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+    <rect width="1280" height="720" fill="#0F172A"/>
+    <rect x="40" y="40" width="1200" height="640" rx="24" fill="#1E293B" stroke="#FF6A00" stroke-width="4"/>
+    <g transform="translate(640, 360)">
+      ${svgContent.replace(/<svg[^>]*>|<\/svg>/g, '')}
+    </g>
+  </svg>`;
+  
+  const screenshotNarrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="540" height="960" viewBox="0 0 540 960">
+    <rect width="540" height="960" fill="#0F172A"/>
+    <rect x="20" y="20" width="500" height="920" rx="20" fill="#1E293B" stroke="#FF6A00" stroke-width="3"/>
+    <g transform="translate(270, 480)">
+      ${svgContent.replace(/<svg[^>]*>|<\/svg>/g, '')}
+    </g>
+  </svg>`;
+
+  const wideBuf = await sharp(Buffer.from(screenshotWideSvg))
+    .resize(1280, 720)
+    .png({ quality: 90 })
+    .toBuffer();
+  fs.writeFileSync('public/screenshot-wide.png', wideBuf);
+  console.log('Generated public/screenshot-wide.png (1280x720)');
+
+  const narrowBuf = await sharp(Buffer.from(screenshotNarrowSvg))
+    .resize(540, 960)
+    .png({ quality: 90 })
+    .toBuffer();
+  fs.writeFileSync('public/screenshot-narrow.png', narrowBuf);
+  console.log('Generated public/screenshot-narrow.png (540x960)');
 
   // Synchronize icons-base64.ts
   const base64Obj = {};
