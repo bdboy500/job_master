@@ -39,13 +39,6 @@ export default function RootLayout({
   return (
     <html lang="bn">
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
-        <meta name="theme-color" content="#FF6A00" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -62,7 +55,6 @@ export default function RootLayout({
                   window.addEventListener('load', function() {
                     navigator.serviceWorker.register('/sw.js', { scope: '/' })
                       .then(function(reg) {
-                        // Check for updates
                         reg.update();
                       })
                       .catch(function(err) {
