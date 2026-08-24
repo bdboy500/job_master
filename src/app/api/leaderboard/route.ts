@@ -1,44 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/src/lib/supabase";
-import { LeaderboardUser, INITIAL_LEADERBOARD_USERS } from "@/src/lib/leaderboard";
+import {
+  LeaderboardUser,
+  INITIAL_LEADERBOARD_USERS,
+  getBangladeshDate,
+  getBDDailyCycleStart,
+  getBDWeeklyCycleStart,
+  getBDMonthlyCycleStart,
+  isToday as isBDToday,
+  isThisWeek as isBDThisWeek,
+  isThisMonth as isBDThisMonth
+} from "@/src/lib/leaderboard";
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_leaderboard_v2";
 
 // In-memory cache for server persistence fallback
 let globalLeaderboardStore: LeaderboardUser[] = [...INITIAL_LEADERBOARD_USERS];
 let isStoreInitialized = false;
-
-function getBDDate(dateStr?: string): Date {
-  const d = dateStr ? new Date(dateStr) : new Date();
-  const bdStr = d.toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
-  return new Date(bdStr);
-}
-
-function isBDToday(dateStr: string): boolean {
-  const d = getBDDate(dateStr);
-  const now = getBDDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
-
-function isBDThisWeek(dateStr: string): boolean {
-  const d = getBDDate(dateStr);
-  const now = getBDDate();
-  const diffMs = Math.abs(now.getTime() - d.getTime());
-  return diffMs <= 7 * 24 * 60 * 60 * 1000;
-}
-
-function isBDThisMonth(dateStr: string): boolean {
-  const d = getBDDate(dateStr);
-  const now = getBDDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth()
-  );
-}
 
 async function loadServerStore(): Promise<LeaderboardUser[]> {
   let baseUsers: LeaderboardUser[] = [];
@@ -93,7 +71,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
         .from("quiz_scores")
         .select("user_id, score, created_at");
 
-      // Aggregate quiz scores per user
+      // Aggregate quiz scores per user according to cycles
       const userScoresAgg = new Map<string, { today: number; week: number; month: number; allTime: number }>();
       if (Array.isArray(quizScores)) {
         for (const qs of quizScores) {
@@ -132,9 +110,9 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
             ex.name = pName || ex.name;
             ex.student_id = pStudentId || ex.student_id;
             if (pAvatar) ex.avatar_url = pAvatar;
-            ex.today_score = Math.max(ex.today_score || 0, agg.today);
-            ex.week_score = Math.max(ex.week_score || 0, agg.week);
-            ex.month_score = Math.max(ex.month_score || 0, agg.month);
+            ex.today_score = isBDToday(ex.updated_at) ? Math.max(ex.today_score || 0, agg.today) : agg.today;
+            ex.week_score = isBDThisWeek(ex.updated_at) ? Math.max(ex.week_score || 0, agg.week) : agg.week;
+            ex.month_score = isBDThisMonth(ex.updated_at) ? Math.max(ex.month_score || 0, agg.month) : agg.month;
             ex.all_time_score = Math.max(ex.all_time_score || 0, agg.allTime);
             baseUsers[existingIdx] = ex;
           } else {
@@ -157,22 +135,26 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
     console.warn("Error augmenting store from Supabase DB:", err);
   }
 
-  // Sanitize all output users to guarantee valid non-NaN scores
+  // Sanitize all output users and enforce active cycle zeroing
   const sanitizedUsers = baseUsers.map((u) => {
-    const today = Number(u.today_score ?? (u as any).score ?? 0);
-    const week = Number(u.week_score ?? (u as any).score ?? today);
-    const month = Number(u.month_score ?? (u as any).score ?? week);
-    const allTime = Number(u.all_time_score ?? (u as any).score ?? month);
+    const isTodayScoreValid = isBDToday(u.updated_at);
+    const isWeekScoreValid = isBDThisWeek(u.updated_at);
+    const isMonthScoreValid = isBDThisMonth(u.updated_at);
+
+    const rawToday = isTodayScoreValid ? Number(u.today_score ?? (u as any).score ?? 0) : 0;
+    const rawWeek = isWeekScoreValid ? Number(u.week_score ?? (u as any).score ?? rawToday) : 0;
+    const rawMonth = isMonthScoreValid ? Number(u.month_score ?? (u as any).score ?? rawWeek) : 0;
+    const rawAllTime = Number(u.all_time_score ?? (u as any).score ?? rawMonth);
 
     return {
       id: u.id || `user_${Date.now()}`,
       name: u.name || "শিক্ষার্থী",
       student_id: u.student_id || `JM-${Math.floor(100000 + Math.random() * 900000)}`,
       avatar_url: u.avatar_url || "",
-      today_score: isNaN(today) ? 0 : today,
-      week_score: isNaN(week) ? 0 : week,
-      month_score: isNaN(month) ? 0 : month,
-      all_time_score: isNaN(allTime) ? 0 : allTime,
+      today_score: isNaN(rawToday) ? 0 : rawToday,
+      week_score: isNaN(rawWeek) ? 0 : rawWeek,
+      month_score: isNaN(rawMonth) ? 0 : rawMonth,
+      all_time_score: isNaN(rawAllTime) ? 0 : rawAllTime,
       updated_at: u.updated_at || new Date().toISOString()
     };
   });
@@ -229,9 +211,13 @@ export async function POST(req: NextRequest) {
 
     if (existingIndex >= 0) {
       const u = currentUsers[existingIndex];
-      u.today_score = (u.today_score || 0) + score;
-      u.week_score = (u.week_score || 0) + score;
-      u.month_score = (u.month_score || 0) + score;
+      const validToday = isBDToday(u.updated_at);
+      const validWeek = isBDThisWeek(u.updated_at);
+      const validMonth = isBDThisMonth(u.updated_at);
+
+      u.today_score = (validToday ? u.today_score || 0 : 0) + score;
+      u.week_score = (validWeek ? u.week_score || 0 : 0) + score;
+      u.month_score = (validMonth ? u.month_score || 0 : 0) + score;
       u.all_time_score = (u.all_time_score || 0) + score;
       if (userName) u.name = userName;
       if (avatarUrl) u.avatar_url = avatarUrl;

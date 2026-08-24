@@ -15,7 +15,9 @@ input[type="button"],
 input[type="submit"],
 input[type="reset"],
 select,
-summary {
+summary,
+a,
+[onclick] {
   cursor: pointer;
 }
 

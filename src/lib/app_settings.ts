@@ -1,17 +1,53 @@
 import { getSupabase } from "./supabase";
 
+export interface PopupNotificationConfig {
+  enabled: boolean;
+  badgeText?: string;
+  title?: string;
+  highlightText?: string;
+  message?: string;
+  bannerImageUrl?: string;
+  points?: string[];
+  buttonText?: string;
+  buttonActionType?: "screen" | "url";
+  buttonActionValue?: string;
+  cancelButtonText?: string;
+  showFrequency?: "every_visit" | "once_a_day" | "once_per_session";
+  updated_at?: string;
+}
+
 export interface AppSettings {
   ourCoursesHomeLimit: number; // 1 - 12
   prepHubHomeLimit: number;   // 1 - 12
   proSectionHomeLimit?: number; // 1 - 12
   proSectionActive?: boolean;
+  popupNotification?: PopupNotificationConfig;
 }
+
+export const DEFAULT_POPUP_CONFIG: PopupNotificationConfig = {
+  enabled: true,
+  badgeText: "বিশেষ শিক্ষার্থী অফার",
+  title: "প্রথমবার প্রস্তুতি শুরু করুন",
+  highlightText: "সম্পূর্ণ ফ্রিতে!",
+  message: "বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।",
+  bannerImageUrl: "",
+  points: [
+    "আনলিমিটেড ফ্রি লাইভ ও আর্কাইভ টেস্ট",
+    "সঠিক ও নির্ভুল ব্যাখ্যাসহ সমাধান শিট"
+  ],
+  buttonText: "এখনই পরীক্ষা দিন",
+  buttonActionType: "screen",
+  buttonActionValue: "all-live-exams",
+  cancelButtonText: "পরে দেখব",
+  showFrequency: "once_a_day"
+};
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   ourCoursesHomeLimit: 5,
   prepHubHomeLimit: 4,
   proSectionHomeLimit: 4,
-  proSectionActive: true
+  proSectionActive: true,
+  popupNotification: DEFAULT_POPUP_CONFIG
 };
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_settings_v2";

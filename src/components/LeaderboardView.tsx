@@ -138,10 +138,13 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
   };
 
   const sortedUsers = getSortedUsers();
-  const top1 = sortedUsers[0];
-  const top2 = sortedUsers[1];
-  const top3 = sortedUsers[2];
-  const restUsers = sortedUsers.slice(3, visibleCount);
+  // Filter active competitors who have score > 0 for this cycle period
+  const activeCompetitors = sortedUsers.filter((u) => getScoreForTab(u) > 0);
+
+  const top1 = activeCompetitors[0];
+  const top2 = activeCompetitors[1];
+  const top3 = activeCompetitors[2];
+  const restUsers = activeCompetitors.slice(3, visibleCount);
 
   const userAvatar = profileAvatarUrl || currentUserProfile?.avatar_url || "";
 
@@ -162,27 +165,45 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || "U")}&background=ffedd5&color=c2410c`;
   };
 
-  // Calculate user rank and score dynamically
-  const userInListIndex = sortedUsers.findIndex(
+  // Calculate user rank and score dynamically among active competitors
+  const userInActiveListIndex = activeCompetitors.findIndex(
     (u) =>
       u.id === currentUserProfile?.id ||
       (u.student_id && currentUserProfile?.student_id && u.student_id === currentUserProfile.student_id) ||
       u.name === currentUserProfile?.full_name
   );
 
-  const displayRank =
-    userRank && userRank > 0
-      ? userRank
-      : userInListIndex !== -1
-      ? userInListIndex + 1
-      : null;
+  const userInAllListIndex = sortedUsers.findIndex(
+    (u) =>
+      u.id === currentUserProfile?.id ||
+      (u.student_id && currentUserProfile?.student_id && u.student_id === currentUserProfile.student_id) ||
+      u.name === currentUserProfile?.full_name
+  );
 
   const displayScore =
-    userInListIndex !== -1
-      ? getScoreForTab(sortedUsers[userInListIndex])
+    userInAllListIndex !== -1
+      ? getScoreForTab(sortedUsers[userInAllListIndex])
       : userScore !== null
       ? userScore
       : 0;
+
+  const displayRank =
+    displayScore > 0 && userInActiveListIndex !== -1
+      ? userInActiveListIndex + 1
+      : null;
+
+  const getResetInfoText = () => {
+    switch (activeTab) {
+      case "Today":
+        return "প্রতিদিন রাত ১২:০০ টায় স্বয়ংক্রিয়ভাবে জিরো (০) হবে";
+      case "Week":
+        return "প্রতি শুক্রবার রাত ১২:০০ টায় স্বয়ংক্রিয়ভাবে জিরো (০) হবে";
+      case "Month":
+        return "প্রতি মাসের শেষ দিন রাত ১২:০০ টায় স্বয়ংক্রিয়ভাবে জিরো (০) হবে";
+      case "All Time":
+        return "আজীবন অর্জিত লাইভ কুইজ স্কোর";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
@@ -225,7 +246,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
         {/* TIME PERIOD TABS - Apple UI Segmented Control Style */}
-        <div className="relative z-10 max-w-md mx-auto mb-6">
+        <div className="relative z-10 max-w-md mx-auto mb-3">
           <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner">
             {(["Today", "Week", "Month", "All Time"] as const).map((tab) => {
               const isActive = activeTab === tab;
@@ -249,125 +270,149 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
           </div>
         </div>
 
-        {/* TOP 3 PODIUM SECTION (2nd, 1st, 3rd) */}
-        <div className="relative z-10 max-w-sm mx-auto flex items-end justify-center gap-3 sm:gap-4 pt-2">
-          
-          {/* 2nd Place Podium Block */}
-          <div className="flex flex-col items-center flex-1 z-10">
-            {top2 ? (
-              <div className="flex flex-col items-center mb-2 animate-fade-in">
-                {/* Crown Icon */}
-                <div className="mb-0.5 relative">
-                  <Crown className="w-6 h-6 text-slate-200 fill-slate-300 drop-shadow-md animate-bounce" />
-                </div>
-                {/* Profile Image */}
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-slate-200 shadow-lg overflow-hidden">
-                  <img
-                    src={getUserAvatarUrl(top2)}
-                    alt={top2.name}
-                    className="w-full h-full object-cover rounded-full"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.name)}&background=f1f5f9&color=334155`;
-                    }}
-                  />
-                </div>
-                {/* Name */}
-                <span className="text-xs font-bold text-white mt-1.5 truncate max-w-[80px] text-center drop-shadow-sm">
-                  {top2.name}
-                </span>
-              </div>
-            ) : (
-              <div className="h-20" />
-            )}
-            
-            {/* Podium Bar 2 */}
-            <div className="w-full bg-gradient-to-b from-white/30 to-white/10 backdrop-blur-md border border-white/40 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-28 sm:h-32 justify-between">
-              <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-lg tracking-tight">2</span>
-              <div className="bg-white/90 text-[#FF6A00] px-2.5 py-1 rounded-full text-[11px] font-black shadow-sm border border-white">
-                {getScoreForTab(top2)} pt
-              </div>
-            </div>
-          </div>
-
-          {/* 1st Place Podium Block (Taller Center) */}
-          <div className="flex flex-col items-center flex-1 z-20 -mt-4">
-            {top1 ? (
-              <div className="flex flex-col items-center mb-2 animate-fade-in">
-                {/* Crown Icon */}
-                <div className="mb-0.5 relative">
-                  <Crown className="w-8 h-8 text-amber-300 fill-amber-400 drop-shadow-lg animate-bounce" />
-                  <Sparkles className="w-3.5 h-3.5 text-amber-200 absolute -top-1 -right-1 animate-ping" />
-                </div>
-                {/* Profile Image */}
-                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 bg-gradient-to-tr from-amber-300 to-amber-500 border-3 border-amber-300 shadow-2xl overflow-hidden">
-                  <img
-                    src={getUserAvatarUrl(top1)}
-                    alt={top1.name}
-                    className="w-full h-full object-cover rounded-full"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.name)}&background=fef3c7&color=d97706`;
-                    }}
-                  />
-                </div>
-                {/* Name */}
-                <span className="text-xs sm:text-sm font-black text-white mt-2 truncate max-w-[90px] text-center drop-shadow-md">
-                  {top1.name}
-                </span>
-              </div>
-            ) : (
-              <div className="h-24" />
-            )}
-            
-            {/* Podium Bar 1 */}
-            <div className="w-full bg-gradient-to-b from-white/45 to-white/20 backdrop-blur-md border-2 border-white/60 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-2xl h-36 sm:h-40 justify-between">
-              <span className="text-6xl sm:text-7xl font-black text-amber-200 drop-shadow-xl tracking-tight">1</span>
-              <div className="bg-amber-400 text-slate-950 px-3 py-1 rounded-full text-xs font-black shadow-md border border-amber-200">
-                {getScoreForTab(top1)} pt
-              </div>
-            </div>
-          </div>
-
-          {/* 3rd Place Podium Block */}
-          <div className="flex flex-col items-center flex-1 z-10">
-            {top3 ? (
-              <div className="flex flex-col items-center mb-2 animate-fade-in">
-                {/* Crown Icon */}
-                <div className="mb-0.5 relative">
-                  <Crown className="w-6 h-6 text-amber-600 fill-amber-700 drop-shadow-md animate-bounce" />
-                </div>
-                {/* Profile Image */}
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-amber-600/60 shadow-lg overflow-hidden">
-                  <img
-                    src={getUserAvatarUrl(top3)}
-                    alt={top3.name}
-                    className="w-full h-full object-cover rounded-full"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.name)}&background=ffedd5&color=c2410c`;
-                    }}
-                  />
-                </div>
-                {/* Name */}
-                <span className="text-xs font-bold text-white mt-1.5 truncate max-w-[80px] text-center drop-shadow-sm">
-                  {top3.name}
-                </span>
-              </div>
-            ) : (
-              <div className="h-20" />
-            )}
-            
-            {/* Podium Bar 3 */}
-            <div className="w-full bg-gradient-to-b from-white/25 to-white/10 backdrop-blur-md border border-white/30 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-24 sm:h-28 justify-between">
-              <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-lg tracking-tight">3</span>
-              <div className="bg-white/90 text-[#FF6A00] px-2.5 py-1 rounded-full text-[11px] font-black shadow-sm border border-white">
-                {getScoreForTab(top3)} pt
-              </div>
-            </div>
-          </div>
-
+        {/* Automatic Reset Schedule Indicator */}
+        <div className="relative z-10 text-center mb-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-xs text-[10.5px] font-bold text-white/90 border border-white/15">
+            <Sparkles className="w-3 h-3 text-amber-300" />
+            <span>{getResetInfoText()}</span>
+          </span>
         </div>
+
+        {/* TOP 3 PODIUM SECTION (2nd, 1st, 3rd) */}
+        {activeCompetitors.length === 0 ? (
+          <div className="relative z-10 max-w-sm mx-auto my-6 text-center bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+            <Trophy className="w-10 h-10 text-amber-200/80 mx-auto mb-2 animate-bounce" />
+            <p className="text-sm font-black text-white">এখনও কোনো স্কোর রেকর্ড হয়নি</p>
+            <p className="text-xs text-white/80 mt-1">
+              কুইজে অংশ নিয়ে প্রথম স্থান অধিকার করুন!
+            </p>
+          </div>
+        ) : (
+          <div className="relative z-10 max-w-sm mx-auto flex items-end justify-center gap-3 sm:gap-4 pt-2">
+            
+            {/* 2nd Place Podium Block */}
+            <div className="flex flex-col items-center flex-1 z-10">
+              {top2 ? (
+                <div className="flex flex-col items-center mb-2 animate-fade-in">
+                  {/* Crown Icon */}
+                  <div className="mb-0.5 relative">
+                    <Crown className="w-6 h-6 text-slate-200 fill-slate-300 drop-shadow-md animate-bounce" />
+                  </div>
+                  {/* Profile Image */}
+                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-slate-200 shadow-lg overflow-hidden">
+                    <img
+                      src={getUserAvatarUrl(top2)}
+                      alt={top2.name}
+                      className="w-full h-full object-cover rounded-full"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top2.name)}&background=f1f5f9&color=334155`;
+                      }}
+                    />
+                  </div>
+                  {/* Name */}
+                  <span className="text-xs font-bold text-white mt-1.5 truncate max-w-[80px] text-center drop-shadow-sm">
+                    {top2.name}
+                  </span>
+                </div>
+              ) : (
+                <div className="h-20 flex items-center justify-center">
+                  <span className="text-[10px] text-white/60 font-bold">খালি</span>
+                </div>
+              )}
+              
+              {/* Podium Bar 2 */}
+              <div className="w-full bg-gradient-to-b from-white/30 to-white/10 backdrop-blur-md border border-white/40 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-28 sm:h-32 justify-between">
+                <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-lg tracking-tight">2</span>
+                <div className="bg-white/90 text-[#FF6A00] px-2.5 py-1 rounded-full text-[11px] font-black shadow-sm border border-white">
+                  {top2 ? `${getScoreForTab(top2)} pt` : "-"}
+                </div>
+              </div>
+            </div>
+
+            {/* 1st Place Podium Block (Taller Center) */}
+            <div className="flex flex-col items-center flex-1 z-20 -mt-4">
+              {top1 ? (
+                <div className="flex flex-col items-center mb-2 animate-fade-in">
+                  {/* Crown Icon */}
+                  <div className="mb-0.5 relative">
+                    <Crown className="w-8 h-8 text-amber-300 fill-amber-400 drop-shadow-lg animate-bounce" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-200 absolute -top-1 -right-1 animate-ping" />
+                  </div>
+                  {/* Profile Image */}
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 bg-gradient-to-tr from-amber-300 to-amber-500 border-3 border-amber-300 shadow-2xl overflow-hidden">
+                    <img
+                      src={getUserAvatarUrl(top1)}
+                      alt={top1.name}
+                      className="w-full h-full object-cover rounded-full"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top1.name)}&background=fef3c7&color=d97706`;
+                      }}
+                    />
+                  </div>
+                  {/* Name */}
+                  <span className="text-xs sm:text-sm font-black text-white mt-2 truncate max-w-[90px] text-center drop-shadow-md">
+                    {top1.name}
+                  </span>
+                </div>
+              ) : (
+                <div className="h-24 flex items-center justify-center">
+                  <span className="text-[10px] text-white/60 font-bold">খালি</span>
+                </div>
+              )}
+              
+              {/* Podium Bar 1 */}
+              <div className="w-full bg-gradient-to-b from-white/45 to-white/20 backdrop-blur-md border-2 border-white/60 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-2xl h-36 sm:h-40 justify-between">
+                <span className="text-6xl sm:text-7xl font-black text-amber-200 drop-shadow-xl tracking-tight">1</span>
+                <div className="bg-amber-400 text-slate-950 px-3 py-1 rounded-full text-xs font-black shadow-md border border-amber-200">
+                  {top1 ? `${getScoreForTab(top1)} pt` : "-"}
+                </div>
+              </div>
+            </div>
+
+            {/* 3rd Place Podium Block */}
+            <div className="flex flex-col items-center flex-1 z-10">
+              {top3 ? (
+                <div className="flex flex-col items-center mb-2 animate-fade-in">
+                  {/* Crown Icon */}
+                  <div className="mb-0.5 relative">
+                    <Crown className="w-6 h-6 text-amber-600 fill-amber-700 drop-shadow-md animate-bounce" />
+                  </div>
+                  {/* Profile Image */}
+                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-1 bg-white/30 backdrop-blur-md border-2 border-amber-600/60 shadow-lg overflow-hidden">
+                    <img
+                      src={getUserAvatarUrl(top3)}
+                      alt={top3.name}
+                      className="w-full h-full object-cover rounded-full"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(top3.name)}&background=ffedd5&color=c2410c`;
+                      }}
+                    />
+                  </div>
+                  {/* Name */}
+                  <span className="text-xs font-bold text-white mt-1.5 truncate max-w-[80px] text-center drop-shadow-sm">
+                    {top3.name}
+                  </span>
+                </div>
+              ) : (
+                <div className="h-20 flex items-center justify-center">
+                  <span className="text-[10px] text-white/60 font-bold">খালি</span>
+                </div>
+              )}
+              
+              {/* Podium Bar 3 */}
+              <div className="w-full bg-gradient-to-b from-white/25 to-white/10 backdrop-blur-md border border-white/30 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-24 sm:h-28 justify-between">
+                <span className="text-5xl sm:text-6xl font-black text-white drop-shadow-lg tracking-tight">3</span>
+                <div className="bg-white/90 text-[#FF6A00] px-2.5 py-1 rounded-full text-[11px] font-black shadow-sm border border-white">
+                  {top3 ? `${getScoreForTab(top3)} pt` : "-"}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
 
       </div>
 

@@ -10,6 +10,7 @@ import {
   Plus, 
   Trash2, 
   ArrowLeft, 
+  ArrowRight,
   LogOut, 
   LogIn, 
   Award, 
@@ -82,7 +83,7 @@ import {
 } from "../../lib/user_profiles";
 import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
-import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
+import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
 import { 
   CourseItem, 
   PrepSubjectItem, 
@@ -5788,7 +5789,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                       </label>
                       <input 
                         type="text"
-                        placeholder="যেমন: অফিস সহকারী ও কম্পিউটার অপারেটর স্পেশাল কোর্স"
+                        placeholder="যেমন: অফিস সহকারী ও কম্পিউটার অপারেটর প্রস্তুতি"
                         value={courseFormTitle}
                         onChange={(e) => setCourseFormTitle(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
@@ -5796,59 +5797,84 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                       />
                     </div>
 
-                    {/* Icon */}
+                    {/* Description */}
                     <div className="space-y-1">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        আইকন (Icon)
+                        বিবরণ (Description)
                       </label>
-                      <select
-                        value={courseFormIcon}
-                        onChange={(e) => setCourseFormIcon(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
-                      >
-                        <option value="BookOpen">{"\uD83D\uDCD6"} BookOpen (Open Book)</option>
-                        <option value="Book">{"\uD83D\uDCD8"} Book (Closed Book)</option>
-                        <option value="Laptop">{"\uD83D\uDCBB"} Laptop (Computer)</option>
-                        <option value="Monitor">{"\uD83D\uDDA5"}️ Monitor (Computer)</option>
-                        <option value="FlaskConical">{"\uD83E\uDDEA"} Flask (Science)</option>
-                        <option value="Atom">⚛️ Atom (Science)</option>
-                        <option value="Calculator">{"\uD83E\uDDEE"} Calculator</option>
-                        <option value="Globe">{"\uD83C\uDF10"} Globe</option>
-                        <option value="GraduationCap">{"\uD83C\uDF93"} GraduationCap</option>
-                        <option value="FileText">{"\uD83D\uDCC4"} FileText</option>
-                        <option value="Briefcase">{"\uD83D\uDCBC"} Briefcase</option>
-                        <option value="Users">{"\uD83D\uDC65"} Users</option>
-                        <option value="Shield">{"\uD83D\uDEE1"}️ Shield</option>
-                        <option value="Zap">⚡ Zap</option>
-                        <option value="Award">{"\uD83C\uDFC6"} Award</option>
-                      </select>
+                      <textarea 
+                        rows={2}
+                        placeholder="কোর্স সম্পর্কে সংক্ষিপ্ত বিবরণ লিখুন..."
+                        value={courseFormDesc}
+                        onChange={(e) => setCourseFormDesc(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2 text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                      />
                     </div>
 
-                    {/* Colors */}
+                    {/* Category & Icon */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          ব্যাকগ্রাউন্ড কালার Class
+                          ক্যাটাগরি (Category) *
+                        </label>
+                        <select
+                          value={courseFormCategory}
+                          onChange={(e) => setCourseFormCategory(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="BCS">BCS</option>
+                          <option value="Primary">Primary</option>
+                          <option value="Bank">Bank</option>
+                          <option value="All Job">All Job</option>
+                          <option value="NTRCA">NTRCA / শিক্ষক নিবন্ধন</option>
+                          <option value="Special">Special / অন্যান্য</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          আইকন (Icon) *
+                        </label>
+                        <select
+                          value={courseFormIcon}
+                          onChange={(e) => setCourseFormIcon(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                        >
+                          <option value="BookOpen">📖 BookOpen</option>
+                          <option value="Compass">🧭 Compass</option>
+                          <option value="Briefcase">💼 Briefcase</option>
+                          <option value="GraduationCap">🎓 GraduationCap</option>
+                          <option value="Award">🏆 Award</option>
+                          <option value="Building2">🏢 Building</option>
+                          <option value="Users">👥 Users</option>
+                          <option value="CheckCircle">✅ CheckCircle</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Color Presets */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ব্যাকগ্রাউন্ড কালার
                         </label>
                         <select
                           value={courseFormBg}
                           onChange={(e) => setCourseFormBg(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                         >
-                          <option value="bg-[#FFF1E6]">Orange Tint (bg-[#FFF1E6])</option>
-                          <option value="bg-[#E6F0FA]">Blue Tint (bg-[#E6F0FA])</option>
-                          <option value="bg-[#EBF7EE]">Green Tint (bg-[#EBF7EE])</option>
-                          <option value="bg-[#F3E8FF]">Purple Tint (bg-[#F3E8FF])</option>
-                          <option value="bg-[#FCE7F3]">Rose Tint (bg-[#FCE7F3])</option>
-                          <option value="bg-[#FEF3C7]">Amber Tint (bg-[#FEF3C7])</option>
-                          <option value="bg-[#DCFCE7]">Emerald Tint (bg-[#DCFCE7])</option>
-                          <option value="bg-[#E0F2FE]">Sky Tint (bg-[#E0F2FE])</option>
+                          <option value="bg-orange-50">Orange Light (bg-orange-50)</option>
+                          <option value="bg-[#FFF1E6]">Warm Peach (bg-[#FFF1E6])</option>
+                          <option value="bg-purple-50">Purple Light (bg-purple-50)</option>
+                          <option value="bg-blue-50">Blue Light (bg-blue-50)</option>
+                          <option value="bg-emerald-50">Emerald Light (bg-emerald-50)</option>
+                          <option value="bg-rose-50">Rose Light (bg-rose-50)</option>
                         </select>
                       </div>
 
                       <div className="space-y-1">
                         <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          আইকন কালার Class
+                          আইকন কালার
                         </label>
                         <select
                           value={courseFormIconColor}
@@ -5856,232 +5882,65 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                         >
                           <option value="text-orange-600">Orange (text-orange-600)</option>
-                          <option value="text-blue-600">Blue (text-blue-600)</option>
-                          <option value="text-green-600">Green (text-green-600)</option>
                           <option value="text-purple-600">Purple (text-purple-600)</option>
-                          <option value="text-rose-600">Rose (text-rose-600)</option>
-                          <option value="text-amber-600">Amber (text-amber-600)</option>
+                          <option value="text-blue-600">Blue (text-blue-600)</option>
                           <option value="text-emerald-600">Emerald (text-emerald-600)</option>
-                          <option value="text-sky-600">Sky (text-sky-600)</option>
+                          <option value="text-rose-600">Rose (text-rose-600)</option>
                         </select>
                       </div>
                     </div>
 
-                    {/* Description */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        বিস্তারিত বিবরণ (Description)
-                      </label>
-                      <textarea 
-                        rows={2}
-                        placeholder="যেমন: সরকারি দপ্তর ও পরিদপ্তরে অফিস সহকারী ও কম্পিউটার অপারেটর পদের জন্য..."
-                        value={courseFormDesc}
-                        onChange={(e) => setCourseFormDesc(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all text-slate-800 resize-none"
-                      />
-                    </div>
-
-                    {/* MULTI-LEVEL SUB-CATEGORY EDITOR FOR OUR COURSES (Level 2 & Level 3) */}
-                    <div className="pt-3 border-t border-slate-100 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
-                            <Layers className="w-4 h-4 text-[#FF6A00]" />
-                            <span>সাব-ক্যাটাগরি ও সাব-টপিকসমূহ (Level 2 & Level 3)</span>
-                          </h4>
-                          <p className="text-[10px] text-slate-400 font-bold">
-                            লেভেল ২: সাব-ক্যাটাগরি/পেপার, লেভেল ৩: সাব-টপিকসমূহ
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newSub: SubCategoryItem = {
-                              id: `sub_${Date.now()}`,
-                              name: "নতুন সাব-ক্যাটাগরি",
-                              sub: "সংক্ষিপ্ত বিবরণ",
-                              serial: courseFormSubSubjects.length + 1,
-                              subCategories2: []
-                            };
-                            setCourseFormSubSubjects([...courseFormSubSubjects, newSub]);
-                          }}
-                          className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-[11px] rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
-                        >
-                          <Plus className="w-3.5 h-3.5 stroke-[3px]" />
-                          <span>+ সাব-ক্যাটাগরি</span>
-                        </button>
-                      </div>
-
-                      {/* List of Level 2 Sub-Categories */}
-                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                        {courseFormSubSubjects.length === 0 ? (
-                          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs">
-                            কোনো সাব-ক্যাটাগরি যুক্ত হয়নি। '+ সাব-ক্যাটাগরি' বাটনে ক্লিক করে যোগ করুন।
-                          </div>
-                        ) : (
-                          courseFormSubSubjects.map((subItem, sIdx) => (
-                            <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
-                              {/* Level 2 Sub-Category Header & Controls */}
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
-                                  Level 2 #{sIdx + 1}
-                                </span>
-                                <input 
-                                  type="text"
-                                  placeholder="সাব-ক্যাটাগরির নাম (e.g. BCS Preliminary)"
-                                  value={subItem.name}
-                                  onChange={(e) => {
-                                    const updated = [...courseFormSubSubjects];
-                                    updated[sIdx].name = e.target.value;
-                                    setCourseFormSubSubjects(updated);
-                                  }}
-                                  className="flex-1 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = courseFormSubSubjects.filter((_, i) => i !== sIdx);
-                                    setCourseFormSubSubjects(updated);
-                                  }}
-                                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
-                                  title="মুছে ফেলুন"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-
-                              {/* Level 2 Sub-text */}
-                              <input 
-                                type="text"
-                                placeholder="বিবরণ / সাব-টাইটেল (e.g. সকল বিষয়ভিত্তিক মক টেস্ট)"
-                                value={subItem.sub || ""}
-                                onChange={(e) => {
-                                  const updated = [...courseFormSubSubjects];
-                                  updated[sIdx].sub = e.target.value;
-                                  setCourseFormSubSubjects(updated);
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700"
-                              />
-
-                              {/* Nested Level 3 Sub-Categories (subCategories2) */}
-                              <div className="pl-3 border-l-2 border-orange-200 space-y-2 pt-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-extrabold text-orange-600">
-                                    লেভেল ৩ টপিকসমূহ:
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
-                                      if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
-                                      updated[sIdx].subCategories2.push({
-                                        id: `sub2_${Date.now()}`,
-                                        name: "নতুন সাব-টপিক",
-                                        serial: updated[sIdx].subCategories2.length + 1
-                                      });
-                                      setCourseFormSubSubjects(updated);
-                                    }}
-                                    className="text-[10px] font-bold text-orange-600 hover:text-orange-800 bg-orange-100/60 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                    <span>+ সাব-টপিক (Level 3)</span>
-                                  </button>
-                                </div>
-
-                                {(subItem.subCategories2 || []).map((sub2, sub2Idx) => (
-                                  <div key={sub2.id || sub2Idx} className="flex items-center gap-2">
-                                    <span className="text-[9px] font-mono font-bold text-slate-400 shrink-0">
-                                      └─ #{sub2Idx + 1}
-                                    </span>
-                                    <input 
-                                      type="text"
-                                      placeholder="সাব-টপিক ৩ (e.g. বীজগণিত মান নির্ণয়)"
-                                      value={sub2.name}
-                                      onChange={(e) => {
-                                        const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
-                                        if (updated[sIdx]?.subCategories2?.[sub2Idx]) {
-                                          updated[sIdx].subCategories2[sub2Idx].name = e.target.value;
-                                          setCourseFormSubSubjects(updated);
-                                        }
-                                      }}
-                                      className="flex-1 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
-                                        if (updated[sIdx]?.subCategories2) {
-                                          updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
-                                          setCourseFormSubSubjects(updated);
-                                        }
-                                      }}
-                                      className="p-1 text-rose-400 hover:text-rose-600 transition-all shrink-0 cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Submit Button */}
                     <button
                       type="submit"
-                      className="w-full py-3 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                      className="w-full bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
                     >
-                      <Check className="w-4 h-4 stroke-[3px]" />
+                      <Plus className="w-4 h-4 stroke-[3]" />
                       <span>{editingCourseId ? "কোর্স আপডেট করুন" : "কোর্স সেভ করুন"}</span>
                     </button>
                   </form>
                 </div>
               </div>
 
-              {/* Right Column: Courses List & Re-ordering */}
+              {/* Right Column: List of All Courses */}
               <div className="lg:col-span-7 space-y-4">
                 <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
-                      কোর্স লিস্ট ও সিরিয়াল কন্ট্রোল ({coursesList.length})
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#FF6A00]" />
+                      <h3 className="font-extrabold text-sm text-slate-800">
+                        বিদ্যমান কোর্সসমূহ ({coursesList.length}টি)
+                      </h3>
+                    </div>
                     <span className="text-[10px] font-bold text-slate-400">
-                      উপরে/নিচে নিয়ে সিরিয়াল ঠিক করুন
+                      হোমে প্রদর্শনের সিরিয়াল অনুযায়ী সাজানো
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {coursesList.length === 0 ? (
-                      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs">
-                        কোনো কোর্স যুক্ত নেই। বামপাশের ফর্ম পূরণ করে যোগ করুন।
+                      <div className="text-center py-12 text-slate-400 text-xs font-semibold">
+                        কোনো কোর্স যোগ করা হয়নি।
                       </div>
                     ) : (
                       coursesList.map((course, idx) => (
-                        <div 
-                          key={course.id}
-                          className={`bg-white border ${
-                            editingCourseId === course.id ? "border-[#FF6A00] ring-2 ring-[#FF6A00]/10" : "border-slate-100"
-                          } rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-3`}
+                        <div
+                          key={course.id || idx}
+                          className="bg-slate-50/70 border border-slate-100 hover:border-orange-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 transition-all"
                         >
-                          <div className="flex items-center gap-3">
-                            {/* Serial re-ordering controls */}
-                            <div className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 border border-slate-100 rounded-xl p-1 shrink-0">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* Serial Move Controls */}
+                            <div className="flex flex-col gap-0.5 shrink-0">
                               <button
-                                onClick={() => handleMoveCourseSerial(idx, "up")}
                                 disabled={idx === 0}
+                                onClick={() => handleMoveCourseSerial(idx, "up")}
                                 className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
                                 title="উপরে সরান"
                               >
                                 <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
                               </button>
-                              <span className="text-[10px] font-mono font-black text-slate-700">
-                                #{course.serial || idx + 1}
-                              </span>
                               <button
-                                onClick={() => handleMoveCourseSerial(idx, "down")}
                                 disabled={idx === coursesList.length - 1}
+                                onClick={() => handleMoveCourseSerial(idx, "down")}
                                 className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
                                 title="নিচে সরান"
                               >
@@ -6094,16 +5953,16 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                               {renderPrepIcon(course.icon, "w-5 h-5 stroke-[2.2px]")}
                             </div>
 
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-black text-xs text-slate-900">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-black text-xs text-slate-900 truncate">
                                   {course.name}
                                 </span>
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                                  {course.category}
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-orange-100 text-[#FF6A00]">
+                                  {course.category || "BCS"}
                                 </span>
                               </div>
-                              <p className="text-[11px] font-medium text-slate-500 line-clamp-1">
+                              <p className="text-[11px] font-medium text-slate-500 truncate">
                                 {course.title}
                               </p>
                             </div>
@@ -6241,22 +6100,22 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                           onChange={(e) => setPrepFormIcon(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
                         >
-                          <option value="BookOpen">{"\uD83D\uDCD6"} BookOpen (Open Book)</option>
-                          <option value="Book">{"\uD83D\uDCD8"} Book (Closed Book)</option>
-                          <option value="Laptop">{"\uD83D\uDCBB"} Laptop (Computer)</option>
-                          <option value="Monitor">{"\uD83D\uDDA5"}️ Monitor (Computer)</option>
-                          <option value="FlaskConical">{"\uD83E\uDDEA"} Flask (Science)</option>
+                          <option value="BookOpen">📖 BookOpen (Open Book)</option>
+                          <option value="Book">📘 Book (Closed Book)</option>
+                          <option value="Laptop">💻 Laptop (Computer)</option>
+                          <option value="Monitor">🖥️ Monitor (Computer)</option>
+                          <option value="FlaskConical">🧪 Flask (Science)</option>
                           <option value="Atom">⚛️ Atom (Science)</option>
-                          <option value="Calculator">{"\uD83E\uDDEE"} Calculator</option>
-                          <option value="Globe">{"\uD83C\uDF10"} Globe</option>
-                          <option value="GraduationCap">{"\uD83C\uDF93"} GraduationCap</option>
-                          <option value="FileText">{"\uD83D\uDCC4"} FileText</option>
-                          <option value="Briefcase">{"\uD83D\uDCBC"} Briefcase</option>
-                          <option value="Users">{"\uD83D\uDC65"} Users</option>
-                          <option value="ShieldCheck">{"\uD83D\uDEE1"}️ Shield</option>
+                          <option value="Calculator">🧮 Calculator</option>
+                          <option value="Globe">🌐 Globe</option>
+                          <option value="GraduationCap">🎓 GraduationCap</option>
+                          <option value="FileText">📄 FileText</option>
+                          <option value="Briefcase">💼 Briefcase</option>
+                          <option value="Users">👥 Users</option>
+                          <option value="ShieldCheck">🛡️ Shield</option>
                           <option value="Zap">⚡ Zap</option>
-                          <option value="Award">{"\uD83C\uDFC6"} Award</option>
-                          <option value="Flame">{"\uD83D\uDD25"} Flame</option>
+                          <option value="Award">🏆 Award</option>
+                          <option value="Flame">🔥 Flame</option>
                           <option value="Sparkles">✨ Sparkles</option>
                         </select>
                       </div>
@@ -6401,7 +6260,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                               {/* Level 3 Sub-Categories 2 (Sub-sub-categories) Manager */}
                               <div className="bg-white border border-slate-200/60 rounded-xl p-2.5 space-y-2">
                                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                                  <span>{"\uD83C\uDFF7"}️ সাব-ক্যাটাগরি ২ / টপিকসমূহ (Level 3 Topics):</span>
+                                  <span>🏷️ সাব-ক্যাটাগরি ২ / টপিকসমূহ (Level 3 Topics):</span>
                                   <span className="text-[10px] text-purple-600 font-bold">
                                     {(subItem.subCategories2 || []).length}টি টপিক
                                   </span>
@@ -6797,6 +6656,413 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
           {/* ========================================================= */}
           {activeTab === "switches" && (
             <div className="space-y-6 animate-fade-in text-left">
+              {/* POPUP NOTIFICATION CONTROLLER */}
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#FF6A00] flex items-center justify-center font-black">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <h3 className="font-black text-base sm:text-lg text-slate-800 tracking-tight">
+                        সহজ পপ-আপ নোটিফিকেশন ম্যানেজার ও অফার ব্যানার (Popup Notification Manager)
+                      </h3>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-500">
+                      অ্যাপে ইউজার প্রবেশের সাথে সাথে আকর্ষণীয় পপ-আপ মেসেজ বা স্পেশাল অফার ডিসপ্লে করুন। যেকোনো সময় অন/অফ ও এডিট করা যাবে।
+                    </p>
+                  </div>
+
+                  {/* Master Toggle Switch */}
+                  <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-2xl shrink-0">
+                    <span className="text-xs font-black text-slate-700">
+                      {appSettings.popupNotification?.enabled !== false ? "পপ-আপ চালু আছে" : "পপ-আপ বন্ধ আছে"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                        const updated = {
+                          ...appSettings,
+                          popupNotification: {
+                            ...current,
+                            enabled: !(current.enabled !== false)
+                          }
+                        };
+                        setAppSettings(updated);
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        appSettings.popupNotification?.enabled !== false ? "bg-[#FF6A00]" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          appSettings.popupNotification?.enabled !== false ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Main Config Form & Live Preview Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left: Input Controls (7 cols) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    
+                    {/* Frequency Setting */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        প্রদর্শনের সময়সীমা ও ফ্রিকোয়েন্সি (Display Frequency)
+                      </label>
+                      <select
+                        value={appSettings.popupNotification?.showFrequency || "once_a_day"}
+                        onChange={(e) => {
+                          const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                          setAppSettings({
+                            ...appSettings,
+                            popupNotification: { 
+                              ...current, 
+                              showFrequency: e.target.value as any 
+                            }
+                          });
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                      >
+                        <option value="once_a_day">প্রতিদিন ১ বার দেখাবে (Once a Day - Recommended)</option>
+                        <option value="once_per_session">প্রতি সেশনে ১ বার (Once per browser session)</option>
+                        <option value="every_visit">প্রত্যেকবার পেজ লোড হলে (Every Visit)</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Badge Text */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          টপ ব্যাজ টেক্সট (Badge Text)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: বিশেষ শিক্ষার্থী অফার"
+                          value={appSettings.popupNotification?.badgeText || ""}
+                          onChange={(e) => {
+                            const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                            setAppSettings({
+                              ...appSettings,
+                              popupNotification: { ...current, badgeText: e.target.value }
+                            });
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Highlighted Slogan Text */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          হাইলাইট করা টেক্সট (Orange Highlight)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: সম্পূর্ণ ফ্রিতে!"
+                          value={appSettings.popupNotification?.highlightText || ""}
+                          onChange={(e) => {
+                            const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                            setAppSettings({
+                              ...appSettings,
+                              popupNotification: { ...current, highlightText: e.target.value }
+                            });
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Popup Title */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        প্রধান শিরোনাম (Popup Title)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: প্রথমবার প্রস্তুতি শুরু করুন"
+                        value={appSettings.popupNotification?.title || ""}
+                        onChange={(e) => {
+                          const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                          setAppSettings({
+                            ...appSettings,
+                            popupNotification: { ...current, title: e.target.value }
+                          });
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Optional Image Banner URL */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        ব্যানার ইমেজ লিংক (Optional Image URL)
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://... (ইমেজের সরাসরি লিংক দিলে উপরে ছবি শো করবে)"
+                        value={appSettings.popupNotification?.bannerImageUrl || ""}
+                        onChange={(e) => {
+                          const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                          setAppSettings({
+                            ...appSettings,
+                            popupNotification: { ...current, bannerImageUrl: e.target.value }
+                          });
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none font-mono"
+                      />
+                    </div>
+
+                    {/* Message / Description */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        বিস্তারিত মেসেজ / বর্ণনা (Description)
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="পপ-আপের মূল বার্তা লিখুন..."
+                        value={appSettings.popupNotification?.message || ""}
+                        onChange={(e) => {
+                          const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                          setAppSettings({
+                            ...appSettings,
+                            popupNotification: { ...current, message: e.target.value }
+                          });
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Feature Points Manager */}
+                    <div className="space-y-2 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-extrabold text-slate-700 uppercase">
+                          ফিচার পয়েন্ট / বুলেট লিস্ট (Bullet Points)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                            const pts = [...(current.points || [])];
+                            pts.push("নতুন অফার সুবিধা");
+                            setAppSettings({
+                              ...appSettings,
+                              popupNotification: { ...current, points: pts }
+                            });
+                          }}
+                          className="text-[10px] font-black bg-orange-100 text-[#FF6A00] hover:bg-orange-200 px-2.5 py-1 rounded-lg cursor-pointer transition-all flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3 stroke-[3]" />
+                          <span>পয়েন্ট যোগ করুন</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 max-h-36 overflow-y-auto">
+                        {(appSettings.popupNotification?.points || []).map((pt, pIdx) => (
+                          <div key={pIdx} className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">
+                              ✓
+                            </span>
+                            <input
+                              type="text"
+                              value={pt}
+                              onChange={(e) => {
+                                const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                                const pts = [...(current.points || [])];
+                                pts[pIdx] = e.target.value;
+                                setAppSettings({
+                                  ...appSettings,
+                                  popupNotification: { ...current, points: pts }
+                                });
+                              }}
+                              className="flex-1 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                                const pts = (current.points || []).filter((_, i) => i !== pIdx);
+                                setAppSettings({
+                                  ...appSettings,
+                                  popupNotification: { ...current, points: pts }
+                                });
+                              }}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons Configuration */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          মূল বাটন টেক্সট (Primary CTA)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: এখনই পরীক্ষা দিন"
+                          value={appSettings.popupNotification?.buttonText || ""}
+                          onChange={(e) => {
+                            const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                            setAppSettings({
+                              ...appSettings,
+                              popupNotification: { ...current, buttonText: e.target.value }
+                            });
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          বাটন ক্লিক করলে কোথায় যাবে?
+                        </label>
+                        <select
+                          value={appSettings.popupNotification?.buttonActionValue || "all-live-exams"}
+                          onChange={(e) => {
+                            const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                            setAppSettings({
+                              ...appSettings,
+                              popupNotification: { 
+                                ...current, 
+                                buttonActionType: "screen",
+                                buttonActionValue: e.target.value 
+                              }
+                            });
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="all-live-exams">লাইভ এক্সাম পেজ (Live Exams)</option>
+                          <option value="all-courses">সকল কোর্স পেজ (All Courses)</option>
+                          <option value="packages">প্যাকেজ সাবস্ক্রিপশন (Packages)</option>
+                          <option value="leaderboard">লিডারবোর্ড পেজ (Leaderboard)</option>
+                          <option value="question-bank">প্রশ্ন ব্যাংক (Question Bank)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          বাতিল বাটন (Close/Cancel)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: পরে দেখব"
+                          value={appSettings.popupNotification?.cancelButtonText || ""}
+                          onChange={(e) => {
+                            const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                            setAppSettings({
+                              ...appSettings,
+                              popupNotification: { ...current, cancelButtonText: e.target.value }
+                            });
+                          }}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Right: Live Visual Preview Card (5 cols) */}
+                  <div className="lg:col-span-5 space-y-3">
+                    <div className="flex items-center justify-between pb-1">
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                        <Eye className="w-4 h-4 text-[#FF6A00]" />
+                        <span>লাইভ প্রিভিউ (Real-Time Preview)</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {appSettings.popupNotification?.enabled !== false ? "ইউজাররা এটি দেখতে পাবে" : "বর্তমানে বন্ধ আছে"}
+                      </span>
+                    </div>
+
+                    {/* Pop-up Simulation Box */}
+                    <div className="relative bg-gradient-to-b from-slate-900/90 to-slate-900/95 backdrop-blur-md p-4 rounded-3xl border border-slate-700 shadow-2xl text-left">
+                      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xl space-y-3 relative overflow-hidden">
+                        
+                        {/* Top decorative gradient accent */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500" />
+
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-1.5 bg-orange-100 text-[#FF6A00] px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wide">
+                          <Sparkles className="w-3 h-3 text-amber-500 fill-amber-400" />
+                          <span>{appSettings.popupNotification?.badgeText || "বিশেষ শিক্ষার্থী অফার"}</span>
+                        </div>
+
+                        {/* Title */}
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
+                          {appSettings.popupNotification?.title || "প্রথমবার প্রস্তুতি শুরু করুন"}{" "}
+                          <span className="text-[#FF6A00]">
+                            {appSettings.popupNotification?.highlightText || "সম্পূর্ণ ফ্রিতে!"}
+                          </span>
+                        </h4>
+
+                        {/* Description */}
+                        <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                          {appSettings.popupNotification?.message || "বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।"}
+                        </p>
+
+                        {/* Bullet Points */}
+                        <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          {(appSettings.popupNotification?.points || []).map((pt, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                              <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] shrink-0">
+                                ✓
+                              </span>
+                              <span className="truncate">{pt}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Simulated Buttons */}
+                        <div className="space-y-1.5 pt-1">
+                          <button
+                            type="button"
+                            className="w-full py-2.5 bg-gradient-to-r from-[#FF5500] to-[#FF6A00] text-white text-xs font-black rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-default"
+                          >
+                            <span>{appSettings.popupNotification?.buttonText || "এখনই পরীক্ষা দিন"}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full py-1.5 text-slate-400 hover:text-slate-600 text-[11px] font-bold text-center cursor-default"
+                          >
+                            {appSettings.popupNotification?.cancelButtonText || "পরে দেখব"}
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Save Popup Settings Button */}
+                <div className="pt-4 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const success = await saveAppSettingsToDb(appSettings);
+                      if (success) {
+                        triggerNotification("success", "পপ-আপ নোটিফিকেশন কনফিগারেশন সফলভাবে সেভ ও সার্ভারে আপডেট হয়েছে!");
+                      } else {
+                        triggerNotification("error", "সেটিংস সেভ করতে সমস্যা হয়েছে।");
+                      }
+                    }}
+                    className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>পপ-আপ সেটিংস সেভ করুন (Save Popup Settings)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* GRID DISPLAY LIMITS & SWITCHES */}
               <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6">
                 <div>
                   <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">

@@ -2432,7 +2432,7 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
                   >
                     সকল কোর্স দেখুন
                   </button>
@@ -7949,7 +7949,7 @@ export default function Home() {
         />
 
         {/* Intro Special Offer Popup Modal */}
-        <IntroOffer onAction={() => setCurrentScreen("all-live-exams")} />
+        <IntroOffer onAction={(targetScreen) => setCurrentScreen((targetScreen as any) || "all-live-exams")} />
 
         {/* Soft-Prompt Push Notification Modal */}
         <PushPermissionModal

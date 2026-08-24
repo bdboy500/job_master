@@ -136,37 +136,58 @@ export const INITIAL_LEADERBOARD_USERS: LeaderboardUser[] = [
 ];
 
 // Helper to get Date object forced to Bangladesh Time (Asia/Dhaka, UTC+6)
-export function getBangladeshDate(dateInput?: string | Date): Date {
+export function getBangladeshDate(dateInput?: string | number | Date): Date {
   const d = dateInput ? new Date(dateInput) : new Date();
   const bdStr = d.toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
   return new Date(bdStr);
 }
 
-export function isToday(dateStr: string): boolean {
-  const d = getBangladeshDate(dateStr);
-  const now = getBangladeshDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+// 1. Daily Cycle: Starts at today 00:00:00.000 BD time (resets every midnight)
+export function getBDDailyCycleStart(refDate?: Date): Date {
+  const bd = getBangladeshDate(refDate);
+  bd.setHours(0, 0, 0, 0);
+  return bd;
 }
 
-export function isThisWeek(dateStr: string): boolean {
-  const d = getBangladeshDate(dateStr);
-  const now = getBangladeshDate();
-  const diffTime = Math.abs(now.getTime() - d.getTime());
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-  return diffDays <= 7;
+// 2. Weekly Cycle: Resets every Friday at 12:00 AM (00:00:00.000 BD time)
+// In JavaScript getDay(): 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+// Days since last Friday: (bdDay - 5 + 7) % 7
+export function getBDWeeklyCycleStart(refDate?: Date): Date {
+  const bd = getBangladeshDate(refDate);
+  bd.setHours(0, 0, 0, 0);
+  const day = bd.getDay();
+  const daysSinceFriday = (day - 5 + 7) % 7;
+  bd.setDate(bd.getDate() - daysSinceFriday);
+  return bd;
 }
 
-export function isThisMonth(dateStr: string): boolean {
-  const d = getBangladeshDate(dateStr);
-  const now = getBangladeshDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth()
-  );
+// 3. Monthly Cycle: Resets at the start of each month (1st of month at 00:00:00.000 BD time)
+export function getBDMonthlyCycleStart(refDate?: Date): Date {
+  const bd = getBangladeshDate(refDate);
+  bd.setDate(1);
+  bd.setHours(0, 0, 0, 0);
+  return bd;
+}
+
+export function isToday(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const scoreDate = getBangladeshDate(dateStr);
+  const cycleStart = getBDDailyCycleStart();
+  return scoreDate.getTime() >= cycleStart.getTime();
+}
+
+export function isThisWeek(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const scoreDate = getBangladeshDate(dateStr);
+  const cycleStart = getBDWeeklyCycleStart();
+  return scoreDate.getTime() >= cycleStart.getTime();
+}
+
+export function isThisMonth(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const scoreDate = getBangladeshDate(dateStr);
+  const cycleStart = getBDMonthlyCycleStart();
+  return scoreDate.getTime() >= cycleStart.getTime();
 }
 
 // Client helper API calls
