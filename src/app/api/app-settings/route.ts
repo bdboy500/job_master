@@ -60,6 +60,10 @@ export async function POST(req: NextRequest) {
       prepHubHomeLimit: Math.min(12, Math.max(1, Number(body.prepHubHomeLimit) || 4)),
       proSectionActive: body.proSectionActive !== false,
       proSectionHomeLimit: Math.min(12, Math.max(1, Number(body.proSectionHomeLimit) || 4)),
+      pwaAssetLinks: body.pwaAssetLinks ? {
+        packageName: typeof body.pwaAssetLinks.packageName === "string" ? body.pwaAssetLinks.packageName : "",
+        sha256Fingerprints: Array.isArray(body.pwaAssetLinks.sha256Fingerprints) ? body.pwaAssetLinks.sha256Fingerprints : []
+      } : undefined,
       popupNotification: body.popupNotification ? {
         enabled: body.popupNotification.enabled !== false,
         badgeText: typeof body.popupNotification.badgeText === "string" ? body.popupNotification.badgeText : DEFAULT_POPUP_CONFIG.badgeText,

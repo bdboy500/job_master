@@ -61,10 +61,19 @@ const LOCAL_STORAGE_KEY = "jobmaster_app_settings_cache";
 
 let memorySettingsCache: AppSettings | null = null;
 let settingsInFlightPromise: Promise<AppSettings> | null = null;
+let lastFetchedAt = 0;
+let broadcastChannel: BroadcastChannel | null = null;
+
+if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
+  try {
+    broadcastChannel = new BroadcastChannel("jobmaster_app_settings_channel");
+  } catch (e) {}
+}
 
 export function invalidateAppSettingsCache() {
   memorySettingsCache = null;
   settingsInFlightPromise = null;
+  lastFetchedAt = 0;
 }
 
 export function getCachedAppSettings(): AppSettings {
@@ -87,7 +96,9 @@ export function getCachedAppSettings(): AppSettings {
 }
 
 export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppSettings> {
-  if (!forceRefresh && memorySettingsCache) {
+  const now = Date.now();
+  // Low egress caching: Reuse cache if refreshed within last 2 minutes unless forced
+  if (!forceRefresh && memorySettingsCache && (now - lastFetchedAt < 120000)) {
     return memorySettingsCache;
   }
 
@@ -110,17 +121,26 @@ export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppS
             .maybeSingle();
 
           if (!error && data && data.value && typeof data.value.ourCoursesHomeLimit === "number") {
-            memorySettingsCache = data.value;
+            const merged: AppSettings = {
+              ...DEFAULT_APP_SETTINGS,
+              ...data.value,
+              popupNotification: {
+                ...DEFAULT_POPUP_CONFIG,
+                ...(data.value.popupNotification || {})
+              }
+            };
+            memorySettingsCache = merged;
+            lastFetchedAt = Date.now();
             if (typeof window !== "undefined") {
               try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.value));
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
               } catch (e) {}
             }
-            return data.value;
+            return merged;
           }
         }
       } catch (e) {
-        console.warn("Direct Supabase settings fetch error:", e);
+        console.warn("Direct Supabase settings fetch note:", e);
       }
 
       // 2. Next try API endpoint
@@ -130,6 +150,7 @@ export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppS
           const data = await res.json();
           if (data && data.settings && typeof data.settings.ourCoursesHomeLimit === "number") {
             memorySettingsCache = data.settings;
+            lastFetchedAt = Date.now();
             if (typeof window !== "undefined") {
               try {
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.settings));
@@ -151,45 +172,152 @@ export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppS
   return settingsInFlightPromise;
 }
 
+// Debounce timer for API/Supabase writes to prevent rapid bursts when admin clicks multiple buttons
+let saveDebounceTimer: NodeJS.Timeout | null = null;
+let pendingSaveSettings: AppSettings | null = null;
+
 export async function saveAppSettingsToDb(settings: AppSettings): Promise<boolean> {
   memorySettingsCache = settings;
+  lastFetchedAt = Date.now();
+
+  // 1. Instant local persistence & Cross-tab broadcast (0 network latency & 0 DB hits)
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
+      window.dispatchEvent(new CustomEvent("jobmaster_app_settings_updated", { detail: settings }));
+      if (broadcastChannel) {
+        broadcastChannel.postMessage(settings);
+      }
     } catch (e) {}
   }
 
-  let savedLocallyOrRemote = true;
+  pendingSaveSettings = settings;
 
-  // 1. Direct Supabase save
+  return new Promise<boolean>((resolve) => {
+    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+    
+    saveDebounceTimer = setTimeout(async () => {
+      const targetSettings = pendingSaveSettings || settings;
+      let saved = true;
+
+      // 2. Direct Supabase save
+      try {
+        const supabase = getSupabase();
+        if (supabase) {
+          const { error } = await supabase
+            .from("app_config")
+            .upsert(
+              { key: "home_display_settings", value: targetSettings, updated_at: new Date().toISOString() },
+              { onConflict: "key" }
+            );
+          if (error) {
+            console.warn("Supabase direct app_config upsert note:", error);
+          }
+        }
+      } catch (e) {
+        console.warn("Direct Supabase save app_settings note:", e);
+      }
+
+      // 3. API endpoint save
+      try {
+        const res = await fetch("/api/app-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(targetSettings)
+        });
+        if (!res.ok) saved = false;
+      } catch (e) {
+        console.warn("Failed to save app settings via API:", e);
+      }
+
+      resolve(saved);
+    }, 200);
+  });
+}
+
+// Real-time synchronization subscription helper with minimal network egress
+export function subscribeToAppSettings(onSettings: (settings: AppSettings) => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleUpdate = (e: any) => {
+    if (e.detail && typeof e.detail.ourCoursesHomeLimit === "number") {
+      onSettings(e.detail);
+    } else {
+      const cached = getCachedAppSettings();
+      onSettings(cached);
+    }
+  };
+
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed && typeof parsed.ourCoursesHomeLimit === "number") {
+          memorySettingsCache = parsed;
+          onSettings(parsed);
+        }
+      } catch (err) {}
+    }
+  };
+
+  const handleBroadcast = (e: MessageEvent) => {
+    if (e.data && typeof e.data.ourCoursesHomeLimit === "number") {
+      memorySettingsCache = e.data;
+      onSettings(e.data);
+    }
+  };
+
+  window.addEventListener("jobmaster_app_settings_updated", handleUpdate);
+  window.addEventListener("storage", handleStorage);
+
+  if (broadcastChannel) {
+    broadcastChannel.addEventListener("message", handleBroadcast);
+  }
+
+  // Low egress Supabase Realtime channel: listens only to changes on home_display_settings
+  let supabaseChannel: any = null;
+  let supabaseRef: any = null;
+
   try {
     const supabase = getSupabase();
     if (supabase) {
-      const { error } = await supabase
-        .from("app_config")
-        .upsert(
-          { key: "home_display_settings", value: settings, updated_at: new Date().toISOString() },
-          { onConflict: "key" }
-        );
-      if (error) {
-        console.warn("Supabase direct app_config upsert error:", error);
-      }
+      supabaseRef = supabase;
+      supabaseChannel = supabase
+        .channel("app_settings_realtime_sync")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "app_config", filter: "key=eq.home_display_settings" },
+          (payload: any) => {
+            if (payload?.new?.value && typeof payload.new.value.ourCoursesHomeLimit === "number") {
+              const freshSettings = payload.new.value;
+              memorySettingsCache = freshSettings;
+              lastFetchedAt = Date.now();
+              try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(freshSettings));
+              } catch (e) {}
+              onSettings(freshSettings);
+            } else {
+              invalidateAppSettingsCache();
+              fetchAppSettingsFromDb(true).then(onSettings);
+            }
+          }
+        )
+        .subscribe();
     }
-  } catch (e) {
-    console.warn("Direct Supabase save app_settings error:", e);
+  } catch (err) {
+    console.warn("AppSettings realtime sub note:", err);
   }
 
-  // 2. API endpoint save
-  try {
-    const res = await fetch("/api/app-settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
-    });
-    if (!res.ok) savedLocallyOrRemote = false;
-  } catch (e) {
-    console.warn("Failed to save app settings via API:", e);
-  }
-
-  return savedLocallyOrRemote;
+  return () => {
+    window.removeEventListener("jobmaster_app_settings_updated", handleUpdate);
+    window.removeEventListener("storage", handleStorage);
+    if (broadcastChannel) {
+      broadcastChannel.removeEventListener("message", handleBroadcast);
+    }
+    if (supabaseRef && supabaseChannel) {
+      try {
+        supabaseRef.removeChannel(supabaseChannel);
+      } catch (e) {}
+    }
+  };
 }

@@ -84,7 +84,7 @@ import {
 } from "../../lib/user_profiles";
 import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
-import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
+import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
 import { 
   CourseItem, 
   PrepSubjectItem, 
@@ -950,6 +950,9 @@ export default function AdminPage() {
     fetchAppSettingsFromDb().then((s) => {
       if (s) setAppSettings(s);
     });
+    const unsubAppSettings = subscribeToAppSettings((s) => {
+      if (s) setAppSettings(s);
+    });
     fetchCoursesFromDb().then((courses) => {
       setCoursesList(courses);
     });
@@ -968,6 +971,7 @@ export default function AdminPage() {
       unsubExams();
       unsubPkgs();
       unsubCoursesPrep();
+      unsubAppSettings();
     };
   }, []);
 

@@ -74,7 +74,7 @@ import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
-import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
+import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
@@ -890,6 +890,10 @@ export default function Home() {
         if (settings) setAppSettings(settings);
       });
 
+      const unsubAppSettings = subscribeToAppSettings((newSettings) => {
+        if (newSettings) setAppSettings(newSettings);
+      });
+
       // Background fetch dynamic published exam papers & subscribe to real-time changes (SWR pattern)
       fetchExamPapersFromDb()
         .then(papers => {
@@ -949,6 +953,7 @@ export default function Home() {
         if (unsubscribe) unsubscribe();
         if (unsubPkgs) unsubPkgs();
         if (unsubCoursesPrep) unsubCoursesPrep();
+        if (unsubAppSettings) unsubAppSettings();
       };
     }
   }, []);
