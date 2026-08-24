@@ -35,43 +35,6 @@
       "type": "image/png"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Job Master Desktop Dashboard"
-    },
-    {
-      "src": "/screenshot-1.png",
-      "sizes": "540x1200",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Job Master Home Dashboard"
-    },
-    {
-      "src": "/screenshot-2.png",
-      "sizes": "540x1200",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Job Master Live Exams List"
-    },
-    {
-      "src": "/screenshot-3.png",
-      "sizes": "540x1200",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Job Master BCS Course Details"
-    },
-    {
-      "src": "/screenshot-4.png",
-      "sizes": "540x1200",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Job Master Live Model Test Exam"
-    }
-  ],
   "shortcuts": [
     {
       "name": "লাইভ পরীক্ষা",

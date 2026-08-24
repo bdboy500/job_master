@@ -8,8 +8,7 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon.svg',
-  '/screenshot-wide.png'
+  '/icon.svg'
 ];
 
 // Install Event: Immediate activation via skipWaiting

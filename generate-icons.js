@@ -2,163 +2,181 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
+// Delete extra screenshot images from public directory
+const extraFilesToDelete = [
+  'screenshot-1.png',
+  'screenshot-2.png',
+  'screenshot-3.png',
+  'screenshot-4.png',
+  'screenshot-wide.png',
+  'launchericon-48x48.png',
+  'launchericon-72x72.png',
+  'launchericon-96x96.png',
+  'launchericon-144x144.png',
+  'launchericon-192x192.png',
+  'launchericon-512x512.png',
+];
+
+extraFilesToDelete.forEach(file => {
+  const p = path.join('public', file);
+  if (fs.existsSync(p)) {
+    fs.unlinkSync(p);
+    console.log(`Deleted extra image: ${file}`);
+  }
+});
+
+// High-definition SVG with Logo Icon + "JOB MASTER" Text + Bengali Slogan
 const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Gradients -->
-    <radialGradient id="bg-grad" cx="50%" cy="45%" r="55%">
-      <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="70%" stop-color="#F8FAFC" />
-      <stop offset="100%" stop-color="#EDF2F7" />
-    </radialGradient>
-
-    <linearGradient id="navy-ring" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1E2E4A" />
-      <stop offset="50%" stop-color="#142136" />
-      <stop offset="100%" stop-color="#0A1322" />
-    </linearGradient>
-
-    <linearGradient id="orange-ring" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Background Gradient -->
+    <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FF7A1A" />
-      <stop offset="50%" stop-color="#FF5400" />
+      <stop offset="45%" stop-color="#FF5400" />
       <stop offset="100%" stop-color="#D83F00" />
     </linearGradient>
 
-    <linearGradient id="orange-text" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FF6315" />
-      <stop offset="100%" stop-color="#E04600" />
+    <!-- Badge Inner Gradient -->
+    <linearGradient id="inner-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E2E4A" />
+      <stop offset="100%" stop-color="#0F172A" />
     </linearGradient>
 
-    <linearGradient id="navy-text" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1E3253" />
-      <stop offset="100%" stop-color="#101D33" />
+    <linearGradient id="gold-tassel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082" />
+      <stop offset="100%" stop-color="#FFB300" />
     </linearGradient>
 
     <!-- Drop Shadows -->
-    <filter id="badge-shadow" x="-10%" y="-10%" width="125%" height="125%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.18" />
+    <filter id="shadow-heavy" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000000" flood-opacity="0.3" />
     </filter>
 
-    <filter id="inner-shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.12" />
+    <filter id="text-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
     </filter>
-
-    <filter id="text-3d" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="4" stdDeviation="2" flood-color="#000000" flood-opacity="0.18" />
-    </filter>
-
-    <!-- Path for curved Bengali text along bottom inside -->
-    <path id="bengali-path" d="M 105,335 A 165,165 0 0,0 407,335" fill="none" />
   </defs>
 
-  <!-- Outer Soft Shadow Container -->
-  <circle cx="256" cy="256" r="236" fill="url(#navy-ring)" filter="url(#badge-shadow)" />
+  <!-- Squircle Canvas Background -->
+  <rect x="16" y="16" width="480" height="480" rx="104" ry="104" fill="url(#brand-grad)" filter="url(#shadow-heavy)" />
+  
+  <!-- Subtle Outer Border Accent -->
+  <rect x="18" y="18" width="476" height="476" rx="102" ry="102" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="3" />
 
-  <!-- Outer Navy 3D Rim -->
-  <circle cx="256" cy="256" r="234" fill="none" stroke="url(#navy-ring)" stroke-width="18" />
-  <circle cx="256" cy="256" r="243" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1.5" />
+  <!-- Inner Badge Container for Contrast -->
+  <circle cx="256" cy="180" r="100" fill="url(#inner-dark)" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="4" />
 
-  <!-- Inner Orange 3D Ring -->
-  <circle cx="256" cy="256" r="217" fill="none" stroke="url(#orange-ring)" stroke-width="15" />
-  <circle cx="256" cy="256" r="224" fill="none" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1" />
-
-  <!-- Inner Circle Canvas -->
-  <circle cx="256" cy="256" r="208" fill="url(#bg-grad)" />
-
-  <!-- Subtly recessed ring border inside -->
-  <circle cx="256" cy="256" r="208" fill="none" stroke="#CBD5E1" stroke-width="1.5" stroke-opacity="0.6" />
-
-  <!-- ==================== TOP ICON (GRADUATION CAP + OPEN BOOK) ==================== -->
-  <g transform="translate(256, 142) scale(1.02)" filter="url(#text-3d)">
-    <!-- Mortarboard Top Diamond -->
-    <path d="M 0,-48 L 56,-22 L 0,4 L -56,-22 Z" fill="#142136" />
+  <!-- ==================== LOGO ICON: GRADUATION CAP & BOOK ==================== -->
+  <g transform="translate(256, 175) scale(1.35)" filter="url(#text-glow)">
+    <!-- Mortarboard Diamond Top -->
+    <path d="M 0,-34 L 46,-14 L 0,6 L -46,-14 Z" fill="#FFFFFF" />
     
-    <!-- Mortarboard Cap Base / Skullcap -->
-    <path d="M -30,-12 L -30,12 C -30,22 30,22 30,12 L 30,-12 Z" fill="#1B2B44" />
+    <!-- Cap Base -->
+    <path d="M -24,-8 L -24,10 C -24,18 24,18 24,10 L 24,-8 Z" fill="#F1F5F9" />
     
-    <!-- Tassel Loop & String on Left -->
-    <path d="M -42,-16 L -48,12" stroke="#142136" stroke-width="2.5" fill="none" stroke-linecap="round" />
-    <circle cx="-42" cy="-16" r="2.5" fill="#FF5400" />
-    <!-- Tassel Fringe -->
-    <path d="M -51,12 L -45,12 L -46.5,23 L -49.5,23 Z" fill="#142136" />
+    <!-- Tassel -->
+    <path d="M -35,-11 L -40,12" stroke="url(#gold-tassel)" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    <circle cx="-35" cy="-11" r="2.5" fill="#FFE082" />
+    <path d="M -43,12 L -37,12 L -38.5,22 L -41.5,22 Z" fill="url(#gold-tassel)" />
 
-    <!-- Open Book Below Cap -->
-    <g transform="translate(0, 10)">
+    <!-- Open Book Accent -->
+    <g transform="translate(0, 14) scale(0.7)">
       <!-- Left Page -->
-      <path d="M -4,2 C -15,-3 -32,-3 -44,2 L -44,28 C -32,23 -15,23 -4,28 Z" fill="#FFFFFF" stroke="#142136" stroke-width="5" stroke-linejoin="round" />
-      <line x1="-36" y1="10" x2="-12" y2="10" stroke="#142136" stroke-width="3" stroke-linecap="round" />
-      <line x1="-36" y1="18" x2="-12" y2="18" stroke="#142136" stroke-width="3" stroke-linecap="round" />
-
+      <path d="M -2,2 C -12,-2 -26,-2 -36,2 L -36,22 C -26,18 -12,18 -2,22 Z" fill="#FFFFFF" stroke="#FF5400" stroke-width="3" stroke-linejoin="round" />
       <!-- Right Page -->
-      <path d="M 4,2 C 15,-3 32,-3 44,2 L 44,28 C 32,23 15,23 4,28 Z" fill="#FFFFFF" stroke="#142136" stroke-width="5" stroke-linejoin="round" />
-      <line x1="12" y1="10" x2="36" y2="10" stroke="#142136" stroke-width="3" stroke-linecap="round" />
-      <line x1="12" y1="18" x2="36" y2="18" stroke="#142136" stroke-width="3" stroke-linecap="round" />
-
-      <!-- Book Spine -->
-      <line x1="0" y1="3" x2="0" y2="28" stroke="#142136" stroke-width="4" stroke-linecap="round" />
+      <path d="M 2,2 C 12,-2 26,-2 36,2 L 36,22 C 26,18 12,18 2,22 Z" fill="#FFFFFF" stroke="#FF5400" stroke-width="3" stroke-linejoin="round" />
     </g>
   </g>
 
-  <!-- ==================== CENTER BRAND TYPOGRAPHY ==================== -->
+  <!-- ==================== BRAND TEXT: "JOB MASTER" ==================== -->
   <!-- "JOB" -->
-  <g filter="url(#text-3d)">
-    <text x="256" y="278" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="94" fill="url(#navy-text)" text-anchor="middle" letter-spacing="3">JOB</text>
+  <g filter="url(#text-glow)">
+    <text 
+      x="256" 
+      y="338" 
+      font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+      font-weight="900" 
+      font-size="68" 
+      fill="#FFFFFF" 
+      text-anchor="middle" 
+      letter-spacing="4"
+    >
+      JOB
+    </text>
   </g>
 
   <!-- "MASTER" -->
-  <g filter="url(#text-3d)">
-    <text x="256" y="348" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="78" fill="url(#orange-text)" text-anchor="middle" letter-spacing="2">MASTER</text>
+  <g filter="url(#text-glow)">
+    <text 
+      x="256" 
+      y="398" 
+      font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+      font-weight="900" 
+      font-size="52" 
+      fill="#FFE8D6" 
+      text-anchor="middle" 
+      letter-spacing="3"
+    >
+      MASTER
+    </text>
   </g>
 
-  <!-- Accent underline bar below MASTER with center gap -->
-  <g filter="url(#inner-shadow)">
-    <line x1="150" y1="365" x2="242" y2="365" stroke="#FF5400" stroke-width="4.5" stroke-linecap="round" />
-    <line x1="270" y1="365" x2="362" y2="365" stroke="#FF5400" stroke-width="4.5" stroke-linecap="round" />
-  </g>
+  <!-- Divider Pill Line -->
+  <rect x="176" y="416" width="160" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.6" />
 
-  <!-- ==================== CURVED BENGALI SLOGAN ==================== -->
-  <!-- "চাকরি এখন হাতের মুঠোয়!" -->
-  <text font-family="'Hind Siliguri', 'Noto Sans Bengali', 'SolaimanLipi', 'Kalpurush', sans-serif" font-weight="800" font-size="28" fill="#142136" letter-spacing="1">
-    <textPath href="#bengali-path" startOffset="50%" text-anchor="middle">
-      চাকরি এখন হাতের মুঠোয়!
-    </textPath>
+  <!-- ==================== BENGALI TAGLINE ==================== -->
+  <text 
+    x="256" 
+    y="448" 
+    font-family="'Hind Siliguri', 'Noto Sans Bengali', 'SolaimanLipi', sans-serif" 
+    font-weight="700" 
+    font-size="22" 
+    fill="#FFFFFF" 
+    text-anchor="middle" 
+    letter-spacing="1"
+    fill-opacity="0.95"
+  >
+    চাকরি আপনার হাতে!
   </text>
 </svg>
 `;
 
-async function buildAllIcons() {
-  console.log('Generating crisp multi-resolution icons...');
+async function generateAll() {
+  console.log('Generating crisp clean logo icons with Icon & Text...');
   fs.writeFileSync('public/icon.svg', svgContent.trim());
 
   const svgBuffer = Buffer.from(svgContent);
 
-  const iconSizes = [
-    { name: 'launchericon-48x48.png', size: 48 },
-    { name: 'launchericon-72x72.png', size: 72 },
-    { name: 'launchericon-96x96.png', size: 96 },
-    { name: 'launchericon-144x144.png', size: 144 },
-    { name: 'launchericon-192x192.png', size: 192 },
-    { name: 'launchericon-512x512.png', size: 512 },
+  const targets = [
     { name: 'icon-192.png', size: 192 },
     { name: 'icon-512.png', size: 512 },
-    { name: 'icon.png', size: 512 },
     { name: 'apple-icon.png', size: 180 },
-    { name: 'favicon.png', size: 64 },
     { name: 'favicon.ico', size: 64 },
   ];
 
-  for (const item of iconSizes) {
-    const buffer = await sharp(svgBuffer)
-      .resize(item.size, item.size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png({ compressionLevel: 9, adaptiveFiltering: true, quality: 100 })
+  for (const t of targets) {
+    const buf = await sharp(svgBuffer)
+      .resize(t.size, t.size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png({ compressionLevel: 9, quality: 100 })
       .toBuffer();
-    fs.writeFileSync(path.join('public', item.name), buffer);
-    console.log(`Generated public/${item.name} (${item.size}x${item.size})`);
+    fs.writeFileSync(path.join('public', t.name), buf);
+    console.log(`Generated public/${t.name} (${t.size}x${t.size})`);
   }
 
-  console.log('All launcher and PWA icons generated and validated successfully!');
+  // Synchronize icons-base64.ts
+  const base64Obj = {};
+  for (const t of targets) {
+    base64Obj[t.name] = fs.readFileSync(path.join('public', t.name)).toString('base64');
+  }
+  base64Obj['icon.svg'] = svgBuffer.toString('base64');
+
+  const tsContent = `export const ICON_BASE64: Record<string, string> = ${JSON.stringify(base64Obj, null, 2)};\n`;
+  fs.writeFileSync('src/app/api/icons/icons-base64.ts', tsContent);
+  console.log('Synchronized src/app/api/icons/icons-base64.ts');
+
+  console.log('All icons generated successfully!');
 }
 
-buildAllIcons().catch(err => {
+generateAll().catch(err => {
   console.error('Error generating icons:', err);
   process.exit(1);
 });
