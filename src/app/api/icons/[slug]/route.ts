@@ -1,7 +1,8 @@
+import { NextRequest } from 'next/server';
 import { ICON_BASE64 } from '../icons-base64';
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   context: { params: Promise<{ slug: string }> | { slug: string } }
 ) {
   try {

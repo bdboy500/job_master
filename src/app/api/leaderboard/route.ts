@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/src/lib/supabase";
-import { 
-  LeaderboardUser, 
-  INITIAL_LEADERBOARD_USERS,
-  getBDDailyCycleKey,
-  getBDWeeklyCycleKey,
-  getBDMonthlyCycleKey,
-  isToday,
-  isThisWeek,
-  isThisMonth
-} from "@/src/lib/leaderboard";
+import { LeaderboardUser, INITIAL_LEADERBOARD_USERS } from "@/src/lib/leaderboard";
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_leaderboard_v2";
 
@@ -17,11 +8,39 @@ const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_leaderboard
 let globalLeaderboardStore: LeaderboardUser[] = [...INITIAL_LEADERBOARD_USERS];
 let isStoreInitialized = false;
 
-async function loadServerStore(): Promise<LeaderboardUser[]> {
-  const currentDailyKey = getBDDailyCycleKey();
-  const currentWeeklyKey = getBDWeeklyCycleKey();
-  const currentMonthlyKey = getBDMonthlyCycleKey();
+function getBDDate(dateStr?: string): Date {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const bdStr = d.toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
+  return new Date(bdStr);
+}
 
+function isBDToday(dateStr: string): boolean {
+  const d = getBDDate(dateStr);
+  const now = getBDDate();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+function isBDThisWeek(dateStr: string): boolean {
+  const d = getBDDate(dateStr);
+  const now = getBDDate();
+  const diffMs = Math.abs(now.getTime() - d.getTime());
+  return diffMs <= 7 * 24 * 60 * 60 * 1000;
+}
+
+function isBDThisMonth(dateStr: string): boolean {
+  const d = getBDDate(dateStr);
+  const now = getBDDate();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth()
+  );
+}
+
+async function loadServerStore(): Promise<LeaderboardUser[]> {
   let baseUsers: LeaderboardUser[] = [];
 
   if (isStoreInitialized && globalLeaderboardStore.length > 0) {
@@ -62,46 +81,6 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
     }
   }
 
-  // Enforce automatic score reset on stored users based on Bangladesh cycle boundaries
-  baseUsers = baseUsers.map((u) => {
-    let today = Number(u.today_score ?? 0);
-    let week = Number(u.week_score ?? 0);
-    let month = Number(u.month_score ?? 0);
-    const allTime = Number(u.all_time_score ?? 0);
-
-    // 1. Daily Reset: Reset to 0 at 12:00 AM midnight every day
-    if (u.daily_cycle_key && u.daily_cycle_key !== currentDailyKey) {
-      today = 0;
-    } else if (!u.daily_cycle_key && u.updated_at && !isToday(u.updated_at)) {
-      today = 0;
-    }
-
-    // 2. Weekly Reset: Reset to 0 every Friday at 12:00 AM midnight
-    if (u.weekly_cycle_key && u.weekly_cycle_key !== currentWeeklyKey) {
-      week = 0;
-    } else if (!u.weekly_cycle_key && u.updated_at && !isThisWeek(u.updated_at)) {
-      week = 0;
-    }
-
-    // 3. Monthly Reset: Reset to 0 on the last day of the month at 12:00 AM midnight
-    if (u.monthly_cycle_key && u.monthly_cycle_key !== currentMonthlyKey) {
-      month = 0;
-    } else if (!u.monthly_cycle_key && u.updated_at && !isThisMonth(u.updated_at)) {
-      month = 0;
-    }
-
-    return {
-      ...u,
-      today_score: isNaN(today) ? 0 : today,
-      week_score: isNaN(week) ? 0 : week,
-      month_score: isNaN(month) ? 0 : month,
-      all_time_score: isNaN(allTime) ? 0 : allTime,
-      daily_cycle_key: currentDailyKey,
-      weekly_cycle_key: currentWeeklyKey,
-      monthly_cycle_key: currentMonthlyKey
-    };
-  });
-
   // Synchronize with Supabase profiles and quiz_scores if available
   try {
     const supabase = getSupabase();
@@ -114,7 +93,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
         .from("quiz_scores")
         .select("user_id, score, created_at");
 
-      // Aggregate quiz scores strictly within their current Bangladesh cycles
+      // Aggregate quiz scores per user
       const userScoresAgg = new Map<string, { today: number; week: number; month: number; allTime: number }>();
       if (Array.isArray(quizScores)) {
         for (const qs of quizScores) {
@@ -128,9 +107,9 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
           }
           const agg = userScoresAgg.get(uid)!;
           agg.allTime += sc;
-          if (isToday(createdAt)) agg.today += sc;
-          if (isThisWeek(createdAt)) agg.week += sc;
-          if (isThisMonth(createdAt)) agg.month += sc;
+          if (isBDToday(createdAt)) agg.today += sc;
+          if (isBDThisWeek(createdAt)) agg.week += sc;
+          if (isBDThisMonth(createdAt)) agg.month += sc;
         }
       }
 
@@ -149,7 +128,7 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
 
           if (existingIdx >= 0) {
             const ex = baseUsers[existingIdx];
-            ex.id = uid;
+            ex.id = uid; // ensure ID is matched
             ex.name = pName || ex.name;
             ex.student_id = pStudentId || ex.student_id;
             if (pAvatar) ex.avatar_url = pAvatar;
@@ -157,9 +136,6 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
             ex.week_score = Math.max(ex.week_score || 0, agg.week);
             ex.month_score = Math.max(ex.month_score || 0, agg.month);
             ex.all_time_score = Math.max(ex.all_time_score || 0, agg.allTime);
-            ex.daily_cycle_key = currentDailyKey;
-            ex.weekly_cycle_key = currentWeeklyKey;
-            ex.monthly_cycle_key = currentMonthlyKey;
             baseUsers[existingIdx] = ex;
           } else {
             baseUsers.push({
@@ -171,9 +147,6 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
               week_score: agg.week,
               month_score: agg.month,
               all_time_score: agg.allTime,
-              daily_cycle_key: currentDailyKey,
-              weekly_cycle_key: currentWeeklyKey,
-              monthly_cycle_key: currentMonthlyKey,
               updated_at: new Date().toISOString()
             });
           }
@@ -186,10 +159,10 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
 
   // Sanitize all output users to guarantee valid non-NaN scores
   const sanitizedUsers = baseUsers.map((u) => {
-    const today = Number(u.today_score ?? 0);
-    const week = Number(u.week_score ?? 0);
-    const month = Number(u.month_score ?? 0);
-    const allTime = Number(u.all_time_score ?? 0);
+    const today = Number(u.today_score ?? (u as any).score ?? 0);
+    const week = Number(u.week_score ?? (u as any).score ?? today);
+    const month = Number(u.month_score ?? (u as any).score ?? week);
+    const allTime = Number(u.all_time_score ?? (u as any).score ?? month);
 
     return {
       id: u.id || `user_${Date.now()}`,
@@ -200,9 +173,6 @@ async function loadServerStore(): Promise<LeaderboardUser[]> {
       week_score: isNaN(week) ? 0 : week,
       month_score: isNaN(month) ? 0 : month,
       all_time_score: isNaN(allTime) ? 0 : allTime,
-      daily_cycle_key: u.daily_cycle_key || currentDailyKey,
-      weekly_cycle_key: u.weekly_cycle_key || currentWeeklyKey,
-      monthly_cycle_key: u.monthly_cycle_key || currentMonthlyKey,
       updated_at: u.updated_at || new Date().toISOString()
     };
   });
@@ -256,9 +226,6 @@ export async function POST(req: NextRequest) {
     );
 
     const nowIso = new Date().toISOString();
-    const currentDailyKey = getBDDailyCycleKey();
-    const currentWeeklyKey = getBDWeeklyCycleKey();
-    const currentMonthlyKey = getBDMonthlyCycleKey();
 
     if (existingIndex >= 0) {
       const u = currentUsers[existingIndex];
@@ -266,9 +233,6 @@ export async function POST(req: NextRequest) {
       u.week_score = (u.week_score || 0) + score;
       u.month_score = (u.month_score || 0) + score;
       u.all_time_score = (u.all_time_score || 0) + score;
-      u.daily_cycle_key = currentDailyKey;
-      u.weekly_cycle_key = currentWeeklyKey;
-      u.monthly_cycle_key = currentMonthlyKey;
       if (userName) u.name = userName;
       if (avatarUrl) u.avatar_url = avatarUrl;
       if (studentId) u.student_id = studentId;
@@ -284,9 +248,6 @@ export async function POST(req: NextRequest) {
         week_score: score,
         month_score: score,
         all_time_score: score,
-        daily_cycle_key: currentDailyKey,
-        weekly_cycle_key: currentWeeklyKey,
-        monthly_cycle_key: currentMonthlyKey,
         updated_at: nowIso
       };
       currentUsers.push(newUser);
@@ -312,9 +273,6 @@ export async function PATCH(req: NextRequest) {
 
     const currentUsers = await loadServerStore();
     const existingIndex = currentUsers.findIndex((u) => u.id === userId);
-    const currentDailyKey = getBDDailyCycleKey();
-    const currentWeeklyKey = getBDWeeklyCycleKey();
-    const currentMonthlyKey = getBDMonthlyCycleKey();
 
     if (existingIndex >= 0) {
       const u = currentUsers[existingIndex];
@@ -323,12 +281,10 @@ export async function PATCH(req: NextRequest) {
       if (typeof month_score === "number") u.month_score = month_score;
       if (typeof all_time_score === "number") u.all_time_score = all_time_score;
       if (name) u.name = name;
-      u.daily_cycle_key = currentDailyKey;
-      u.weekly_cycle_key = currentWeeklyKey;
-      u.monthly_cycle_key = currentMonthlyKey;
       u.updated_at = new Date().toISOString();
       currentUsers[existingIndex] = u;
     } else {
+      // Create new custom entry if admin modifies non-existent
       const newUser: LeaderboardUser = {
         id: userId,
         name: name || "শিক্ষার্থী",
@@ -338,9 +294,6 @@ export async function PATCH(req: NextRequest) {
         week_score: week_score || 0,
         month_score: month_score || 0,
         all_time_score: all_time_score || 0,
-        daily_cycle_key: currentDailyKey,
-        weekly_cycle_key: currentWeeklyKey,
-        monthly_cycle_key: currentMonthlyKey,
         updated_at: new Date().toISOString()
       };
       currentUsers.push(newUser);

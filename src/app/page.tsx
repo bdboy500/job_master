@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   HelpCircle,
   Menu,
   Search,
@@ -36,6 +37,7 @@ import {
   ArrowLeft,
   Volume2,
   VolumeX,
+  Flame,
   Clock,
   Sparkles,
   Bookmark,
@@ -45,6 +47,7 @@ import {
   Package,
   Download,
   ShieldCheck,
+  Archive,
   Filter,
   Zap,
   LayoutGrid,
@@ -65,19 +68,19 @@ import {
   Film,
   WifiOff
 } from "lucide-react";
-import { QUIZ_QUESTIONS, Question } from "../data";
+import Link from "next/link";
+import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../lib/app_settings";
 import { quizAudio } from "../lib/audio";
-import { PwaProvider, BottomInstallBanner, InstallPwaPopup, triggerNativePwaInstall } from "../components/InstallPwaPopup";
+import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
-import { useAppNavigationHistory } from "../hooks/useBackButton";
+import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { useOneSignal } from "../hooks/useOneSignal";
-import JobMasterLogo from "../components/JobMasterLogo";
 
 // Code-split heavy interactive modals & components via next/dynamic
 const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { ssr: false });
@@ -387,6 +390,7 @@ const ALL_COURSES_DATA = [
 export default function Home() {
   // Navigation State
   const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
@@ -443,7 +447,7 @@ export default function Home() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [allRawQuestions, setAllRawQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [_error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState<boolean>(false);
   const [activeQuizTitle, setActiveQuizTitle] = useState<string>("General Quiz Game");
   const [activeQuizSubtitle, setActiveQuizSubtitle] = useState<string>("45th BCS International Affairs");
@@ -456,6 +460,7 @@ export default function Home() {
   const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>([]);
   const [proSectionList, setProSectionList] = useState<ProSectionItem[]>(getCachedProSection());
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
+  const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
   // Live Exam Carousel & Modal State
@@ -528,7 +533,7 @@ export default function Home() {
 
   // Quit Confirm Modal State
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
-  const [_pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
   // Offline warning popup state
   const [showOfflineWarning, setShowOfflineWarning] = useState<boolean>(false);
@@ -696,6 +701,8 @@ export default function Home() {
 
   // Search filter
   const [coursesSearchQuery, setCoursesSearchQuery] = useState<string>("");
+  const [selectedCourseCategory, setSelectedCourseCategory] = useState<string>("All");
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
   // Custom User Routine State (persisted inside localStorage if client-side)
   const [routineTasks, setRoutineTasks] = useState<RoutineItem[]>([]);
@@ -2425,7 +2432,7 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all"
                   >
                     সকল কোর্স দেখুন
                   </button>
@@ -2511,7 +2518,7 @@ export default function Home() {
                       setCurrentScreen("prep-all-subjects");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
                   >
                     সকল বিষয় দেখুন
                   </button>
@@ -2551,17 +2558,9 @@ export default function Home() {
                     <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
                       Pro Feature
                     </h3>
-                    <button
-                      onClick={() => {
-                        setPreviousScreen("home");
-                        setCurrentScreen("packages");
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60 hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-                    >
-                      <span>Pro Features</span>
-                      <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                    </button>
+                    <span className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60">
+                      Pro Features
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -5855,21 +5854,6 @@ export default function Home() {
               <span>Settings</span>
             </button>
 
-            {/* 6. Install Job Master App */}
-            <button
-              onClick={() => {
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-                triggerNativePwaInstall();
-              }}
-              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] font-black text-base sm:text-lg border border-orange-200/60 cursor-pointer"
-              id="drawer-item-install-app"
-            >
-              <JobMasterLogo size={28} className="w-7 h-7 shrink-0 rounded-lg shadow-2xs border border-orange-200" />
-              <span className="flex-1 truncate">Install Job Master App</span>
-              <Download className="w-5 h-5 text-[#FF6A00] shrink-0" />
-            </button>
-
             {/* 7. Contact Us */}
             <button
               onClick={() => {
@@ -7964,27 +7948,8 @@ export default function Home() {
           }}
         />
 
-        {/* Bottom PWA Install Banner */}
-        <BottomInstallBanner />
-
         {/* Intro Special Offer Popup Modal */}
-        <IntroOffer 
-          onAction={(actionType, customUrl) => {
-            if (actionType === "packages") {
-              setCurrentScreen("packages");
-            } else if (actionType === "prep_hub") {
-              setCurrentScreen("prep-all-subjects");
-            } else if (actionType === "courses") {
-              setCurrentScreen("courses");
-            } else if (actionType === "leaderboard") {
-              setCurrentScreen("rankings");
-            } else if (actionType === "custom_url" && customUrl) {
-              window.location.href = customUrl;
-            } else {
-              setCurrentScreen("all-live-exams");
-            }
-          }} 
-        />
+        <IntroOffer onAction={() => setCurrentScreen("all-live-exams")} />
 
         {/* Soft-Prompt Push Notification Modal */}
         <PushPermissionModal

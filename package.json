@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
-    "prebuild": "node generate-icons.js",
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "tsc --noEmit"

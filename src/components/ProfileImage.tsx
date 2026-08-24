@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import { useCachedImage } from "@/src/hooks/useImageCache";
 

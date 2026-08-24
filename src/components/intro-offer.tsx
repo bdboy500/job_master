@@ -1,65 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, X, Gift, Zap, ArrowRight, ShieldCheck } from "lucide-react";
-import { PopupNotificationConfig, DEFAULT_POPUP_NOTIFICATION, getCachedAppSettings, fetchAppSettingsFromDb } from "@/src/lib/app_settings";
 
 interface IntroOfferProps {
   onClose?: () => void;
-  onAction?: (actionType?: string, customUrl?: string) => void;
+  onAction?: () => void;
 }
 
 export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [config, setConfig] = useState<PopupNotificationConfig>(() => {
-    const cached = getCachedAppSettings();
-    return cached.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-  });
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadConfig() {
-      try {
-        const settings = await fetchAppSettingsFromDb();
-        if (isMounted && settings?.popupNotification) {
-          setConfig(settings.popupNotification);
-        }
-      } catch (err) {
-        console.warn("Failed to load popup notification config:", err);
-      }
-    }
-
-    loadConfig();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    // If popup is turned off in admin settings, do not show at all
-    if (config.enabled === false) {
-      setIsOpen(false);
-      return;
-    }
-
+    // Show only once per day or if not dismissed
     if (typeof window !== "undefined") {
       const dismissedAt = localStorage.getItem("job_master_intro_offer_dismissed");
       const now = Date.now();
-      const shouldShow =
-        !config.showOncePerDay ||
-        !dismissedAt ||
-        now - Number(dismissedAt) > 24 * 60 * 60 * 1000;
-
-      if (shouldShow) {
+      if (!dismissedAt || now - Number(dismissedAt) > 24 * 60 * 60 * 1000) {
         const timer = setTimeout(() => {
           setIsOpen(true);
-        }, 1200);
+        }, 1500);
         return () => clearTimeout(timer);
       }
     }
-  }, [config.enabled, config.showOncePerDay]);
+  }, []);
 
   const handleDismiss = () => {
     setIsOpen(false);
@@ -71,12 +35,10 @@ export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
 
   const handleClaim = () => {
     handleDismiss();
-    if (onAction) {
-      onAction(config.actionType || "all-live-exams", config.customUrl || "");
-    }
+    if (onAction) onAction();
   };
 
-  if (!isOpen || config.enabled === false) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
@@ -90,7 +52,6 @@ export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
           onClick={handleDismiss}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-all cursor-pointer"
           title="বন্ধ করুন"
-          id="popup-notification-close-btn"
         >
           <X className="w-4 h-4 stroke-[2.5px]" />
         </button>
@@ -104,48 +65,41 @@ export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[11px] font-black tracking-tight">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{config.badgeText || "বিশেষ বিজ্ঞপ্তি"}</span>
+            <span>বিশেষ শিক্ষার্থী অফার</span>
           </div>
 
           <h3 className="text-lg font-black text-slate-900 leading-snug">
-            {config.title || "প্রথমবার প্রস্তুতি শুরু করুন সম্পূর্ণ ফ্রিতে!"}
+            প্রথমবার প্রস্তুতি শুরু করুন <span className="text-[#FF6A00]">সম্পূর্ণ ফ্রিতে!</span>
           </h3>
 
           <p className="text-xs text-slate-600 font-medium leading-relaxed">
-            {config.description || "বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।"}
+            বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।
           </p>
         </div>
 
         {/* Highlight Perks */}
-        {(config.perk1 || config.perk2) && (
-          <div className="space-y-1.5 py-1">
-            {config.perk1 && (
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Zap className="w-3 h-3 stroke-[2.5px]" />
-                </div>
-                <span>{config.perk1}</span>
-              </div>
-            )}
-            {config.perk2 && (
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-3 h-3 stroke-[2.5px]" />
-                </div>
-                <span>{config.perk2}</span>
-              </div>
-            )}
+        <div className="space-y-1.5 py-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+              <Zap className="w-3 h-3 stroke-[2.5px]" />
+            </div>
+            <span>আনলিমিটেড ফ্রি লাইভ ও আর্কাইভ টেস্ট</span>
           </div>
-        )}
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-3 h-3 stroke-[2.5px]" />
+            </div>
+            <span>সঠিক ও নির্ভুল ব্যাখ্যাসহ সমাধান শিট</span>
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="pt-2 flex flex-col gap-2">
           <button
             onClick={handleClaim}
-            id="popup-notification-action-btn"
             className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF6A00] to-[#FF4E00] hover:from-orange-600 hover:to-orange-700 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-orange-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
           >
-            <span>{config.buttonText || "এখনই দেখুন"}</span>
+            <span>এখনই পরীক্ষা দিন</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5px]" />
           </button>
           

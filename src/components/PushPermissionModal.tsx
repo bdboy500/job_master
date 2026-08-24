@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, X, Sparkles } from "lucide-react";
+import React from "react";
+import { Bell, ShieldCheck, X, Sparkles } from "lucide-react";
 
 interface PushPermissionModalProps {
   isOpen: boolean;

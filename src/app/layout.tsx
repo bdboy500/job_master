@@ -7,12 +7,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { url: "/favicon.ico" }
+      { url: "/api/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/api/icons/favicon.ico" }
     ],
-    shortcut: "/favicon.ico",
-    apple: "/apple-icon.png",
+    shortcut: "/api/icons/favicon.ico",
+    apple: "/api/icons/apple-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -40,41 +39,10 @@ export default function RootLayout({
     <html lang="bn">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/api/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/api/icons/apple-icon.png" />
         <meta name="theme-color" content="#FF6A00" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Job Master" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (typeof window !== 'undefined') {
-                // 1. Capture beforeinstallprompt immediately
-                window.addEventListener('beforeinstallprompt', function(e) {
-                  e.preventDefault();
-                  window.__pwaInstallPrompt = e;
-                  window.dispatchEvent(new CustomEvent('pwa-prompt-available', { detail: e }));
-                });
-
-                // 2. Register Service Worker on load
-                if ('serviceWorker' in navigator) {
-                  window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                      .then(function(reg) {
-                        reg.update();
-                      })
-                      .catch(function(err) {
-                        console.log('SW registration note:', err);
-                      });
-                  });
-                }
-              }
-            `,
-          }}
-        />
       </head>
       <body>
         <ClientProviders>{children}</ClientProviders>

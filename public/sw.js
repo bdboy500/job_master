@@ -1,7 +1,7 @@
-const CACHE_NAME = 'job-master-pwa-v5';
-const DYNAMIC_API_CACHE = 'job-master-api-v5';
-const PAGE_CACHE = 'job-master-pages-v5';
-const AVATAR_IMAGE_CACHE = 'jobmaster-avatars-v4';
+const CACHE_NAME = 'job-master-pwa-v4';
+const DYNAMIC_API_CACHE = 'job-master-api-v4';
+const PAGE_CACHE = 'job-master-pages-v4';
+const AVATAR_IMAGE_CACHE = 'jobmaster-avatars-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -13,16 +13,12 @@ const STATIC_ASSETS = [
 
 // Install Event: Immediate activation via skipWaiting
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      await Promise.allSettled(
-        STATIC_ASSETS.map((asset) =>
-          cache.add(asset).catch((err) => console.log('SW precache skip:', asset, err))
-        )
-      );
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
     })
   );
+  self.skipWaiting();
 });
 
 // Activate Event: Clean up legacy caches & claim control immediately

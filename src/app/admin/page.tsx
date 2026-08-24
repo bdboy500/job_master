@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   AlertOctagon,
   Eye,
+  Settings,
   Database,
   Lock,
   Compass,
@@ -54,11 +55,19 @@ import {
   FlaskConical,
   Atom,
   Book,
+  Video,
   Database as DbIcon,
+  PlayCircle,
+  Tv,
+  Film,
   User,
+  Mail,
+  UserCheck,
+  UserX,
   UserPlus,
   UserCog,
   ShieldAlert,
+  KeyRound,
   EyeOff,
   RotateCw
 } from "lucide-react";
@@ -68,16 +77,19 @@ import { getSupabase } from "../../lib/supabase";
 import { 
   fetchAllProfilesFromDb, 
   updateUserStatusInDb, 
-  deleteUserProfileFromDb 
+  deleteUserProfileFromDb, 
+  UserProfile 
 } from "../../lib/user_profiles";
 import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
-import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, PopupNotificationConfig, DEFAULT_POPUP_NOTIFICATION } from "../../lib/app_settings";
+import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb } from "../../lib/app_settings";
 import { 
   CourseItem, 
   PrepSubjectItem, 
   SubCategoryItem, 
+  SubCategory2Item,
   ProSectionItem,
+  DEFAULT_PRO_SECTION,
   getCachedCourses, 
   getCachedPrepSubjects, 
   getCachedProSection,
@@ -92,6 +104,7 @@ import {
 } from "../../lib/courses_and_subjects";
 import {
   AdminRole,
+  AdminAccountStatus,
   AdminStaffUser,
   MASTER_ADMIN_EMAIL,
   canManageStaff,
@@ -406,7 +419,7 @@ export default function AdminPage() {
   const [newStaffRole, setNewStaffRole] = useState<AdminRole>("editor");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "popup_notification" | "leaderboard" | "notifications" | "staff">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard" | "notifications" | "staff">("questions");
 
   // Leaderboard Admin Management State
   const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
@@ -3129,36 +3142,17 @@ export default function AdminPage() {
             )}
 
             {canManageSettings(currentStaffSession) && (
-              <>
-                <button
-                  onClick={() => setActiveTab("switches")}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                    activeTab === "switches"
-                      ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                      : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-                  }`}
-                >
-                  <Sliders className={`w-4 h-4 ${activeTab === "switches" ? "text-white" : "text-[#FF6A00]"}`} />
-                  <span>কন্ট্রোল সুইচ</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("popup_notification")}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                    activeTab === "popup_notification"
-                      ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
-                      : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
-                  }`}
-                >
-                  <Sparkles className={`w-4 h-4 ${activeTab === "popup_notification" ? "text-white" : "text-[#FF6A00]"}`} />
-                  <span>পপ-আপ নোটিফিকেশন</span>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
-                    appSettings.popupNotification?.enabled !== false ? "bg-emerald-500 text-white" : "bg-slate-300 text-slate-700"
-                  }`}>
-                    {appSettings.popupNotification?.enabled !== false ? "ON" : "OFF"}
-                  </span>
-                </button>
-              </>
+              <button
+                onClick={() => setActiveTab("switches")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "switches"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Sliders className={`w-4 h-4 ${activeTab === "switches" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>কন্ট্রোল সুইচ</span>
+              </button>
             )}
 
             {canManageLeaderboard(currentStaffSession) && (
@@ -3332,38 +3326,17 @@ export default function AdminPage() {
 
             {/* Tab Button 8: Control Switches */}
             {canManageSettings(currentStaffSession) && (
-              <>
-                <button
-                  onClick={() => setActiveTab("switches")}
-                  className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                    activeTab === "switches"
-                      ? "bg-orange-50 text-[#FF6A00]"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  <Sliders className="w-4 h-4" />
-                  <span>কন্ট্রোল সুইচ (Settings)</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("popup_notification")}
-                  className={`flex flex-none items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                    activeTab === "popup_notification"
-                      ? "bg-orange-50 text-[#FF6A00]"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Sparkles className="w-4 h-4 shrink-0 text-[#FF6A00]" />
-                    <span className="truncate">পপ-আপ নোটিফিকেশন</span>
-                  </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-black ${
-                    appSettings.popupNotification?.enabled !== false ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"
-                  }`}>
-                    {appSettings.popupNotification?.enabled !== false ? "ON" : "OFF"}
-                  </span>
-                </button>
-              </>
+              <button
+                onClick={() => setActiveTab("switches")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "switches"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Sliders className="w-4 h-4" />
+                <span>কন্ট্রোল সুইচ (Settings)</span>
+              </button>
             )}
 
             {/* Tab Button 9: Quiz Leaderboard */}
@@ -6938,504 +6911,6 @@ CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
                     <span>সেটিংস সেভ করুন (Save Settings)</span>
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* VIEW: POPUP NOTIFICATION MANAGER                           */}
-          {/* ========================================================= */}
-          {activeTab === "popup_notification" && (
-            <div className="space-y-6 animate-fade-in text-left">
-              {/* Header Card */}
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-[#FF6A00] bg-orange-100 px-2.5 py-0.5 rounded-full">
-                        Homepage Popup Banner
-                      </span>
-                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                        appSettings.popupNotification?.enabled !== false
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                          : "bg-rose-100 text-rose-800 border border-rose-200"
-                      }`}>
-                        {appSettings.popupNotification?.enabled !== false ? "● বর্তমানে চালু আছে (ACTIVE)" : "○ বর্তমানে বন্ধ আছে (OFF)"}
-                      </span>
-                    </div>
-                    <h3 className="font-extrabold text-base sm:text-lg text-slate-800 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-[#FF6A00]" />
-                      <span>হোমস্ক্রিন পপ-আপ নোটিফিকেশন ও অফার ম্যানেজার (Popup Manager)</span>
-                    </h3>
-                    <p className="text-xs font-medium text-slate-500">
-                      ইউজার সাইটে বা অ্যাপে প্রবেশের পর যে ডায়ালগ বা নোটিশ প্রদর্শিত হয় তা এখান থেকে তৈরি, এডিট ও নিয়ন্ত্রণ করুন।
-                    </p>
-                  </div>
-
-                  {/* Preset quick buttons */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const template: PopupNotificationConfig = {
-                          enabled: true,
-                          badgeText: "বিশেষ শিক্ষার্থী অফার 🎁",
-                          title: "প্রথমবার প্রস্তুতি শুরু করুন সম্পূর্ণ ফ্রিতে!",
-                          description: "বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।",
-                          perk1: "আনলিমিটেড ফ্রি লাইভ ও আর্কাইভ টেস্ট",
-                          perk2: "সঠিক ও নির্ভুল ব্যাখ্যাসহ সমাধান শিট",
-                          buttonText: "এখনই পরীক্ষা দিন",
-                          actionType: "all-live-exams",
-                          customUrl: "",
-                          showOncePerDay: true
-                        };
-                        const updated = { ...appSettings, popupNotification: template };
-                        setAppSettings(updated);
-                        triggerNotification("success", "স্টুডেন্ট অফার টেমপ্লেট লোড করা হয়েছে!");
-                      }}
-                      className="text-xs font-black bg-orange-50 hover:bg-orange-100 text-[#FF6A00] border border-orange-200 px-3 py-2 rounded-xl transition-all cursor-pointer"
-                    >
-                      🎁 ফ্রি অফার টেমপ্লেট
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const template: PopupNotificationConfig = {
-                          enabled: true,
-                          badgeText: "জরুরি পরীক্ষার নোটিশ 📢",
-                          title: "আজকের লাইভ মডেল টেস্ট শুরু হয়েছে!",
-                          description: "সকল রেজিস্টার্ড প্রার্থীদের জন্য আজকের স্পেশাল জব মডেল টেস্ট লাইভ রয়েছে। সময় শেষ হওয়ার আগেই অংশগ্রহণ করুন।",
-                          perk1: "রিয়েল-টাইম লিডারবোর্ড ও মেধা তালিকা",
-                          perk2: "পরীক্ষা শেষে বিস্তারিত নেগেটিভ মার্কিং রিপোর্ট",
-                          buttonText: "পরীক্ষায় অংশগ্রহণ করুন",
-                          actionType: "all-live-exams",
-                          customUrl: "",
-                          showOncePerDay: false
-                        };
-                        const updated = { ...appSettings, popupNotification: template };
-                        setAppSettings(updated);
-                        triggerNotification("success", "পরীক্ষার নোটিশ টেমপ্লেট লোড করা হয়েছে!");
-                      }}
-                      className="text-xs font-black bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-2 rounded-xl transition-all cursor-pointer"
-                    >
-                      📢 পরীক্ষার নোটিশ টেমপ্লেট
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const template: PopupNotificationConfig = {
-                          enabled: true,
-                          badgeText: "মেগা ডিসকাউন্ট অফার 🔥",
-                          title: "৫০% ছাড়ে জব মাস্টার প্রিমিয়াম সাবস্ক্রিপশন!",
-                          description: "১ বছরের আনলিমিটেড প্রশ্ন ব্যাংক, লাইভ টেস্ট, ফুল সমাধান শিট এবং এক্সক্লুসিভ স্টাডি ম্যাটেরিয়াল আজই আনলক করুন।",
-                          perk1: "সকল প্রিমিয়াম প্রশ্ন ব্যাংক এক্সেস",
-                          perk2: "২৪/৭ আনলিমিটেড মডেল টেস্ট প্র্যাকটিস",
-                          buttonText: "প্যাকেজসমূহ দেখুন",
-                          actionType: "packages",
-                          customUrl: "",
-                          showOncePerDay: true
-                        };
-                        const updated = { ...appSettings, popupNotification: template };
-                        setAppSettings(updated);
-                        triggerNotification("success", "ডিসকাউন্ট প্যাকেজ টেমপ্লেট লোড করা হয়েছে!");
-                      }}
-                      className="text-xs font-black bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-2 rounded-xl transition-all cursor-pointer"
-                    >
-                      🔥 প্রিমিয়াম ডিসকাউন্ট
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid: Editor Form Left & Live Preview Right */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
-                {/* Left Column: Form Settings (7 cols) */}
-                <div className="lg:col-span-7 space-y-5">
-                  <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-5">
-                    
-                    {/* Master Switch ON/OFF */}
-                    <div className="p-4 bg-gradient-to-r from-orange-50/70 to-amber-50/40 border border-orange-200/80 rounded-2xl flex items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-sm text-slate-800">পপ-আপ প্রদর্শন অন/অফ (Master Switch)</span>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500">
-                          {appSettings.popupNotification?.enabled !== false
-                            ? "সক্রিয়: ইউজার ওয়েবসাইটে বা অ্যাপে ঢুকলে এই পপ-আপটি দেখতে পাবে।"
-                            : "নিষ্ক্রিয়: কোনো পপ-আপ শো করবে না। সম্পূর্ণ বন্ধ রয়েছে।"}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                          const nextVal = !(current.enabled !== false);
-                          const updatedSettings = {
-                            ...appSettings,
-                            popupNotification: { ...current, enabled: nextVal }
-                          };
-                          setAppSettings(updatedSettings);
-                        }}
-                        className={`relative inline-flex h-8 w-16 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          appSettings.popupNotification?.enabled !== false ? "bg-emerald-500" : "bg-slate-300"
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            appSettings.popupNotification?.enabled !== false ? "translate-x-8" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Frequency Setting */}
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                        প্রদর্শন ফ্রিকোয়েন্সি (Display Frequency)
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, showOncePerDay: true }
-                            });
-                          }}
-                          className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                            (appSettings.popupNotification?.showOncePerDay ?? true)
-                              ? "bg-orange-50 border-[#FF6A00] text-[#FF6A00] shadow-xs font-bold"
-                              : "bg-slate-50 border-slate-200 text-slate-600 font-semibold hover:bg-slate-100"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-black">প্রতি ২৪ ঘণ্টায় একবার</span>
-                            {(appSettings.popupNotification?.showOncePerDay ?? true) && <Check className="w-4 h-4 text-[#FF6A00]" />}
-                          </div>
-                          <span className="text-[10px] text-slate-500 leading-normal block">
-                            একবার ক্লোজ করলে ২৪ ঘণ্টার মধ্যে ইউজারকে পুনরায় বিরক্ত করবে না (Recommended)।
-                          </span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, showOncePerDay: false }
-                            });
-                          }}
-                          className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                            !(appSettings.popupNotification?.showOncePerDay ?? true)
-                              ? "bg-orange-50 border-[#FF6A00] text-[#FF6A00] shadow-xs font-bold"
-                              : "bg-slate-50 border-slate-200 text-slate-600 font-semibold hover:bg-slate-100"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-black">প্রতিবার সাইটে ঢুকলে</span>
-                            {!(appSettings.popupNotification?.showOncePerDay ?? true) && <Check className="w-4 h-4 text-[#FF6A00]" />}
-                          </div>
-                          <span className="text-[10px] text-slate-500 leading-normal block">
-                            ইউজার প্রতিবার পেজ রিফ্রেশ বা সাইটে প্রবেশ করলে নোটিফিকেশনটি শো করবে।
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Badge text input */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                        ১. ব্যাজ টেক্সট (Top Badge Tag)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. বিশেষ শিক্ষার্থী অফার 🎁"
-                        value={appSettings.popupNotification?.badgeText ?? "বিশেষ শিক্ষার্থী অফার"}
-                        onChange={(e) => {
-                          const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                          setAppSettings({
-                            ...appSettings,
-                            popupNotification: { ...current, badgeText: e.target.value }
-                          });
-                        }}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:outline-none transition-all"
-                      />
-                    </div>
-
-                    {/* Title input */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                        ২. প্রধান শিরোনাম (Main Headline / Title)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. প্রথমবার প্রস্তুতি শুরু করুন সম্পূর্ণ ফ্রিতে!"
-                        value={appSettings.popupNotification?.title ?? ""}
-                        onChange={(e) => {
-                          const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                          setAppSettings({
-                            ...appSettings,
-                            popupNotification: { ...current, title: e.target.value }
-                          });
-                        }}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-black text-slate-800 focus:outline-none transition-all"
-                      />
-                    </div>
-
-                    {/* Description textarea */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                        ৩. বিস্তারিত বার্তা (Description Content)
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।"
-                        value={appSettings.popupNotification?.description ?? ""}
-                        onChange={(e) => {
-                          const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                          setAppSettings({
-                            ...appSettings,
-                            popupNotification: { ...current, description: e.target.value }
-                          });
-                        }}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl p-4 text-xs font-semibold text-slate-800 focus:outline-none transition-all leading-relaxed"
-                      />
-                    </div>
-
-                    {/* Perks 1 & 2 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                          ৪. সুবিধা ১ (Perk Bullet 1)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. আনলিমিটেড ফ্রি লাইভ ও আর্কাইভ টেস্ট"
-                          value={appSettings.popupNotification?.perk1 ?? ""}
-                          onChange={(e) => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, perk1: e.target.value }
-                            });
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none transition-all"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                          ৫. সুবিধা ২ (Perk Bullet 2)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. সঠিক ও নির্ভুল ব্যাখ্যাসহ সমাধান শিট"
-                          value={appSettings.popupNotification?.perk2 ?? ""}
-                          onChange={(e) => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, perk2: e.target.value }
-                            });
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Button Text and Action Type */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                          ৬. বাটনের লেখা (CTA Button Text)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. এখনই পরীক্ষা দিন"
-                          value={appSettings.popupNotification?.buttonText ?? "এখনই পরীক্ষা দিন"}
-                          onChange={(e) => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, buttonText: e.target.value }
-                            });
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none transition-all"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                          ৭. বাটনের লিংক বা অ্যাকশন (Action Target)
-                        </label>
-                        <select
-                          value={appSettings.popupNotification?.actionType ?? "all-live-exams"}
-                          onChange={(e) => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, actionType: e.target.value as any }
-                            });
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none transition-all"
-                        >
-                          <option value="all-live-exams">সকল লাইভ ও আর্কাইভ এক্সাম পেজ</option>
-                          <option value="packages">প্যাকেজ ও মেম্বারশিপ পেজ</option>
-                          <option value="prep_hub">বিষয়ভিত্তিক প্রস্তুতি হাব (Prep Hub)</option>
-                          <option value="courses">কোর্স সমূহ পেজ (Courses)</option>
-                          <option value="leaderboard">কুইজ লিডারবোর্ড র‍্যাঙ্কিং</option>
-                          <option value="custom_url">কাস্টম ইউআরএল (External / Custom Link)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Custom URL (if actionType is custom_url) */}
-                    {appSettings.popupNotification?.actionType === "custom_url" && (
-                      <div className="space-y-1.5 animate-fade-in">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block pl-1">
-                          কাস্টম লিংক বা ইউআরএল (Custom URL)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="https://example.com/special-exam"
-                          value={appSettings.popupNotification?.customUrl ?? ""}
-                          onChange={(e) => {
-                            const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                            setAppSettings({
-                              ...appSettings,
-                              popupNotification: { ...current, customUrl: e.target.value }
-                            });
-                          }}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none transition-all"
-                        />
-                      </div>
-                    )}
-
-                    {/* Submit Button */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                      <div className="text-[11px] text-slate-400 font-bold">
-                        {appSettings.popupNotification?.enabled !== false
-                          ? "✓ এটি সেভ করলে ওয়েবসাইটে সরাসরি প্রদর্শিত হবে।"
-                          : "✕ বর্তমানে সুইচটি বন্ধ রয়েছে।"}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const current = appSettings.popupNotification || DEFAULT_POPUP_NOTIFICATION;
-                          const toSave = {
-                            ...appSettings,
-                            popupNotification: current
-                          };
-                          const success = await saveAppSettingsToDb(toSave);
-                          if (success) {
-                            triggerNotification("success", "পপ-আপ নোটিফিকেশন সফলভাবে সেভ করা হয়েছে!");
-                          } else {
-                            triggerNotification("error", "সেভ করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।");
-                          }
-                        }}
-                        className="bg-[#FF6A00] hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-orange-500/25 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-                      >
-                        <Check className="w-4 h-4 stroke-[3]" />
-                        <span>পরিবর্তন সেভ করুন (Save Changes)</span>
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Right Column: Live Mockup Preview (5 cols) */}
-                <div className="lg:col-span-5 space-y-4">
-                  <div className="bg-slate-900/90 text-white rounded-[2.5rem] p-6 shadow-2xl space-y-5 border border-slate-800 sticky top-4">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-[#FF6A00]" />
-                        <span className="text-xs font-black tracking-wider uppercase text-slate-300">
-                          লাইভ মোবাইল প্রিভিউ (Live Preview)
-                        </span>
-                      </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-                        appSettings.popupNotification?.enabled !== false
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                          : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                      }`}>
-                        {appSettings.popupNotification?.enabled !== false ? "Visible" : "Hidden (OFF)"}
-                      </span>
-                    </div>
-
-                    {/* Phone Frame Simulator */}
-                    <div className="bg-slate-950/80 rounded-3xl p-4 border border-slate-800/80 relative overflow-hidden">
-                      {/* Accent glow */}
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl"></div>
-
-                      {/* Modal Mockup Body */}
-                      <div className="relative bg-white text-slate-900 rounded-3xl p-5 shadow-xl space-y-4 border border-slate-100">
-                        
-                        {/* Close button mock */}
-                        <div className="flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-orange-50 text-[#FF6A00] border border-orange-200/60 shadow-2xs">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>{appSettings.popupNotification?.badgeText || "বিশেষ শিক্ষার্থী অফার"}</span>
-                          </span>
-                          <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xs font-black">
-                            ✕
-                          </span>
-                        </div>
-
-                        {/* Title & Desc */}
-                        <div className="space-y-1.5 text-left">
-                          <h4 className="text-base font-black text-slate-900 tracking-tight leading-snug">
-                            {appSettings.popupNotification?.title || "প্রথমবার প্রস্তুতি শুরু করুন সম্পূর্ণ ফ্রিতে!"}
-                          </h4>
-                          <p className="text-xs font-medium text-slate-600 leading-relaxed">
-                            {appSettings.popupNotification?.description || "বিসিএস, প্রাইমারি ও ব্যাংক পরীক্ষার লাইভ মডেল টেস্ট, ব্যাখ্যাসহ বিগত সালের প্রশ্ন ও ডেইলি রুটিন প্র্যাকটিস করুন যেকোনো সময়।"}
-                          </p>
-                        </div>
-
-                        {/* Perks */}
-                        <div className="space-y-2 pt-1 border-t border-slate-100 text-left">
-                          {appSettings.popupNotification?.perk1 && (
-                            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              </span>
-                              <span>{appSettings.popupNotification.perk1}</span>
-                            </div>
-                          )}
-
-                          {appSettings.popupNotification?.perk2 && (
-                            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                <Check className="w-2.5 h-2.5 stroke-[3]" />
-                              </span>
-                              <span>{appSettings.popupNotification.perk2}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Action CTA Button */}
-                        <button
-                          type="button"
-                          className="w-full bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-xs sm:text-sm py-3 rounded-2xl shadow-md shadow-orange-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
-                        >
-                          <span>{appSettings.popupNotification?.buttonText || "এখনই পরীক্ষা দিন"}</span>
-                          <ChevronRight className="w-4 h-4 stroke-[3]" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="text-[11px] text-slate-400 font-medium leading-normal text-center">
-                      ইউজার যখন ওয়েবসাইটে প্রবেশ করবে, সে অবিকল এই ডিজাইনটিতে পপ-আপ মেসেজটি দেখতে পাবে।
-                    </p>
-                  </div>
-                </div>
-
               </div>
             </div>
           )}

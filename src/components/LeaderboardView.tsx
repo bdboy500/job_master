@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, CheckCircle2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
 import { LeaderboardUser, fetchLeaderboard } from "@/src/lib/leaderboard";
 import { getSupabase } from "@/src/lib/supabase";
 
@@ -225,7 +225,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
         {/* TIME PERIOD TABS - Apple UI Segmented Control Style */}
-        <div className="relative z-10 max-w-md mx-auto mb-3">
+        <div className="relative z-10 max-w-md mx-auto mb-6">
           <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner">
             {(["Today", "Week", "Month", "All Time"] as const).map((tab) => {
               const isActive = activeTab === tab;
@@ -246,17 +246,6 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
                 </button>
               );
             })}
-          </div>
-
-          {/* Dynamic Reset Schedule Notice */}
-          <div className="mt-2 text-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white/95 text-[11px] font-bold backdrop-blur-xs border border-white/20 shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              {activeTab === "Today" && "দৈনিক স্কোর: প্রতিদিন রাত ১২:০০ টায় রিসেট"}
-              {activeTab === "Week" && "সাপ্তাহিক স্কোর: প্রতি শুক্রবার রাত ১২:০০ টায় রিসেট"}
-              {activeTab === "Month" && "মাসিক স্কোর: প্রতি মাসের শেষ দিন রাত ১২:০০ টায় রিসেট"}
-              {activeTab === "All Time" && "সর্বমোট স্কোর: আজীবন অর্জিত মোট পয়েন্ট"}
-            </span>
           </div>
         </div>
 
