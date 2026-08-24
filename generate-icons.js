@@ -155,7 +155,7 @@ async function generateAll() {
   for (const t of targets) {
     const buf = await sharp(svgBuffer)
       .resize(t.size, t.size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png({ compressionLevel: 9, quality: 100 })
+      .png({ palette: false, compressionLevel: 6, quality: 100 })
       .toBuffer();
     fs.writeFileSync(path.join('public', t.name), buf);
     console.log(`Generated public/${t.name} (${t.size}x${t.size})`);
