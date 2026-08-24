@@ -132,11 +132,14 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       };
       window.addEventListener("pwa-toast-notify", handleToast);
 
-      // 6. Listen for beforeinstallprompt event
-      const handleBeforeInstallPrompt = (e: Event) => {
-        e.preventDefault();
-        (window as any).__pwaInstallPrompt = e;
-        setDeferredPrompt(e);
+      // 6. Listen for beforeinstallprompt & custom pwa-prompt-available event
+      const handleBeforeInstallPrompt = (e: any) => {
+        const promptEvt = e.detail || e;
+        if (typeof promptEvt.preventDefault === "function") {
+          promptEvt.preventDefault();
+        }
+        (window as any).__pwaInstallPrompt = promptEvt;
+        setDeferredPrompt(promptEvt);
       };
 
       // 7. Listen for appinstalled event
@@ -149,10 +152,12 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       };
 
       window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.addEventListener("pwa-prompt-available", handleBeforeInstallPrompt);
       window.addEventListener("appinstalled", handleAppInstalled);
 
       return () => {
         window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+        window.removeEventListener("pwa-prompt-available", handleBeforeInstallPrompt);
         window.removeEventListener("appinstalled", handleAppInstalled);
         window.removeEventListener("pwa-toast-notify", handleToast);
       };
