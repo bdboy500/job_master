@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { GraduationCap } from "lucide-react";
 
 interface JobMasterLogoProps {

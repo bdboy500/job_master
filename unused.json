@@ -1,0 +1,444 @@
+{
+  "middleware.ts": [
+    {
+      "line": 4,
+      "char": 28,
+      "code": 6133,
+      "message": "'request' is declared but its value is never read."
+    }
+  ],
+  "src/app/admin/dashboard/page.tsx": [
+    {
+      "line": 3,
+      "char": 8,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    },
+    {
+      "line": 19,
+      "char": 3,
+      "code": 6133,
+      "message": "'FileText' is declared but its value is never read."
+    }
+  ],
+  "src/app/admin/page.tsx": [
+    {
+      "line": 25,
+      "char": 3,
+      "code": 6133,
+      "message": "'Settings' is declared but its value is never read."
+    },
+    {
+      "line": 58,
+      "char": 3,
+      "code": 6133,
+      "message": "'Video' is declared but its value is never read."
+    },
+    {
+      "line": 60,
+      "char": 3,
+      "code": 6133,
+      "message": "'PlayCircle' is declared but its value is never read."
+    },
+    {
+      "line": 61,
+      "char": 3,
+      "code": 6133,
+      "message": "'Tv' is declared but its value is never read."
+    },
+    {
+      "line": 62,
+      "char": 3,
+      "code": 6133,
+      "message": "'Film' is declared but its value is never read."
+    },
+    {
+      "line": 64,
+      "char": 3,
+      "code": 6133,
+      "message": "'Mail' is declared but its value is never read."
+    },
+    {
+      "line": 65,
+      "char": 3,
+      "code": 6133,
+      "message": "'UserCheck' is declared but its value is never read."
+    },
+    {
+      "line": 66,
+      "char": 3,
+      "code": 6133,
+      "message": "'UserX' is declared but its value is never read."
+    },
+    {
+      "line": 70,
+      "char": 3,
+      "code": 6133,
+      "message": "'KeyRound' is declared but its value is never read."
+    },
+    {
+      "line": 81,
+      "char": 3,
+      "code": 6133,
+      "message": "'UserProfile' is declared but its value is never read."
+    },
+    {
+      "line": 90,
+      "char": 3,
+      "code": 6133,
+      "message": "'SubCategory2Item' is declared but its value is never read."
+    },
+    {
+      "line": 92,
+      "char": 3,
+      "code": 6133,
+      "message": "'DEFAULT_PRO_SECTION' is declared but its value is never read."
+    },
+    {
+      "line": 107,
+      "char": 3,
+      "code": 6133,
+      "message": "'AdminAccountStatus' is declared but its value is never read."
+    },
+    {
+      "line": 2077,
+      "char": 15,
+      "code": 6133,
+      "message": "'data' is declared but its value is never read."
+    }
+  ],
+  "src/app/api/icons/[slug]/route.ts": [
+    {
+      "line": 5,
+      "char": 3,
+      "code": 6133,
+      "message": "'request' is declared but its value is never read."
+    }
+  ],
+  "src/app/api/leaderboard/route.ts": [
+    {
+      "line": 6,
+      "char": 3,
+      "code": 6133,
+      "message": "'getBangladeshDate' is declared but its value is never read."
+    }
+  ],
+  "src/app/global-error.tsx": [
+    {
+      "line": 4,
+      "char": 3,
+      "code": 6133,
+      "message": "'error' is declared but its value is never read."
+    }
+  ],
+  "src/app/page.tsx": [
+    {
+      "line": 19,
+      "char": 3,
+      "code": 6133,
+      "message": "'ChevronUp' is declared but its value is never read."
+    },
+    {
+      "line": 40,
+      "char": 3,
+      "code": 6133,
+      "message": "'Flame' is declared but its value is never read."
+    },
+    {
+      "line": 50,
+      "char": 3,
+      "code": 6133,
+      "message": "'Archive' is declared but its value is never read."
+    },
+    {
+      "line": 71,
+      "char": 1,
+      "code": 6133,
+      "message": "'Link' is declared but its value is never read."
+    },
+    {
+      "line": 72,
+      "char": 36,
+      "code": 6133,
+      "message": "'LIVE_QUIZ_ALLOWED_SUBJECTS' is declared but its value is never read."
+    },
+    {
+      "line": 81,
+      "char": 10,
+      "code": 6133,
+      "message": "'useModalHistory' is declared but its value is never read."
+    },
+    {
+      "line": 81,
+      "char": 27,
+      "code": 6133,
+      "message": "'useExamExitProtection' is declared but its value is never read."
+    },
+    {
+      "line": 394,
+      "char": 10,
+      "code": 6133,
+      "message": "'selectedCourseId' is declared but its value is never read."
+    },
+    {
+      "line": 394,
+      "char": 28,
+      "code": 6133,
+      "message": "'setSelectedCourseId' is declared but its value is never read."
+    },
+    {
+      "line": 403,
+      "char": 34,
+      "code": 6133,
+      "message": "'setPrepSubjectSearchQuery' is declared but its value is never read."
+    },
+    {
+      "line": 420,
+      "char": 10,
+      "code": 6133,
+      "message": "'profilePhone' is declared but its value is never read."
+    },
+    {
+      "line": 451,
+      "char": 10,
+      "code": 6133,
+      "message": "'error' is declared but its value is never read."
+    },
+    {
+      "line": 464,
+      "char": 10,
+      "code": 6133,
+      "message": "'selectedExamCategory' is declared but its value is never read."
+    },
+    {
+      "line": 464,
+      "char": 32,
+      "code": 6133,
+      "message": "'setSelectedExamCategory' is declared but its value is never read."
+    },
+    {
+      "line": 508,
+      "char": 10,
+      "code": 6133,
+      "message": "'showAnswerSheetScrollTop' is declared but its value is never read."
+    },
+    {
+      "line": 537,
+      "char": 10,
+      "code": 6133,
+      "message": "'pendingNavigation' is declared but its value is never read."
+    },
+    {
+      "line": 704,
+      "char": 30,
+      "code": 6133,
+      "message": "'setCoursesSearchQuery' is declared but its value is never read."
+    },
+    {
+      "line": 705,
+      "char": 10,
+      "code": 6133,
+      "message": "'selectedCourseCategory' is declared but its value is never read."
+    },
+    {
+      "line": 705,
+      "char": 34,
+      "code": 6133,
+      "message": "'setSelectedCourseCategory' is declared but its value is never read."
+    },
+    {
+      "line": 706,
+      "char": 10,
+      "code": 6133,
+      "message": "'expandedCourse' is declared but its value is never read."
+    },
+    {
+      "line": 706,
+      "char": 26,
+      "code": 6133,
+      "message": "'setExpandedCourse' is declared but its value is never read."
+    },
+    {
+      "line": 853,
+      "char": 23,
+      "code": 6133,
+      "message": "'subscription' is declared but its value is never read."
+    }
+  ],
+  "src/components/AdminPushNotificationTab.tsx": [
+    {
+      "line": 9,
+      "char": 3,
+      "code": 6133,
+      "message": "'CheckCircle2' is declared but its value is never read."
+    },
+    {
+      "line": 12,
+      "char": 3,
+      "code": 6133,
+      "message": "'Radio' is declared but its value is never read."
+    },
+    {
+      "line": 13,
+      "char": 3,
+      "code": 6133,
+      "message": "'Layers' is declared but its value is never read."
+    },
+    {
+      "line": 20,
+      "char": 3,
+      "code": 6133,
+      "message": "'AlertCircle' is declared but its value is never read."
+    },
+    {
+      "line": 22,
+      "char": 3,
+      "code": 6133,
+      "message": "'Check' is declared but its value is never read."
+    }
+  ],
+  "src/components/AuthModal.tsx": [
+    {
+      "line": 7,
+      "char": 1,
+      "code": 6133,
+      "message": "'useModalHistory' is declared but its value is never read."
+    }
+  ],
+  "src/components/ExamStartModal.tsx": [
+    {
+      "line": 3,
+      "char": 8,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    },
+    {
+      "line": 4,
+      "char": 20,
+      "code": 6133,
+      "message": "'HelpCircle' is declared but its value is never read."
+    },
+    {
+      "line": 4,
+      "char": 89,
+      "code": 6133,
+      "message": "'LogOut' is declared but its value is never read."
+    },
+    {
+      "line": 5,
+      "char": 21,
+      "code": 6133,
+      "message": "'getExamStatus' is declared but its value is never read."
+    }
+  ],
+  "src/components/JobMasterLogo.tsx": [
+    {
+      "line": 3,
+      "char": 1,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    }
+  ],
+  "src/components/LeaderboardView.tsx": [
+    {
+      "line": 4,
+      "char": 57,
+      "code": 6133,
+      "message": "'Award' is declared but its value is never read."
+    },
+    {
+      "line": 4,
+      "char": 91,
+      "code": 6133,
+      "message": "'GraduationCap' is declared but its value is never read."
+    }
+  ],
+  "src/components/ProfileImage.tsx": [
+    {
+      "line": 3,
+      "char": 8,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    }
+  ],
+  "src/components/PushPermissionModal.tsx": [
+    {
+      "line": 3,
+      "char": 1,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    },
+    {
+      "line": 4,
+      "char": 16,
+      "code": 6133,
+      "message": "'ShieldCheck' is declared but its value is never read."
+    }
+  ],
+  "src/components/intro-offer.tsx": [
+    {
+      "line": 3,
+      "char": 8,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    },
+    {
+      "line": 4,
+      "char": 59,
+      "code": 6133,
+      "message": "'Bell' is declared but its value is never read."
+    }
+  ],
+  "src/context/AuthContext.tsx": [
+    {
+      "line": 3,
+      "char": 8,
+      "code": 6133,
+      "message": "'React' is declared but its value is never read."
+    }
+  ],
+  "src/hooks/useBackButton.ts": [
+    {
+      "line": 281,
+      "char": 29,
+      "code": 6133,
+      "message": "'event' is declared but its value is never read."
+    }
+  ],
+  "src/lib/admin_auth.ts": [
+    {
+      "line": 460,
+      "char": 3,
+      "code": 6133,
+      "message": "'currentActorRole' is declared but its value is never read."
+    },
+    {
+      "line": 477,
+      "char": 3,
+      "code": 6133,
+      "message": "'currentActorRole' is declared but its value is never read."
+    },
+    {
+      "line": 496,
+      "char": 3,
+      "code": 6133,
+      "message": "'currentActorRole' is declared but its value is never read."
+    }
+  ],
+  "src/lib/app_settings.ts": [
+    {
+      "line": 45,
+      "char": 7,
+      "code": 6133,
+      "message": "'CLOUD_KV_URL' is declared but its value is never read."
+    }
+  ],
+  "src/lib/courses_and_subjects.ts": [
+    {
+      "line": 341,
+      "char": 7,
+      "code": 6133,
+      "message": "'HARDCODED_SUB_NAMES' is declared but its value is never read."
+    }
+  ]
+}

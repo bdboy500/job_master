@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { X, Clock, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck, WifiOff, Send, LogOut } from "lucide-react";
-import { ExamPaper, getExamStatus } from "../lib/exams";
+import { useState, useEffect, useCallback } from "react";
+import { X, Clock, CheckCircle2, AlertTriangle, ShieldCheck, WifiOff, Send } from "lucide-react";
+import { ExamPaper } from "../lib/exams";
 import MathRenderer from "./MathRenderer";
 import { useExamExitProtection } from "../hooks/useBackButton";
 

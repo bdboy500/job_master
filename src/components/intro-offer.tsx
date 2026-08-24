@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Sparkles, X, Gift, Zap, ArrowRight, ShieldCheck, Bell } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Sparkles, X, Gift, Zap, ArrowRight, ShieldCheck } from "lucide-react";
 import { PopupNotificationConfig, DEFAULT_POPUP_NOTIFICATION, getCachedAppSettings, fetchAppSettingsFromDb } from "@/src/lib/app_settings";
 
 interface IntroOfferProps {

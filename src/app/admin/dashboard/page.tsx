@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Users, 
@@ -15,8 +15,7 @@ import {
   CheckCircle2, 
   Clock,
   ExternalLink,
-  Layers,
-  FileText
+  Layers
 } from "lucide-react";
 import { 
   ResponsiveContainer, 

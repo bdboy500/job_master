@@ -6,20 +6,15 @@ import {
   Send, 
   Smartphone, 
   RefreshCw, 
-  CheckCircle2, 
   Clock, 
   Users, 
-  Radio, 
-  Layers, 
   ExternalLink,
   Sparkles,
   Zap,
   Award,
   BookOpen,
   Calendar,
-  AlertCircle,
   Search,
-  Check,
   SmartphoneNfc
 } from "lucide-react";
 import { ExamPaper } from "../lib/exams";

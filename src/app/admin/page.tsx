@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   AlertOctagon,
   Eye,
-  Settings,
   Database,
   Lock,
   Compass,
@@ -55,19 +54,11 @@ import {
   FlaskConical,
   Atom,
   Book,
-  Video,
   Database as DbIcon,
-  PlayCircle,
-  Tv,
-  Film,
   User,
-  Mail,
-  UserCheck,
-  UserX,
   UserPlus,
   UserCog,
   ShieldAlert,
-  KeyRound,
   EyeOff,
   RotateCw
 } from "lucide-react";
@@ -77,8 +68,7 @@ import { getSupabase } from "../../lib/supabase";
 import { 
   fetchAllProfilesFromDb, 
   updateUserStatusInDb, 
-  deleteUserProfileFromDb, 
-  UserProfile 
+  deleteUserProfileFromDb 
 } from "../../lib/user_profiles";
 import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
@@ -87,9 +77,7 @@ import {
   CourseItem, 
   PrepSubjectItem, 
   SubCategoryItem, 
-  SubCategory2Item,
   ProSectionItem,
-  DEFAULT_PRO_SECTION,
   getCachedCourses, 
   getCachedPrepSubjects, 
   getCachedProSection,
@@ -104,7 +92,6 @@ import {
 } from "../../lib/courses_and_subjects";
 import {
   AdminRole,
-  AdminAccountStatus,
   AdminStaffUser,
   MASTER_ADMIN_EMAIL,
   canManageStaff,

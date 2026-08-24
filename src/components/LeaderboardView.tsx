@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
+import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, CheckCircle2, ChevronDown } from "lucide-react";
 import { LeaderboardUser, fetchLeaderboard } from "@/src/lib/leaderboard";
 import { getSupabase } from "@/src/lib/supabase";
 

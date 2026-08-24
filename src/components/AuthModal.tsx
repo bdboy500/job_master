@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { X, Lock, Mail, Phone, User, IdCard, LogIn, UserPlus, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import { getSupabase } from "../lib/supabase";
 import { UserProfile, generateStudentId, upsertUserProfile, fetchUserProfile } from "../lib/user_profiles";
-import { useModalHistory } from "../hooks/useBackButton";
 
 interface AuthModalProps {
   isOpen: boolean;

@@ -16,7 +16,6 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
-  ChevronUp,
   HelpCircle,
   Menu,
   Search,
@@ -37,7 +36,6 @@ import {
   ArrowLeft,
   Volume2,
   VolumeX,
-  Flame,
   Clock,
   Sparkles,
   Bookmark,
@@ -47,7 +45,6 @@ import {
   Package,
   Download,
   ShieldCheck,
-  Archive,
   Filter,
   Zap,
   LayoutGrid,
@@ -68,8 +65,7 @@ import {
   Film,
   WifiOff
 } from "lucide-react";
-import Link from "next/link";
-import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
+import { QUIZ_QUESTIONS, Question } from "../data";
 import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
@@ -78,7 +74,7 @@ import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb } from "../li
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup, triggerNativePwaInstall } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
-import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
+import { useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { useOneSignal } from "../hooks/useOneSignal";
 import JobMasterLogo from "../components/JobMasterLogo";
@@ -391,7 +387,6 @@ const ALL_COURSES_DATA = [
 export default function Home() {
   // Navigation State
   const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
   const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
@@ -448,7 +443,7 @@ export default function Home() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [allRawQuestions, setAllRawQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState<boolean>(false);
   const [activeQuizTitle, setActiveQuizTitle] = useState<string>("General Quiz Game");
   const [activeQuizSubtitle, setActiveQuizSubtitle] = useState<string>("45th BCS International Affairs");
@@ -461,7 +456,6 @@ export default function Home() {
   const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>([]);
   const [proSectionList, setProSectionList] = useState<ProSectionItem[]>(getCachedProSection());
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
-  const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
 
   // Live Exam Carousel & Modal State
@@ -534,7 +528,7 @@ export default function Home() {
 
   // Quit Confirm Modal State
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
-  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [_pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
   // Offline warning popup state
   const [showOfflineWarning, setShowOfflineWarning] = useState<boolean>(false);
@@ -702,8 +696,6 @@ export default function Home() {
 
   // Search filter
   const [coursesSearchQuery, setCoursesSearchQuery] = useState<string>("");
-  const [selectedCourseCategory, setSelectedCourseCategory] = useState<string>("All");
-  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
   // Custom User Routine State (persisted inside localStorage if client-side)
   const [routineTasks, setRoutineTasks] = useState<RoutineItem[]>([]);

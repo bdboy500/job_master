@@ -3,7 +3,6 @@ import { getSupabase } from "@/src/lib/supabase";
 import { 
   LeaderboardUser, 
   INITIAL_LEADERBOARD_USERS,
-  getBangladeshDate,
   getBDDailyCycleKey,
   getBDWeeklyCycleKey,
   getBDMonthlyCycleKey,

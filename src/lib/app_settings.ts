@@ -42,7 +42,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   popupNotification: DEFAULT_POPUP_NOTIFICATION
 };
 
-const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_settings_v2";
 const LOCAL_STORAGE_KEY = "jobmaster_app_settings_cache";
 
 let memorySettingsCache: AppSettings | null = null;

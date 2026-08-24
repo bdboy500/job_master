@@ -338,16 +338,6 @@ export const DEFAULT_PRO_SECTION: ProSectionItem[] = [
   }
 ];
 
-const HARDCODED_SUB_NAMES = [
-  "full syllabus", "model test series", "model test", "bcs preliminary", "preliminary", "bcs",
-  "1st paper", "2nd paper", "arithmetic", "algebra", "geometry",
-  "physics", "chemistry", "biology", "bangladesh affairs", "international affairs",
-  "environment & geography", "disaster management", "daily science", "general medical",
-  "computer basics", "ict & technology", "mathematical logic", "mental skills",
-  "ethics & values", "good governance", "সকল বিষয়ভিত্তিক", "নিয়মিত মডেল টেস্ট",
-  "মডেল টেস্ট", "ফুল সিলেবাস", "সিলেবাস", "প্রিলিমিনারি", "স্পেশাল"
-];
-
 export function sanitizeSubSubjects<T extends CourseItem | PrepSubjectItem>(items: T[]): T[] {
   return items.map(item => {
     if (item.subSubjects && Array.isArray(item.subSubjects)) {

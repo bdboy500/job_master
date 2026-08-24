@@ -457,7 +457,7 @@ export async function approveStaffRequest(
 export async function updateStaffRole(
   targetId: string,
   newRole: AdminRole,
-  currentActorRole: AdminRole = "admin"
+  _currentActorRole: AdminRole = "admin"
 ): Promise<AdminStaffUser[]> {
   const staffList = await fetchAdminStaffFromDb(true);
   const target = staffList.find((s) => s.id === targetId);
@@ -474,7 +474,7 @@ export async function updateStaffRole(
 // Toggle Status (Active / Suspended)
 export async function toggleStaffStatus(
   targetId: string,
-  currentActorRole: AdminRole = "admin"
+  _currentActorRole: AdminRole = "admin"
 ): Promise<AdminStaffUser[]> {
   const staffList = await fetchAdminStaffFromDb(true);
   const target = staffList.find((s) => s.id === targetId);
@@ -493,7 +493,7 @@ export async function toggleStaffStatus(
 // Delete / Remove Staff
 export async function deleteStaffAccount(
   targetId: string,
-  currentActorRole: AdminRole = "admin"
+  _currentActorRole: AdminRole = "admin"
 ): Promise<AdminStaffUser[]> {
   const staffList = await fetchAdminStaffFromDb(true);
   const target = staffList.find((s) => s.id === targetId);
