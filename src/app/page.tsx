@@ -1603,7 +1603,7 @@ export default function Home() {
 
   // Countdown timer logic
   useEffect(() => {
-    if (currentScreen !== "quiz" || !quizStarted || isSubmitted || isTimedOut || isCompleted || showQuitConfirmModal) return;
+    if (currentScreen !== "quiz" || !quizStarted || loading || isSubmitted || isTimedOut || isCompleted || showQuitConfirmModal) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -1614,16 +1614,16 @@ export default function Home() {
           return 0;
         }
         const next = prev - 1;
-        // Countdown sound alert for the last 10 seconds (10 to 1)
-        if (next <= 10 && next >= 1 && soundEnabled) {
-          quizAudio.playCountdownTick(next === 1);
+        // Countdown sound alert for the full 30 seconds (30 to 1)
+        if (next <= 30 && next >= 1 && soundEnabled) {
+          quizAudio.playCountdownTick(next <= 5);
         }
         return next;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentScreen, quizStarted, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal, soundEnabled]);
+  }, [currentScreen, quizStarted, loading, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal, soundEnabled]);
 
   // Helper function to shuffle options for any question
   const shuffleQuestionOptions = (q: Question): Question => {
@@ -1646,23 +1646,31 @@ export default function Home() {
     };
   };
 
-  // Handle start quiz action (Sets screen to 'quiz' and resets statistics)
+  // Handle start quiz action (Immediately navigates to quiz screen with skeleton loader)
   const startQuizFlow = (title: string, subtitle: string, customQuestionSet?: Question[]) => {
-    setIsStartingQuiz(true);
     if (soundEnabled) quizAudio.playClick();
+
+    // Check offline beforehand for live quiz
+    if (title === "Live Quiz Game" && typeof navigator !== "undefined" && !navigator.onLine) {
+      triggerOfflineWarning();
+      return;
+    }
+
+    setActiveQuizTitle(title);
+    setActiveQuizSubtitle(subtitle);
+    setLoading(true);
+    setQuizStarted(true);
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setSubmittedCount(0);
+    setSelectedOptionIndex(null);
+    setIsSubmitted(false);
+    setTimeLeft(30);
+    setIsTimedOut(false);
+    setCurrentScreen("quiz");
 
     executeWithAuth(async () => {
       try {
-        // Offline check for Live Quiz Game
-        if (title === "Live Quiz Game" && typeof navigator !== "undefined" && !navigator.onLine) {
-          triggerOfflineWarning();
-          setIsStartingQuiz(false);
-          return;
-        }
-
-        setActiveQuizTitle(title);
-        setActiveQuizSubtitle(subtitle);
-        
         let selectedQuestions: Question[] = [];
 
         if (title === "Live Quiz Game") {
@@ -1677,7 +1685,8 @@ export default function Home() {
             }
           } catch (err) {
             triggerOfflineWarning();
-            setIsStartingQuiz(false);
+            setLoading(false);
+            setCurrentScreen("home");
             return;
           }
         } else {
@@ -1701,15 +1710,10 @@ export default function Home() {
           } catch (e) {}
         }
 
-        setQuizStarted(true);
-        setCurrentQuestionIndex(0);
-        setScore(0);
-        setSubmittedCount(0);
-        setSelectedOptionIndex(null);
-        setIsSubmitted(false);
+        setLoading(false);
         setTimeLeft(30);
-        setIsTimedOut(false);
-        setCurrentScreen("quiz");
+      } catch (err) {
+        setLoading(false);
       } finally {
         setIsStartingQuiz(false);
       }
@@ -1801,9 +1805,24 @@ export default function Home() {
       });
     }
 
+    if (soundEnabled) quizAudio.playClick();
+
+    // Immediately show quiz screen with skeleton loader!
+    setLoading(true);
+    setQuizStarted(true);
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setSubmittedCount(0);
+    setSelectedOptionIndex(null);
+    setIsSubmitted(false);
+    setTimeLeft(30);
+    setIsTimedOut(false);
+    setCurrentScreen("quiz");
+
     if (activeQuizTitle === "Live Quiz Game") {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         triggerOfflineWarning();
+        setLoading(false);
         return;
       }
 
@@ -1818,6 +1837,7 @@ export default function Home() {
         }
       } catch (err) {
         triggerOfflineWarning();
+        setLoading(false);
         return;
       }
     } else {
@@ -1826,14 +1846,8 @@ export default function Home() {
       setQuestions(randomized.slice(0, 10));
     }
 
-    setQuizStarted(true);
-    setCurrentQuestionIndex(0);
-    setScore(0);
-    setSubmittedCount(0);
-    setSelectedOptionIndex(null);
-    setIsSubmitted(false);
+    setLoading(false);
     setTimeLeft(30);
-    setIsTimedOut(false);
   };
 
   // Handle Routine progress checking
@@ -2571,22 +2585,10 @@ export default function Home() {
                   {/* RIGHT SIDE: Start Quiz CTA button */}
                   <button 
                     onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
-                    disabled={isStartingQuiz}
-                    className={`animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0 ${
-                      isStartingQuiz ? "opacity-90 cursor-wait scale-95" : ""
-                    }`}
+                    className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
                   >
-                    {isStartingQuiz ? (
-                      <>
-                        <div className="w-4 h-4 rounded-full border-2 border-[#FF4E00] border-t-transparent animate-spin shrink-0" />
-                        <span className="font-black">প্রস্তুত হচ্ছে...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
-                        <span className="font-black">Start Quiz</span>
-                      </>
-                    )}
+                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
+                    <span className="font-black">Start Quiz</span>
                   </button>
                 </div>
               </div>
@@ -2707,17 +2709,17 @@ export default function Home() {
           {currentScreen === "quiz" && (
             <div className="p-4 sm:p-5 space-y-4 sm:space-y-5 animate-fade-in text-left">
               
-              {/* TOP HUD (ss2 Style): Left Correct Count & Orange Pill | Center Circular Countdown | Right Wrong Count & Red Pill */}
+              {/* TOP HUD (ss2 Style): Left Correct Count & Green Pill | Center Circular Countdown | Right Wrong Count & Red Pill */}
               {(() => {
                 const wrongCount = Math.max(0, submittedCount - score);
                 return (
                   <div className="bg-white border border-slate-200/80 rounded-3xl p-3 sm:p-4 shadow-xs flex items-center justify-between px-4 sm:px-6">
-                    {/* Left: Correct Indicator (Number first, then Theme Orange Pill) */}
+                    {/* Left: Correct Indicator (Number first, then Green Pill) */}
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-black text-base sm:text-lg text-[#FF6A00] leading-none">
+                      <span className="font-mono font-black text-base sm:text-lg text-emerald-600 leading-none">
                         {score < 10 ? `0${score}` : score}
                       </span>
-                      <span className="w-6 sm:w-8 h-2 sm:h-2.5 rounded-full bg-[#FF6A00] shadow-xs inline-block" />
+                      <span className="w-6 sm:w-8 h-2 sm:h-2.5 rounded-full bg-emerald-500 shadow-xs inline-block" />
                     </div>
 
                     {/* Center: Circular Animated Countdown Timer */}
@@ -2769,41 +2771,79 @@ export default function Home() {
                 );
               })()}
 
-              {/* Loader */}
+              {/* Loader: Full Quiz Question Skeleton with Left-to-Right Shimmer Sweep */}
               {loading && (
-                <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center flex flex-col items-center gap-5">
-                  <div className="w-12 h-12 rounded-full border-4 border-slate-100 border-t-orange-500 animate-spin" />
-                  <span className="text-xs font-bold text-slate-500 tracking-wider">প্রশ্ন প্রস্তুত হচ্ছে...</span>
+                <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 sm:space-y-5 animate-fade-in">
+                  {/* Top Row: Question Count Skeleton + Live Quiz Skeleton */}
+                  <div className="flex items-center justify-between">
+                    <div className="h-7 w-28 rounded-xl bg-orange-100/70 animate-shimmer" />
+                    <div className="h-7 w-24 rounded-full bg-rose-100/80 border border-rose-200/60 animate-shimmer" />
+                  </div>
+
+                  {/* Question Title Skeleton (2 lines) */}
+                  <div className="space-y-2 pt-1">
+                    <div className="h-5 w-11/12 bg-slate-200/80 rounded-lg animate-shimmer" />
+                    <div className="h-5 w-3/4 bg-slate-200/80 rounded-lg animate-shimmer" />
+                  </div>
+
+                  {/* Options List Skeleton (4 Options) */}
+                  <div className="space-y-2.5 sm:space-y-3 pt-1">
+                    {[1, 2, 3, 4].map((idx) => (
+                      <div
+                        key={idx}
+                        className="w-full p-3.5 sm:p-4 rounded-2xl border-2 border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-7 h-7 rounded-xl bg-orange-200/70 shrink-0 animate-shimmer" />
+                          <div
+                            className={`h-4 rounded-md bg-slate-200 animate-shimmer ${
+                              idx === 1 ? "w-3/5" : idx === 2 ? "w-4/5" : idx === 3 ? "w-1/2" : "w-2/3"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Action Button Skeleton */}
+                  <div className="pt-2">
+                    <div className="w-full h-13 rounded-2xl bg-gradient-to-r from-orange-200 via-amber-100 to-orange-200 animate-shimmer" />
+                  </div>
+
+                  {/* Bottom Question Count Indicator Skeleton */}
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-center">
+                    <div className="h-4 w-48 rounded-md bg-slate-100 animate-shimmer" />
+                  </div>
                 </div>
               )}
 
               {/* Timed out screen */}
               {!loading && quizStarted && isTimedOut && (
-                <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-4 shadow-md">
+                <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-4 shadow-md animate-fade-in">
                   <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center border border-red-100 animate-bounce">
                     <AlertTriangle className="w-7 h-7" />
                   </div>
                   <div className="space-y-1.5">
                     <h3 className="font-extrabold text-lg sm:text-xl text-slate-900">সময় শেষ! (Time's Up)</h3>
-                    <p className="text-slate-500 text-xs leading-relaxed max-w-[260px] mx-auto">
-                      প্রতিটি প্রশ্নের উত্তর ৩০ সেকেন্ডের মধ্যে দিতে হবে। পরবর্তী প্রশ্ন দেখুন অথবা আবার খেলুন!
+                    <p className="text-slate-500 text-xs leading-relaxed max-w-[280px] mx-auto">
+                      প্রতিটি প্রশ্নের উত্তর ৩০ সেকেন্ডের মধ্যে দিতে হবে। আবার খেলুন অথবা হোম স্ক্রিনে ফিরে যান!
                     </p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3 w-full pt-1">
                     <button
                       onClick={handleRestart}
-                      className="py-3.5 px-4 bg-red-500 hover:bg-red-600 text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                      className="py-3.5 px-4 bg-[#FF6A00] hover:bg-[#E54800] text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                     >
                       <RotateCcw className="w-4 h-4" />
                       আবার খেলুন
                     </button>
                     <button
-                      onClick={handleNext}
-                      className="py-3.5 px-4 bg-[#FF6A00] hover:bg-[#E54800] text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      onClick={() => setCurrentScreen("home")}
+                      className="py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                     >
-                      <span>পরবর্তী প্রশ্ন</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <HomeIcon className="w-4 h-4" />
+                      <span>হোম স্ক্রিন</span>
                     </button>
                   </div>
                 </div>
@@ -2867,17 +2907,23 @@ export default function Home() {
               )}
 
               {/* Active Quiz Card */}
-              {quizStarted && !isTimedOut && !isCompleted && currentQuestion && (
+              {quizStarted && !isTimedOut && !isCompleted && !loading && currentQuestion && (
                 <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
                   
-                  {/* Top Question Header: Question index badge */}
+                  {/* Top Question Header: Question index badge & Animated Red Live Quiz Badge */}
                   <div className="flex items-center justify-between">
                     <span className="bg-orange-50 text-[#FF6A00] border border-orange-200/90 font-black text-xs px-3 py-1 rounded-xl">
                       প্রশ্ন {currentQuestionIndex + 1} / {questions.length}
                     </span>
-                    <span className="text-[11px] font-extrabold text-slate-400">
-                      Live Quiz
-                    </span>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200/80 shadow-2xs">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                      </span>
+                      <span className="text-[11px] font-black text-rose-600 uppercase tracking-wider">
+                        Live Quiz
+                      </span>
+                    </div>
                   </div>
 
                   {/* Question Text */}
