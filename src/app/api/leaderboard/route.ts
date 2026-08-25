@@ -74,29 +74,78 @@ async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> 
     if (supabase) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, student_id");
+        .select("id, full_name, student_id, avatar_url");
 
-      const { data: quizScores } = await supabase
+      let quizScores: any[] | null = null;
+      
+      // Attempt to select full 4-score columns first
+      const fullRes = await supabase
         .from("quiz_scores")
-        .select("id, user_id, score, created_at")
-        .order("created_at", { ascending: false });
+        .select("id, user_id, user_name, student_id, avatar_url, today_score, week_score, month_score, all_time_score, score, updated_at, created_at")
+        .order("updated_at", { ascending: false });
+
+      if (!fullRes.error && Array.isArray(fullRes.data)) {
+        quizScores = fullRes.data;
+      } else {
+        // Fallback to legacy columns if table doesn't have 4 columns yet
+        const legacyRes = await supabase
+          .from("quiz_scores")
+          .select("id, user_id, score, created_at")
+          .order("created_at", { ascending: false });
+        if (!legacyRes.error && Array.isArray(legacyRes.data)) {
+          quizScores = legacyRes.data;
+        }
+      }
 
       // Aggregate quiz scores per user according to cycles and detect duplicates to clean
-      const userScoresAgg = new Map<string, { today: number; week: number; month: number; allTime: number; primaryId: string; duplicateIds: string[] }>();
+      const userScoresAgg = new Map<
+        string,
+        {
+          today: number;
+          week: number;
+          month: number;
+          allTime: number;
+          userName?: string;
+          studentId?: string;
+          avatarUrl?: string;
+          updatedAt?: string;
+          primaryId: string;
+          duplicateIds: string[];
+        }
+      >();
       
       if (Array.isArray(quizScores)) {
         for (const qs of quizScores) {
-          const uid = qs.user_id;
+          const uid = String(qs.user_id || "");
           if (!uid) continue;
-          const sc = Number(qs.score) || 0;
-          const createdAt = qs.created_at || new Date().toISOString();
+          
+          const rawScore = Number(qs.score) || 0;
+          const rawAllTime = Number(qs.all_time_score) || rawScore;
+          const rawToday = Number(qs.today_score ?? rawScore);
+          const rawWeek = Number(qs.week_score ?? rawScore);
+          const rawMonth = Number(qs.month_score ?? rawScore);
+          const recordDate = qs.updated_at || qs.created_at || new Date().toISOString();
+
+          // Calculate cycle freshness based on Bangladesh Time (UTC+6)
+          const validToday = isBDToday(recordDate);
+          const validWeek = isBDThisWeek(recordDate);
+          const validMonth = isBDThisMonth(recordDate);
+
+          const finalToday = validToday ? rawToday : 0;
+          const finalWeek = validWeek ? rawWeek : 0;
+          const finalMonth = validMonth ? rawMonth : 0;
+          const finalAllTime = rawAllTime;
 
           if (!userScoresAgg.has(uid)) {
             userScoresAgg.set(uid, { 
-              today: 0, 
-              week: 0, 
-              month: 0, 
-              allTime: 0,
+              today: finalToday, 
+              week: finalWeek, 
+              month: finalMonth, 
+              allTime: finalAllTime,
+              userName: qs.user_name || undefined,
+              studentId: qs.student_id || undefined,
+              avatarUrl: qs.avatar_url || undefined,
+              updatedAt: recordDate,
               primaryId: qs.id,
               duplicateIds: []
             });
@@ -106,13 +155,14 @@ async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> 
             if (qs.id && qs.id !== agg.primaryId) {
               agg.duplicateIds.push(qs.id);
             }
+            agg.allTime = Math.max(agg.allTime, finalAllTime);
+            if (validToday) agg.today = Math.max(agg.today, finalToday);
+            if (validWeek) agg.week = Math.max(agg.week, finalWeek);
+            if (validMonth) agg.month = Math.max(agg.month, finalMonth);
+            if (!agg.userName && qs.user_name) agg.userName = qs.user_name;
+            if (!agg.studentId && qs.student_id) agg.studentId = qs.student_id;
+            if (!agg.avatarUrl && qs.avatar_url) agg.avatarUrl = qs.avatar_url;
           }
-
-          const agg = userScoresAgg.get(uid)!;
-          agg.allTime = Math.max(agg.allTime, sc);
-          if (isBDToday(createdAt)) agg.today = Math.max(agg.today, sc);
-          if (isBDThisWeek(createdAt)) agg.week = Math.max(agg.week, sc);
-          if (isBDThisMonth(createdAt)) agg.month = Math.max(agg.month, sc);
         }
 
         // Background cleanup of duplicate IDs if found (keeps DB lean and compact)
@@ -137,7 +187,7 @@ async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> 
       // Merge profiles & aggregated scores into baseUsers
       if (Array.isArray(profiles) && profiles.length > 0) {
         for (const p of profiles) {
-          const uid = p.id;
+          const uid = String(p.id);
           const pName = p.full_name || "শিক্ষার্থী";
           const pStudentId = p.student_id || `JM-${uid.substring(0, 6)}`;
           const pAvatar = (p as any).avatar_url || "";
@@ -168,11 +218,29 @@ async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> 
               week_score: agg.week,
               month_score: agg.month,
               all_time_score: agg.allTime,
-              updated_at: new Date().toISOString()
+              updated_at: agg.updatedAt || new Date().toISOString()
             });
           }
         }
       }
+
+      // Also incorporate any quiz_scores users that were not in profiles table
+      userScoresAgg.forEach((agg, uid) => {
+        const found = baseUsers.some((u) => u.id === uid);
+        if (!found) {
+          baseUsers.push({
+            id: uid,
+            name: agg.userName || "শিক্ষার্থী",
+            student_id: agg.studentId || `JM-${uid.substring(0, 6)}`,
+            avatar_url: agg.avatarUrl || "",
+            today_score: agg.today,
+            week_score: agg.week,
+            month_score: agg.month,
+            all_time_score: agg.allTime,
+            updated_at: agg.updatedAt || new Date().toISOString()
+          });
+        }
+      });
     }
   } catch (err) {
     console.warn("Error augmenting store from Supabase DB:", err);
@@ -239,7 +307,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ users });
 }
 
-// POST /api/leaderboard - Submit Live Quiz score with Single-Row Upsert & Aggregation
+// POST /api/leaderboard - Submit Live Quiz score with 4-score Supabase update & Cycle resets
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -255,6 +323,11 @@ export async function POST(req: NextRequest) {
     );
 
     const nowIso = new Date().toISOString();
+    let finalToday = score;
+    let finalWeek = score;
+    let finalMonth = score;
+    let finalAllTime = score;
+    let resolvedStudentId = studentId;
 
     if (existingIndex >= 0) {
       const u = currentUsers[existingIndex];
@@ -262,25 +335,32 @@ export async function POST(req: NextRequest) {
       const validWeek = isBDThisWeek(u.updated_at);
       const validMonth = isBDThisMonth(u.updated_at);
 
-      u.today_score = (validToday ? u.today_score || 0 : 0) + score;
-      u.week_score = (validWeek ? u.week_score || 0 : 0) + score;
-      u.month_score = (validMonth ? u.month_score || 0 : 0) + score;
-      u.all_time_score = (u.all_time_score || 0) + score;
+      finalToday = (validToday ? u.today_score || 0 : 0) + score;
+      finalWeek = (validWeek ? u.week_score || 0 : 0) + score;
+      finalMonth = (validMonth ? u.month_score || 0 : 0) + score;
+      finalAllTime = (u.all_time_score || 0) + score;
+
+      u.today_score = finalToday;
+      u.week_score = finalWeek;
+      u.month_score = finalMonth;
+      u.all_time_score = finalAllTime;
       if (userName) u.name = userName;
       if (avatarUrl) u.avatar_url = avatarUrl;
       if (studentId) u.student_id = studentId;
+      resolvedStudentId = u.student_id;
       u.updated_at = nowIso;
       currentUsers[existingIndex] = u;
     } else {
+      resolvedStudentId = studentId || `JM-${Math.floor(100000 + Math.random() * 900000)}`;
       const newUser: LeaderboardUser = {
-        id: userId || `user_${Date.now()}`,
+        id: userId,
         name: userName || "শিক্ষার্থী",
-        student_id: studentId || `JM-${Math.floor(100000 + Math.random() * 900000)}`,
+        student_id: resolvedStudentId,
         avatar_url: avatarUrl || "",
-        today_score: score,
-        week_score: score,
-        month_score: score,
-        all_time_score: score,
+        today_score: finalToday,
+        week_score: finalWeek,
+        month_score: finalMonth,
+        all_time_score: finalAllTime,
         updated_at: nowIso
       };
       currentUsers.push(newUser);
@@ -289,34 +369,76 @@ export async function POST(req: NextRequest) {
     // Save in server store / app_config
     await saveServerStore(currentUsers);
 
-    // Strategy 1 & 2: Update Supabase quiz_scores as a compact single-row upsert
+    // Save & update in Supabase quiz_scores table directly with 4 scores
     try {
       const supabase = getSupabase();
-      if (supabase && userId && !userId.startsWith("user_")) {
+      if (supabase && userId) {
         const { data: existingRows } = await supabase
           .from("quiz_scores")
-          .select("id, score")
+          .select("id, user_id, today_score, week_score, month_score, all_time_score, score, updated_at, created_at")
           .eq("user_id", userId);
 
         if (existingRows && existingRows.length > 0) {
           const primary = existingRows[0];
-          await supabase
+          
+          // Try updating all 4 score columns
+          const updatePayload: any = {
+            today_score: finalToday,
+            week_score: finalWeek,
+            month_score: finalMonth,
+            all_time_score: finalAllTime,
+            score: finalAllTime,
+            user_name: userName,
+            student_id: resolvedStudentId,
+            avatar_url: avatarUrl || "",
+            updated_at: nowIso
+          };
+
+          const { error: updateErr } = await supabase
             .from("quiz_scores")
-            .update({ score: score, created_at: nowIso })
+            .update(updatePayload)
             .eq("id", primary.id);
 
+          if (updateErr) {
+            // Fallback for legacy schema (only score column)
+            await supabase
+              .from("quiz_scores")
+              .update({ score: finalAllTime, created_at: nowIso })
+              .eq("id", primary.id);
+          }
+
+          // Prune duplicates if multiple rows existed
           if (existingRows.length > 1) {
-            const dups = existingRows.slice(1).map(r => r.id);
+            const dups = existingRows.slice(1).map((r) => r.id);
             await supabase.from("quiz_scores").delete().in("id", dups);
           }
         } else {
-          await supabase.from("quiz_scores").insert([
-            { user_id: userId, score: score, created_at: nowIso }
-          ]);
+          // Insert new record into quiz_scores
+          const insertPayload: any = {
+            user_id: userId,
+            user_name: userName || "শিক্ষার্থী",
+            student_id: resolvedStudentId,
+            avatar_url: avatarUrl || "",
+            today_score: finalToday,
+            week_score: finalWeek,
+            month_score: finalMonth,
+            all_time_score: finalAllTime,
+            score: finalAllTime,
+            updated_at: nowIso,
+            created_at: nowIso
+          };
+
+          const { error: insertErr } = await supabase.from("quiz_scores").insert([insertPayload]);
+          if (insertErr) {
+            // Fallback for legacy schema
+            await supabase.from("quiz_scores").insert([
+              { user_id: userId, score: finalAllTime, created_at: nowIso }
+            ]);
+          }
         }
       }
     } catch (dbErr) {
-      console.warn("DB compact write notice:", dbErr);
+      console.warn("DB quiz_scores 4-score write notice:", dbErr);
     }
 
     return NextResponse.json({ success: true, users: currentUsers });
@@ -423,6 +545,39 @@ export async function PATCH(req: NextRequest) {
     }
 
     await saveServerStore(currentUsers);
+
+    // Also update Supabase quiz_scores table if configured
+    try {
+      const supabase = getSupabase();
+      if (supabase && userId) {
+        const u = currentUsers.find((user) => user.id === userId);
+        if (u) {
+          const updatePayload: any = {
+            today_score: u.today_score || 0,
+            week_score: u.week_score || 0,
+            month_score: u.month_score || 0,
+            all_time_score: u.all_time_score || 0,
+            score: u.all_time_score || 0,
+            user_name: u.name,
+            updated_at: new Date().toISOString()
+          };
+          const { error } = await supabase
+            .from("quiz_scores")
+            .update(updatePayload)
+            .eq("user_id", userId);
+
+          if (error) {
+            await supabase
+              .from("quiz_scores")
+              .update({ score: u.all_time_score || 0, created_at: new Date().toISOString() })
+              .eq("user_id", userId);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("PATCH supabase quiz_scores sync notice:", err);
+    }
+
     return NextResponse.json({ success: true, users: currentUsers });
   } catch (e) {
     console.error("PATCH /api/leaderboard error:", e);

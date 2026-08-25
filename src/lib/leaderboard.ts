@@ -222,49 +222,6 @@ export async function submitLiveQuizScore(payload: {
   avatarUrl?: string;
   score: number;
 }): Promise<LeaderboardUser[]> {
-  // Strategy 1 & 2: Smart Single-Record Upsert without creating endless duplicate rows
-  try {
-    const supabase = getSupabase();
-    if (supabase && payload.userId && !payload.userId.startsWith("user_")) {
-      // Check if user already has a score record in quiz_scores
-      const { data: existingRows } = await supabase
-        .from("quiz_scores")
-        .select("id, score")
-        .eq("user_id", payload.userId)
-        .order("created_at", { ascending: false });
-
-      if (existingRows && existingRows.length > 0) {
-        // Update existing primary record instead of inserting a new row
-        const primaryRow = existingRows[0];
-        const newScore = Math.max(Number(primaryRow.score) || 0, payload.score);
-        await supabase
-          .from("quiz_scores")
-          .update({
-            score: newScore,
-            created_at: new Date().toISOString()
-          })
-          .eq("id", primaryRow.id);
-
-        // If there were historical duplicate rows from previous runs, clean them up (Strategy 3)
-        if (existingRows.length > 1) {
-          const duplicateIds = existingRows.slice(1).map(r => r.id);
-          await supabase.from("quiz_scores").delete().in("id", duplicateIds);
-        }
-      } else {
-        // Insert initial single row
-        await supabase.from("quiz_scores").insert([
-          {
-            user_id: payload.userId,
-            score: payload.score,
-            created_at: new Date().toISOString()
-          },
-        ]);
-      }
-    }
-  } catch (err) {
-    console.warn("Supabase compact score update warning:", err);
-  }
-
   try {
     const res = await fetch("/api/leaderboard", {
       method: "POST",

@@ -1425,6 +1425,25 @@ export default function Home() {
     };
     saveTakenTests([newLog, ...takenTests]);
 
+    // Submit exam score to Supabase & Leaderboard
+    if (correctCount > 0) {
+      let effectiveUserId = currentUser?.id || profileId;
+      if (!effectiveUserId && typeof window !== "undefined") {
+        effectiveUserId = localStorage.getItem("jobmaster_device_user_id") || "";
+        if (!effectiveUserId) {
+          effectiveUserId = "user_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+          localStorage.setItem("jobmaster_device_user_id", effectiveUserId);
+        }
+      }
+      submitLiveQuizScore({
+        userId: effectiveUserId || "user_" + Date.now(),
+        userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
+        studentId: profileId || currentUser?.student_id || undefined,
+        avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
+        score: correctCount
+      });
+    }
+
     if (soundEnabled) {
       if (percentage >= 50) quizAudio.playSuccess();
       else quizAudio.playError();
@@ -1722,11 +1741,19 @@ export default function Home() {
       const updatedHistory = [newTestLog, ...takenTests];
       saveTakenTests(updatedHistory);
 
-      if (activeQuizTitle === "Live Quiz Game") {
+      if (scoreObtained > 0) {
+        let effectiveUserId = currentUser?.id || profileId;
+        if (!effectiveUserId && typeof window !== "undefined") {
+          effectiveUserId = localStorage.getItem("jobmaster_device_user_id") || "";
+          if (!effectiveUserId) {
+            effectiveUserId = "user_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+            localStorage.setItem("jobmaster_device_user_id", effectiveUserId);
+          }
+        }
         submitLiveQuizScore({
-          userId: currentUser?.id || "user_" + Date.now(),
+          userId: effectiveUserId || "user_" + Date.now(),
           userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
-          studentId: profileId || undefined,
+          studentId: profileId || currentUser?.student_id || undefined,
           avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
           score: scoreObtained
         });
@@ -1738,20 +1765,28 @@ export default function Home() {
 
   // Handle restart quiz with fresh random questions from allowed subjects
   const handleRestart = async () => {
+    if (score > 0) {
+      let effectiveUserId = currentUser?.id || profileId;
+      if (!effectiveUserId && typeof window !== "undefined") {
+        effectiveUserId = localStorage.getItem("jobmaster_device_user_id") || "";
+        if (!effectiveUserId) {
+          effectiveUserId = "user_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+          localStorage.setItem("jobmaster_device_user_id", effectiveUserId);
+        }
+      }
+      submitLiveQuizScore({
+        userId: effectiveUserId || "user_" + Date.now(),
+        userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
+        studentId: profileId || currentUser?.student_id || undefined,
+        avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
+        score: score
+      });
+    }
+
     if (activeQuizTitle === "Live Quiz Game") {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         triggerOfflineWarning();
         return;
-      }
-
-      if (score > 0) {
-        submitLiveQuizScore({
-          userId: currentUser?.id || profileId || "user_" + Date.now(),
-          userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
-          studentId: profileId || undefined,
-          avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
-          score: score
-        });
       }
 
       try {

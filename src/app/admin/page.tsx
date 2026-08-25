@@ -5324,19 +5324,40 @@ CREATE INDEX IF NOT EXISTS idx_profiles_phone ON public.profiles(phone_number);
 CREATE INDEX IF NOT EXISTS idx_profiles_student_id ON public.profiles(student_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_full_name ON public.profiles(full_name);
 
--- 5. Optimized Quiz Scores Table (1 User = 1 Record constraint & RLS)
+-- 5. 4-Category Quiz Scores Table (Daily, Weekly, Monthly, All-Time Scores)
 CREATE TABLE IF NOT EXISTS public.quiz_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  user_name TEXT DEFAULT 'শিক্ষার্থী',
+  student_id TEXT,
+  avatar_url TEXT,
+  today_score NUMERIC DEFAULT 0,
+  week_score NUMERIC DEFAULT 0,
+  month_score NUMERIC DEFAULT 0,
+  all_time_score NUMERIC DEFAULT 0,
   score NUMERIC DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT unique_user_quiz_score UNIQUE (user_id)
 );
 
+-- If you already had quiz_scores table, add the 4 score columns:
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS user_name TEXT DEFAULT 'শিক্ষার্থী';
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS student_id TEXT;
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS today_score NUMERIC DEFAULT 0;
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS week_score NUMERIC DEFAULT 0;
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS month_score NUMERIC DEFAULT 0;
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS all_time_score NUMERIC DEFAULT 0;
+ALTER TABLE public.quiz_scores ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 ALTER TABLE public.quiz_scores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public quiz scores viewable by all" ON public.quiz_scores;
+DROP POLICY IF EXISTS "Users can upsert own quiz score" ON public.quiz_scores;
 CREATE POLICY "Public quiz scores viewable by all" ON public.quiz_scores FOR SELECT USING (true);
-CREATE POLICY "Users can upsert own quiz score" ON public.quiz_scores FOR ALL USING (auth.uid() = user_id);
-CREATE INDEX IF NOT EXISTS idx_quiz_scores_user_id ON public.quiz_scores(user_id);`}</pre>
+CREATE POLICY "Users can upsert own quiz score" ON public.quiz_scores FOR ALL USING (true);
+CREATE INDEX IF NOT EXISTS idx_quiz_scores_user_id ON public.quiz_scores(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_time_score DESC);`}</pre>
                   </div>
                 </div>
               )}
