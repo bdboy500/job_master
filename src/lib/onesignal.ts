@@ -4,7 +4,9 @@
  */
 
 // OneSignal App ID from environment or fallback
-export const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "12345678-abcd-1234-abcd-1234567890ab";
+export const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "";
+
+const isPlaceholderAppId = !ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === "12345678-abcd-1234-abcd-1234567890ab";
 
 let isOneSignalInitialized = false;
 
@@ -12,7 +14,7 @@ let isOneSignalInitialized = false;
  * Initialize OneSignal SDK on Web / Capacitor runtime
  */
 export async function initOneSignal(onNotificationClick?: (data: any) => void) {
-  if (typeof window === "undefined" || isOneSignalInitialized) return;
+  if (typeof window === "undefined" || isOneSignalInitialized || isPlaceholderAppId) return;
 
   try {
     // 1. Check if running inside native Capacitor environment

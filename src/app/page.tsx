@@ -1605,14 +1605,19 @@ export default function Home() {
         if (prev <= 1) {
           clearInterval(interval);
           setIsTimedOut(true);
+          if (soundEnabled) quizAudio.playError();
           return 0;
         }
-        return prev - 1;
+        const next = prev - 1;
+        if (next <= 5 && next >= 1 && soundEnabled) {
+          quizAudio.playCountdownTick(next === 1);
+        }
+        return next;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentScreen, quizStarted, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal]);
+  }, [currentScreen, quizStarted, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal, soundEnabled]);
 
   // Helper function to shuffle options for any question
   const shuffleQuestionOptions = (q: Question): Question => {
@@ -2675,82 +2680,158 @@ export default function Home() {
           {/* 2. SCREEN: ACTIVE PLAYABLE QUIZ CONTAINER                 */}
           {/* ========================================================= */}
           {currentScreen === "quiz" && (
-            <div className="p-5 space-y-6 animate-fade-in">
-              {/* Top Subtitle Badge Bar */}
-              <div className="flex items-center justify-end">
-                <span className="bg-[#FF6A00]/10 text-[#FF6A00] font-extrabold text-[10px] px-3 py-1 rounded-full uppercase">
-                  {activeQuizSubtitle}
-                </span>
-              </div>
-
-              {/* Top Score Circular HUD */}
-              <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-black text-slate-800">{activeQuizTitle}</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active challenge</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="relative px-3.5 py-1.5 bg-orange-50/80 border-2 border-orange-500/30 rounded-full flex items-center justify-center shadow-xs">
-                    <span className="font-mono font-black text-sm text-orange-600 tracking-tight">
-                      {score}/{submittedCount === 0 && quizStarted ? 0 : submittedCount}
+            <div className="p-4 sm:p-5 space-y-4 sm:space-y-5 animate-fade-in text-left">
+              
+              {/* TOP HUD: Correct Count (Left) | Circular Animated Countdown Timer (Center) | Wrong Count (Right) */}
+              <div className="bg-white border border-slate-200/80 rounded-3xl p-3.5 sm:p-4 shadow-sm flex items-center justify-between gap-3">
+                {/* Left Side: Correct Answers Counter */}
+                <div className="flex items-center gap-2.5 bg-emerald-50/90 border border-emerald-200/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-2xs">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+                    <Check className="w-4 h-4 stroke-[3px]" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] sm:text-[11px] font-black text-emerald-700 uppercase tracking-tight leading-tight">সঠিক</span>
+                    <span className="text-base sm:text-lg font-black text-emerald-800 leading-tight">
+                      {score < 10 ? `0${score}` : score}
                     </span>
                   </div>
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase hidden xs:block">Score</span>
                 </div>
+
+                {/* Center: Round Circular Countdown Timer HUD */}
+                <div className="relative flex flex-col items-center justify-center">
+                  <div className="relative w-16 h-16 sm:w-18 sm:h-18 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 72 72">
+                      {/* Background track ring */}
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r="28"
+                        className="stroke-slate-100"
+                        strokeWidth="5.5"
+                        fill="transparent"
+                      />
+                      {/* Animated circular progress stroke */}
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r="28"
+                        stroke={timeLeft <= 5 ? "#EF4444" : "#FF6A00"}
+                        strokeWidth="5.5"
+                        strokeDasharray={175.93}
+                        strokeDashoffset={175.93 * (1 - timeLeft / 30)}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        className="transition-all duration-1000 ease-linear"
+                      />
+                    </svg>
+
+                    {/* Inside timer number */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className={`font-mono font-black text-base sm:text-lg leading-none ${
+                        timeLeft <= 5 ? "text-red-600 animate-pulse font-extrabold scale-105" : "text-slate-800"
+                      }`}>
+                        {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
+                      </span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-0.5">sec</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side: Wrong Answers Counter */}
+                {(() => {
+                  const wrongCount = Math.max(0, submittedCount - score);
+                  return (
+                    <div className="flex items-center gap-2.5 bg-rose-50/90 border border-rose-200/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-2xs">
+                      <div className="flex flex-col text-right">
+                        <span className="text-[10px] sm:text-[11px] font-black text-rose-700 uppercase tracking-tight leading-tight">ভুল</span>
+                        <span className="text-base sm:text-lg font-black text-rose-800 leading-tight">
+                          {wrongCount < 10 ? `0${wrongCount}` : wrongCount}
+                        </span>
+                      </div>
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+                        <X className="w-4 h-4 stroke-[3px]" />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Loader */}
               {loading && (
                 <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center flex flex-col items-center gap-5">
                   <div className="w-12 h-12 rounded-full border-4 border-slate-100 border-t-orange-500 animate-spin" />
-                  <span className="text-xs font-bold text-slate-500 tracking-wider">Syncing Questions database...</span>
+                  <span className="text-xs font-bold text-slate-500 tracking-wider">প্রশ্ন প্রস্তুত হচ্ছে...</span>
                 </div>
               )}
 
               {/* Timed out screen */}
               {!loading && quizStarted && isTimedOut && (
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-8 text-center flex flex-col items-center gap-5 shadow-md">
-                  <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100 animate-bounce">
-                    <AlertTriangle className="w-8 h-8" />
+                <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-4 shadow-md">
+                  <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center border border-red-100 animate-bounce">
+                    <AlertTriangle className="w-7 h-7" />
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="font-extrabold text-xl text-slate-900">সময় শেষ! (Time's Up)</h3>
-                    <p className="text-slate-500 text-xs leading-relaxed max-w-[250px] mx-auto">
-                      প্রতিটি প্রশ্নের উত্তর ৩০ সেকেন্ডের মধ্যে দিতে হবে। আবার চেষ্টা করে শতভাগ সঠিক করুন!
+                  <div className="space-y-1.5">
+                    <h3 className="font-extrabold text-lg sm:text-xl text-slate-900">সময় শেষ! (Time's Up)</h3>
+                    <p className="text-slate-500 text-xs leading-relaxed max-w-[260px] mx-auto">
+                      প্রতিটি প্রশ্নের উত্তর ৩০ সেকেন্ডের মধ্যে দিতে হবে। পরবর্তী প্রশ্ন দেখুন অথবা আবার খেলুন!
                     </p>
                   </div>
                   
-                  <button
-                    onClick={handleRestart}
-                    className="w-full py-4 px-6 bg-red-500 hover:bg-red-600 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25 cursor-pointer"
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                    আবার খেলুন
-                  </button>
+                  <div className="grid grid-cols-2 gap-3 w-full pt-1">
+                    <button
+                      onClick={handleRestart}
+                      className="py-3.5 px-4 bg-red-500 hover:bg-red-600 text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      আবার খেলুন
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      className="py-3.5 px-4 bg-[#FF6A00] hover:bg-[#E54800] text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <span>পরবর্তী প্রশ্ন</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               )}
 
               {/* Completed Screen */}
               {!loading && isCompleted && (
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-8 text-center flex flex-col items-center gap-5 shadow-md">
-                  <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center border border-orange-100">
+                <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-5 shadow-md">
+                  <div className="w-16 h-16 bg-orange-50 text-[#FF6A00] rounded-3xl flex items-center justify-center border border-orange-200 shadow-2xs">
                     <Award className="w-8 h-8" />
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="font-black text-2xl text-slate-900">অভিনন্দন!</h3>
-                    <p className="text-slate-500 text-xs leading-relaxed max-w-[260px] mx-auto">
+                  <div className="space-y-1.5">
+                    <h3 className="font-black text-xl sm:text-2xl text-slate-900">অভিনন্দন! কুইজ সম্পন্ন</h3>
+                    <p className="text-slate-500 text-xs leading-relaxed max-w-[280px] mx-auto">
                       {score === questions.length 
-                        ? "চমৎকার! আপনি সব প্রশ্নের সঠিক উত্তর দিয়েছেন। \uD83C\uDFC6" 
+                        ? "চমৎকার! আপনি সবকটি প্রশ্নের শতভাগ সঠিক উত্তর দিয়েছেন। 🏆" 
                         : score >= questions.length / 2 
-                        ? "দুর্দান্ত চেষ্টা! আপনার প্রিপারেশন আরও শক্তিশালী করুন। \uD83C\uDF89" 
-                        : "ভালো চেষ্টা! নিয়মিত প্রিপারেশন নিয়ে আরও ভালো করুন।"}
+                        ? "দুর্দান্ত চেষ্টা! আপনার প্রস্তুতি আরও জোরদার করতে নিয়মিত কুইজ খেলুন। 🎉" 
+                        : "ভালো চেষ্টা! নিয়মিত কুইজ প্র্যাকটিস করে স্কোর বৃদ্ধি করুন।"}
                     </p>
                   </div>
 
-                  <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 flex justify-between items-center text-xs font-semibold text-slate-600">
+                  {/* Score breakdown stats */}
+                  <div className="grid grid-cols-3 gap-2 w-full">
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase block">মোট প্রশ্ন</span>
+                      <span className="text-base font-black text-slate-800">{questions.length}</span>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-center">
+                      <span className="text-[10px] font-extrabold text-emerald-600 uppercase block">সঠিক উত্তর</span>
+                      <span className="text-base font-black text-emerald-700">{score}</span>
+                    </div>
+                    <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-center">
+                      <span className="text-[10px] font-extrabold text-rose-600 uppercase block">ভুল উত্তর</span>
+                      <span className="text-base font-black text-rose-700">{Math.max(0, submittedCount - score)}</span>
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-orange-50/80 border border-orange-200/80 rounded-2xl p-3.5 flex justify-between items-center text-xs font-extrabold text-slate-700">
                     <span>সঠিক উত্তর হার (Accuracy)</span>
-                    <span className="text-orange-600 font-mono font-extrabold text-base">
+                    <span className="text-[#FF6A00] font-mono font-black text-lg">
                       {submittedCount > 0 ? Math.round((score / submittedCount) * 100) : 0}%
                     </span>
                   </div>
@@ -2758,13 +2839,13 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-3 w-full">
                     <button
                       onClick={handleRestart}
-                      className="py-4 bg-orange-600 hover:bg-orange-700 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
+                      className="py-3.5 bg-[#FF6A00] hover:bg-[#E54800] text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
                     >
                       <RotateCcw className="w-4 h-4" /> আবার খেলুন
                     </button>
                     <button
                       onClick={() => setCurrentScreen("home")}
-                      className="py-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all cursor-pointer text-xs"
+                      className="py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all cursor-pointer text-xs"
                     >
                       হোমে ফিরে যান
                     </button>
@@ -2774,53 +2855,69 @@ export default function Home() {
 
               {/* Active Quiz Card */}
               {quizStarted && !isTimedOut && !isCompleted && currentQuestion && (
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-5">
+                <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
                   
-                  {/* Progress indices */}
-                  <div className="flex justify-between items-center text-[11px] font-extrabold text-slate-400">
-                    <span>প্রশ্ন {currentQuestionIndex + 1} / {questions.length}</span>
-                    <span className={`font-mono text-xs ${timeLeft <= 10 ? "text-red-500 animate-pulse font-black" : "text-orange-500"}`}>
-                      {timeLeft < 10 ? `00:0${timeLeft}` : `00:${timeLeft}`}
+                  {/* Top Question Header: Question index badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="bg-orange-50 text-[#FF6A00] border border-orange-200/90 font-black text-xs px-3 py-1 rounded-xl">
+                      প্রশ্ন {currentQuestionIndex + 1} / {questions.length}
+                    </span>
+                    <span className="text-[11px] font-extrabold text-slate-400">
+                      Live Quiz
                     </span>
                   </div>
 
-                  {/* Question header */}
-                  <h4 className="font-extrabold text-base sm:text-lg md:text-xl text-slate-800 leading-relaxed">
+                  {/* Question Text */}
+                  <h4 className="font-black text-base sm:text-lg text-slate-900 leading-snug text-left pt-0.5">
                     <MathRenderer content={(currentQuestion as any).questionText || currentQuestion.question || (currentQuestion as any).title || "Untitled Question"} />
                   </h4>
 
-                  {/* Timer meter */}
-                  <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-1000 ease-linear ${timeLeft <= 10 ? "bg-red-500" : "bg-orange-500"}`}
-                      style={{ width: `${(timeLeft / 30) * 100}%` }}
-                    />
-                  </div>
-
                   {/* Options List */}
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3 pt-1">
                     {currentQuestion.options.map((option, index) => {
                       const isSelected = selectedOptionIndex === index;
                       const isCorrectOption = index === currentQuestion.correctIndex;
+                      const prefixLetters = ["ক", "খ", "গ", "ঘ"];
                       
-                      let btnStyle = "border border-slate-100 text-slate-700 bg-slate-50/50 hover:bg-slate-100/50";
-                      let indicator = null;
+                      let containerStyle = "border-2 border-slate-200/90 bg-white text-slate-800 hover:border-[#FF6A00]/60 hover:bg-orange-50/20";
+                      let prefixStyle = "bg-slate-100 text-slate-700";
+                      let rightIndicator = null;
 
                       if (isSubmitted) {
                         if (isSelected && isCorrectOption) {
-                          btnStyle = "bg-green-50 border-green-200 text-green-700 font-extrabold";
-                          indicator = <Check className="w-4 h-4 text-green-600 stroke-[3px]" />;
+                          // Correctly selected option (Theme orange border, orange bg tint, orange checkmark)
+                          containerStyle = "bg-orange-50/90 border-2 border-[#FF6A00] text-orange-950 font-bold shadow-xs";
+                          prefixStyle = "bg-[#FF6A00] text-white shadow-xs";
+                          rightIndicator = (
+                            <div className="w-6 h-6 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                              <Check className="w-3.5 h-3.5 stroke-[3.5px]" />
+                            </div>
+                          );
                         } else if (isSelected && !isCorrectOption) {
-                          btnStyle = "bg-red-50 border-red-200 text-red-700 font-extrabold";
-                          indicator = <X className="w-4 h-4 text-red-600 stroke-[3px]" />;
+                          // Wrong option selected (Red border, red bg tint, X mark)
+                          containerStyle = "bg-rose-50/90 border-2 border-rose-500 text-rose-950 font-bold shadow-xs";
+                          prefixStyle = "bg-rose-500 text-white shadow-xs";
+                          rightIndicator = (
+                            <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                              <X className="w-3.5 h-3.5 stroke-[3.5px]" />
+                            </div>
+                          );
                         } else if (isCorrectOption) {
-                          btnStyle = "bg-green-50 border-green-100 text-green-700 font-semibold";
-                          indicator = <Check className="w-4 h-4 text-green-500 stroke-[3px]" />;
+                          // Show the correct answer in theme orange when user answered wrongly
+                          containerStyle = "bg-orange-50/70 border-2 border-[#FF6A00] text-orange-950 font-bold";
+                          prefixStyle = "bg-[#FF6A00] text-white shadow-xs";
+                          rightIndicator = (
+                            <div className="w-6 h-6 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                              <Check className="w-3.5 h-3.5 stroke-[3.5px]" />
+                            </div>
+                          );
                         } else {
-                          btnStyle = "bg-slate-50 border-slate-50 text-slate-400 opacity-60";
+                          containerStyle = "bg-slate-50/60 border border-slate-200/60 text-slate-400 opacity-60";
+                          prefixStyle = "bg-slate-100 text-slate-400";
                         }
                       } else if (isSelected) {
-                        btnStyle = "border-[#FF6A00] bg-orange-50/70 text-orange-950 font-bold shadow-sm shadow-orange-50/20";
+                        containerStyle = "border-2 border-[#FF6A00] bg-orange-50 text-orange-950 font-bold shadow-xs";
+                        prefixStyle = "bg-[#FF6A00] text-white";
                       }
 
                       return (
@@ -2828,42 +2925,68 @@ export default function Home() {
                           key={index}
                           onClick={() => handleSelectOption(index)}
                           disabled={isSubmitted}
-                          className={`w-full text-left py-3.5 px-5 rounded-2xl text-sm sm:text-base flex items-center justify-between gap-3 transition-all ${btnStyle} ${!isSubmitted ? "cursor-pointer active:scale-[0.98]" : "cursor-default"}`}
+                          className={`w-full text-left p-3.5 sm:p-4 rounded-2xl text-sm sm:text-base flex items-center justify-between gap-3 transition-all ${containerStyle} ${
+                            !isSubmitted ? "cursor-pointer active:scale-[0.99]" : "cursor-default"
+                          }`}
                         >
-                          <span className="leading-normal"><MathRenderer content={option} /></span>
-                          {indicator}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${prefixStyle}`}>
+                              {prefixLetters[index] || index + 1}
+                            </span>
+                            <span className="leading-normal flex-1">
+                              <MathRenderer content={option} />
+                            </span>
+                          </div>
+                          {rightIndicator}
                         </button>
                       );
                     })}
                   </div>
 
-                  {/* Explanation box on submit */}
-                  {isSubmitted && currentQuestion && (
-                    <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs text-slate-800 space-y-1.5 animate-fade-in text-left">
-                      <div className="font-extrabold text-amber-800 flex items-center gap-1.5">
-                        <span>{"\uD83D\uDCCC"}</span>
-                        <span>ব্যাখ্যা ও সমাধান:</span>
-                      </div>
-                      <div className="text-slate-700 font-medium leading-relaxed">
-                        <MathRenderer content={currentQuestion.explanation || `সঠিক উত্তর: ${currentQuestion.options[currentQuestion.correctIndex]}`} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action row */}
+                  {/* Action row (Submit / Next button) */}
                   <div className="pt-2">
                     <button
                       onClick={handleNext}
                       disabled={!isSubmitted}
-                      className={`w-full py-4 px-6 font-extrabold rounded-2xl text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-1.5 ${
+                      className={`w-full py-4 px-6 font-black rounded-2xl text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2 ${
                         isSubmitted
-                          ? "bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-500/20 active:scale-[0.98] cursor-pointer"
-                          : "bg-slate-200/90 text-slate-400 cursor-not-allowed opacity-70"
+                          ? "bg-gradient-to-r from-[#FF6A00] to-[#E54800] hover:from-[#FF5500] hover:to-[#CC4000] text-white shadow-md shadow-orange-500/25 active:scale-[0.98] cursor-pointer"
+                          : "bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-75"
                       }`}
                     >
-                      {currentQuestionIndex + 1 >= questions.length ? "ফলাফল দেখুন" : "পরবর্তী প্রশ্ন"}
-                      <ChevronRight className="w-4 h-4 stroke-[3px]" />
+                      {currentQuestionIndex + 1 >= questions.length ? (
+                        <>
+                          <span>ফলাফল দেখুন</span>
+                          <Award className="w-4 h-4 stroke-[2.5px]" />
+                        </>
+                      ) : (
+                        <>
+                          <span>{isSubmitted ? "পরবর্তী প্রশ্ন" : "একটি উত্তর নির্বাচন করুন"}</span>
+                          <ChevronRight className="w-4 h-4 stroke-[3px]" />
+                        </>
+                      )}
                     </button>
+                  </div>
+
+                  {/* Bottom Question Count / Progress Indicator */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold text-slate-500">
+                    <span>
+                      {questions.length} টির মধ্যে <span className="text-[#FF6A00] font-black">{submittedCount}</span> টি উত্তর দেওয়া হয়েছে
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {questions.map((_, qIdx) => (
+                        <span
+                          key={qIdx}
+                          className={`h-1.5 rounded-full transition-all ${
+                            qIdx < submittedCount
+                              ? "w-3 bg-emerald-500"
+                              : qIdx === currentQuestionIndex
+                              ? "w-4 bg-[#FF6A00]"
+                              : "w-1.5 bg-slate-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
 
                 </div>
@@ -2872,7 +2995,7 @@ export default function Home() {
               {/* Bottom Info & Sound Controls Row */}
               <div className="flex items-center justify-between px-1 pt-1">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF6A00] animate-pulse"></span>
                   <span className="text-xs font-extrabold text-slate-700 tracking-wide">
                     কুইজ খেলে Gift জিতুন
                   </span>
@@ -2890,7 +3013,7 @@ export default function Home() {
                 >
                   {soundEnabled ? (
                     <>
-                      <Volume2 className="w-3.5 h-3.5 text-orange-600" />
+                      <Volume2 className="w-3.5 h-3.5 text-[#FF6A00]" />
                       <span className="text-xs font-bold text-slate-700">শব্দ চালু</span>
                     </>
                   ) : (

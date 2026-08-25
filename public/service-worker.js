@@ -1,10 +1,9 @@
-const CACHE_NAME = 'job-master-pwa-v4';
-const DYNAMIC_API_CACHE = 'job-master-api-v4';
-const PAGE_CACHE = 'job-master-pages-v4';
-const AVATAR_IMAGE_CACHE = 'jobmaster-avatars-v3';
+const CACHE_NAME = 'job-master-pwa-v5';
+const DYNAMIC_API_CACHE = 'job-master-api-v5';
+const PAGE_CACHE = 'job-master-pages-v5';
+const AVATAR_IMAGE_CACHE = 'jobmaster-avatars-v4';
 
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -15,7 +14,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      return cache.addAll(STATIC_ASSETS).catch(() => {});
     })
   );
   self.skipWaiting();
@@ -52,25 +51,24 @@ self.addEventListener('fetch', (event) => {
   // 2. Ignore non-http/https (e.g., chrome-extension://, ws://, wss://)
   if (!url.protocol.startsWith('http')) return;
 
-  // 3. Bypass Next.js hot-reload dev scripts
-  if (url.pathname.includes('_next/webpack-hmr')) return;
+  // 3. Bypass Next.js internal dev routes & HMR
+  if (url.pathname.includes('_next/webpack-hmr') || url.pathname.includes('_next/image')) return;
 
-  // 4. Avatar & Profile Images Caching (Supabase Storage or Avatar URLs or standard images)
+  // 4. Avatar & Profile Images Caching
   const isImageRequest =
     event.request.destination === 'image' ||
     url.pathname.match(/\.(png|jpg|jpeg|webp|svg|gif|ico)$/i) ||
-    url.hostname.includes('supabase.co') && url.pathname.includes('/storage/v1/object/public/');
+    (url.hostname.includes('supabase.co') && url.pathname.includes('/storage/v1/object/public/'));
 
   if (isImageRequest) {
     event.respondWith(
       caches.open(AVATAR_IMAGE_CACHE).then(async (cache) => {
         const cachedResponse = await cache.match(event.request);
         if (cachedResponse) {
-          // Serve from cache instantly, revalidate in background
           fetch(event.request)
             .then((networkResponse) => {
               if (networkResponse && networkResponse.status === 200) {
-                cache.put(event.request, networkResponse.clone());
+                cache.put(event.request, networkResponse.clone()).catch(() => {});
               }
             })
             .catch(() => {});
@@ -80,7 +78,7 @@ self.addEventListener('fetch', (event) => {
         try {
           const networkResponse = await fetch(event.request);
           if (networkResponse && networkResponse.status === 200) {
-            cache.put(event.request, networkResponse.clone());
+            cache.put(event.request, networkResponse.clone()).catch(() => {});
           }
           return networkResponse;
         } catch (err) {
@@ -91,7 +89,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. HTML Page Navigations: Network-First Strategy (Online users get fresh content, offline gets cached page)
+  // 5. HTML Page Navigations: Network-First Strategy
   if (
     event.request.mode === 'navigate' ||
     (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))
@@ -102,16 +100,17 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(PAGE_CACHE).then((cache) => {
-              cache.put(event.request, responseClone);
+              cache.put(event.request, responseClone).catch(() => {});
             });
           }
           return networkResponse;
         })
         .catch(async () => {
-          // Serve cached version or root fallback when offline
           const cachedResponse = await caches.match(event.request);
           if (cachedResponse) return cachedResponse;
-          return (await caches.match('/')) || Response.error();
+          const rootCached = await caches.match('/');
+          if (rootCached) return rootCached;
+          return Response.error();
         })
     );
     return;
@@ -125,7 +124,7 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(DYNAMIC_API_CACHE).then((cache) => {
-              cache.put(event.request, responseClone);
+              cache.put(event.request, responseClone).catch(() => {});
             });
           }
           return networkResponse;
@@ -142,21 +141,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 7. Static Next.js Bundles & Scripts (_next/static): Stale-While-Revalidate Strategy
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cachedResponse = await cache.match(event.request);
-
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            cache.put(event.request, networkResponse.clone()).catch(() => {});
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
-  );
+  // 7. For Next.js chunks, static JS/CSS, let standard network handle it, with fallback
+  if (url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        const cachedResponse = await caches.match(event.request);
+        return cachedResponse || Response.error();
+      })
+    );
+    return;
+  }
 });

@@ -108,6 +108,34 @@ class QuizAudio {
     playTone(220.00, 0, 0.25);    // A3
     playTone(174.61, 0.12, 0.4);   // F3
   }
+
+  playCountdownTick(isFinalSecond = false) {
+    this.init();
+    if (!this.ctx) return;
+
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "sine";
+    // Crisp energetic tick
+    const freq = isFinalSecond ? 987.77 : 784.0; // B5 for last second, G5 for warning
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.2, now + 0.05);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.07);
+  }
 }
 
 export const quizAudio = new QuizAudio();
