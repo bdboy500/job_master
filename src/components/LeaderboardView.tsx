@@ -206,14 +206,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
     }
   };
 
-  if (isLoading && leaderboardUsers.length === 0) {
-    return <LeaderboardSkeleton onBack={onBack} />;
-  }
-
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
       
-      {/* 1. TOP HERO SECTION WITH BACK & REFRESH ACTION BAR */}
+      {/* 1. TOP HERO SECTION WITH BACK & REFRESH ACTION BAR (STATIC UI) */}
       <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-4 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
         
         {/* Top Action Row with Back Button, Title, and Refresh */}
@@ -239,6 +235,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
 
           <button 
             onClick={loadData}
+            disabled={isLoading}
             className="w-8.5 h-8.5 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all active:rotate-180 border border-white/20 shadow-xs cursor-pointer"
             title="Refresh Leaderboard"
           >
@@ -250,7 +247,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)] pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
-        {/* TIME PERIOD TABS - Apple UI Segmented Control Style */}
+        {/* TIME PERIOD TABS (STATIC UI) */}
         <div className="relative z-10 max-w-md mx-auto mb-3">
           <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner">
             {(["Today", "Week", "Month", "All Time"] as const).map((tab) => {
@@ -275,7 +272,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
           </div>
         </div>
 
-        {/* Automatic Reset Schedule Indicator */}
+        {/* Automatic Reset Schedule Indicator (STATIC UI) */}
         <div className="relative z-10 text-center mb-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-xs text-[10.5px] font-bold text-white/90 border border-white/15">
             <Sparkles className="w-3 h-3 text-amber-300" />
@@ -283,8 +280,50 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
           </span>
         </div>
 
-        {/* TOP 3 PODIUM SECTION (2nd, 1st, 3rd) */}
-        {activeCompetitors.length === 0 ? (
+        {/* TOP 3 PODIUM SECTION (DYNAMIC SKELETON WHEN LOADING, DATA WHEN LOADED) */}
+        {isLoading ? (
+          /* Granular Shimmer Skeleton for Top 3 Podium */
+          <div className="relative z-10 max-w-sm mx-auto flex items-end justify-center gap-3 sm:gap-4 pt-2">
+            {/* 2nd Place Podium Skeleton */}
+            <div className="flex flex-col items-center flex-1 z-10">
+              <div className="flex flex-col items-center mb-2">
+                <div className="w-5 h-5 rounded-full bg-white/20 mb-1 animate-shimmer" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/25 border-2 border-slate-200/50 shadow-md animate-shimmer" />
+                <div className="h-3 w-14 bg-white/30 rounded-md mt-2 animate-shimmer" />
+              </div>
+              <div className="w-full bg-gradient-to-b from-white/25 to-white/10 border border-white/30 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-28 sm:h-32 justify-between animate-shimmer">
+                <span className="text-4xl sm:text-5xl font-black text-white/30">2</span>
+                <div className="w-14 h-5 rounded-full bg-white/35 animate-shimmer" />
+              </div>
+            </div>
+
+            {/* 1st Place Podium Skeleton */}
+            <div className="flex flex-col items-center flex-1 z-20 -mt-4">
+              <div className="flex flex-col items-center mb-2">
+                <div className="w-7 h-7 rounded-full bg-amber-300/40 mb-1 animate-shimmer" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/30 border-3 border-amber-300/60 shadow-xl animate-shimmer" />
+                <div className="h-3.5 w-18 bg-white/40 rounded-md mt-2 animate-shimmer" />
+              </div>
+              <div className="w-full bg-gradient-to-b from-white/35 to-white/15 border-2 border-white/50 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-2xl h-36 sm:h-40 justify-between animate-shimmer">
+                <span className="text-5xl sm:text-6xl font-black text-amber-200/40">1</span>
+                <div className="w-16 h-6 rounded-full bg-amber-300/50 animate-shimmer" />
+              </div>
+            </div>
+
+            {/* 3rd Place Podium Skeleton */}
+            <div className="flex flex-col items-center flex-1 z-10">
+              <div className="flex flex-col items-center mb-2">
+                <div className="w-5 h-5 rounded-full bg-white/20 mb-1 animate-shimmer" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/25 border-2 border-amber-600/40 shadow-md animate-shimmer" />
+                <div className="h-3 w-14 bg-white/30 rounded-md mt-2 animate-shimmer" />
+              </div>
+              <div className="w-full bg-gradient-to-b from-white/20 to-white/10 border border-white/25 rounded-t-2xl pt-3 pb-4 flex flex-col items-center shadow-lg h-24 sm:h-28 justify-between animate-shimmer">
+                <span className="text-4xl sm:text-5xl font-black text-white/30">3</span>
+                <div className="w-14 h-5 rounded-full bg-white/35 animate-shimmer" />
+              </div>
+            </div>
+          </div>
+        ) : activeCompetitors.length === 0 ? (
           <div className="relative z-10 max-w-sm mx-auto my-6 text-center bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-white/20">
             <Trophy className="w-10 h-10 text-amber-200/80 mx-auto mb-2 animate-bounce" />
             <p className="text-sm font-black text-white">এখনও কোনো স্কোর রেকর্ড হয়নি</p>
@@ -425,7 +464,22 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 -mt-3 z-30 space-y-3">
         
         {/* "YOUR POSITION" HIGHLIGHTED HORIZONTAL CARD COMPONENT */}
-        {currentUserProfile && (
+        {isLoading ? (
+          /* Your Position Skeleton */
+          <div className="relative pt-3 mb-1">
+            <div className="bg-white border-2 border-orange-200/60 rounded-3xl p-3.5 sm:p-4 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="w-8 h-6 bg-slate-200 rounded-md animate-shimmer" />
+                <div className="w-12 h-12 rounded-full bg-slate-200 border-2 border-orange-200 shrink-0 animate-shimmer" />
+                <div className="space-y-1.5">
+                  <div className="h-4 w-32 bg-slate-200 rounded-md animate-shimmer" />
+                  <div className="h-3 w-20 bg-slate-100 rounded-md animate-shimmer" />
+                </div>
+              </div>
+              <div className="h-8 w-16 bg-orange-100/80 rounded-2xl animate-shimmer shrink-0" />
+            </div>
+          </div>
+        ) : currentUserProfile ? (
           <div className="relative pt-3 mb-1 animate-fade-in">
             {/* Floating badge sitting directly on the top border line */}
             <div className="absolute -top-0.5 left-6 sm:left-8 z-10 flex items-center gap-1.5 bg-gradient-to-r from-[#FF5500] to-[#FF6A00] text-white text-[10px] font-black px-3 py-0.5 rounded-full shadow-md border border-white uppercase tracking-wider">
@@ -491,7 +545,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
               র‍্যাঙ্কিং প্রতি ৩০ মিনিটে স্বয়ংক্রিয়ভাবে আপডেট হয় {lastUpdatedTime ? `(সর্বশেষ: ${lastUpdatedTime})` : ""}
             </p>
           </div>
-        )}
+        ) : null}
 
         <div className="bg-white rounded-3xl p-3 sm:p-4 shadow-xl border border-slate-100/80 space-y-2">
           
@@ -500,7 +554,27 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
             <span>সর্বশেষ স্কোর</span>
           </div>
 
-          {restUsers.length === 0 ? (
+          {isLoading ? (
+            /* Table Rows Granular Shimmer Skeleton */
+            <div className="space-y-2.5 pt-1">
+              {[1, 2, 3, 4, 5, 6].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 bg-slate-50/40"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-5 h-4 bg-slate-200 rounded-md shrink-0 animate-shimmer" />
+                    <div className="w-11 h-11 rounded-2xl bg-slate-200 border border-slate-200 shrink-0 animate-shimmer" />
+                    <div className="space-y-1.5 flex-1 max-w-[180px]">
+                      <div className="h-3.5 w-3/4 bg-slate-200 rounded-md animate-shimmer" />
+                      <div className="h-2.5 w-1/2 bg-slate-100 rounded-md animate-shimmer" />
+                    </div>
+                  </div>
+                  <div className="w-14 h-7 rounded-xl bg-orange-100/70 shrink-0 animate-shimmer" />
+                </div>
+              ))}
+            </div>
+          ) : restUsers.length === 0 ? (
             <div className="text-center py-8 text-slate-400 font-bold text-xs">
               আর কোনো কুইজ স্কোর রেকর্ড নেই।
             </div>

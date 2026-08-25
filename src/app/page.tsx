@@ -2707,45 +2707,67 @@ export default function Home() {
           {currentScreen === "quiz" && (
             <div className="p-4 sm:p-5 space-y-4 sm:space-y-5 animate-fade-in text-left">
               
-              {/* TOP HUD: Centered Circular Animated Countdown Timer */}
-              <div className="flex items-center justify-center py-1">
-                <div className="relative w-20 h-20 sm:w-22 sm:h-22 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-                    {/* Background track ring */}
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="31"
-                      className="stroke-slate-100"
-                      strokeWidth="7.5"
-                      fill="transparent"
-                    />
-                    {/* Animated circular progress stroke */}
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="31"
-                      stroke={timeLeft <= 10 ? "#EF4444" : "#FF6A00"}
-                      strokeWidth="7.5"
-                      strokeDasharray={194.78}
-                      strokeDashoffset={194.78 * (1 - timeLeft / 30)}
-                      strokeLinecap="round"
-                      fill="transparent"
-                      className="transition-all duration-1000 ease-linear"
-                    />
-                  </svg>
+              {/* TOP HUD (ss2 Style): Left Correct Count & Orange Pill | Center Circular Countdown | Right Wrong Count & Red Pill */}
+              {(() => {
+                const wrongCount = Math.max(0, submittedCount - score);
+                return (
+                  <div className="bg-white border border-slate-200/80 rounded-3xl p-3 sm:p-4 shadow-xs flex items-center justify-between px-4 sm:px-6">
+                    {/* Left: Correct Indicator (Number first, then Theme Orange Pill) */}
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-black text-base sm:text-lg text-[#FF6A00] leading-none">
+                        {score < 10 ? `0${score}` : score}
+                      </span>
+                      <span className="w-6 sm:w-8 h-2 sm:h-2.5 rounded-full bg-[#FF6A00] shadow-xs inline-block" />
+                    </div>
 
-                  {/* Inside timer number */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`font-mono font-black text-2xl sm:text-3xl leading-none ${
-                      timeLeft <= 10 ? "text-red-600 animate-pulse scale-105" : "text-black"
-                    }`}>
-                      {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
-                    </span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">SEC</span>
+                    {/* Center: Circular Animated Countdown Timer */}
+                    <div className="relative w-18 h-18 sm:w-20 sm:h-20 flex items-center justify-center">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                        {/* Background track ring */}
+                        <circle
+                          cx="40"
+                          cy="40"
+                          r="31"
+                          className="stroke-slate-100"
+                          strokeWidth="7"
+                          fill="transparent"
+                        />
+                        {/* Animated circular progress stroke */}
+                        <circle
+                          cx="40"
+                          cy="40"
+                          r="31"
+                          stroke={timeLeft <= 10 ? "#EF4444" : "#FF6A00"}
+                          strokeWidth="7"
+                          strokeDasharray={194.78}
+                          strokeDashoffset={194.78 * (1 - timeLeft / 30)}
+                          strokeLinecap="round"
+                          fill="transparent"
+                          className="transition-all duration-1000 ease-linear"
+                        />
+                      </svg>
+
+                      {/* Inside timer number */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className={`font-mono font-black text-xl sm:text-2xl leading-none ${
+                          timeLeft <= 10 ? "text-red-600 animate-pulse scale-105" : "text-black"
+                        }`}>
+                          {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
+                        </span>
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">SEC</span>
+                      </div>
+                    </div>
+
+                    {/* Right: Wrong Indicator (Red Pill + Number) */}
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 sm:w-8 h-2 sm:h-2.5 rounded-full bg-rose-500 shadow-xs inline-block" />
+                      <span className="font-mono font-black text-base sm:text-lg text-rose-600 leading-none">
+                        {wrongCount < 10 ? `0${wrongCount}` : wrongCount}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Loader */}
               {loading && (
