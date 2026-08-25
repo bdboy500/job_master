@@ -643,6 +643,7 @@ export default function Home() {
 
   // Settings
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isStartingQuiz, setIsStartingQuiz] = useState<boolean>(false);
 
   // Helper function to shuffle questions
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -1609,7 +1610,8 @@ export default function Home() {
           return 0;
         }
         const next = prev - 1;
-        if (next <= 5 && next >= 1 && soundEnabled) {
+        // Countdown sound alert for the last 10 seconds (10 to 1)
+        if (next <= 10 && next >= 1 && soundEnabled) {
           quizAudio.playCountdownTick(next === 1);
         }
         return next;
@@ -1642,64 +1644,71 @@ export default function Home() {
 
   // Handle start quiz action (Sets screen to 'quiz' and resets statistics)
   const startQuizFlow = (title: string, subtitle: string, customQuestionSet?: Question[]) => {
+    setIsStartingQuiz(true);
+    if (soundEnabled) quizAudio.playClick();
+
     executeWithAuth(async () => {
-      // Offline check for Live Quiz Game
-      if (title === "Live Quiz Game" && typeof navigator !== "undefined" && !navigator.onLine) {
-        triggerOfflineWarning();
-        return;
-      }
-
-      setActiveQuizTitle(title);
-      setActiveQuizSubtitle(subtitle);
-      
-      let selectedQuestions: Question[] = [];
-
-      if (title === "Live Quiz Game") {
-        try {
-          const res = await fetch("/api/quiz/random?mode=live_quiz", { cache: "no-store" });
-          if (!res.ok) throw new Error("Fetch failed");
-          const data = await res.json();
-          if (Array.isArray(data.questions) && data.questions.length > 0) {
-            selectedQuestions = data.questions.map(q => shuffleQuestionOptions(q));
-          } else {
-            throw new Error("Empty response");
-          }
-        } catch (err) {
+      try {
+        // Offline check for Live Quiz Game
+        if (title === "Live Quiz Game" && typeof navigator !== "undefined" && !navigator.onLine) {
           triggerOfflineWarning();
+          setIsStartingQuiz(false);
           return;
         }
-      } else {
-        let pool: Question[] = [];
-        if (customQuestionSet && customQuestionSet.length > 0) {
-          pool = customQuestionSet;
+
+        setActiveQuizTitle(title);
+        setActiveQuizSubtitle(subtitle);
+        
+        let selectedQuestions: Question[] = [];
+
+        if (title === "Live Quiz Game") {
+          try {
+            const res = await fetch("/api/quiz/random?mode=live_quiz", { cache: "no-store" });
+            if (!res.ok) throw new Error("Fetch failed");
+            const data = await res.json();
+            if (Array.isArray(data.questions) && data.questions.length > 0) {
+              selectedQuestions = data.questions.map(q => shuffleQuestionOptions(q));
+            } else {
+              throw new Error("Empty response");
+            }
+          } catch (err) {
+            triggerOfflineWarning();
+            setIsStartingQuiz(false);
+            return;
+          }
         } else {
-          const fetched = await fetchQuestionsOnDemand(title);
-          pool = fetched.length > 0 ? fetched : QUIZ_QUESTIONS;
+          let pool: Question[] = [];
+          if (customQuestionSet && customQuestionSet.length > 0) {
+            pool = customQuestionSet;
+          } else {
+            const fetched = await fetchQuestionsOnDemand(title);
+            pool = fetched.length > 0 ? fetched : QUIZ_QUESTIONS;
+          }
+          const randomized = shuffleArray(pool).map(q => shuffleQuestionOptions(q));
+          selectedQuestions = randomized.slice(0, 10);
         }
-        const randomized = shuffleArray(pool).map(q => shuffleQuestionOptions(q));
-        selectedQuestions = randomized.slice(0, 10);
+
+        setQuestions(selectedQuestions);
+
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("jobmaster_active_quiz_questions", JSON.stringify(selectedQuestions));
+            localStorage.setItem("jobmaster_active_quiz_title", title);
+          } catch (e) {}
+        }
+
+        setQuizStarted(true);
+        setCurrentQuestionIndex(0);
+        setScore(0);
+        setSubmittedCount(0);
+        setSelectedOptionIndex(null);
+        setIsSubmitted(false);
+        setTimeLeft(30);
+        setIsTimedOut(false);
+        setCurrentScreen("quiz");
+      } finally {
+        setIsStartingQuiz(false);
       }
-
-      setQuestions(selectedQuestions);
-
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("jobmaster_active_quiz_questions", JSON.stringify(selectedQuestions));
-          localStorage.setItem("jobmaster_active_quiz_title", title);
-        } catch (e) {}
-      }
-
-      setQuizStarted(true);
-      setCurrentQuestionIndex(0);
-      setScore(0);
-      setSubmittedCount(0);
-      setSelectedOptionIndex(null);
-      setIsSubmitted(false);
-      setTimeLeft(30);
-      setIsTimedOut(false);
-      setCurrentScreen("quiz");
-      
-      if (soundEnabled) quizAudio.playClick();
     }, "quiz");
   };
 
@@ -2558,10 +2567,22 @@ export default function Home() {
                   {/* RIGHT SIDE: Start Quiz CTA button */}
                   <button 
                     onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
-                    className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
+                    disabled={isStartingQuiz}
+                    className={`animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0 ${
+                      isStartingQuiz ? "opacity-90 cursor-wait scale-95" : ""
+                    }`}
                   >
-                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
-                    <span className="font-black">Start Quiz</span>
+                    {isStartingQuiz ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-[#FF4E00] border-t-transparent animate-spin shrink-0" />
+                        <span className="font-black">প্রস্তুত হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
+                        <span className="font-black">Start Quiz</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2682,78 +2703,44 @@ export default function Home() {
           {currentScreen === "quiz" && (
             <div className="p-4 sm:p-5 space-y-4 sm:space-y-5 animate-fade-in text-left">
               
-              {/* TOP HUD: Correct Count (Left) | Circular Animated Countdown Timer (Center) | Wrong Count (Right) */}
-              <div className="bg-white border border-slate-200/80 rounded-3xl p-3.5 sm:p-4 shadow-sm flex items-center justify-between gap-3">
-                {/* Left Side: Correct Answers Counter */}
-                <div className="flex items-center gap-2.5 bg-emerald-50/90 border border-emerald-200/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-2xs">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
-                    <Check className="w-4 h-4 stroke-[3px]" />
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <span className="text-[10px] sm:text-[11px] font-black text-emerald-700 uppercase tracking-tight leading-tight">সঠিক</span>
-                    <span className="text-base sm:text-lg font-black text-emerald-800 leading-tight">
-                      {score < 10 ? `0${score}` : score}
+              {/* TOP HUD: Centered Circular Animated Countdown Timer */}
+              <div className="flex items-center justify-center py-1">
+                <div className="relative w-20 h-20 sm:w-22 sm:h-22 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                    {/* Background track ring */}
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="31"
+                      className="stroke-slate-100"
+                      strokeWidth="7.5"
+                      fill="transparent"
+                    />
+                    {/* Animated circular progress stroke */}
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="31"
+                      stroke={timeLeft <= 10 ? "#EF4444" : "#FF6A00"}
+                      strokeWidth="7.5"
+                      strokeDasharray={194.78}
+                      strokeDashoffset={194.78 * (1 - timeLeft / 30)}
+                      strokeLinecap="round"
+                      fill="transparent"
+                      className="transition-all duration-1000 ease-linear"
+                    />
+                  </svg>
+
+                  {/* Inside timer number */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`font-mono font-black text-2xl sm:text-3xl leading-none ${
+                      timeLeft <= 10 ? "text-red-600 animate-pulse scale-105" : "text-black"
+                    }`}>
+                      {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
                     </span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">SEC</span>
                   </div>
                 </div>
-
-                {/* Center: Round Circular Countdown Timer HUD */}
-                <div className="relative flex flex-col items-center justify-center">
-                  <div className="relative w-16 h-16 sm:w-18 sm:h-18 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 72 72">
-                      {/* Background track ring */}
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r="28"
-                        className="stroke-slate-100"
-                        strokeWidth="5.5"
-                        fill="transparent"
-                      />
-                      {/* Animated circular progress stroke */}
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r="28"
-                        stroke={timeLeft <= 5 ? "#EF4444" : "#FF6A00"}
-                        strokeWidth="5.5"
-                        strokeDasharray={175.93}
-                        strokeDashoffset={175.93 * (1 - timeLeft / 30)}
-                        strokeLinecap="round"
-                        fill="transparent"
-                        className="transition-all duration-1000 ease-linear"
-                      />
-                    </svg>
-
-                    {/* Inside timer number */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className={`font-mono font-black text-base sm:text-lg leading-none ${
-                        timeLeft <= 5 ? "text-red-600 animate-pulse font-extrabold scale-105" : "text-slate-800"
-                      }`}>
-                        {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
-                      </span>
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-0.5">sec</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Side: Wrong Answers Counter */}
-                {(() => {
-                  const wrongCount = Math.max(0, submittedCount - score);
-                  return (
-                    <div className="flex items-center gap-2.5 bg-rose-50/90 border border-rose-200/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-2xs">
-                      <div className="flex flex-col text-right">
-                        <span className="text-[10px] sm:text-[11px] font-black text-rose-700 uppercase tracking-tight leading-tight">ভুল</span>
-                        <span className="text-base sm:text-lg font-black text-rose-800 leading-tight">
-                          {wrongCount < 10 ? `0${wrongCount}` : wrongCount}
-                        </span>
-                      </div>
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
-                        <X className="w-4 h-4 stroke-[3px]" />
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
 
               {/* Loader */}
@@ -2868,7 +2855,7 @@ export default function Home() {
                   </div>
 
                   {/* Question Text */}
-                  <h4 className="font-black text-base sm:text-lg text-slate-900 leading-snug text-left pt-0.5">
+                  <h4 className="font-black text-base sm:text-lg text-black leading-snug text-left pt-0.5">
                     <MathRenderer content={(currentQuestion as any).questionText || currentQuestion.question || (currentQuestion as any).title || "Untitled Question"} />
                   </h4>
 
@@ -2877,16 +2864,16 @@ export default function Home() {
                     {currentQuestion.options.map((option, index) => {
                       const isSelected = selectedOptionIndex === index;
                       const isCorrectOption = index === currentQuestion.correctIndex;
-                      const prefixLetters = ["ক", "খ", "গ", "ঘ"];
+                      const prefixLetters = ["A", "B", "C", "D"];
                       
-                      let containerStyle = "border-2 border-slate-200/90 bg-white text-slate-800 hover:border-[#FF6A00]/60 hover:bg-orange-50/20";
-                      let prefixStyle = "bg-slate-100 text-slate-700";
+                      let containerStyle = "border-2 border-slate-200/90 bg-white text-black hover:border-[#FF6A00]/70 hover:bg-orange-50/20";
+                      let prefixStyle = "bg-[#FF6A00] text-white shadow-xs";
                       let rightIndicator = null;
 
                       if (isSubmitted) {
                         if (isSelected && isCorrectOption) {
                           // Correctly selected option (Theme orange border, orange bg tint, orange checkmark)
-                          containerStyle = "bg-orange-50/90 border-2 border-[#FF6A00] text-orange-950 font-bold shadow-xs";
+                          containerStyle = "bg-orange-50/90 border-2 border-[#FF6A00] text-black font-black shadow-xs";
                           prefixStyle = "bg-[#FF6A00] text-white shadow-xs";
                           rightIndicator = (
                             <div className="w-6 h-6 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -2895,7 +2882,7 @@ export default function Home() {
                           );
                         } else if (isSelected && !isCorrectOption) {
                           // Wrong option selected (Red border, red bg tint, X mark)
-                          containerStyle = "bg-rose-50/90 border-2 border-rose-500 text-rose-950 font-bold shadow-xs";
+                          containerStyle = "bg-rose-50/90 border-2 border-rose-500 text-black font-black shadow-xs";
                           prefixStyle = "bg-rose-500 text-white shadow-xs";
                           rightIndicator = (
                             <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -2904,7 +2891,7 @@ export default function Home() {
                           );
                         } else if (isCorrectOption) {
                           // Show the correct answer in theme orange when user answered wrongly
-                          containerStyle = "bg-orange-50/70 border-2 border-[#FF6A00] text-orange-950 font-bold";
+                          containerStyle = "bg-orange-50/70 border-2 border-[#FF6A00] text-black font-black";
                           prefixStyle = "bg-[#FF6A00] text-white shadow-xs";
                           rightIndicator = (
                             <div className="w-6 h-6 rounded-full bg-[#FF6A00] text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -2912,12 +2899,12 @@ export default function Home() {
                             </div>
                           );
                         } else {
-                          containerStyle = "bg-slate-50/60 border border-slate-200/60 text-slate-400 opacity-60";
-                          prefixStyle = "bg-slate-100 text-slate-400";
+                          containerStyle = "bg-slate-50/80 border-2 border-slate-200/70 text-black";
+                          prefixStyle = "bg-[#FF6A00]/80 text-white";
                         }
                       } else if (isSelected) {
-                        containerStyle = "border-2 border-[#FF6A00] bg-orange-50 text-orange-950 font-bold shadow-xs";
-                        prefixStyle = "bg-[#FF6A00] text-white";
+                        containerStyle = "border-2 border-[#FF6A00] bg-orange-50/90 text-black font-black shadow-xs";
+                        prefixStyle = "bg-[#FF6A00] text-white shadow-xs";
                       }
 
                       return (
@@ -2931,9 +2918,9 @@ export default function Home() {
                         >
                           <div className="flex items-center gap-3 min-w-0 flex-1">
                             <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${prefixStyle}`}>
-                              {prefixLetters[index] || index + 1}
+                              {prefixLetters[index] || String.fromCharCode(65 + index)}
                             </span>
-                            <span className="leading-normal flex-1">
+                            <span className="leading-normal flex-1 font-bold text-black text-sm sm:text-base">
                               <MathRenderer content={option} />
                             </span>
                           </div>
@@ -2969,24 +2956,10 @@ export default function Home() {
                   </div>
 
                   {/* Bottom Question Count / Progress Indicator */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold text-slate-500">
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-center text-center text-xs sm:text-sm font-bold text-slate-700">
                     <span>
                       {questions.length} টির মধ্যে <span className="text-[#FF6A00] font-black">{submittedCount}</span> টি উত্তর দেওয়া হয়েছে
                     </span>
-                    <div className="flex items-center gap-1">
-                      {questions.map((_, qIdx) => (
-                        <span
-                          key={qIdx}
-                          className={`h-1.5 rounded-full transition-all ${
-                            qIdx < submittedCount
-                              ? "w-3 bg-emerald-500"
-                              : qIdx === currentQuestionIndex
-                              ? "w-4 bg-[#FF6A00]"
-                              : "w-1.5 bg-slate-200"
-                          }`}
-                        />
-                      ))}
-                    </div>
                   </div>
 
                 </div>
