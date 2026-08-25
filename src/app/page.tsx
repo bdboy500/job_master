@@ -78,12 +78,16 @@ import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToA
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
+import LeaderboardSkeleton from "../components/LeaderboardSkeleton";
 import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { useOneSignal } from "../hooks/useOneSignal";
 
 // Code-split heavy interactive modals & components via next/dynamic
-const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { ssr: false });
+const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { 
+  loading: () => <LeaderboardSkeleton />,
+  ssr: false 
+});
 const AuthModal = dynamic(() => import("../components/AuthModal"), { ssr: false });
 const ExamStartModal = dynamic(() => import("../components/ExamStartModal"), { ssr: false });
 const IntroOffer = dynamic(() => import("../components/intro-offer"), { ssr: false });

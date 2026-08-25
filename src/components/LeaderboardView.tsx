@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
 import { LeaderboardUser, fetchLeaderboard } from "@/src/lib/leaderboard";
 import { getSupabase } from "@/src/lib/supabase";
+import LeaderboardSkeleton from "./LeaderboardSkeleton";
 
 interface LeaderboardViewProps {
   onBack: () => void;
@@ -204,6 +205,10 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         return "আজীবন অর্জিত লাইভ কুইজ স্কোর";
     }
   };
+
+  if (isLoading && leaderboardUsers.length === 0) {
+    return <LeaderboardSkeleton onBack={onBack} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
