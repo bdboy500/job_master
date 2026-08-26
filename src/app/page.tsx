@@ -417,6 +417,8 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
+  const [authModalCustomTitle, setAuthModalCustomTitle] = useState<string>("");
+  const [authModalCustomSubtitle, setAuthModalCustomSubtitle] = useState<string>("");
   const [pendingExamAction, setPendingExamAction] = useState<(() => void) | null>(null);
 
   const [profileName, setProfileName] = useState<string>("Guest User");
@@ -1164,6 +1166,8 @@ export default function Home() {
     setProfilePhone(user.phone_number || "");
     setProfileId(user.student_id || generateStudentId());
     setShowAuthModal(false);
+    setAuthModalCustomTitle("");
+    setAuthModalCustomSubtitle("");
 
     if (typeof window !== "undefined") {
       localStorage.setItem("job_master_current_user", JSON.stringify(user));
@@ -1210,6 +1214,34 @@ export default function Home() {
       } else if (pendingIntent === "live_quiz" || pendingIntent === "quiz") {
         setCurrentScreen("quiz");
       }
+    }
+  };
+
+  const handleCloseAuthModal = () => {
+    setShowAuthModal(false);
+    setAuthModalCustomTitle("");
+    setAuthModalCustomSubtitle("");
+    setPendingExamAction(null);
+
+    let hadQuizIntent = false;
+    if (typeof window !== "undefined") {
+      const pendingIntent = localStorage.getItem("job_master_pending_intent");
+      if (pendingIntent === "quiz" || pendingIntent === "live_quiz") {
+        hadQuizIntent = true;
+      }
+      localStorage.removeItem("job_master_pending_intent");
+      localStorage.removeItem("job_master_pending_paper_id");
+    }
+
+    // If user cancelled login while attempting to take quiz or is on quiz screen, safely return to home
+    if (!isLoggedIn && (currentScreen === "quiz" || hadQuizIntent || takingExamModal !== null)) {
+      setQuizStarted(false);
+      setLoading(false);
+      setTakingExamModal(null);
+      setCurrentScreen("home");
+      try {
+        window.history.replaceState({ appRoot: true }, "", "/");
+      } catch (e) {}
     }
   };
 
@@ -1270,6 +1302,15 @@ export default function Home() {
         localStorage.setItem("job_master_pending_paper_id", paperId);
       }
     }
+
+    if (intentType === "quiz" || intentType === "live_quiz") {
+      setAuthModalCustomTitle("লাইভ কুইজে অংশ নিতে লগইন করুন");
+      setAuthModalCustomSubtitle("লাইভ কুইজে অংশ নিয়ে উপহার ও মেধা যাচাই করতে লগইন অথবা ফ্রি রেজিস্ট্রেশন করা আবশ্যক।");
+    } else {
+      setAuthModalCustomTitle("");
+      setAuthModalCustomSubtitle("");
+    }
+
     setPendingExamAction(() => action);
     setAuthModalMode("signin");
     setShowAuthModal(true);
@@ -3277,6 +3318,54 @@ export default function Home() {
                   </div>
                 );
               })()}
+
+              {/* Not Logged In Auth Required Guard for Quiz */}
+              {!loading && !isLoggedIn && questions.length === 0 && (
+                <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-4 shadow-sm animate-fade-in max-w-md mx-auto my-4">
+                  <div className="w-16 h-16 rounded-3xl bg-orange-50 border border-orange-200/60 text-[#FF6A00] flex items-center justify-center shadow-2xs">
+                    <Lock className="w-8 h-8 stroke-[2.2px]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="inline-block px-3 py-1 bg-orange-100/80 text-[#FF6A00] text-[11px] font-black rounded-full">
+                      লগইন প্রয়োজন
+                    </span>
+                    <h3 className="font-black text-lg sm:text-xl text-slate-900">
+                      লাইভ কুইজে অংশ নিতে লগইন করুন
+                    </h3>
+                    <p className="text-slate-500 text-xs leading-relaxed">
+                      লাইভ কুইজে অংশ নিতে, আকর্ষণীয় উপহার জিততে ও লিডারবোর্ডে আপনার নাম অন্তর্ভুক্ত করতে অনুগ্রহ করে লগইন অথবা রেজিস্টার করুন।
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 w-full pt-2">
+                    <button
+                      onClick={() => {
+                        setAuthModalMode("signin");
+                        setAuthModalCustomTitle("লাইভ কুইজে অংশ নিতে লগইন করুন");
+                        setAuthModalCustomSubtitle("পুরস্কার জিততে ও লিডারবোর্ডে স্কোর যুক্ত করতে লগইন অথবা ফ্রি রেজিস্ট্রেশন করুন।");
+                        setShowAuthModal(true);
+                      }}
+                      className="py-3.5 px-4 bg-gradient-to-r from-[#FF6A00] to-[#FF5500] hover:from-[#FF5500] hover:to-[#E54800] text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      <span>লগইন / রেজিস্টার</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setQuizStarted(false);
+                        setLoading(false);
+                        setCurrentScreen("home");
+                        try {
+                          window.history.replaceState({ appRoot: true }, "", "/");
+                        } catch (e) {}
+                      }}
+                      className="py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <HomeIcon className="w-4 h-4" />
+                      <span>হোম পেজ</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Loader: Full Quiz Question Skeleton with Left-to-Right Shimmer Sweep */}
               {loading && (
@@ -8803,7 +8892,9 @@ export default function Home() {
         <AuthModal
           isOpen={showAuthModal}
           initialMode={authModalMode}
-          onClose={() => setShowAuthModal(false)}
+          customTitle={authModalCustomTitle}
+          customSubtitle={authModalCustomSubtitle}
+          onClose={handleCloseAuthModal}
           onAuthSuccess={handleAuthSuccess}
         />
 
@@ -8846,11 +8937,14 @@ export default function Home() {
         />
 
         {/* Intro Special Offer Popup Modal */}
-        <IntroOffer onAction={(targetScreen) => setCurrentScreen((targetScreen as any) || "all-live-exams")} />
+        <IntroOffer 
+          disabled={currentScreen === "quiz" || takingExamModal !== null || (typeof window !== "undefined" && (window.location.search.includes("quiz") || window.location.search.includes("live-quiz")))} 
+          onAction={(targetScreen) => setCurrentScreen((targetScreen as any) || "all-live-exams")} 
+        />
 
         {/* Soft-Prompt Push Notification Modal */}
         <PushPermissionModal
-          isOpen={showSoftPrompt}
+          isOpen={showSoftPrompt && currentScreen !== "quiz" && !showAuthModal}
           onAccept={handleAcceptSoftPrompt}
           onDismiss={handleDismissSoftPrompt}
         />

@@ -11,13 +11,17 @@ interface AuthModalProps {
   onClose: () => void;
   onAuthSuccess: (user: UserProfile) => void;
   initialMode?: "signin" | "signup";
+  customTitle?: string;
+  customSubtitle?: string;
 }
 
 export default function AuthModal({
   isOpen,
   onClose,
   onAuthSuccess,
-  initialMode = "signin"
+  initialMode = "signin",
+  customTitle,
+  customSubtitle,
 }: AuthModalProps) {
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   
@@ -313,12 +317,12 @@ export default function AuthModal({
           </div>
 
           <h2 className="text-xl font-black tracking-tight leading-tight">
-            {mode === "signin" ? "সাইন ইন করুন (Log In)" : "নতুন একাউন্ট খুলুন (ফ্রি)"}
+            {customTitle || (mode === "signin" ? "সাইন ইন করুন (Log In)" : "নতুন একাউন্ট খুলুন (ফ্রি)")}
           </h2>
           <p className="text-xs text-white/90 font-medium mt-0.5">
-            {mode === "signin"
+            {customSubtitle || (mode === "signin"
               ? "পরীক্ষা দিতে ও পূর্ণাঙ্গ মডেল টেস্টে অংশ নিতে লগইন করুন"
-              : "আজই যুক্ত হয়ে যেকোনো পরীক্ষার প্রশ্নপত্রে অংশ নিন"}
+              : "আজই যুক্ত হয়ে যেকোনো পরীক্ষার প্রশ্নপত্রে অংশ নিন")}
           </p>
 
           {/* Toggle Tabs */}

@@ -7,19 +7,28 @@ import { getCachedAppSettings, fetchAppSettingsFromDb, PopupNotificationConfig, 
 interface IntroOfferProps {
   onClose?: () => void;
   onAction?: (targetScreen?: string) => void;
+  disabled?: boolean;
 }
 
-export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
+export default function IntroOffer({ onClose, onAction, disabled = false }: IntroOfferProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [popupConfig, setPopupConfig] = useState<PopupNotificationConfig>(
     getCachedAppSettings().popupNotification || DEFAULT_POPUP_CONFIG
   );
 
   useEffect(() => {
+    if (disabled) return;
     let isMounted = true;
 
     async function checkAndOpen() {
       try {
+        if (typeof window !== "undefined") {
+          const search = window.location.search;
+          if (search.includes("view=live-quiz") || search.includes("view=quiz") || search.includes("view=live_quiz") || search.includes("view=exam")) {
+            return; // Suppress popup notification when deep-linking directly into Live Quiz or Exam
+          }
+        }
+
         const settings = await fetchAppSettingsFromDb();
         const conf = settings.popupNotification || DEFAULT_POPUP_CONFIG;
         if (!isMounted) return;
@@ -47,7 +56,7 @@ export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
           // If frequency === "every_visit", we don't block it
 
           const timer = setTimeout(() => {
-            if (isMounted) setIsOpen(true);
+            if (isMounted && !disabled) setIsOpen(true);
           }, 1200);
           return () => clearTimeout(timer);
         }
@@ -61,7 +70,7 @@ export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [disabled]);
 
   const handleDismiss = () => {
     setIsOpen(false);
@@ -88,7 +97,7 @@ export default function IntroOffer({ onClose, onAction }: IntroOfferProps) {
     }
   };
 
-  if (!isOpen || popupConfig.enabled === false) return null;
+  if (disabled || !isOpen || popupConfig.enabled === false) return null;
 
   const points = Array.isArray(popupConfig.points) && popupConfig.points.length > 0 
     ? popupConfig.points 
