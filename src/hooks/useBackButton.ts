@@ -103,16 +103,145 @@ export function useExamExitProtection(
 }
 
 /**
+ * Helper to generate a universal deep link share URL for any section or item.
+ */
+export function generateShareUrl(params: {
+  view: string;
+  id?: string | null;
+  subId?: string | null;
+  q?: string | null;
+}): string {
+  if (typeof window === "undefined") return "";
+  const origin = window.location.origin;
+  const path = window.location.pathname;
+  const searchParams = new URLSearchParams();
+  if (params.view && params.view !== "home") {
+    searchParams.set("view", params.view);
+  }
+  if (params.id) {
+    searchParams.set("id", params.id);
+  }
+  if (params.subId) {
+    searchParams.set("subId", params.subId);
+  }
+  if (params.q) {
+    searchParams.set("q", params.q);
+  }
+  const queryString = searchParams.toString();
+  return `${origin}${path}${queryString ? `?${queryString}` : ""}`;
+}
+
+/**
+ * Builds the URL query string based on the current app UI state.
+ */
+export function buildUrlSearchString(navState: {
+  currentScreen: string;
+  selectedCourseDetail?: any;
+  selectedCourseId?: string | null;
+  selectedPrepSubject?: string;
+  selectedPrepSubSubject?: any;
+  selectedLevel3Topic?: string | null;
+  selectedPurchasePkg?: any;
+  selectedLiveExamModal?: any;
+  takingExamModal?: any;
+  activeQuizTitle?: string;
+  searchQuery?: string;
+}): string {
+  const params = new URLSearchParams();
+
+  if (navState.takingExamModal) {
+    params.set("view", "exam");
+    if (navState.takingExamModal.id) params.set("id", String(navState.takingExamModal.id));
+    return params.toString() ? `?${params.toString()}` : "";
+  }
+
+  if (navState.selectedLiveExamModal) {
+    params.set("view", "exam");
+    if (navState.selectedLiveExamModal.id) params.set("id", String(navState.selectedLiveExamModal.id));
+    return params.toString() ? `?${params.toString()}` : "";
+  }
+
+  if (navState.selectedPurchasePkg) {
+    params.set("view", "package");
+    const pkgId = navState.selectedPurchasePkg.id || navState.selectedPurchasePkg.title;
+    if (pkgId) params.set("id", String(pkgId));
+    return params.toString() ? `?${params.toString()}` : "";
+  }
+
+  switch (navState.currentScreen) {
+    case "quiz":
+      if (navState.activeQuizTitle === "Live Quiz Game") {
+        params.set("view", "live-quiz");
+      } else {
+        params.set("view", "quiz");
+        if (navState.activeQuizTitle) params.set("id", navState.activeQuizTitle);
+      }
+      break;
+    case "courses":
+      params.set("view", "courses");
+      break;
+    case "course-detail":
+      params.set("view", "course");
+      const courseId = navState.selectedCourseId || navState.selectedCourseDetail?.id;
+      if (courseId) params.set("id", String(courseId));
+      break;
+    case "prep-all-subjects":
+      params.set("view", "prep-all-subjects");
+      break;
+    case "prep-sub":
+      params.set("view", "prep-sub");
+      if (navState.selectedPrepSubject) params.set("id", navState.selectedPrepSubject);
+      break;
+    case "prep-sub-detail":
+      params.set("view", "prep-sub-detail");
+      if (navState.selectedPrepSubject) params.set("id", navState.selectedPrepSubject);
+      if (navState.selectedPrepSubSubject?.name) params.set("subId", navState.selectedPrepSubSubject.name);
+      break;
+    case "packages":
+      params.set("view", "packages");
+      break;
+    case "routine":
+      params.set("view", "routine");
+      break;
+    case "tests":
+      params.set("view", "tests");
+      break;
+    case "all-live-exams":
+      params.set("view", "all-live-exams");
+      break;
+    case "rankings":
+      params.set("view", "rankings");
+      break;
+    case "profile":
+      params.set("view", "profile");
+      break;
+    case "notice":
+      params.set("view", "notice");
+      break;
+    case "search":
+      params.set("view", "search");
+      if (navState.searchQuery) params.set("q", navState.searchQuery);
+      break;
+    case "home":
+    default:
+      break;
+  }
+
+  const res = params.toString();
+  return res ? `?${res}` : "";
+}
+
+/**
  * Full App PWA Navigation Sync Engine
  * Synchronizes screen navigation (Home -> Courses -> Subject -> Topic), Modals, Drawers, and Exams
- * with the browser's History Stack (`window.history.pushState` and `popstate`).
- * Enables mobile hardware back button and iOS/Android swipe-to-back gestures to step back cleanly
- * through nested pages instead of exiting the browser/PWA.
+ * with the browser's History Stack (`window.history.pushState` and `popstate`) and Dynamic URL Parameters.
+ * Enables deep-linking, direct sharing, mobile hardware back button and iOS/Android swipe-to-back gestures.
  */
 export function useAppNavigationHistory(
   navState: {
     currentScreen: string;
     selectedCourseDetail?: any;
+    selectedCourseId?: string | null;
     selectedPrepSubject?: string;
     selectedPrepSubSubject?: any;
     selectedLevel3Topic?: string | null;
@@ -144,10 +273,13 @@ export function useAppNavigationHistory(
     previousScreen?: string;
     courseOriginScreen?: string;
     prepSubjectOrigin?: string;
+    activeQuizTitle?: string;
+    searchQuery?: string;
   },
   handlers: {
     setCurrentScreen: (s: any) => void;
     setSelectedCourseDetail?: (c: any) => void;
+    setSelectedCourseId?: (id: any) => void;
     setSelectedPrepSubject?: (sub: string) => void;
     setSelectedPrepSubSubject?: (sub: any) => void;
     setSelectedLevel3Topic?: (topic: string | null) => void;
@@ -183,6 +315,7 @@ export function useAppNavigationHistory(
   // Create a composite key representing the current UI state
   const stateKey = [
     navState.currentScreen,
+    navState.selectedCourseId || "",
     navState.selectedCourseDetail ? "course_active" : "",
     navState.selectedPrepSubject || "",
     navState.selectedPrepSubSubject ? "subsub_active" : "",
@@ -202,13 +335,13 @@ export function useAppNavigationHistory(
     navState.showExamSubmitConfirmModal ? "subm_confirm_open" : "",
     navState.isEditProfileOpen ? "editprof_open" : "",
     navState.isChangePasswordOpen ? "chpass_open" : "",
-    navState.selectedLiveExamModal ? "liveexam_open" : "",
-    navState.takingExamModal ? "takingexam_open" : "",
+    navState.selectedLiveExamModal ? `liveexam_${navState.selectedLiveExamModal.id || "open"}` : "",
+    navState.takingExamModal ? `takingexam_${navState.takingExamModal.id || "open"}` : "",
     navState.viewingAnswerSheetData ? "answersheet_open" : "",
     navState.viewingPaperModal ? "viewpaper_open" : "",
     navState.archiveModalOpen ? "archive_open" : "",
     navState.quickToolModal ? "quicktool_open" : "",
-    navState.selectedPurchasePkg ? "pkg_purchase_open" : "",
+    navState.selectedPurchasePkg ? `pkg_${navState.selectedPurchasePkg.id || "open"}` : "",
     navState.quizStarted ? "quiz_started" : "",
   ].join("|");
 
@@ -216,12 +349,15 @@ export function useAppNavigationHistory(
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const searchStr = buildUrlSearchString(navState);
+    const targetUrl = window.location.pathname + searchStr;
+
     // First time mount initialization
     if (!isInitializedRef.current) {
       isInitializedRef.current = true;
       lastStateKeyRef.current = stateKey;
       try {
-        window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
+        window.history.replaceState({ appRoot: true, key: stateKey }, "", targetUrl);
       } catch (e) {}
       return;
     }
@@ -259,7 +395,7 @@ export function useAppNavigationHistory(
     if (isAtHomeClean) {
       lastStateKeyRef.current = stateKey;
       try {
-        window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.href);
+        window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.pathname);
       } catch (e) {}
       return;
     }
@@ -269,7 +405,11 @@ export function useAppNavigationHistory(
       lastStateKeyRef.current = stateKey;
       pushedCountRef.current += 1;
       try {
-        window.history.pushState({ appNav: true, key: stateKey }, "", window.location.href);
+        window.history.pushState({ appNav: true, key: stateKey }, "", targetUrl);
+      } catch (e) {}
+    } else {
+      try {
+        window.history.replaceState({ appNav: true, key: stateKey }, "", targetUrl);
       } catch (e) {}
     }
   }, [stateKey, navState]);

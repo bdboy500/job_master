@@ -66,7 +66,8 @@ import {
   PlayCircle,
   Tv,
   Film,
-  WifiOff
+  WifiOff,
+  Share2
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -79,7 +80,7 @@ import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
 import LeaderboardSkeleton from "../components/LeaderboardSkeleton";
-import { useModalHistory, useExamExitProtection, useAppNavigationHistory } from "../hooks/useBackButton";
+import { useModalHistory, useExamExitProtection, useAppNavigationHistory, generateShareUrl, buildUrlSearchString } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { useOneSignal } from "../hooks/useOneSignal";
 
@@ -555,6 +556,7 @@ export default function Home() {
   useAppNavigationHistory(
     {
       currentScreen,
+      selectedCourseId,
       selectedCourseDetail,
       selectedPrepSubject,
       selectedPrepSubSubject,
@@ -583,12 +585,15 @@ export default function Home() {
       quickToolModal,
       selectedPurchasePkg,
       quizStarted,
+      activeQuizTitle,
+      searchQuery: desktopSearchQuery,
       previousScreen,
       courseOriginScreen,
       prepSubjectOrigin,
     },
     {
       setCurrentScreen,
+      setSelectedCourseId,
       setSelectedCourseDetail,
       setSelectedPrepSubject,
       setSelectedPrepSubSubject,
@@ -1720,6 +1725,345 @@ export default function Home() {
     }, "quiz");
   };
 
+  // Global Share & Deep Link Engine State
+  const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
+  const shareToastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showShareToast = (msg: string) => {
+    if (shareToastTimerRef.current) clearTimeout(shareToastTimerRef.current);
+    setShareToastMessage(msg);
+    shareToastTimerRef.current = setTimeout(() => {
+      setShareToastMessage(null);
+    }, 2500);
+  };
+
+  const handleShareLink = async (params: {
+    view: string;
+    id?: string | null;
+    subId?: string | null;
+    q?: string | null;
+    title: string;
+    text?: string;
+  }) => {
+    if (soundEnabled) quizAudio.playClick();
+    const url = generateShareUrl({
+      view: params.view,
+      id: params.id,
+      subId: params.subId,
+      q: params.q,
+    });
+
+    const shareData = {
+      title: params.title || "JobMaster - চাকরি প্রস্তুতি প্ল্যাটফর্ম",
+      text: params.text || params.title || "JobMaster এ পরীক্ষা ও কুইজ খেলে প্রস্তুতি নিন!",
+      url: url,
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share && typeof navigator.canShare === "function") {
+      try {
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          return;
+        }
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+      }
+    }
+
+    // Fallback: Clipboard copy
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        showShareToast("লিংক কপি হয়েছে! বন্ধুদের সাথে শেয়ার করুন।");
+        return;
+      }
+    } catch (err) {}
+
+    try {
+      const tempInput = document.createElement("textarea");
+      tempInput.value = url;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempInput);
+      showShareToast("লিংক কপি হয়েছে! বন্ধুদের সাথে শেয়ার করুন।");
+    } catch (e) {
+      showShareToast("লিংক কপি করতে ব্যর্থ হয়েছে");
+    }
+  };
+
+  const ICON_MAP: Record<string, any> = useMemo(() => ({
+    BookOpen,
+    Calculator,
+    Globe,
+    GraduationCap,
+    FileText,
+    Briefcase,
+    Users,
+    Award,
+    ShieldCheck,
+    Zap,
+    HelpCircle,
+    Sparkles,
+    Newspaper,
+    TrendingUp,
+    LayoutGrid,
+    Laptop,
+    Monitor,
+    FlaskConical,
+    Atom,
+    Book,
+    Video,
+    Database,
+    PlayCircle,
+    Tv,
+    Film
+  }), []);
+
+  const allProSectionData = useMemo(() => {
+    if (proSectionList && proSectionList.length > 0) {
+      return proSectionList.map(s => ({
+        ...s,
+        icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
+        text: s.text || "text-orange-600",
+        bg: s.bg || "bg-[#FFF1E6]"
+      }));
+    }
+    return DEFAULT_PRO_SECTION.map(s => ({
+      ...s,
+      icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
+      text: s.text || "text-orange-600",
+      bg: s.bg || "bg-[#FFF1E6]"
+    }));
+  }, [proSectionList, ICON_MAP]);
+
+  const allCoursesData = useMemo(() => {
+    if (coursesList && coursesList.length > 0) {
+      return coursesList.map(c => ({
+        ...c,
+        icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
+      }));
+    }
+    return ALL_COURSES_DATA;
+  }, [coursesList, ICON_MAP]);
+
+  const DEFAULT_PREP_SUBJECTS = useMemo(() => [
+    { name: "বাংলা", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
+    { name: "English", bnName: "English", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
+    { name: "গণিত", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
+    { name: "সাধারণ জ্ঞান", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
+    { name: "প্রযুক্তি", bnName: "প্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
+    { name: "সাধারণ বিজ্ঞান", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
+    { name: "ভূগোল", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
+    { name: "মানসিক দক্ষতা", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
+    { name: "নৈতিকতা ও সুশাসন", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
+  ], []);
+
+  const allPrepSubjectsData = useMemo(() => {
+    if (prepSubjectsList && prepSubjectsList.length > 0) {
+      return prepSubjectsList.map(s => ({
+        ...s,
+        icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
+        text: s.text || (s as any).iconColor || "text-orange-600"
+      }));
+    }
+    return DEFAULT_PREP_SUBJECTS;
+  }, [prepSubjectsList, ICON_MAP, DEFAULT_PREP_SUBJECTS]);
+
+  // Universal Deep Link Initial URL Loader (JobMaster Deep Linking Engine)
+  const initialDeepLinkHandledRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || initialDeepLinkHandledRef.current) return;
+
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const view = searchParams.get("view");
+      const id = searchParams.get("id");
+      const subId = searchParams.get("subId");
+      const q = searchParams.get("q");
+
+      if (!view && !id) return;
+
+      // 1. Live Quiz or Quiz Game deep linking (?view=live-quiz or ?view=quiz&id=...)
+      if (view === "live-quiz" || (view === "quiz" && (!id || id === "Live Quiz Game" || id === "live"))) {
+        initialDeepLinkHandledRef.current = true;
+        startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন");
+        return;
+      }
+
+      if (view === "quiz") {
+        initialDeepLinkHandledRef.current = true;
+        if (id === "Daily Challenge") {
+          startQuizFlow("General Quiz Game", "Daily Challenge", QUIZ_QUESTIONS);
+        } else if (id?.includes("Math") || id === "math") {
+          startQuizFlow("Mathematics practice #12", "Equations & Geometry", MATH_QUESTIONS);
+        } else if (id?.includes("Bangla") || id?.includes("English")) {
+          startQuizFlow("Bangla & English Mastery", "Grammar & Authors", [...BANGLA_QUESTIONS, ...ENGLISH_QUESTIONS]);
+        } else if (id?.includes("Science") || id === "science") {
+          startQuizFlow("General Science Mock", "Anatomy & Climate", SCIENCE_QUESTIONS);
+        } else {
+          startQuizFlow("General Quiz Game", id || "45th BCS International Affairs", QUIZ_QUESTIONS);
+        }
+        return;
+      }
+
+      // 2. Exam Deep Linking (?view=exam&id=EXAM_ID or ?view=all-live-exams or ?view=tests)
+      if (view === "exam") {
+        if (id) {
+          const matchedExam = examPapers.find((p) => String(p.id) === id || p.title.toLowerCase().includes(id.toLowerCase()));
+          if (matchedExam) {
+            initialDeepLinkHandledRef.current = true;
+            setSelectedLiveExamModal(matchedExam);
+            return;
+          }
+          if (examPapers.length > 0) {
+            initialDeepLinkHandledRef.current = true;
+            setCurrentScreen("all-live-exams");
+            return;
+          }
+          return; // Wait for exams to load from DB
+        } else {
+          initialDeepLinkHandledRef.current = true;
+          setCurrentScreen("all-live-exams");
+          return;
+        }
+      }
+
+      if (view === "all-live-exams" || view === "live-exams") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("all-live-exams");
+        return;
+      }
+
+      if (view === "tests") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("tests");
+        return;
+      }
+
+      // 3. Package Deep Linking (?view=package&id=PACKAGE_ID or ?view=packages)
+      if (view === "package") {
+        if (id) {
+          const matchedPkg = packagesList.find((p) => String(p.id) === id || p.title.toLowerCase().includes(id.toLowerCase()));
+          if (matchedPkg) {
+            initialDeepLinkHandledRef.current = true;
+            setCurrentScreen("packages");
+            setSelectedPurchasePkg(matchedPkg);
+            return;
+          }
+          if (packagesList.length > 0) {
+            initialDeepLinkHandledRef.current = true;
+            setCurrentScreen("packages");
+            return;
+          }
+          return;
+        } else {
+          initialDeepLinkHandledRef.current = true;
+          setCurrentScreen("packages");
+          return;
+        }
+      }
+
+      if (view === "packages") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("packages");
+        return;
+      }
+
+      // 4. Course Deep Linking (?view=course&id=COURSE_ID or ?view=courses)
+      if (view === "course") {
+        if (id) {
+          const matchedCourse = allCoursesData.find((c) => c.id === id || c.name.toLowerCase() === id.toLowerCase() || c.title.toLowerCase().includes(id.toLowerCase()));
+          if (matchedCourse) {
+            initialDeepLinkHandledRef.current = true;
+            setSelectedCourseId(matchedCourse.id);
+            setSelectedCourseDetail(matchedCourse);
+            setCurrentScreen("course-detail");
+            return;
+          }
+        }
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("courses");
+        return;
+      }
+
+      if (view === "courses") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("courses");
+        return;
+      }
+
+      // 5. Preparation Hub Subject Deep Linking (?view=prep-sub&id=... or ?view=prep-sub-detail&id=...&subId=...)
+      if (view === "prep-sub") {
+        initialDeepLinkHandledRef.current = true;
+        if (id) {
+          setSelectedPrepSubject(id);
+          setCurrentScreen("prep-sub");
+        } else {
+          setCurrentScreen("prep-all-subjects");
+        }
+        return;
+      }
+
+      if (view === "prep-sub-detail") {
+        initialDeepLinkHandledRef.current = true;
+        if (id) {
+          setSelectedPrepSubject(id);
+          if (subId) {
+            const parentSub = allPrepSubjectsData.find((s) => s.name === id);
+            const childSub = ((parentSub as any)?.subSubjects || (parentSub as any)?.subCategories)?.find((sc: any) => sc.name === subId);
+            if (childSub) setSelectedPrepSubSubject(childSub);
+          }
+          setCurrentScreen("prep-sub-detail");
+        } else {
+          setCurrentScreen("prep-all-subjects");
+        }
+        return;
+      }
+
+      if (view === "prep-all-subjects") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("prep-all-subjects");
+        return;
+      }
+
+      // 6. Other Screens: Routine, Rankings, Profile, Notice, Search
+      if (view === "routine") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("routine");
+        return;
+      }
+
+      if (view === "rankings" || view === "leaderboard") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("rankings");
+        return;
+      }
+
+      if (view === "profile") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("profile");
+        return;
+      }
+
+      if (view === "notice") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("notice");
+        return;
+      }
+
+      if (view === "search") {
+        initialDeepLinkHandledRef.current = true;
+        setCurrentScreen("search");
+        if (q) setDesktopSearchQuery(q);
+        return;
+      }
+    } catch (e) {
+      console.warn("Deep linking initialization error:", e);
+    }
+  }, [examPapers, packagesList, allCoursesData, allPrepSubjectsData]);
+
   // Handle option select - Instant feedback & score update
   const handleSelectOption = (index: number) => {
     if (isSubmitted || isTimedOut || !currentQuestion) return;
@@ -1921,84 +2265,6 @@ export default function Home() {
   // Calculate routine progress percentage
   const completedRoutineCount = routineTasks.filter(r => r.completed).length;
   const routinePercentage = routineTasks.length > 0 ? Math.round((completedRoutineCount / routineTasks.length) * 100) : 0;
-
-  const ICON_MAP: Record<string, any> = useMemo(() => ({
-    BookOpen,
-    Calculator,
-    Globe,
-    GraduationCap,
-    FileText,
-    Briefcase,
-    Users,
-    Award,
-    ShieldCheck,
-    Zap,
-    HelpCircle,
-    Sparkles,
-    Newspaper,
-    TrendingUp,
-    LayoutGrid,
-    Laptop,
-    Monitor,
-    FlaskConical,
-    Atom,
-    Book,
-    Video,
-    Database,
-    PlayCircle,
-    Tv,
-    Film
-  }), []);
-
-  const allProSectionData = useMemo(() => {
-    if (proSectionList && proSectionList.length > 0) {
-      return proSectionList.map(s => ({
-        ...s,
-        icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
-        text: s.text || "text-orange-600",
-        bg: s.bg || "bg-[#FFF1E6]"
-      }));
-    }
-    return DEFAULT_PRO_SECTION.map(s => ({
-      ...s,
-      icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
-      text: s.text || "text-orange-600",
-      bg: s.bg || "bg-[#FFF1E6]"
-    }));
-  }, [proSectionList, ICON_MAP]);
-
-  const allCoursesData = useMemo(() => {
-    if (coursesList && coursesList.length > 0) {
-      return coursesList.map(c => ({
-        ...c,
-        icon: ICON_MAP[c.icon || "BookOpen"] || BookOpen
-      }));
-    }
-    return ALL_COURSES_DATA;
-  }, [coursesList, ICON_MAP]);
-
-  const DEFAULT_PREP_SUBJECTS = useMemo(() => [
-    { name: "বাংলা", bnName: "বাংলা", icon: BookOpen, bg: "bg-[#FFF1E6]", text: "text-orange-600", sub: "সাহিত্য ও ব্যাকরণ" },
-    { name: "English", bnName: "English", icon: Globe, bg: "bg-[#F3E8FF]", text: "text-purple-600", sub: "Literature & Grammar" },
-    { name: "গণিত", bnName: "গণিত", icon: Calculator, bg: "bg-[#E6F0FA]", text: "text-blue-600", sub: "পাটিগণিত ও বীজগণিত" },
-    { name: "সাধারণ জ্ঞান", bnName: "সাধারণ জ্ঞান", icon: Award, bg: "bg-[#FCE7F3]", text: "text-rose-600", sub: "বাংলাদেশ ও আন্তর্জাতিক" },
-    { name: "প্রযুক্তি", bnName: "প্রযুক্তি", icon: Zap, bg: "bg-[#E0E7FF]", text: "text-indigo-600", sub: "কম্পিউটার ও আইসিটি" },
-    { name: "সাধারণ বিজ্ঞান", bnName: "সাধারণ বিজ্ঞান", icon: Sparkles, bg: "bg-[#FEF3C7]", text: "text-amber-600", sub: "দৈনন্দিন বিজ্ঞান" },
-    { name: "ভূগোল", bnName: "ভূগোল", icon: Globe, bg: "bg-[#E0F2FE]", text: "text-sky-600", sub: "পরিবেশ ও দুর্যোগ" },
-    { name: "মানসিক দক্ষতা", bnName: "মানসিক দক্ষতা", icon: HelpCircle, bg: "bg-[#FEE2E2]", text: "text-red-600", sub: "গাণিতিক ও মানসিক যুক্তি" },
-    { name: "নৈতিকতা ও সুশাসন", bnName: "নৈতিকতা ও সুশাসন", icon: ShieldCheck, bg: "bg-[#DCFCE7]", text: "text-emerald-600", sub: "মূল্যবোধ, সুশাসন ও নীতি" }
-  ], []);
-
-  const allPrepSubjectsData = useMemo(() => {
-    if (prepSubjectsList && prepSubjectsList.length > 0) {
-      return prepSubjectsList.map(s => ({
-        ...s,
-        icon: ICON_MAP[s.icon || "BookOpen"] || BookOpen,
-        text: s.text || (s as any).iconColor || "text-orange-600"
-      }));
-    }
-    return DEFAULT_PREP_SUBJECTS;
-  }, [prepSubjectsList, ICON_MAP, DEFAULT_PREP_SUBJECTS]);
 
   // Search filter for courses
   const filteredCoursesList = useMemo(() => {
@@ -2254,8 +2520,69 @@ export default function Home() {
             </button>
           </nav>
 
-          {/* Right side: Search, Notification, and Settings icons */}
+          {/* Right side: Share, Search, Notification, and Settings icons */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Share Link Button */}
+            <button 
+              onClick={() => {
+                let shareTitle = "JobMaster - চাকরি প্রস্তুতি প্ল্যাটফর্ম";
+                let shareText = "JobMaster এ পরীক্ষা ও কুইজ খেলে চাকরি প্রস্তুতি নিন!";
+                let shareView: string = currentScreen;
+                let shareId: string | null = null;
+                let shareSubId: string | null = null;
+
+                if (currentScreen === "quiz") {
+                  shareView = activeQuizTitle === "Live Quiz Game" ? "live-quiz" : "quiz";
+                  shareTitle = activeQuizTitle || "JobMaster Live Quiz";
+                  shareText = `${activeQuizTitle} খেলে উপহার ও পুরস্কার জিতুন!`;
+                  shareId = activeQuizTitle;
+                } else if (currentScreen === "course-detail" && selectedCourseDetail) {
+                  shareView = "course";
+                  shareId = selectedCourseId || selectedCourseDetail.id;
+                  shareTitle = `JobMaster - ${selectedCourseDetail.title || selectedCourseDetail.name}`;
+                  shareText = `${selectedCourseDetail.title} এর পূর্ণাঙ্গ প্রস্তুতি নিতে এখনই যোগ দিন!`;
+                } else if (currentScreen === "prep-sub" && selectedPrepSubject) {
+                  shareView = "prep-sub";
+                  shareId = selectedPrepSubject;
+                  shareTitle = `JobMaster - ${selectedPrepSubject}`;
+                  shareText = `${selectedPrepSubject} এর বিষয়ভিত্তিক প্রস্তুতি ও অধ্যায় টেস্ট!`;
+                } else if (currentScreen === "prep-sub-detail" && selectedPrepSubject) {
+                  shareView = "prep-sub-detail";
+                  shareId = selectedPrepSubject;
+                  shareSubId = selectedPrepSubSubject?.name || null;
+                  shareTitle = `JobMaster - ${selectedPrepSubSubject?.name || selectedPrepSubject}`;
+                } else if (currentScreen === "packages") {
+                  shareView = "packages";
+                  shareTitle = "JobMaster Premium Packages";
+                  shareText = "JobMaster এর প্রিমিয়াম প্যাকেজ দিয়ে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!";
+                } else if (currentScreen === "routine") {
+                  shareView = "routine";
+                  shareTitle = "JobMaster Exam Routine";
+                  shareText = "চলতি সপ্তাহের লাইভ পরীক্ষার সময়সূচি ও রুটিন দেখুন!";
+                } else if (currentScreen === "rankings") {
+                  shareView = "rankings";
+                  shareTitle = "JobMaster Live Leaderboard";
+                  shareText = "লাইভ কুইজ ও মডেল টেস্টের শীর্ষ পরীক্ষার্থীদের তালিকা!";
+                } else if (currentScreen === "all-live-exams") {
+                  shareView = "all-live-exams";
+                  shareTitle = "JobMaster Live Exams";
+                  shareText = "চলতি সপ্তাহের সকল লাইভ পরীক্ষা সমূহ!";
+                }
+
+                handleShareLink({
+                  view: shareView,
+                  id: shareId,
+                  subId: shareSubId,
+                  title: shareTitle,
+                  text: shareText
+                });
+              }}
+              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-[#FF6A00] active:scale-95 transition-all cursor-pointer"
+              title="লিংক শেয়ার করুন"
+            >
+              <Share2 className="w-5 h-5 stroke-[2.2px]" />
+            </button>
+
             <button 
               onClick={() => {
                 setDrawerOpen(false);
@@ -2436,10 +2763,28 @@ export default function Home() {
                                         <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
                                         For All Job
                                       </span>
-                                      <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-live-text"></span>
-                                        <span className="animate-live-text font-black">Live Now</span>
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleShareLink({
+                                              view: "exam",
+                                              id: currentLive.id,
+                                              title: currentLive.title,
+                                              text: `${currentLive.title} - JobMaster লাইভ পরীক্ষায় অংশ নিন!`
+                                            });
+                                          }}
+                                          className="p-1 hover:bg-white/20 text-white rounded-lg transition-all active:scale-90 cursor-pointer"
+                                          title="পরীক্ষা লিংক শেয়ার করুন"
+                                        >
+                                          <Share2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-live-text"></span>
+                                          <span className="animate-live-text font-black">Live Now</span>
+                                        </span>
+                                      </div>
                                     </div>
 
                                     {/* Card Content */}
@@ -2582,14 +2927,32 @@ export default function Home() {
                     </p>
                   </div>
 
-                  {/* RIGHT SIDE: Start Quiz CTA button */}
-                  <button 
-                    onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
-                    className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80 shrink-0"
-                  >
-                    <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
-                    <span className="font-black">Start Quiz</span>
-                  </button>
+                  {/* RIGHT SIDE: Share & Start Quiz CTA buttons */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShareLink({
+                          view: "live-quiz",
+                          title: "JobMaster Live Quiz Game",
+                          text: "JobMaster Live Quiz খেলে পুরষ্কার জিতুন! এখনই যোগ দিন।"
+                        });
+                      }}
+                      title="কুইজ লিংক শেয়ার করুন"
+                      className="bg-white/20 hover:bg-white/30 text-white p-2.5 rounded-2xl shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center border border-white/30"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+
+                    <button 
+                      onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
+                      className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-4 sm:px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80"
+                    >
+                      <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
+                      <span className="font-black">Start Quiz</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -3135,10 +3498,28 @@ export default function Home() {
                             <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
                             For All Job
                           </span>
-                          <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-live-text"></span>
-                            <span className="animate-live-text font-black">Live Now</span>
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareLink({
+                                  view: "exam",
+                                  id: currentLive.id,
+                                  title: currentLive.title,
+                                  text: `${currentLive.title} - JobMaster লাইভ পরীক্ষায় অংশ নিন!`
+                                });
+                              }}
+                              className="p-1 hover:bg-white/20 text-white rounded-lg transition-all active:scale-90 cursor-pointer"
+                              title="পরীক্ষা লিংক শেয়ার করুন"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-live-text"></span>
+                              <span className="animate-live-text font-black">Live Now</span>
+                            </span>
+                          </div>
                         </div>
 
                         {/* Card Content */}
@@ -5044,12 +5425,28 @@ export default function Home() {
                   <p className="text-[10px] text-white/80 leading-snug font-medium">Full set with 31 mock questions from database.</p>
                 </div>
                 
-                <button 
-                  onClick={() => startQuizFlow("General Quiz Game", "45th BCS International Affairs", isUsingFallback ? QUIZ_QUESTIONS : questions)}
-                  className="bg-white hover:bg-slate-50 text-blue-600 font-extrabold text-[10px] px-4.5 py-3 rounded-xl shadow relative z-10 cursor-pointer"
-                >
-                  Launch Quiz
-                </button>
+                <div className="flex items-center gap-2 relative z-10">
+                  <button 
+                    onClick={() => {
+                      handleShareLink({
+                        view: "quiz",
+                        id: "45th BCS International Affairs",
+                        title: "45th BCS International Affairs Mock Test",
+                        text: "JobMaster এ 45th BCS International Affairs মক টেস্ট দিন!"
+                      });
+                    }}
+                    className="p-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-all active:scale-90 cursor-pointer"
+                    title="টেস্ট লিংক শেয়ার করুন"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => startQuizFlow("General Quiz Game", "45th BCS International Affairs", isUsingFallback ? QUIZ_QUESTIONS : questions)}
+                    className="bg-white hover:bg-slate-50 text-blue-600 font-extrabold text-[10px] px-4.5 py-3 rounded-xl shadow cursor-pointer"
+                  >
+                    Launch Quiz
+                  </button>
+                </div>
 
                 <div className="absolute top-[-30px] right-[-30px] w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
               </div>
@@ -5072,12 +5469,29 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    <button 
-                      onClick={() => startQuizFlow("General Quiz Game", "Daily Challenge", QUIZ_QUESTIONS)}
-                      className="p-1.5 hover:bg-slate-50 text-orange-600 rounded-lg active:scale-90 transition-all cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => {
+                          handleShareLink({
+                            view: "quiz",
+                            id: "Daily Challenge",
+                            title: "General Knowledge Daily Challenge",
+                            text: "JobMaster Daily GK Challenge এ অংশ নিন!"
+                          });
+                        }}
+                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-orange-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শেয়ার করুন"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => startQuizFlow("General Quiz Game", "Daily Challenge", QUIZ_QUESTIONS)}
+                        className="p-2 hover:bg-orange-50 text-orange-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শুরু করুন"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Test choice 2: Quantitative Aptitude */}
@@ -5092,12 +5506,29 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    <button 
-                      onClick={() => startQuizFlow("Mathematics practice #12", "Equations & Geometry", MATH_QUESTIONS)}
-                      className="p-1.5 hover:bg-slate-50 text-blue-600 rounded-lg active:scale-90 transition-all cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => {
+                          handleShareLink({
+                            view: "quiz",
+                            id: "Mathematics",
+                            title: "Mathematics Practice Series #12",
+                            text: "JobMaster গণিত প্র্যাকটিস টেস্টে অংশ নিন!"
+                          });
+                        }}
+                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-blue-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শেয়ার করুন"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => startQuizFlow("Mathematics practice #12", "Equations & Geometry", MATH_QUESTIONS)}
+                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শুরু করুন"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Test choice 3: Bangla & English Literature */}
@@ -5112,12 +5543,29 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    <button 
-                      onClick={() => startQuizFlow("Bangla & English Mastery", "Grammar & Authors", [...BANGLA_QUESTIONS, ...ENGLISH_QUESTIONS])}
-                      className="p-1.5 hover:bg-slate-50 text-purple-600 rounded-lg active:scale-90 transition-all cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => {
+                          handleShareLink({
+                            view: "quiz",
+                            id: "Bangla",
+                            title: "Bangla & English Literature Mock",
+                            text: "JobMaster বাংলা ও ইংরেজি লিটারেচার মক টেস্টে অংশ নিন!"
+                          });
+                        }}
+                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-purple-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শেয়ার করুন"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => startQuizFlow("Bangla & English Mastery", "Grammar & Authors", [...BANGLA_QUESTIONS, ...ENGLISH_QUESTIONS])}
+                        className="p-2 hover:bg-purple-50 text-purple-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শুরু করুন"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Test choice 4: General Science */}
@@ -5132,12 +5580,29 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    <button 
-                      onClick={() => startQuizFlow("General Science Mock", "Anatomy & Climate", SCIENCE_QUESTIONS)}
-                      className="p-1.5 hover:bg-slate-50 text-green-600 rounded-lg active:scale-90 transition-all cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => {
+                          handleShareLink({
+                            view: "quiz",
+                            id: "Science",
+                            title: "General Science Mock Test",
+                            text: "JobMaster সাধারণ বিজ্ঞান মক টেস্টে অংশ নিন!"
+                          });
+                        }}
+                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-green-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শেয়ার করুন"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => startQuizFlow("General Science Mock", "Anatomy & Climate", SCIENCE_QUESTIONS)}
+                        className="p-2 hover:bg-green-50 text-green-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        title="শুরু করুন"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
                   </div>
 
                 </div>
@@ -5528,7 +5993,23 @@ export default function Home() {
                         </p>
                       </div>
                       <div className="shrink-0 text-right flex flex-col items-end">
-                        <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1">
+                        <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShareLink({
+                                view: "package",
+                                id: pkg.id,
+                                title: `JobMaster - ${pkg.title}`,
+                                text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
+                              });
+                            }}
+                            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer"
+                            title="প্যাকেজ লিংক শেয়ার করুন"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                          </button>
                           <span>{pkg.price}</span>
                           <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
                         </div>
@@ -5579,7 +6060,23 @@ export default function Home() {
                           </p>
                         </div>
                         <div className="shrink-0 text-right flex flex-col items-end">
-                          <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1">
+                          <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareLink({
+                                  view: "package",
+                                  id: pkg.id,
+                                  title: `JobMaster - ${pkg.title}`,
+                                  text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
+                                });
+                              }}
+                              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer"
+                              title="প্যাকেজ লিংক শেয়ার করুন"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
                             <span>{pkg.price}</span>
                             <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
                           </div>
@@ -7362,12 +7859,28 @@ export default function Home() {
         {selectedPurchasePkg && (
           <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full text-center shadow-2xl space-y-4 border border-slate-100 relative">
-              <button 
-                onClick={() => setSelectedPurchasePkg(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all active:scale-95 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                <button 
+                  onClick={() => {
+                    handleShareLink({
+                      view: "package",
+                      id: selectedPurchasePkg.id,
+                      title: `JobMaster - ${selectedPurchasePkg.title}`,
+                      text: `JobMaster এর ${selectedPurchasePkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
+                    });
+                  }}
+                  className="p-1.5 rounded-full bg-slate-100 hover:bg-orange-50 hover:text-[#007AFF] text-slate-500 transition-all active:scale-95 cursor-pointer"
+                  title="শেয়ার করুন"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setSelectedPurchasePkg(null)}
+                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all active:scale-95 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
               <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black shadow-2xs">
                 {"\uD83D\uDECD"}️
@@ -7999,14 +8512,31 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <span className="bg-orange-100 text-[#FF6A00] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#FF6A00] animate-ping"></span>
-                  {"\uD83D\uDD34"} লাইভ পরীক্ষা বিবরণ
+                  🔴 লাইভ পরীক্ষা বিবরণ
                 </span>
-                <button 
-                  onClick={() => setSelectedLiveExamModal(null)}
-                  className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-full transition-all cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      handleShareLink({
+                        view: "exam",
+                        id: selectedLiveExamModal.id,
+                        title: selectedLiveExamModal.title,
+                        text: `${selectedLiveExamModal.title} - JobMaster লাইভ পরীক্ষায় অংশ নিন!`
+                      });
+                    }}
+                    className="p-1.5 text-slate-500 hover:text-[#FF6A00] hover:bg-orange-50 rounded-full transition-all cursor-pointer"
+                    title="পরীক্ষা লিংক শেয়ার করুন"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedLiveExamModal(null)}
+                    className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-full transition-all cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Exam Title & Course */}
@@ -8180,6 +8710,14 @@ export default function Home() {
           onAccept={handleAcceptSoftPrompt}
           onDismiss={handleDismissSoftPrompt}
         />
+
+        {/* Share Toast Notification */}
+        {shareToastMessage && (
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2000] bg-slate-900/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 border border-white/20 animate-fade-in pointer-events-none">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{shareToastMessage}</span>
+          </div>
+        )}
 
       </div>
 
