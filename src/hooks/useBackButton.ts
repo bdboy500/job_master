@@ -356,6 +356,13 @@ export function useAppNavigationHistory(
     if (!isInitializedRef.current) {
       isInitializedRef.current = true;
       lastStateKeyRef.current = stateKey;
+      
+      // CRITICAL FIX: If browser loaded with URL query parameters (Deep Link), DO NOT overwrite with "/"!
+      const initialSearch = window.location.search;
+      if (initialSearch && initialSearch.length > 1) {
+        // Keep the existing deep link query string intact for the deep link engine to process
+        return;
+      }
       try {
         window.history.replaceState({ appRoot: true, key: stateKey }, "", targetUrl);
       } catch (e) {}
@@ -393,6 +400,11 @@ export function useAppNavigationHistory(
       !navState.quizStarted;
 
     if (isAtHomeClean) {
+      // If there are still unparsed deep link parameters in current URL during initial render, do not overwrite yet
+      const curSearch = window.location.search;
+      if (curSearch && curSearch.includes("view=")) {
+        return;
+      }
       lastStateKeyRef.current = stateKey;
       try {
         window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.pathname);

@@ -1870,199 +1870,343 @@ export default function Home() {
     return DEFAULT_PREP_SUBJECTS;
   }, [prepSubjectsList, ICON_MAP, DEFAULT_PREP_SUBJECTS]);
 
-  // Universal Deep Link Initial URL Loader (JobMaster Deep Linking Engine)
+  // Universal Deep Link & Dynamic Routing Engine (JobMaster Routing Core)
   const initialDeepLinkHandledRef = useRef<boolean>(false);
+  const initialUrlSearchRef = useRef<string>(typeof window !== "undefined" ? window.location.search : "");
+  const pendingDeepLinkRef = useRef<{ view: string; id?: string | null; subId?: string | null; q?: string | null } | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || initialDeepLinkHandledRef.current) return;
+  const processDeepLinkQuery = useCallback((searchStr: string): boolean => {
+    if (!searchStr || searchStr.length < 2) return false;
 
     try {
-      const searchParams = new URLSearchParams(window.location.search);
+      const searchParams = new URLSearchParams(searchStr);
       const view = searchParams.get("view");
       const id = searchParams.get("id");
       const subId = searchParams.get("subId");
       const q = searchParams.get("q");
+      const modal = searchParams.get("modal");
 
-      if (!view && !id) return;
+      if (!view && !id && !modal) return false;
 
       // 1. Live Quiz or Quiz Game deep linking (?view=live-quiz or ?view=quiz&id=...)
-      if (view === "live-quiz" || (view === "quiz" && (!id || id === "Live Quiz Game" || id === "live"))) {
+      if (view === "live-quiz" || view === "live_quiz" || (view === "quiz" && (!id || id === "Live Quiz Game" || id === "live" || id === "live-quiz"))) {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন");
-        return;
+        return true;
       }
 
       if (view === "quiz") {
         initialDeepLinkHandledRef.current = true;
-        if (id === "Daily Challenge") {
+        pendingDeepLinkRef.current = null;
+        if (id === "Daily Challenge" || id?.toLowerCase().includes("daily")) {
           startQuizFlow("General Quiz Game", "Daily Challenge", QUIZ_QUESTIONS);
-        } else if (id?.includes("Math") || id === "math") {
+        } else if (id?.toLowerCase().includes("math") || id === "mathematics") {
           startQuizFlow("Mathematics practice #12", "Equations & Geometry", MATH_QUESTIONS);
-        } else if (id?.includes("Bangla") || id?.includes("English")) {
+        } else if (id?.toLowerCase().includes("bangla") || id?.toLowerCase().includes("english")) {
           startQuizFlow("Bangla & English Mastery", "Grammar & Authors", [...BANGLA_QUESTIONS, ...ENGLISH_QUESTIONS]);
-        } else if (id?.includes("Science") || id === "science") {
+        } else if (id?.toLowerCase().includes("science")) {
           startQuizFlow("General Science Mock", "Anatomy & Climate", SCIENCE_QUESTIONS);
         } else {
           startQuizFlow("General Quiz Game", id || "45th BCS International Affairs", QUIZ_QUESTIONS);
         }
-        return;
+        return true;
       }
 
       // 2. Exam Deep Linking (?view=exam&id=EXAM_ID or ?view=all-live-exams or ?view=tests)
-      if (view === "exam") {
+      if (view === "exam" || view === "live-exam" || view === "live_exam" || view === "liveexam") {
         if (id) {
-          const matchedExam = examPapers.find((p) => String(p.id) === id || p.title.toLowerCase().includes(id.toLowerCase()));
+          const normId = id.trim().toLowerCase();
+          // First check in current loaded examPapers
+          let matchedExam = examPapers.find((p) => 
+            String(p.id).toLowerCase() === normId || 
+            p.title.toLowerCase() === normId ||
+            p.title.toLowerCase().includes(normId) ||
+            (p.subject && p.subject.toLowerCase().includes(normId)) ||
+            (p.topic && p.topic.toLowerCase().includes(normId))
+          );
+
+          // If not yet found, check in DEFAULT_EXAM_PAPERS
+          if (!matchedExam) {
+            matchedExam = DEFAULT_EXAM_PAPERS.find((p) => 
+              String(p.id).toLowerCase() === normId || 
+              p.title.toLowerCase() === normId ||
+              p.title.toLowerCase().includes(normId) ||
+              (p.subject && p.subject.toLowerCase().includes(normId)) ||
+              (p.topic && p.topic.toLowerCase().includes(normId))
+            );
+          }
+
           if (matchedExam) {
             initialDeepLinkHandledRef.current = true;
+            pendingDeepLinkRef.current = null;
             setSelectedLiveExamModal(matchedExam);
-            return;
+            return true;
           }
-          if (examPapers.length > 0) {
+
+          // If exam papers is non-empty and still not matched, fallback to all-live-exams
+          if (examPapers && examPapers.length > 0) {
             initialDeepLinkHandledRef.current = true;
+            pendingDeepLinkRef.current = null;
             setCurrentScreen("all-live-exams");
-            return;
+            return true;
           }
-          return; // Wait for exams to load from DB
+
+          // Otherwise mark pending until DB exams are loaded
+          pendingDeepLinkRef.current = { view, id, subId, q };
+          return false;
         } else {
           initialDeepLinkHandledRef.current = true;
+          pendingDeepLinkRef.current = null;
           setCurrentScreen("all-live-exams");
-          return;
+          return true;
         }
       }
 
-      if (view === "all-live-exams" || view === "live-exams") {
+      if (view === "all-live-exams" || view === "live-exams" || view === "all_live_exams") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("all-live-exams");
-        return;
+        return true;
       }
 
-      if (view === "tests") {
+      if (view === "tests" || view === "all-tests" || view === "archive") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("tests");
-        return;
+        return true;
       }
 
       // 3. Package Deep Linking (?view=package&id=PACKAGE_ID or ?view=packages)
-      if (view === "package") {
-        if (id) {
-          const matchedPkg = packagesList.find((p) => String(p.id) === id || p.title.toLowerCase().includes(id.toLowerCase()));
+      if (view === "package" || view === "packages") {
+        if (id && view !== "packages") {
+          const normPkgId = id.trim().toLowerCase();
+          const matchedPkg = packagesList.find((p) => 
+            String(p.id).toLowerCase() === normPkgId || 
+            p.title.toLowerCase() === normPkgId ||
+            p.title.toLowerCase().includes(normPkgId)
+          ) || DEFAULT_PACKAGES.find((p) => 
+            String(p.id).toLowerCase() === normPkgId || 
+            p.title.toLowerCase() === normPkgId ||
+            p.title.toLowerCase().includes(normPkgId)
+          );
+
+          initialDeepLinkHandledRef.current = true;
+          pendingDeepLinkRef.current = null;
+          setCurrentScreen("packages");
           if (matchedPkg) {
-            initialDeepLinkHandledRef.current = true;
-            setCurrentScreen("packages");
             setSelectedPurchasePkg(matchedPkg);
-            return;
           }
-          if (packagesList.length > 0) {
-            initialDeepLinkHandledRef.current = true;
-            setCurrentScreen("packages");
-            return;
-          }
-          return;
+          return true;
         } else {
           initialDeepLinkHandledRef.current = true;
+          pendingDeepLinkRef.current = null;
           setCurrentScreen("packages");
-          return;
+          return true;
         }
-      }
-
-      if (view === "packages") {
-        initialDeepLinkHandledRef.current = true;
-        setCurrentScreen("packages");
-        return;
       }
 
       // 4. Course Deep Linking (?view=course&id=COURSE_ID or ?view=courses)
-      if (view === "course") {
-        if (id) {
-          const matchedCourse = allCoursesData.find((c) => c.id === id || c.name.toLowerCase() === id.toLowerCase() || c.title.toLowerCase().includes(id.toLowerCase()));
+      if (view === "course" || view === "courses") {
+        if (id && view !== "courses") {
+          const normCourseId = id.trim().toLowerCase();
+          const matchedCourse = allCoursesData.find((c) => 
+            c.id.toLowerCase() === normCourseId || 
+            c.name.toLowerCase() === normCourseId || 
+            c.title.toLowerCase().includes(normCourseId)
+          ) || ALL_COURSES_DATA.find((c) => 
+            c.id.toLowerCase() === normCourseId || 
+            c.name.toLowerCase() === normCourseId || 
+            c.title.toLowerCase().includes(normCourseId)
+          );
+
           if (matchedCourse) {
             initialDeepLinkHandledRef.current = true;
+            pendingDeepLinkRef.current = null;
             setSelectedCourseId(matchedCourse.id);
             setSelectedCourseDetail(matchedCourse);
             setCurrentScreen("course-detail");
-            return;
+            return true;
           }
         }
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("courses");
-        return;
-      }
-
-      if (view === "courses") {
-        initialDeepLinkHandledRef.current = true;
-        setCurrentScreen("courses");
-        return;
+        return true;
       }
 
       // 5. Preparation Hub Subject Deep Linking (?view=prep-sub&id=... or ?view=prep-sub-detail&id=...&subId=...)
-      if (view === "prep-sub") {
+      if (view === "prep-sub" || view === "prep_sub") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         if (id) {
-          setSelectedPrepSubject(id);
+          const normSubId = id.trim().toLowerCase();
+          const matchedSub = allPrepSubjectsData.find((s) => 
+            s.name.toLowerCase() === normSubId || 
+            (s.bnName && s.bnName.toLowerCase() === normSubId) ||
+            s.name.includes(id)
+          ) || DEFAULT_PREP_SUBJECTS.find((s) => 
+            s.name.toLowerCase() === normSubId || 
+            (s.bnName && s.bnName.toLowerCase() === normSubId) ||
+            s.name.includes(id)
+          );
+
+          setSelectedPrepSubject(matchedSub?.name || id);
           setCurrentScreen("prep-sub");
         } else {
           setCurrentScreen("prep-all-subjects");
         }
-        return;
+        return true;
       }
 
-      if (view === "prep-sub-detail") {
+      if (view === "prep-sub-detail" || view === "prep_sub_detail") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         if (id) {
-          setSelectedPrepSubject(id);
+          const normSubId = id.trim().toLowerCase();
+          const matchedSub = allPrepSubjectsData.find((s) => 
+            s.name.toLowerCase() === normSubId || 
+            (s.bnName && s.bnName.toLowerCase() === normSubId) ||
+            s.name.includes(id)
+          ) || DEFAULT_PREP_SUBJECTS.find((s) => 
+            s.name.toLowerCase() === normSubId || 
+            (s.bnName && s.bnName.toLowerCase() === normSubId) ||
+            s.name.includes(id)
+          );
+
+          const mainSubName = matchedSub?.name || id;
+          setSelectedPrepSubject(mainSubName);
+
           if (subId) {
-            const parentSub = allPrepSubjectsData.find((s) => s.name === id);
-            const childSub = ((parentSub as any)?.subSubjects || (parentSub as any)?.subCategories)?.find((sc: any) => sc.name === subId);
+            const normChild = subId.trim().toLowerCase();
+            const childSub = ((matchedSub as any)?.subSubjects || (matchedSub as any)?.subCategories)?.find((sc: any) => 
+              sc.name.toLowerCase() === normChild || 
+              sc.name.includes(subId) || 
+              (sc.id && sc.id.toLowerCase() === normChild)
+            );
             if (childSub) setSelectedPrepSubSubject(childSub);
           }
           setCurrentScreen("prep-sub-detail");
         } else {
           setCurrentScreen("prep-all-subjects");
         }
-        return;
+        return true;
       }
 
-      if (view === "prep-all-subjects") {
+      if (view === "prep-all-subjects" || view === "prep_all_subjects") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("prep-all-subjects");
-        return;
+        return true;
       }
 
-      // 6. Other Screens: Routine, Rankings, Profile, Notice, Search
+      // 6. Other Screens & Modals
       if (view === "routine") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("routine");
-        return;
+        return true;
       }
 
       if (view === "rankings" || view === "leaderboard") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("rankings");
-        return;
+        return true;
       }
 
       if (view === "profile") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("profile");
-        return;
+        return true;
       }
 
       if (view === "notice") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("notice");
-        return;
+        return true;
       }
 
       if (view === "search") {
         initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
         setCurrentScreen("search");
         if (q) setDesktopSearchQuery(q);
-        return;
+        return true;
+      }
+
+      if (view === "settings" || modal === "settings") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setActiveDrawerModal("settings");
+        setDrawerOpen(true);
+        return true;
+      }
+
+      if (view === "contact" || modal === "contact") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setActiveDrawerModal("contact");
+        setDrawerOpen(true);
+        return true;
+      }
+
+      if (view === "ourapps" || modal === "ourapps") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setActiveDrawerModal("ourapps");
+        setDrawerOpen(true);
+        return true;
+      }
+
+      if (view === "bookstore" || modal === "bookstore") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setActiveDrawerModal("bookstore");
+        setDrawerOpen(true);
+        return true;
       }
     } catch (e) {
-      console.warn("Deep linking initialization error:", e);
+      console.warn("Deep linking processing error:", e);
     }
-  }, [examPapers, packagesList, allCoursesData, allPrepSubjectsData]);
+    return false;
+  }, [examPapers, packagesList, allCoursesData, allPrepSubjectsData, startQuizFlow]);
+
+  // Execute deep link processing on mount & when dependent datasets update
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (!initialDeepLinkHandledRef.current) {
+      const searchToProcess = window.location.search || initialUrlSearchRef.current;
+      if (searchToProcess && searchToProcess.length > 1) {
+        processDeepLinkQuery(searchToProcess);
+      }
+    } else if (pendingDeepLinkRef.current) {
+      const searchToProcess = window.location.search || initialUrlSearchRef.current;
+      if (searchToProcess) {
+        processDeepLinkQuery(searchToProcess);
+      }
+    }
+  }, [processDeepLinkQuery, examPapers, packagesList, allCoursesData, allPrepSubjectsData]);
+
+  // Global popstate and click listener to handle deep-link URL changes dynamically
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopStateUrl = () => {
+      const curSearch = window.location.search;
+      if (curSearch && curSearch.includes("view=")) {
+        processDeepLinkQuery(curSearch);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopStateUrl);
+    return () => {
+      window.removeEventListener("popstate", handlePopStateUrl);
+    };
+  }, [processDeepLinkQuery]);
 
   // Handle option select - Instant feedback & score update
   const handleSelectOption = (index: number) => {
