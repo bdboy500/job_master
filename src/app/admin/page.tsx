@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import MathRenderer from "@/src/components/MathRenderer";
 import { LeaderboardUser, fetchLeaderboard, adminUpdateLeaderboardUser } from "@/src/lib/leaderboard";
 import { 
@@ -15,6 +15,7 @@ import {
   LogIn, 
   Award, 
   Trophy,
+  Crown,
   Check, 
   X, 
   HelpCircle, 
@@ -30,6 +31,7 @@ import {
   FileText,
   Pencil,
   Filter,
+  ListFilter,
   Sparkles,
   RefreshCw,
   Archive,
@@ -37,6 +39,7 @@ import {
   Tag,
   ArrowUp,
   ArrowDown,
+  ArrowUpDown,
   Layers,
   Grid,
   ChevronRight,
@@ -431,6 +434,10 @@ export default function AdminPage() {
   // Leaderboard Admin Management State
   const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
   const [leaderboardSearchQuery, setLeaderboardSearchQuery] = useState("");
+  const [adminLeaderboardSortPeriod, setAdminLeaderboardSortPeriod] = useState<"today" | "week" | "month" | "all_time">("today");
+  const [adminLeaderboardVisibleLimit, setAdminLeaderboardVisibleLimit] = useState<number>(10);
+  const [isAdminLeaderboardLoading, setIsAdminLeaderboardLoading] = useState<boolean>(false);
+  const [adminLeaderboardLastSync, setAdminLeaderboardLastSync] = useState<string>("");
   const [editingLeaderboardUser, setEditingLeaderboardUser] = useState<LeaderboardUser | null>(null);
   const [editTodayScore, setEditTodayScore] = useState<number>(0);
   const [editWeekScore, setEditWeekScore] = useState<number>(0);
@@ -694,18 +701,7 @@ export default function AdminPage() {
           .from("questions")
           .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
           .order("created_at", { ascending: false })
-          .limit(200);
-
-        // If simple search query, query database
-        const normSearch = normalizeSearchText(effectiveQuery);
-        if (effectiveQuery.length >= 2 && !effectiveQuery.includes("$") && !effectiveQuery.includes("\\")) {
-          query = query.ilike("questionText", `%${effectiveQuery}%`);
-        } else if (normSearch.length >= 2) {
-          const firstWord = normSearch.split(" ")[0];
-          if (firstWord && firstWord.length >= 2) {
-            query = query.ilike("questionText", `%${firstWord}%`);
-          }
-        }
+          .limit(300);
 
         const { data, error } = await query;
         if (!error && Array.isArray(data) && data.length > 0) {
@@ -753,9 +749,12 @@ export default function AdminPage() {
 
     paperQuestionsCacheRef.current.set(cacheKey, merged);
 
-    // Pick max 10 random questions from those selected subject(s) to show in search list
-    const random10 = [...merged].sort(() => 0.5 - Math.random()).slice(0, 10);
-    setPaperAvailableQuestions(random10);
+    // If search query is active, show the top matching questions in order, otherwise pick 10 random
+    const displayList = cleanQuery.length > 0
+      ? merged.slice(0, 15)
+      : [...merged].sort(() => 0.5 - Math.random()).slice(0, 10);
+
+    setPaperAvailableQuestions(displayList);
     setPaperHasFetched(true);
     setPaperLoadingQuestions(false);
     return merged;
@@ -1038,6 +1037,84 @@ export default function AdminPage() {
     const papers = await fetchExamPapersFromDb();
     setExamPapers(papers);
   };
+
+  // Refresh Leaderboard from server
+  const refreshAdminLeaderboard = async (silent = false) => {
+    setIsAdminLeaderboardLoading(true);
+    try {
+      const users = await fetchLeaderboard(true);
+      if (users) {
+        setAdminLeaderboardUsers(users);
+        const nowBd = new Date().toLocaleTimeString("en-US", {
+          timeZone: "Asia/Dhaka",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true
+        });
+        setAdminLeaderboardLastSync(nowBd);
+        if (!silent) {
+          triggerNotification("success", "লাইভ সার্ভার থেকে কুইজ লিডারবোর্ড তথ্য সফলভাবে আপডেট করা হয়েছে।");
+        }
+      }
+    } catch (err: any) {
+      console.error("Leaderboard refresh error:", err);
+      if (!silent) triggerNotification("error", "লিডারবোর্ড তথ্য লোড করতে ব্যর্থ হয়েছে।");
+    } finally {
+      setIsAdminLeaderboardLoading(false);
+    }
+  };
+
+  // Auto-fetch fresh server leaderboard when switching to leaderboard tab
+  useEffect(() => {
+    if (activeTab === "leaderboard") {
+      refreshAdminLeaderboard(true);
+    }
+  }, [activeTab]);
+
+  // Dynamic sorting according to selected period (Today, Week, Month, All Time)
+  const sortedLeaderboardUsers = useMemo(() => {
+    const list = [...adminLeaderboardUsers];
+    list.sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+      if (adminLeaderboardSortPeriod === "today") {
+        scoreA = Number(a.today_score) || 0;
+        scoreB = Number(b.today_score) || 0;
+      } else if (adminLeaderboardSortPeriod === "week") {
+        scoreA = Number(a.week_score) || 0;
+        scoreB = Number(b.week_score) || 0;
+      } else if (adminLeaderboardSortPeriod === "month") {
+        scoreA = Number(a.month_score) || 0;
+        scoreB = Number(b.month_score) || 0;
+      } else {
+        scoreA = Number(a.all_time_score) || 0;
+        scoreB = Number(b.all_time_score) || 0;
+      }
+
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      return (Number(b.all_time_score) || 0) - (Number(a.all_time_score) || 0);
+    });
+    return list;
+  }, [adminLeaderboardUsers, adminLeaderboardSortPeriod]);
+
+  // Search filtered leaderboard users
+  const filteredLeaderboardUsers = useMemo(() => {
+    if (!leaderboardSearchQuery.trim()) return sortedLeaderboardUsers;
+    const q = leaderboardSearchQuery.toLowerCase().trim();
+    return sortedLeaderboardUsers.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        (u.student_id && u.student_id.toLowerCase().includes(q))
+    );
+  }, [sortedLeaderboardUsers, leaderboardSearchQuery]);
+
+  // Display limited leaderboard users (Default 10, or 20, 30, 40, 50)
+  const visibleLeaderboardUsers = useMemo(() => {
+    return filteredLeaderboardUsers.slice(0, adminLeaderboardVisibleLimit);
+  }, [filteredLeaderboardUsers, adminLeaderboardVisibleLimit]);
 
   // Package Management Handlers
   const handleSavePackage = async (e: React.FormEvent) => {
@@ -1982,11 +2059,9 @@ export default function AdminPage() {
     const subjectVal = overrideSubject !== undefined ? overrideSubject : selectedSubjectFilter;
     const searchVal = overrideSearch !== undefined ? overrideSearch : searchQuery;
     const cleanSearch = searchVal.trim();
+    const isSearching = cleanSearch.length > 0;
 
-    // Min 2 char threshold for search query
-    const effectiveSearch = cleanSearch.length >= 2 ? cleanSearch.toLowerCase() : "";
-
-    const cacheKey = `${limitVal}_${subjectVal}_${normalizeSearchText(effectiveSearch)}`;
+    const cacheKey = `${limitVal}_${subjectVal}_${normalizeSearchText(cleanSearch)}`;
 
     if (!overrideForceRefresh && questionsCacheRef.current.has(cacheKey)) {
       const cached = questionsCacheRef.current.get(cacheKey)!;
@@ -2011,27 +2086,16 @@ export default function AdminPage() {
           setTotalQuestionsCount(count);
         }
 
-        // 2. Server-side pagination, on-demand search/filtering & optimized column selection
+        // 2. Server query: if searching, fetch a generous candidate batch (up to 500) to allow full math KaTeX normalization
+        const fetchLimit = isSearching ? 500 : limitVal;
         let query = supabase
           .from("questions")
           .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
           .order("created_at", { ascending: false })
-          .limit(limitVal);
+          .limit(fetchLimit);
 
         if (subjectVal && subjectVal !== "All") {
           query = query.eq("subjectName", subjectVal);
-        }
-
-        if (effectiveSearch.length >= 2) {
-          const normSearch = normalizeSearchText(effectiveSearch);
-          if (!effectiveSearch.includes("$") && !effectiveSearch.includes("\\")) {
-            query = query.ilike("questionText", `%${effectiveSearch}%`);
-          } else if (normSearch.length >= 2) {
-            const firstWord = normSearch.split(" ")[0];
-            if (firstWord && firstWord.length >= 2) {
-              query = query.ilike("questionText", `%${firstWord}%`);
-            }
-          }
         }
 
         const { data, error } = await query;
@@ -2041,56 +2105,40 @@ export default function AdminPage() {
           setDbError("Supabase 'questions' table not found or query failed.");
           
           const cachedMock = localStorage.getItem("job_master_admin_questions");
+          let pool: any[] = [];
           if (cachedMock) {
             try {
-              let parsed = JSON.parse(cachedMock).map((item: any) => normalizeQuestion(item));
-              if (subjectVal && subjectVal !== "All") {
-                parsed = parsed.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
-              }
-              if (cleanSearch.length > 0) {
-                parsed = parsed.filter((q: any) => questionMatchesSearch(q, cleanSearch));
-              }
-              const sliced = parsed.slice(0, limitVal);
-              setQuestions(sliced);
-              setTotalQuestionsCount(parsed.length);
-              questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: parsed.length });
+              pool = JSON.parse(cachedMock).map((item: any) => normalizeQuestion(item));
             } catch {
-              let norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
-              if (subjectVal && subjectVal !== "All") {
-                norm = norm.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
-              }
-              if (cleanSearch.length > 0) {
-                norm = norm.filter((q: any) => questionMatchesSearch(q, cleanSearch));
-              }
-              const sliced = norm.slice(0, limitVal);
-              setQuestions(sliced);
-              setTotalQuestionsCount(norm.length);
-              questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: norm.length });
+              pool = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
             }
           } else {
-            let norm = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
-            if (subjectVal && subjectVal !== "All") {
-              norm = norm.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
-            }
-            if (cleanSearch.length > 0) {
-              norm = norm.filter((q: any) => questionMatchesSearch(q, cleanSearch));
-            }
-            const sliced = norm.slice(0, limitVal);
-            setQuestions(sliced);
-            setTotalQuestionsCount(norm.length);
-            questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: norm.length });
+            pool = QUIZ_QUESTIONS.map(item => normalizeQuestion(item));
           }
+
+          if (subjectVal && subjectVal !== "All") {
+            pool = pool.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
+          }
+          if (isSearching) {
+            pool = pool.filter((q: any) => questionMatchesSearch(q, cleanSearch));
+          }
+          const sliced = pool.slice(0, limitVal);
+          setQuestions(sliced);
+          setTotalQuestionsCount(pool.length);
+          questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: pool.length });
         } else if (data) {
           let normalized = data.map(item => normalizeQuestion(item));
           if (subjectVal && subjectVal !== "All") {
             normalized = normalized.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
           }
-          if (cleanSearch.length > 0) {
+          if (isSearching) {
             normalized = normalized.filter((q: any) => questionMatchesSearch(q, cleanSearch));
           }
-          setQuestions(normalized);
-          const finalCount = currentTotal || normalized.length;
-          questionsCacheRef.current.set(cacheKey, { questions: normalized, totalCount: finalCount });
+          const sliced = isSearching ? normalized.slice(0, limitVal) : normalized;
+          setQuestions(sliced);
+          const finalCount = isSearching ? normalized.length : (currentTotal || normalized.length);
+          setTotalQuestionsCount(finalCount);
+          questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: finalCount });
           localStorage.setItem("job_master_admin_questions", JSON.stringify(normalized));
         }
       }
@@ -3738,19 +3786,14 @@ export default function AdminPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                       {/* Search Query Input */}
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase pl-1 block">কীওয়ার্ড খুঁজুন</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase pl-1 block">কীওয়ার্ড বা গণিত সমীকরণ খুঁজুন</label>
                         <input 
                           type="text"
-                          placeholder="প্রশ্ন টেক্সট দিয়ে সার্চ করুন (কমপক্ষে ৩ অক্ষর)..."
+                          placeholder="প্রশ্ন বা গণিত সমীকরণ দিয়ে সার্চ করুন (যেমন: x/y, 2y/x, a+b=12, a^2-b^2)..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none transition-all text-slate-800"
                         />
-                        {searchQuery.trim().length > 0 && searchQuery.trim().length < 3 && (
-                          <p className="text-[10px] font-bold text-amber-600 pl-1 flex items-center gap-1">
-                            <span>⚠️ অনুসন্ধানের জন্য অন্তত ৩ টি অক্ষর টাইপ করুন (কমপক্ষে ৩ ক্যারেক্টার)</span>
-                          </p>
-                        )}
                       </div>
 
                       {/* Subject Filter Dropdown */}
@@ -4503,16 +4546,11 @@ export default function AdminPage() {
                     <div className="space-y-2">
                       <input 
                         type="text"
-                        placeholder="প্রশ্ন দিয়ে খুঁজুন (কমপক্ষে ৩ অক্ষর লিখুন)..."
+                        placeholder="প্রশ্ন, গণিত সমীকরণ বা কীওয়ার্ড দিয়ে খুঁজুন (যেমন: x/y, 2y/x, a+b=12)..."
                         value={paperSearchQuery}
                         onChange={(e) => setPaperSearchQuery(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
                       />
-                      {paperSearchQuery.trim().length > 0 && paperSearchQuery.trim().length < 3 && (
-                        <p className="text-[10px] font-bold text-amber-600 pl-1 flex items-center gap-1">
-                          <span>⚠️ অনুসন্ধানের জন্য অন্তত ৩ টি অক্ষর টাইপ করুন (কমপক্ষে ৩ ক্যারেক্টার)</span>
-                        </p>
-                      )}
 
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pl-0.5">
@@ -7414,115 +7452,327 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
 
           {/* TAB 9: LEADERBOARD MANAGEMENT */}
           {activeTab === "leaderboard" && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-5">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-6 animate-fade-in text-left">
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6">
+                {/* Header & Server Sync Actions */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                   <div>
-                    <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
-                      <Trophy className="w-5 h-5 text-[#FF6A00]" />
-                      <span>কুইজ লিডারবোর্ড ও ইউজার র‍্যাঙ্কিং ম্যানেজমেন্ট (Leaderboard)</span>
-                    </h3>
-                    <p className="text-xs font-medium text-slate-500 mt-1">
-                      এখানে লাইভ কুইজ গেমের টপ ইউজারের পয়েন্ট তালিকা দেখা যাবে এবং এডমিন যে কারো পয়েন্ট পরিবর্তন করতে পারবে।
-                    </p>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#FF6A00] shadow-xs shrink-0">
+                        <Trophy className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-black text-base sm:text-lg text-slate-800 flex items-center gap-2">
+                          <span>কুইজ লিডারবোর্ড ও ইউজার র‍্যাঙ্কিং</span>
+                          <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-orange-100 text-[#FF6A00]">
+                            {adminLeaderboardUsers.length} জন প্রতিযোগী
+                          </span>
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 mt-0.5">
+                          লাইভ কুইজ প্রতিযোগীদের সার্ভার স্কোর মনিটরিং ও র‍্যাঙ্ক ফিল্টারিং
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
+                    {adminLeaderboardLastSync && (
+                      <span className="text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200/60 px-3 py-2 rounded-xl">
+                        সিঙ্ক: {adminLeaderboardLastSync}
+                      </span>
+                    )}
+
                     <button
                       onClick={handleCleanQuizScores}
                       disabled={isCleaningScores}
-                      className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 px-3.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer transition-all active:scale-95 disabled:opacity-50"
                       title="ডুপ্লিকেট স্কোর মুছে ফেলে ১ ইউজার = ১ রেকর্ড বজায় রাখুন"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{isCleaningScores ? "অপ্টিমাইজ হচ্ছে..." : "স্কোর ডাটাবেজ অপ্টিমাইজ"}</span>
+                      <span>{isCleaningScores ? "অপ্টিমাইজ হচ্ছে..." : "স্কোর অপ্টিমাইজ"}</span>
                     </button>
+
                     <button
-                      onClick={async () => {
-                        const users = await fetchLeaderboard(true);
-                        setAdminLeaderboardUsers(users);
-                        triggerNotification("success", "লিডারবোর্ড তথ্য রিফ্রেশ করা হয়েছে।");
-                      }}
-                      className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all"
+                      onClick={() => refreshAdminLeaderboard(false)}
+                      disabled={isAdminLeaderboardLoading}
+                      className="inline-flex items-center gap-2 bg-[#FF6A00] hover:bg-orange-600 text-white border border-orange-500 px-4 py-2 rounded-xl text-xs font-black cursor-pointer transition-all shadow-sm shadow-orange-500/20 active:scale-95 disabled:opacity-50"
                     >
-                      <RefreshCw className="w-3.5 h-3.5 text-[#FF6A00]" />
-                      <span>রিফ্রেশ (Refresh)</span>
+                      <RefreshCw className={`w-3.5 h-3.5 ${isAdminLeaderboardLoading ? "animate-spin" : ""}`} />
+                      <span>{isAdminLeaderboardLoading ? "লোড হচ্ছে..." : "সার্ভার রিফ্রেশ"}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Search Filter */}
-                <div className="relative max-w-md">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="ইউজার নাম বা স্টুডেন্ট আইডি খুঁজুন..."
-                    value={leaderboardSearchQuery}
-                    onChange={(e) => setLeaderboardSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
-                  />
+                {/* Score Period Filter Buttons (Today, Week, Month, All Time) */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                    স্কোর ফিল্টার অনুযায়ী সাজান (Sort by Period):
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setAdminLeaderboardSortPeriod("today")}
+                      className={`flex items-center justify-between p-3 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                        adminLeaderboardSortPeriod === "today"
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20 scale-[1.01]"
+                          : "bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 border-emerald-200/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Flame className={`w-4 h-4 ${adminLeaderboardSortPeriod === "today" ? "text-emerald-200" : "text-emerald-600"}`} />
+                        <span>Today Score (আজকের স্কোর)</span>
+                      </div>
+                      {adminLeaderboardSortPeriod === "today" && (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAdminLeaderboardSortPeriod("week")}
+                      className={`flex items-center justify-between p-3 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                        adminLeaderboardSortPeriod === "week"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 scale-[1.01]"
+                          : "bg-blue-50/50 hover:bg-blue-50 text-blue-800 border-blue-200/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Award className={`w-4 h-4 ${adminLeaderboardSortPeriod === "week" ? "text-blue-200" : "text-blue-600"}`} />
+                        <span>Week Score (সাপ্তাহিক)</span>
+                      </div>
+                      {adminLeaderboardSortPeriod === "week" && (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAdminLeaderboardSortPeriod("month")}
+                      className={`flex items-center justify-between p-3 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                        adminLeaderboardSortPeriod === "month"
+                          ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20 scale-[1.01]"
+                          : "bg-purple-50/50 hover:bg-purple-50 text-purple-800 border-purple-200/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Calendar className={`w-4 h-4 ${adminLeaderboardSortPeriod === "month" ? "text-purple-200" : "text-purple-600"}`} />
+                        <span>Month Score (মাসিক)</span>
+                      </div>
+                      {adminLeaderboardSortPeriod === "month" && (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAdminLeaderboardSortPeriod("all_time")}
+                      className={`flex items-center justify-between p-3 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                        adminLeaderboardSortPeriod === "all_time"
+                          ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-md shadow-orange-500/20 scale-[1.01]"
+                          : "bg-orange-50/50 hover:bg-orange-50 text-orange-800 border-orange-200/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Trophy className={`w-4 h-4 ${adminLeaderboardSortPeriod === "all_time" ? "text-orange-200" : "text-[#FF6A00]"}`} />
+                        <span>All Time Score (সর্বকালীন)</span>
+                      </div>
+                      {adminLeaderboardSortPeriod === "all_time" && (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* List Limit Selection Buttons (10 / 20 / 30 / 40 / 50) & Search */}
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2">
+                  {/* Limit Filter Buttons */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+                      <ListFilter className="w-3.5 h-3.5 text-[#FF6A00]" />
+                      <span>সর্বোচ্চ তালিকা সংখ্যা:</span>
+                    </span>
+                    <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 gap-1">
+                      {[10, 20, 30, 40, 50].map((limit) => (
+                        <button
+                          key={limit}
+                          type="button"
+                          onClick={() => setAdminLeaderboardVisibleLimit(limit)}
+                          className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            adminLeaderboardVisibleLimit === limit
+                              ? "bg-[#FF6A00] text-white shadow-xs"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                          }`}
+                        >
+                          {limit} জন
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Search Filter Box */}
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="নাম বা স্টুডেন্ট আইডি খুঁজুন..."
+                      value={leaderboardSearchQuery}
+                      onChange={(e) => setLeaderboardSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl pl-10 pr-9 py-2 text-xs font-bold text-slate-800 focus:outline-none transition-all"
+                    />
+                    {leaderboardSearchQuery && (
+                      <button
+                        onClick={() => setLeaderboardSearchQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Active Filter Summary */}
+                <div className="flex items-center justify-between text-xs font-extrabold text-slate-500 bg-slate-50/80 px-4 py-2.5 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>
+                      সাজানো হয়েছে: <strong className="text-slate-800">
+                        {adminLeaderboardSortPeriod === "today" ? "Today Score (আজকের স্কোর)"
+                          : adminLeaderboardSortPeriod === "week" ? "Week Score (সাপ্তাহিক স্কোর)"
+                          : adminLeaderboardSortPeriod === "month" ? "Month Score (মাসিক স্কোর)"
+                          : "All Time Score (সর্বকালীন স্কোর)"}
+                      </strong>
+                    </span>
+                  </div>
+                  <div>
+                    প্রদর্শন: <span className="text-[#FF6A00] font-black">{visibleLeaderboardUsers.length}</span> / {filteredLeaderboardUsers.length} জন
+                  </div>
                 </div>
 
                 {/* Users Table */}
-                <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                <div className="overflow-x-auto border border-slate-100 rounded-2xl shadow-2xs">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 text-[11px] font-black text-slate-400 uppercase border-b border-slate-100">
+                      <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase border-b border-slate-200/80">
                         <th className="p-3.5">র‍্যাঙ্ক ও ইউজার</th>
                         <th className="p-3.5">স্টুডেন্ট আইডি</th>
-                        <th className="p-3.5">Today Score</th>
-                        <th className="p-3.5">Week Score</th>
-                        <th className="p-3.5">Month Score</th>
-                        <th className="p-3.5">All Time Score</th>
+                        <th className={`p-3.5 transition-colors ${adminLeaderboardSortPeriod === "today" ? "bg-emerald-50/70 text-emerald-900 font-extrabold" : ""}`}>
+                          <div className="flex items-center gap-1">
+                            <span>Today Score</span>
+                            {adminLeaderboardSortPeriod === "today" && <ArrowDown className="w-3 h-3 text-emerald-600" />}
+                          </div>
+                        </th>
+                        <th className={`p-3.5 transition-colors ${adminLeaderboardSortPeriod === "week" ? "bg-blue-50/70 text-blue-900 font-extrabold" : ""}`}>
+                          <div className="flex items-center gap-1">
+                            <span>Week Score</span>
+                            {adminLeaderboardSortPeriod === "week" && <ArrowDown className="w-3 h-3 text-blue-600" />}
+                          </div>
+                        </th>
+                        <th className={`p-3.5 transition-colors ${adminLeaderboardSortPeriod === "month" ? "bg-purple-50/70 text-purple-900 font-extrabold" : ""}`}>
+                          <div className="flex items-center gap-1">
+                            <span>Month Score</span>
+                            {adminLeaderboardSortPeriod === "month" && <ArrowDown className="w-3 h-3 text-purple-600" />}
+                          </div>
+                        </th>
+                        <th className={`p-3.5 transition-colors ${adminLeaderboardSortPeriod === "all_time" ? "bg-orange-50/70 text-orange-900 font-extrabold" : ""}`}>
+                          <div className="flex items-center gap-1">
+                            <span>All Time Score</span>
+                            {adminLeaderboardSortPeriod === "all_time" && <ArrowDown className="w-3 h-3 text-[#FF6A00]" />}
+                          </div>
+                        </th>
                         <th className="p-3.5 text-right">অ্যাকশন</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
-                      {adminLeaderboardUsers
-                        .filter(
-                          (u) =>
-                            u.name.toLowerCase().includes(leaderboardSearchQuery.toLowerCase()) ||
-                            u.student_id?.toLowerCase().includes(leaderboardSearchQuery.toLowerCase())
-                        )
-                        .map((user, idx) => (
-                          <tr key={user.id || idx} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="p-3.5 flex items-center gap-3">
-                              <span className="w-6 text-center font-black text-slate-400">{idx + 1}</span>
-                              <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                                <img
-                                  src={
-                                    user.avatar_url ||
-                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=f1f5f9&color=475569`
-                                  }
-                                  alt={user.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <span className="font-extrabold text-slate-900">{user.name}</span>
-                            </td>
-                            <td className="p-3.5 font-mono text-slate-500">{user.student_id || "—"}</td>
-                            <td className="p-3.5 font-black text-emerald-600">{user.today_score || 0} pt</td>
-                            <td className="p-3.5 font-black text-blue-600">{user.week_score || 0} pt</td>
-                            <td className="p-3.5 font-black text-purple-600">{user.month_score || 0} pt</td>
-                            <td className="p-3.5 font-black text-[#FF6A00]">{user.all_time_score || 0} pt</td>
-                            <td className="p-3.5 text-right">
-                              <button
-                                onClick={() => {
-                                  setEditingLeaderboardUser(user);
-                                  setEditUserName(user.name);
-                                  setEditTodayScore(user.today_score || 0);
-                                  setEditWeekScore(user.week_score || 0);
-                                  setEditMonthScore(user.month_score || 0);
-                                  setEditAllTimeScore(user.all_time_score || 0);
-                                }}
-                                className="bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-black px-3.5 py-1.5 rounded-xl border border-orange-200/60 cursor-pointer transition-all inline-flex items-center gap-1.5"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                <span>স্কোর মডিফাই</span>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                      {visibleLeaderboardUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-12 text-slate-400 font-medium">
+                            <Trophy className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                            কোনো লিডারবোর্ড তথ্য পাওয়া যায়নি।
+                          </td>
+                        </tr>
+                      ) : (
+                        visibleLeaderboardUsers.map((user, idx) => {
+                          const rank = idx + 1;
+                          return (
+                            <tr key={user.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="p-3.5 flex items-center gap-3">
+                                <div className="w-7 text-center shrink-0">
+                                  {rank === 1 ? (
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-600 font-black text-xs shadow-2xs">
+                                      🥇
+                                    </span>
+                                  ) : rank === 2 ? (
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-black text-xs">
+                                      🥈
+                                    </span>
+                                  ) : rank === 3 ? (
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 text-amber-700 font-black text-xs border border-amber-200">
+                                      🥉
+                                    </span>
+                                  ) : (
+                                    <span className="font-black text-slate-400 text-xs">{rank}</span>
+                                  )}
+                                </div>
+                                <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                  <img
+                                    src={
+                                      user.avatar_url ||
+                                      `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=f1f5f9&color=475569`
+                                    }
+                                    alt={user.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div>
+                                  <div className="font-extrabold text-slate-900">{user.name}</div>
+                                  {user.updated_at && (
+                                    <div className="text-[10px] text-slate-400 font-normal">
+                                      আপডেট: {new Date(user.updated_at).toLocaleDateString("bn-BD")}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3.5 font-mono text-slate-500 font-bold">{user.student_id || "—"}</td>
+                              <td className={`p-3.5 font-black text-emerald-600 transition-colors ${adminLeaderboardSortPeriod === "today" ? "bg-emerald-50/40" : ""}`}>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-100">
+                                  {user.today_score || 0} pt
+                                </span>
+                              </td>
+                              <td className={`p-3.5 font-black text-blue-600 transition-colors ${adminLeaderboardSortPeriod === "week" ? "bg-blue-50/40" : ""}`}>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">
+                                  {user.week_score || 0} pt
+                                </span>
+                              </td>
+                              <td className={`p-3.5 font-black text-purple-600 transition-colors ${adminLeaderboardSortPeriod === "month" ? "bg-purple-50/40" : ""}`}>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 border border-purple-100">
+                                  {user.month_score || 0} pt
+                                </span>
+                              </td>
+                              <td className={`p-3.5 font-black text-[#FF6A00] transition-colors ${adminLeaderboardSortPeriod === "all_time" ? "bg-orange-50/40" : ""}`}>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 border border-orange-100">
+                                  {user.all_time_score || 0} pt
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-right">
+                                <button
+                                  onClick={() => {
+                                    setEditingLeaderboardUser(user);
+                                    setEditUserName(user.name);
+                                    setEditTodayScore(user.today_score || 0);
+                                    setEditWeekScore(user.week_score || 0);
+                                    setEditMonthScore(user.month_score || 0);
+                                    setEditAllTimeScore(user.all_time_score || 0);
+                                  }}
+                                  className="bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-black px-3.5 py-1.5 rounded-xl border border-orange-200/60 cursor-pointer transition-all inline-flex items-center gap-1.5 active:scale-95"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>স্কোর মডিফাই</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
