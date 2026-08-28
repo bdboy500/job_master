@@ -3564,41 +3564,61 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Stat Box 2: Total Users */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-blue-600 opacity-5 rounded-full translate-x-4 -translate-y-4"></div>
-              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+            {/* Stat Box 2: Total Registered Users (Clickable -> switches to Users Tab) */}
+            <div 
+              onClick={() => setActiveTab("users")}
+              className="bg-white border border-slate-100 hover:border-blue-200 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden cursor-pointer transition-all hover:shadow-md group"
+              title="ইউজার লিস্ট দেখতে ক্লিক করুন"
+            >
+              <div className="absolute top-0 right-0 w-16 h-16 bg-blue-600 opacity-5 group-hover:opacity-10 rounded-full translate-x-4 -translate-y-4 transition-opacity"></div>
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <Users className="w-5 h-5 stroke-[2.2px]" />
               </div>
               <div className="space-y-0.5 text-left">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">মোট নিবন্ধিত ইউজার</span>
-                <span className="text-base sm:text-lg font-black text-slate-800 leading-none">{users.length} জন</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base sm:text-lg font-black text-slate-800 leading-none">{users.length} জন</span>
+                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md hidden sm:inline-block">লিস্ট দেখুন &rarr;</span>
+                </div>
               </div>
             </div>
 
-            {/* Stat Box 3: Total Packages */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF6A00] opacity-5 rounded-full translate-x-4 -translate-y-4"></div>
-              <div className="w-10 h-10 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center shrink-0">
-                <Package className="w-5 h-5 stroke-[2.2px]" />
+            {/* Stat Box 3: Active Students / Registered Users Count */}
+            <div 
+              onClick={() => setActiveTab("users")}
+              className="bg-white border border-slate-100 hover:border-emerald-200 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden cursor-pointer transition-all hover:shadow-md group"
+              title="সক্রিয় শিক্ষার্থী ও ইউজার তালিকা দেখতে ক্লিক করুন"
+            >
+              <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-600 opacity-5 group-hover:opacity-10 rounded-full translate-x-4 -translate-y-4 transition-opacity"></div>
+              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <UserCheck className="w-5 h-5 stroke-[2.2px]" />
               </div>
               <div className="space-y-0.5 text-left">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">মোট প্যাকেজসমূহ</span>
-                <span className="text-base sm:text-lg font-black text-slate-800 leading-none">
-                  {packagesList.length} টি
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">সক্রিয় শিক্ষার্থী প্রোফাইল</span>
+                <span className="text-base sm:text-lg font-black text-emerald-700 leading-none">
+                  {users.filter(u => u.status === "Active" || !u.status).length} জন
                 </span>
               </div>
             </div>
 
-            {/* Stat Box 4: Server Status */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-600 opacity-5 rounded-full translate-x-4 -translate-y-4"></div>
-              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 stroke-[2.2px]" />
+            {/* Stat Box 4: Quiz Contestants / Leaderboard */}
+            <div 
+              onClick={() => setActiveTab("leaderboard")}
+              className="bg-white border border-slate-100 hover:border-orange-200 rounded-3xl p-4 sm:p-5 shadow-sm flex items-center gap-3.5 relative overflow-hidden cursor-pointer transition-all hover:shadow-md group"
+              title="কুইজ লিডারবোর্ড ও প্রতিযোগী তালিকা দেখতে ক্লিক করুন"
+            >
+              <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF6A00] opacity-5 group-hover:opacity-10 rounded-full translate-x-4 -translate-y-4 transition-opacity"></div>
+              <div className="w-10 h-10 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Trophy className="w-5 h-5 stroke-[2.2px]" />
               </div>
               <div className="space-y-0.5 text-left">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">সার্ভার লেটেন্সি</span>
-                <span className="text-base sm:text-lg font-black text-emerald-600 leading-none">12ms (Good)</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">কুইজ প্রতিযোগী</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base sm:text-lg font-black text-[#FF6A00] leading-none">
+                    {adminLeaderboardUsers.length} জন
+                  </span>
+                  <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-md hidden sm:inline-block">লিডারবোর্ড &rarr;</span>
+                </div>
               </div>
             </div>
 
