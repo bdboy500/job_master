@@ -140,7 +140,9 @@ import {
 import {
   normalizeSearchText,
   matchesMathOrTextQuery,
-  questionMatchesSearch
+  questionMatchesSearch,
+  getQuestionSearchScore,
+  filterAndRankQuestions
 } from "../../lib/search_normalizer";
 import AdminPushNotificationTab from "@/src/components/AdminPushNotificationTab";
 
@@ -278,105 +280,106 @@ function matchesSubject(questionSubject: string, targetSubjects: string[]): bool
     const tSub = target.toLowerCase().trim();
     if (!tSub || tSub === "all") return true;
 
-    // Direct exact match
-    if (qSub === tSub) return true;
+    // Direct exact match or bidirectional substring match
+    if (qSub === tSub || qSub.includes(tSub) || tSub.includes(qSub)) return true;
 
-    // 1. Bangla Literature
-    if (tSub.includes("bangla literature") || tSub.includes("বাংলা সাহিত্য")) {
-      if (qSub.includes("gramm") || qSub.includes("ব্যাকরণ")) return false;
-      return qSub.includes("bangla literature") || qSub.includes("বাংলা সাহিত্য") || qSub.includes("bangla lit");
+    // 1. Bangla (Literature, Grammar, General)
+    if (tSub.includes("bangla") || tSub.includes("বাংলা")) {
+      if (tSub.includes("literature") || tSub.includes("সাহিত্য")) {
+        if (qSub.includes("gramm") || qSub.includes("ব্যাকরণ")) return false;
+        return qSub.includes("bangla literature") || qSub.includes("বাংলা সাহিত্য") || qSub.includes("bangla lit") || qSub === "bangla" || qSub === "বাংলা";
+      }
+      if (tSub.includes("gramm") || tSub.includes("ব্যাকরণ")) {
+        if (qSub.includes("literat") || qSub.includes("সাহিত্য")) return false;
+        return qSub.includes("bangla gramm") || qSub.includes("bangla gram") || qSub.includes("বাংলা ব্যাকরণ") || qSub === "bangla" || qSub === "বাংলা";
+      }
+      return qSub.includes("bangla") || qSub.includes("বাংলা");
     }
 
-    // 2. Bangla Grammer / Grammar
-    if (tSub.includes("bangla gramm") || tSub.includes("বাংলা ব্যাকরণ")) {
-      if (qSub.includes("literat") || qSub.includes("সাহিত্য")) return false;
-      return qSub.includes("bangla gramm") || qSub.includes("bangla gram") || qSub.includes("বাংলা ব্যাকরণ");
+    // 2. English (Literature, Grammar, General)
+    if (tSub.includes("english") || tSub.includes("ইংরেজি")) {
+      if (tSub.includes("literature") || tSub.includes("সাহিত্য")) {
+        if (qSub.includes("gramm") || qSub.includes("ব্যাকরণ")) return false;
+        return qSub.includes("english literature") || qSub.includes("ইংরেজি সাহিত্য") || qSub.includes("eng lit") || qSub === "english" || qSub === "ইংরেজি";
+      }
+      if (tSub.includes("gramm") || tSub.includes("ব্যাকরণ")) {
+        if (qSub.includes("literat") || qSub.includes("সাহিত্য")) return false;
+        return qSub.includes("english gramm") || qSub.includes("english gram") || qSub.includes("ইংরেজি ব্যাকরণ") || qSub === "english" || qSub === "ইংরেজি";
+      }
+      return qSub.includes("english") || qSub.includes("ইংরেজি");
     }
 
-    // 3. English Literature
-    if (tSub.includes("english literature") || tSub.includes("ইংরেজি সাহিত্য")) {
-      if (qSub.includes("gramm") || qSub.includes("ব্যাকরণ")) return false;
-      return qSub.includes("english literature") || qSub.includes("ইংরেজি সাহিত্য") || qSub.includes("eng lit");
-    }
-
-    // 4. English Grammer / Grammar
-    if (tSub.includes("english gramm") || tSub.includes("ইংরেজি ব্যাকরণ")) {
-      if (qSub.includes("literat") || qSub.includes("সাহিত্য")) return false;
-      return qSub.includes("english gramm") || qSub.includes("english gram") || qSub.includes("ইংরেজি ব্যাকরণ");
-    }
-
-    // 5. Bangladesh Affairs
-    if (tSub.includes("bangladesh affairs") || tSub.includes("বাংলাদেশ বিষয়াবলী")) {
+    // 3. Bangladesh Affairs
+    if (tSub.includes("bangladesh") || tSub.includes("বাংলাদেশ")) {
       if (qSub.includes("international") || qSub.includes("আন্তর্জাতিক")) return false;
-      return qSub.includes("bangladesh affairs") || qSub.includes("বাংলাদেশ বিষয়াবলী") || qSub === "bangladesh";
+      return qSub.includes("bangladesh") || qSub.includes("বাংলাদেশ");
     }
 
-    // 6. International Affairs
-    if (tSub.includes("international affairs") || tSub.includes("আন্তর্জাতিক বিষয়াবলী")) {
+    // 4. International Affairs
+    if (tSub.includes("international") || tSub.includes("আন্তর্জাতিক")) {
       if (qSub.includes("bangladesh") || qSub.includes("বাংলাদেশ")) return false;
-      return qSub.includes("international affairs") || qSub.includes("আন্তর্জাতিক বিষয়াবলী") || qSub === "international";
+      return qSub.includes("international") || qSub.includes("আন্তর্জাতিক");
     }
 
-    // 7. Geography
+    // 5. Geography
     if (tSub.includes("geography") || tSub.includes("ভূগোল")) {
-      return qSub.includes("geography") || qSub.includes("ভূগোল") || qSub.includes("environment");
+      return qSub.includes("geography") || qSub.includes("ভূগোল") || qSub.includes("environment") || qSub.includes("দুর্যোগ");
     }
 
-    // 8. General Science
-    if (tSub.includes("general science") || tSub.includes("সাধারণ বিজ্ঞান")) {
+    // 6. General Science
+    if (tSub.includes("general science") || tSub.includes("সাধারণ বিজ্ঞান") || tSub === "science" || tSub === "বিজ্ঞান") {
       if (qSub.includes("computer") || qSub.includes("technology") || qSub.includes("ict") || qSub.includes("কম্পিউটার") || qSub.includes("তথ্যপ্রযুক্তি")) return false;
-      return qSub.includes("general science") || qSub.includes("সাধারণ বিজ্ঞান") || qSub === "science";
+      return qSub.includes("science") || qSub.includes("বিজ্ঞান");
     }
 
-    // 9. Technology
-    if (tSub.includes("technology") || tSub.includes("computer") || tSub.includes("ict") || tSub.includes("তথ্যপ্রযুক্তি")) {
-      return qSub.includes("technology") || qSub.includes("computer") || qSub.includes("ict") || qSub.includes("কম্পিউটার") || qSub.includes("তথ্যপ্রযুক্তি");
+    // 7. Technology / Computer / ICT
+    if (tSub.includes("technology") || tSub.includes("computer") || tSub.includes("ict") || tSub.includes("তথ্যপ্রযুক্তি") || tSub.includes("কম্পিউটার")) {
+      return qSub.includes("technology") || qSub.includes("computer") || qSub.includes("ict") || qSub.includes("তথ্যপ্রযুক্তি") || qSub.includes("কম্পিউটার");
     }
 
-    // 10. Mathematics (Arithmetic)
-    if (tSub.includes("arithmetic") || tSub.includes("পাটিগণিত")) {
-      if (qSub.includes("algebra") || qSub.includes("geometry") || qSub.includes("বীজগণিত") || qSub.includes("জ্যামিতি")) return false;
-      return qSub.includes("arithmetic") || qSub.includes("পাটিগণিত");
+    // 8. Mathematics (Arithmetic, Algebra, Geometry, General Math)
+    if (tSub.includes("math") || tSub.includes("গণিত") || tSub.includes("arithmetic") || tSub.includes("algebra") || tSub.includes("geometry") || tSub.includes("বীজগণিত") || tSub.includes("পাটিগণিত") || tSub.includes("জ্যামিতি") || tSub.includes("গাণিতিক যুক্তি")) {
+      // If the question is generally labeled Mathematics, Math, গণিত, or গাণিতিক যুক্তি, match all math sub-disciplines
+      if (qSub === "mathematics" || qSub === "math" || qSub === "গণিত" || qSub === "গাণিতিক যুক্তি" || qSub === "সাধারণ গণিত" || qSub === "general math") {
+        return true;
+      }
+      if (tSub.includes("arithmetic") || tSub.includes("পাটিগণিত")) {
+        if (qSub.includes("algebra") || qSub.includes("geometry") || qSub.includes("বীজগণিত") || qSub.includes("জ্যামিতি")) return false;
+        return qSub.includes("arithmetic") || qSub.includes("পাটিগণিত") || qSub.includes("math") || qSub.includes("গণিত");
+      }
+      if (tSub.includes("algebra") || tSub.includes("বীজগণিত")) {
+        if (qSub.includes("arithmetic") || qSub.includes("geometry") || qSub.includes("পাটিগণিত") || qSub.includes("জ্যামিতি")) return false;
+        return qSub.includes("algebra") || qSub.includes("বীজগণিত") || qSub.includes("math") || qSub.includes("গণিত");
+      }
+      if (tSub.includes("geometry") || tSub.includes("জ্যামিতি")) {
+        if (qSub.includes("arithmetic") || qSub.includes("algebra") || qSub.includes("পাটিগণিত") || qSub.includes("বীজগণিত")) return false;
+        return qSub.includes("geometry") || qSub.includes("জ্যামিতি") || qSub.includes("math") || qSub.includes("গণিত");
+      }
+      return qSub.includes("math") || qSub.includes("গণিত");
     }
 
-    // 11. Mathematics (Algebra)
-    if (tSub.includes("algebra") || tSub.includes("বীজগণিত")) {
-      if (qSub.includes("arithmetic") || qSub.includes("geometry") || qSub.includes("পাটিগণিত") || qSub.includes("জ্যামিতি")) return false;
-      return qSub.includes("algebra") || qSub.includes("বীজগণিত");
+    // 9. Mental Ability
+    if (tSub.includes("mental ability") || tSub.includes("মানসিক দক্ষতা") || tSub.includes("mental")) {
+      return qSub.includes("mental") || qSub.includes("মানসিক");
     }
 
-    // 12. Mathematics (Geometry)
-    if (tSub.includes("geometry") || tSub.includes("জ্যামিতি")) {
-      if (qSub.includes("arithmetic") || qSub.includes("algebra") || qSub.includes("পাটিগণিত") || qSub.includes("বীজগণিত")) return false;
-      return qSub.includes("geometry") || qSub.includes("জ্যামিতি");
+    // 10. Good Governance & Ethics
+    if (tSub.includes("governance") || tSub.includes("ethics") || tSub.includes("সুশাসন") || tSub.includes("নৈতিকতা")) {
+      return qSub.includes("governance") || qSub.includes("ethics") || qSub.includes("সুশাসন") || qSub.includes("নৈতিকতা") || qSub.includes("মূল্যবোধ");
     }
 
-    // 13. Mental Ability
-    if (tSub.includes("mental ability") || tSub.includes("মানসিক দক্ষতা")) {
-      return qSub.includes("mental ability") || qSub.includes("মানসিক দক্ষতা") || qSub.includes("mental");
+    // 11. Physics, Chemistry, Biology
+    if (tSub.includes("physics") || tSub.includes("পদার্থ")) {
+      return qSub.includes("physics") || qSub.includes("পদার্থ");
     }
-
-    // 14. Good Governance
-    if (tSub.includes("good governance") || tSub.includes("governance") || tSub.includes("ethics") || tSub.includes("সুশাসন")) {
-      return qSub.includes("governance") || qSub.includes("ethics") || qSub.includes("সুশাসন") || qSub.includes("নৈতিকতা");
+    if (tSub.includes("chemistry") || tSub.includes("রসায়ন")) {
+      return qSub.includes("chemistry") || qSub.includes("রসায়ন");
     }
-
-    // 15. Physics
-    if (tSub.includes("physics") || tSub.includes("পদার্থবিজ্ঞান") || tSub.includes("পদার্থ")) {
-      return qSub.includes("physics") || qSub.includes("পদার্থবিজ্ঞান") || qSub.includes("পদার্থ");
-    }
-
-    // 16. Chemistry
-    if (tSub.includes("chemistry") || tSub.includes("রসায়ন") || tSub.includes("রসায়নবিজ্ঞান")) {
-      return qSub.includes("chemistry") || qSub.includes("রসায়ন") || qSub.includes("রসায়নবিজ্ঞান");
-    }
-
-    // 17. Biology
     if (tSub.includes("biology") || tSub.includes("জীববিজ্ঞান") || tSub.includes("জীব")) {
-      return qSub.includes("biology") || qSub.includes("জীববিজ্ঞান") || qSub.includes("জীব");
+      return qSub.includes("biology") || qSub.includes("জীব");
     }
 
-    return qSub.includes(tSub) || tSub.includes(qSub);
+    return false;
   });
 }
 
@@ -742,16 +745,17 @@ export default function AdminPage() {
       merged = merged.filter(q => matchesSubject(q.subject || q.subjectName || "", targetSubjects));
     }
 
-    // Filter by math & text normalized search query
+    // Filter and Rank by math & text normalized search query
+    // Matches in Question Text are prioritized at the TOP; Option matches are placed BELOW
     if (cleanQuery.length > 0) {
-      merged = merged.filter(q => questionMatchesSearch(q, cleanQuery));
+      merged = filterAndRankQuestions(merged, cleanQuery);
     }
 
     paperQuestionsCacheRef.current.set(cacheKey, merged);
 
-    // If search query is active, show the top matching questions in order, otherwise pick 10 random
+    // If search query is active, show the top matching questions in ranked order (up to 30), otherwise pick 10 random
     const displayList = cleanQuery.length > 0
-      ? merged.slice(0, 15)
+      ? merged.slice(0, 30)
       : [...merged].sort(() => 0.5 - Math.random()).slice(0, 10);
 
     setPaperAvailableQuestions(displayList);
@@ -2095,7 +2099,10 @@ export default function AdminPage() {
           .limit(fetchLimit);
 
         if (subjectVal && subjectVal !== "All") {
-          query = query.eq("subjectName", subjectVal);
+          // If subjectVal is not a compound/sub-discipline with parentheses, apply server eq filter
+          if (!subjectVal.includes("(") && !subjectVal.includes("/")) {
+            query = query.eq("subjectName", subjectVal);
+          }
         }
 
         const { data, error } = await query;
@@ -2120,7 +2127,7 @@ export default function AdminPage() {
             pool = pool.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
           }
           if (isSearching) {
-            pool = pool.filter((q: any) => questionMatchesSearch(q, cleanSearch));
+            pool = filterAndRankQuestions(pool, cleanSearch);
           }
           const sliced = pool.slice(0, limitVal);
           setQuestions(sliced);
@@ -2132,7 +2139,7 @@ export default function AdminPage() {
             normalized = normalized.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
           }
           if (isSearching) {
-            normalized = normalized.filter((q: any) => questionMatchesSearch(q, cleanSearch));
+            normalized = filterAndRankQuestions(normalized, cleanSearch);
           }
           const sliced = isSearching ? normalized.slice(0, limitVal) : normalized;
           setQuestions(sliced);
