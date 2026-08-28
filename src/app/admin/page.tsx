@@ -4669,11 +4669,13 @@ export default function AdminPage() {
                             const isAdded = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question);
                             return (
                               <div key={q.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-100 flex items-center justify-between gap-3 shadow-2xs hover:border-orange-200">
-                                <div className="text-xs text-slate-800 font-semibold line-clamp-1 flex-1">
-                                  <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-1.5 py-0.5 rounded mr-1.5">
+                                <div className="text-xs text-slate-800 font-semibold flex-1 flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-1.5 py-0.5 rounded mr-1 shrink-0">
                                     {q.subject || q.subjectName || "General"}
                                   </span>
-                                  {q.question || q.questionText}
+                                  <span className="inline-block">
+                                    <MathRenderer content={q.question || q.questionText} />
+                                  </span>
                                 </div>
 
                                 <button
@@ -8441,7 +8443,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                           </span>
                           <div className="space-y-1 flex-1">
                             <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
-                              {normQ.questionText || normQ.question}
+                              <MathRenderer content={normQ.questionText || normQ.question} />
                             </h4>
                             {normQ.subjectName && (
                               <span className="inline-block text-[10px] font-extrabold bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
@@ -8465,7 +8467,10 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                     : "bg-white border-slate-200 text-slate-700 opacity-80"
                                 }`}
                               >
-                                <span>{String.fromCharCode(65 + optIndex)}. {opt}</span>
+                                <span className="flex items-center gap-1">
+                                  <span>{String.fromCharCode(65 + optIndex)}.</span>
+                                  <MathRenderer content={opt} />
+                                </span>
                                 {isCorrect && (
                                   <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-md flex items-center gap-1">
                                     <Check className="w-3 h-3" /> সঠিক উত্তর
