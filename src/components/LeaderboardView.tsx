@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown, GraduationCap } from "lucide-react";
+import { ArrowLeft, Crown, Trophy, Sparkles, RefreshCw, Award, CheckCircle2, ChevronDown, GraduationCap, Users, ListFilter } from "lucide-react";
 import { LeaderboardUser, fetchLeaderboard } from "@/src/lib/leaderboard";
 import { getSupabase } from "@/src/lib/supabase";
 import LeaderboardSkeleton from "./LeaderboardSkeleton";
@@ -27,14 +27,14 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
 
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     setIsLoading(true);
     try {
       const nowBd = new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Dhaka", hour: "2-digit", minute: "2-digit", hour12: true });
       setLastUpdatedTime(nowBd);
 
       // Always load comprehensive server store & DB aggregated leaderboard users
-      const users = await fetchLeaderboard();
+      const users = await fetchLeaderboard(force);
 
       // Check user rank & score via Supabase RPC if logged in
       const supabase = getSupabase();
@@ -70,15 +70,14 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       setIsLoading(false);
     } catch (err) {
       console.warn("Error loading leaderboard data:", err);
-      const fallbackUsers = await fetchLeaderboard();
+      const fallbackUsers = await fetchLeaderboard(force);
       setLeaderboardUsers(fallbackUsers);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    setVisibleCount(10);
-    loadData();
+    loadData(true);
 
     let timeoutId: NodeJS.Timeout | null = null;
     let intervalId: NodeJS.Timeout | null = null;
@@ -95,9 +94,9 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       const msToNextBoundary = minutesToBoundary * 60 * 1000 - (seconds * 1000 + ms);
 
       timeoutId = setTimeout(() => {
-        loadData();
+        loadData(true);
         intervalId = setInterval(() => {
-          loadData();
+          loadData(true);
         }, 30 * 60 * 1000);
       }, msToNextBoundary);
     };
@@ -234,7 +233,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
           </div>
 
           <button 
-            onClick={loadData}
+            onClick={() => loadData(true)}
             disabled={isLoading}
             className="w-8.5 h-8.5 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all active:rotate-180 border border-white/20 shadow-xs cursor-pointer"
             title="Refresh Leaderboard"
@@ -249,23 +248,26 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
 
         {/* TIME PERIOD TABS (STATIC UI) */}
         <div className="relative z-10 max-w-md mx-auto mb-3">
-          <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner">
-            {(["Today", "Week", "Month", "All Time"] as const).map((tab) => {
-              const isActive = activeTab === tab;
+          <div className="bg-black/25 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner gap-1">
+            {[
+              { id: "Today", label: "আজ", sub: "Today" },
+              { id: "Week", label: "সপ্তাহ", sub: "Week" },
+              { id: "Month", label: "মাস", sub: "Month" },
+              { id: "All Time", label: "সর্বকালীন", sub: "All Time" }
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
               return (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-2 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer text-center relative ${
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 py-2 px-1 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer text-center relative flex flex-col items-center justify-center ${
                     isActive
                       ? "bg-white text-[#FF6A00] shadow-md shadow-black/10 scale-[1.02]"
-                      : "text-white/85 hover:text-white hover:bg-white/10"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
-                  {tab === "Today" && "Today"}
-                  {tab === "Week" && "Week"}
-                  {tab === "Month" && "Month"}
-                  {tab === "All Time" && "All Time"}
+                  <span className="leading-tight">{tab.label}</span>
+                  <span className={`text-[9px] font-bold ${isActive ? "text-[#FF6A00]/75" : "text-white/70"}`}>{tab.sub}</span>
                 </button>
               );
             })}
@@ -547,9 +549,36 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
           </div>
         ) : null}
 
-        <div className="bg-white rounded-3xl p-3 sm:p-4 shadow-xl border border-slate-100/80 space-y-2">
+        <div className="bg-white rounded-3xl p-3.5 sm:p-5 shadow-xl border border-slate-100/80 space-y-3">
           
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+          {/* Display Limit Buttons Filter (10 / 20 / 30 / 40 / 50) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+            <div className="flex items-center gap-1.5 text-xs font-black text-slate-700">
+              <ListFilter className="w-3.5 h-3.5 text-[#FF6A00]" />
+              <span>সর্বোচ্চ তালিকা সংখ্যা:</span>
+            </div>
+            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/60">
+              {[10, 20, 30, 40, 50].map((num) => {
+                const isSelected = visibleCount === num;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setVisibleCount(num)}
+                    className={`px-3 py-1 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/30 scale-105"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
+                    }`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-100 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
             <span>র‍্যাঙ্ক ও প্রতিযোগী</span>
             <span>সর্বশেষ স্কোর</span>
           </div>

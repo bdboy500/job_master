@@ -76,6 +76,7 @@ import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamP
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings } from "../lib/app_settings";
+import { questionMatchesSearch } from "../lib/search_normalizer";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
 import ProfileImage from "../components/ProfileImage";
@@ -6376,9 +6377,7 @@ export default function Home() {
 
             // Filter 4: Questions Bank
             const matchedQuestions = QUIZ_QUESTIONS.filter(q => 
-              !query || 
-              q.question.toLowerCase().includes(query) || 
-              q.options.some(opt => opt.toLowerCase().includes(query))
+              !query || questionMatchesSearch(q, query)
             );
 
             return (

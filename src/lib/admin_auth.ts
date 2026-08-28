@@ -267,7 +267,9 @@ export function getCurrentAdminSession(): AdminStaffUser | null {
     const stored = localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
     if (stored) {
       const session = JSON.parse(stored) as AdminStaffUser;
-      return session;
+      if (session && session.email && session.status === "active") {
+        return session;
+      }
     }
   } catch {
     // ignore
@@ -285,6 +287,47 @@ export function clearAdminSession(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
   localStorage.removeItem("job_master_admin_auth");
+  localStorage.removeItem("job_master_admin_session_v1");
+}
+
+/**
+ * Validates the currently stored admin session against the live Supabase staff database.
+ * If the account has been deleted, revoked, or suspended, immediately wipes the session
+ * and returns null to prevent unauthorized access.
+ */
+export async function validateAdminSessionAgainstDb(session: AdminStaffUser | null): Promise<AdminStaffUser | null> {
+  if (!session || !session.email) {
+    clearAdminSession();
+    return null;
+  }
+
+  try {
+    const freshStaffList = await fetchAdminStaffFromDb(true);
+    const matched = freshStaffList.find(
+      (u) => (session.id && u.id === session.id) || u.email.toLowerCase() === session.email.toLowerCase()
+    );
+
+    if (!matched) {
+      // Admin account was deleted by master admin!
+      console.warn("[AdminAuth] Account no longer exists in staff database. Revoking session.");
+      clearAdminSession();
+      return null;
+    }
+
+    if (matched.status !== "active") {
+      // Admin account was suspended or revoked!
+      console.warn("[AdminAuth] Account status is", matched.status, ". Revoking session.");
+      clearAdminSession();
+      return null;
+    }
+
+    // Refresh session object with latest role & permissions
+    saveAdminSession(matched);
+    return matched;
+  } catch (err) {
+    console.error("[AdminAuth] Error validating session against database:", err);
+    return session.status === "active" ? session : null;
+  }
 }
 
 // ==========================================

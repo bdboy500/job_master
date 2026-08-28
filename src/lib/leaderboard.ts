@@ -201,7 +201,8 @@ export async function fetchLeaderboard(forceRefresh = false): Promise<Leaderboar
   }
 
   try {
-    const res = await fetch("/api/leaderboard", { cache: "no-store" });
+    const url = forceRefresh ? `/api/leaderboard?force=true&t=${Date.now()}` : "/api/leaderboard";
+    const res = await fetch(url, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.users) && data.users.length > 0) {

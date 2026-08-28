@@ -131,8 +131,14 @@ import {
   updateStaffRole,
   toggleStaffStatus,
   deleteStaffAccount,
-  clearAdminSession
+  clearAdminSession,
+  validateAdminSessionAgainstDb
 } from "../../lib/admin_auth";
+import {
+  normalizeSearchText,
+  matchesMathOrTextQuery,
+  questionMatchesSearch
+} from "../../lib/search_normalizer";
 import AdminPushNotificationTab from "@/src/components/AdminPushNotificationTab";
 
 // Interfaces for local state types
@@ -405,7 +411,6 @@ export default function AdminPage() {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [regRequestedRole, setRegRequestedRole] = useState<AdminRole>("editor");
   const [authLoading, setAuthLoading] = useState(false);
-  const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
 
   // Staff Management State
@@ -665,14 +670,14 @@ export default function AdminPage() {
     const targetQuery = overrideQuery !== undefined ? overrideQuery : paperSearchQuery;
     const cleanQuery = targetQuery.trim();
 
-    // Min 3 char requirement for text search (Point 4 & 5)
-    const effectiveQuery = cleanQuery.length >= 3 ? cleanQuery.toLowerCase() : "";
+    // Text search query
+    const effectiveQuery = cleanQuery.length >= 2 ? cleanQuery.toLowerCase() : "";
 
-    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${effectiveQuery}`;
+    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${normalizeSearchText(effectiveQuery)}`;
 
     if (!overrideForceRefresh && paperQuestionsCacheRef.current.has(cacheKey)) {
       const cached = paperQuestionsCacheRef.current.get(cacheKey)!;
-      // Shuffle & pick top 10 random for display (Point 2)
+      // Shuffle & pick top 10 random for display
       const random10 = [...cached].sort(() => 0.5 - Math.random()).slice(0, 10);
       setPaperAvailableQuestions(random10);
       setPaperHasFetched(true);
@@ -691,8 +696,15 @@ export default function AdminPage() {
           .order("created_at", { ascending: false })
           .limit(200);
 
-        if (effectiveQuery.length >= 3) {
+        // If simple search query, query database
+        const normSearch = normalizeSearchText(effectiveQuery);
+        if (effectiveQuery.length >= 2 && !effectiveQuery.includes("$") && !effectiveQuery.includes("\\")) {
           query = query.ilike("questionText", `%${effectiveQuery}%`);
+        } else if (normSearch.length >= 2) {
+          const firstWord = normSearch.split(" ")[0];
+          if (firstWord && firstWord.length >= 2) {
+            query = query.ilike("questionText", `%${firstWord}%`);
+          }
         }
 
         const { data, error } = await query;
@@ -729,19 +741,19 @@ export default function AdminPage() {
       merged = merged.filter(q => (q.subject || q.subjectName) !== "BCS Health Question");
     }
 
-    // Filter STRICTLY by subject using matchesSubject (Point 1)
+    // Filter STRICTLY by subject using matchesSubject
     if (!targetSubjects.includes("All") && targetSubjects.length > 0) {
       merged = merged.filter(q => matchesSubject(q.subject || q.subjectName || "", targetSubjects));
     }
 
-    // Filter by search query if length >= 3
-    if (effectiveQuery.length >= 3) {
-      merged = merged.filter(q => (q.question || q.questionText || "").toLowerCase().includes(effectiveQuery));
+    // Filter by math & text normalized search query
+    if (cleanQuery.length > 0) {
+      merged = merged.filter(q => questionMatchesSearch(q, cleanQuery));
     }
 
     paperQuestionsCacheRef.current.set(cacheKey, merged);
 
-    // Pick max 10 random questions from those selected subject(s) to show in search list (Point 2)
+    // Pick max 10 random questions from those selected subject(s) to show in search list
     const random10 = [...merged].sort(() => 0.5 - Math.random()).slice(0, 10);
     setPaperAvailableQuestions(random10);
     setPaperHasFetched(true);
@@ -910,10 +922,40 @@ export default function AdminPage() {
       if (session.role === "editor") {
         setActiveTab("questions");
       }
+      // Strictly cross-check against database to make sure user was not removed or suspended
+      validateAdminSessionAgainstDb(session).then((validated) => {
+        if (!validated) {
+          setIsAuthenticated(false);
+          setCurrentStaffSession(null);
+          triggerNotification("error", "আপনার অ্যাডমিন অ্যাক্সেস বাতিল বা স্থগিত করা হয়েছে।");
+        } else {
+          setCurrentStaffSession(validated);
+        }
+      });
     } else {
       setIsAuthenticated(false);
       setCurrentStaffSession(null);
     }
+
+    // Real-time heartbeat & focus validator: kicks out immediately if an admin is deleted or suspended
+    const checkLiveSession = async () => {
+      const activeSession = getCurrentAdminSession();
+      if (activeSession) {
+        const validated = await validateAdminSessionAgainstDb(activeSession);
+        if (!validated) {
+          setIsAuthenticated(false);
+          setCurrentStaffSession(null);
+          triggerNotification("error", "আপনার অ্যাডমিন অ্যাকাউন্টটি বাতিল অথবা স্থগিত করা হয়েছে!");
+        } else {
+          setCurrentStaffSession(validated);
+        }
+      }
+    };
+
+    const sessionInterval = setInterval(checkLiveSession, 15000); // Check every 15s
+    const handleWindowFocus = () => { checkLiveSession(); };
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("visibilitychange", handleWindowFocus);
 
     // Load admin staff list from Supabase/cache
     fetchAdminStaffFromDb(true).then((staff) => {
@@ -969,6 +1011,9 @@ export default function AdminPage() {
     const unsubCoursesPrep = subscribeToCoursesAndPrep(setCoursesList, setPrepSubjectsList, setProSectionList);
 
     return () => {
+      clearInterval(sessionInterval);
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("visibilitychange", handleWindowFocus);
       unsubExams();
       unsubPkgs();
       unsubCoursesPrep();
@@ -1938,10 +1983,10 @@ export default function AdminPage() {
     const searchVal = overrideSearch !== undefined ? overrideSearch : searchQuery;
     const cleanSearch = searchVal.trim();
 
-    // Min 3 char threshold for search query
-    const effectiveSearch = cleanSearch.length >= 3 ? cleanSearch.toLowerCase() : "";
+    // Min 2 char threshold for search query
+    const effectiveSearch = cleanSearch.length >= 2 ? cleanSearch.toLowerCase() : "";
 
-    const cacheKey = `${limitVal}_${subjectVal}_${effectiveSearch}`;
+    const cacheKey = `${limitVal}_${subjectVal}_${normalizeSearchText(effectiveSearch)}`;
 
     if (!overrideForceRefresh && questionsCacheRef.current.has(cacheKey)) {
       const cached = questionsCacheRef.current.get(cacheKey)!;
@@ -1977,8 +2022,16 @@ export default function AdminPage() {
           query = query.eq("subjectName", subjectVal);
         }
 
-        if (effectiveSearch.length >= 3) {
-          query = query.ilike("questionText", `%${effectiveSearch}%`);
+        if (effectiveSearch.length >= 2) {
+          const normSearch = normalizeSearchText(effectiveSearch);
+          if (!effectiveSearch.includes("$") && !effectiveSearch.includes("\\")) {
+            query = query.ilike("questionText", `%${effectiveSearch}%`);
+          } else if (normSearch.length >= 2) {
+            const firstWord = normSearch.split(" ")[0];
+            if (firstWord && firstWord.length >= 2) {
+              query = query.ilike("questionText", `%${firstWord}%`);
+            }
+          }
         }
 
         const { data, error } = await query;
@@ -1994,8 +2047,8 @@ export default function AdminPage() {
               if (subjectVal && subjectVal !== "All") {
                 parsed = parsed.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
               }
-              if (effectiveSearch.length >= 3) {
-                parsed = parsed.filter((q: any) => (q.question || q.questionText || "").toLowerCase().includes(effectiveSearch));
+              if (cleanSearch.length > 0) {
+                parsed = parsed.filter((q: any) => questionMatchesSearch(q, cleanSearch));
               }
               const sliced = parsed.slice(0, limitVal);
               setQuestions(sliced);
@@ -2006,8 +2059,8 @@ export default function AdminPage() {
               if (subjectVal && subjectVal !== "All") {
                 norm = norm.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
               }
-              if (effectiveSearch.length >= 3) {
-                norm = norm.filter((q: any) => (q.question || q.questionText || "").toLowerCase().includes(effectiveSearch));
+              if (cleanSearch.length > 0) {
+                norm = norm.filter((q: any) => questionMatchesSearch(q, cleanSearch));
               }
               const sliced = norm.slice(0, limitVal);
               setQuestions(sliced);
@@ -2019,8 +2072,8 @@ export default function AdminPage() {
             if (subjectVal && subjectVal !== "All") {
               norm = norm.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
             }
-            if (effectiveSearch.length >= 3) {
-              norm = norm.filter((q: any) => (q.question || q.questionText || "").toLowerCase().includes(effectiveSearch));
+            if (cleanSearch.length > 0) {
+              norm = norm.filter((q: any) => questionMatchesSearch(q, cleanSearch));
             }
             const sliced = norm.slice(0, limitVal);
             setQuestions(sliced);
@@ -2031,6 +2084,9 @@ export default function AdminPage() {
           let normalized = data.map(item => normalizeQuestion(item));
           if (subjectVal && subjectVal !== "All") {
             normalized = normalized.filter((q: any) => matchesSubject(q.subjectName || q.subject || "", [subjectVal]));
+          }
+          if (cleanSearch.length > 0) {
+            normalized = normalized.filter((q: any) => questionMatchesSearch(q, cleanSearch));
           }
           setQuestions(normalized);
           const finalCount = currentTotal || normalized.length;
@@ -2338,8 +2394,8 @@ export default function AdminPage() {
     setLoginError("");
     setAuthLoading(true);
 
-    const identifier = (loginIdentifier || passcode).trim();
-    const pass = (loginPassword || passcode).trim();
+    const identifier = loginIdentifier.trim();
+    const pass = loginPassword.trim();
 
     const result = await loginAdminWithCredentials(identifier, pass);
     setAuthLoading(false);
@@ -2352,9 +2408,8 @@ export default function AdminPage() {
       }
       setLoginIdentifier("");
       setLoginPassword("");
-      setPasscode("");
       // Refresh staff list
-      const staff = await fetchAdminStaffFromDb();
+      const staff = await fetchAdminStaffFromDb(true);
       setAdminStaffList(staff);
       triggerNotification("success", `স্বাগতম ${result.user.name}! (${getRoleLabelBangla(result.user.role)})`);
     } else {
@@ -2453,7 +2508,16 @@ export default function AdminPage() {
     }
     const updated = await toggleStaffStatus(staffId);
     setAdminStaffList(updated);
-    const newStatus = updated.find(s => s.id === staffId)?.status;
+    const updatedTarget = updated.find(s => s.id === staffId);
+    const newStatus = updatedTarget?.status;
+
+    // If active session was suspended, kick out
+    if (currentStaffSession && currentStaffSession.id === staffId && newStatus !== "active") {
+      handleLogout();
+      triggerNotification("error", "আপনার অ্যাকাউন্টটি স্থগিত করা হয়েছে!");
+      return;
+    }
+
     triggerNotification("success", `${target.name}-এর একাউন্ট স্ট্যাটাস: ${newStatus === "active" ? "সক্রিয়" : "স্থগিত"} করা হয়েছে।`);
   };
 
@@ -2468,6 +2532,14 @@ export default function AdminPage() {
     if (window.confirm(`আপনি কি নিশ্চিত যে "${target.name}" (${target.email}) এর অ্যাডমিন একাউন্ট মুছে ফেলতে চান?`)) {
       const updated = await deleteStaffAccount(staffId);
       setAdminStaffList(updated);
+
+      // If active session was deleted, kick out
+      if (currentStaffSession && currentStaffSession.id === staffId) {
+        handleLogout();
+        triggerNotification("error", "আপনার অ্যাডমিন অ্যাকাউন্টটি মুছে ফেলা হয়েছে!");
+        return;
+      }
+
       triggerNotification("success", `${target.name}-এর একাউন্ট সফলভাবে মুছে ফেলা হয়েছে।`);
     }
   };
@@ -2477,7 +2549,6 @@ export default function AdminPage() {
     clearAdminSession();
     setIsAuthenticated(false);
     setCurrentStaffSession(null);
-    setPasscode("");
     setLoginIdentifier("");
     setLoginPassword("");
     triggerNotification("success", "সফলভাবে লগআউট করা হয়েছে।");
@@ -2798,7 +2869,7 @@ export default function AdminPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-black text-slate-700 block pl-1">
-                  ইমেইল / মোবাইল নম্বর / পাসকোড
+                  ইমেইল বা মোবাইল নম্বর
                 </label>
                 <div className="relative">
                   <input 
