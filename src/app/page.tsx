@@ -3494,10 +3494,11 @@ export default function Home() {
                       <RotateCcw className="w-4 h-4" /> আবার খেলুন
                     </button>
                     <button
-                      onClick={() => setCurrentScreen("home")}
-                      className="py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all cursor-pointer text-xs"
+                      onClick={() => setCurrentScreen("rankings")}
+                      className="py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
                     >
-                      হোমে ফিরে যান
+                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <span>Rankings দেখুন</span>
                     </button>
                   </div>
                 </div>
