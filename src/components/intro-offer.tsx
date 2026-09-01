@@ -104,8 +104,8 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
     : DEFAULT_POPUP_CONFIG.points || [];
 
   return (
-    <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
-      <div className="relative bg-white rounded-[2rem] p-5 sm:p-6 max-w-sm w-full shadow-2xl border border-orange-100 overflow-hidden space-y-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fade-in text-left">
+      <div className="relative bg-white rounded-3xl sm:rounded-[2rem] p-4 sm:p-5 max-w-[440px] w-full shadow-2xl border border-orange-100/80 space-y-2.5 sm:space-y-3 max-h-[92dvh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {/* Decorative background glows */}
         <div className="absolute -top-12 -right-12 w-32 h-32 bg-orange-400/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-28 h-28 bg-amber-400/15 rounded-full blur-xl pointer-events-none" />
@@ -113,7 +113,7 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
         {/* Close Button */}
         <button
           onClick={handleDismiss}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-all cursor-pointer z-10"
+          className="absolute top-3.5 right-3.5 p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-all cursor-pointer z-10"
           title="বন্ধ করুন"
         >
           <X className="w-4 h-4 stroke-[2.5px]" />
@@ -121,7 +121,7 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
 
         {/* Optional Banner Image or Header Icon */}
         {popupConfig.bannerImageUrl && popupConfig.bannerImageUrl.trim() !== "" ? (
-          <div className="w-full h-32 rounded-2xl overflow-hidden shadow-md bg-slate-100 border border-slate-200/80 relative">
+          <div className="w-full h-28 sm:h-32 rounded-2xl overflow-hidden shadow-sm bg-slate-100 border border-slate-200/80 relative shrink-0">
             <img 
               src={popupConfig.bannerImageUrl} 
               alt="Announcement Banner" 
@@ -133,21 +133,29 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
             />
           </div>
         ) : (
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF6A00] to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <Gift className="w-7 h-7 stroke-[2.5px] animate-bounce" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-[#FF6A00] to-amber-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
+              <Gift className="w-6 h-6 stroke-[2.5px]" />
+            </div>
+            {popupConfig.badgeText && (
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[11px] font-black tracking-tight">
+                <Sparkles className="w-3 h-3 text-amber-500 fill-amber-400" />
+                <span>{popupConfig.badgeText}</span>
+              </div>
+            )}
           </div>
         )}
 
         {/* Content */}
-        <div className="space-y-2">
-          {popupConfig.badgeText && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[11px] font-black tracking-tight">
-              <Sparkles className="w-3.5 h-3.5" />
+        <div className="space-y-1 sm:space-y-1.5">
+          {popupConfig.bannerImageUrl && popupConfig.bannerImageUrl.trim() !== "" && popupConfig.badgeText && (
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[10px] font-black tracking-tight">
+              <Sparkles className="w-3 h-3 text-amber-500 fill-amber-400" />
               <span>{popupConfig.badgeText}</span>
             </div>
           )}
 
-          <h3 className="text-lg font-black text-slate-900 leading-snug">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
             {popupConfig.title || "প্রথমবার প্রস্তুতি শুরু করুন"}{" "}
             {popupConfig.highlightText && (
               <span className="text-[#FF6A00]">{popupConfig.highlightText}</span>
@@ -163,25 +171,25 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
 
         {/* Highlight Perks / Points */}
         {points.length > 0 && (
-          <div className="space-y-1.5 py-1">
+          <div className="space-y-1 bg-orange-50/50 p-2 sm:p-2.5 rounded-xl border border-orange-100/60">
             {points.map((pt, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+              <div key={idx} className="flex items-center gap-2 text-[11px] sm:text-xs font-bold text-slate-700">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
                   idx % 2 === 0 ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
                 }`}>
-                  {idx % 2 === 0 ? <Zap className="w-3 h-3 stroke-[2.5px]" /> : <ShieldCheck className="w-3 h-3 stroke-[2.5px]" />}
+                  {idx % 2 === 0 ? <Zap className="w-2.5 h-2.5 stroke-[2.5px]" /> : <ShieldCheck className="w-2.5 h-2.5 stroke-[2.5px]" />}
                 </div>
-                <span>{pt}</span>
+                <span className="leading-snug">{pt}</span>
               </div>
             ))}
           </div>
         )}
 
         {/* Actions */}
-        <div className="pt-2 flex flex-col gap-2">
+        <div className="pt-1 flex flex-col gap-1.5">
           <button
             onClick={handleClaim}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF6A00] to-[#FF4E00] hover:from-orange-600 hover:to-orange-700 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-orange-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-[#FF6A00] to-[#FF4E00] hover:from-orange-600 hover:to-orange-700 text-white font-black text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-orange-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
           >
             <span>{popupConfig.buttonText || "এখনই পরীক্ষা দিন"}</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5px]" />
@@ -189,7 +197,7 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
           
           <button
             onClick={handleDismiss}
-            className="w-full py-2 text-center text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+            className="w-full py-1 text-center text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
           >
             {popupConfig.cancelButtonText || "পরে দেখব"}
           </button>
