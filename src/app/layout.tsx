@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 import ClientProviders from "../components/ClientProviders";
 
@@ -165,6 +164,21 @@ export default function RootLayout({
   return (
     <html lang="bn">
       <head>
+        {/* Google tag (gtag.js) */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-YEC598XFK7"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-YEC598XFK7');
+            `,
+          }}
+        />
         <meta
           name="google-site-verification"
           content="6jsJ56m1WHmwBZgqSaOYzCmP2SzPrizvTIQpJxf4N0I"
@@ -180,25 +194,6 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* Google tag (gtag.js) via next/script */}
-        <Script
-          strategy="afterInteractive"
-          src="https://www.googletagmanager.com/gtag/js?id=G-YEC598XFK7"
-        />
-        <Script
-          id="google-analytics"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-YEC598XFK7', {
-                page_path: window.location.pathname,
-              });
-            `,
-          }}
-        />
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
