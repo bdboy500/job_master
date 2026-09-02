@@ -42,12 +42,14 @@ export default function AuthModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthPopupUrl, setOauthPopupUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
       setErrorMsg("");
       setSuccessMsg("");
+      setOauthPopupUrl(null);
       setShowSignInPassword(false);
       setShowSignUpPassword(false);
       setShowSignUpConfirmPassword(false);
@@ -56,6 +58,78 @@ export default function AuthModal({
       }
     }
   }, [isOpen, initialMode]);
+
+  // Listen for cross-window message from OAuth popup
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleAuthMessage = async (e: MessageEvent) => {
+      if (e.data?.type === "SUPABASE_AUTH_SUCCESS") {
+        setIsLoading(true);
+        const supabase = getSupabase();
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            let profile = await fetchUserProfile(session.user.id);
+            if (!profile) {
+              profile = {
+                id: session.user.id,
+                email: session.user.email || "",
+                full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "শিক্ষার্থী",
+                phone_number: session.user.user_metadata?.phone_number || session.user.user_metadata?.phone || "",
+                student_id: session.user.user_metadata?.student_id || generateStudentId(),
+                role: "Student",
+                status: "Active",
+              };
+              await upsertUserProfile(profile);
+            }
+            localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+            onAuthSuccess(profile);
+            setIsLoading(false);
+            onClose();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("message", handleAuthMessage);
+    return () => {
+      window.removeEventListener("message", handleAuthMessage);
+    };
+  }, [isOpen, onAuthSuccess, onClose]);
+
+  // Active polling for session when Google sign-in is in progress
+  useEffect(() => {
+    if (!isLoading || !isOpen) return;
+
+    const interval = setInterval(async () => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        clearInterval(interval);
+        let profile = await fetchUserProfile(session.user.id);
+        if (!profile) {
+          profile = {
+            id: session.user.id,
+            email: session.user.email || "",
+            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "শিক্ষার্থী",
+            phone_number: session.user.user_metadata?.phone_number || session.user.user_metadata?.phone || "",
+            student_id: session.user.user_metadata?.student_id || generateStudentId(),
+            role: "Student",
+            status: "Active",
+          };
+          await upsertUserProfile(profile);
+        }
+        localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+        onAuthSuccess(profile);
+        setIsLoading(false);
+        onClose();
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isLoading, isOpen, onAuthSuccess, onClose]);
 
   if (!isOpen) return null;
 
@@ -110,6 +184,34 @@ export default function AuthModal({
           } catch (dbErr) {
             console.warn("Phone lookup in profiles error:", dbErr);
           }
+        }
+
+        // If phone or student ID did not match any registered email address:
+        if (!targetEmail.includes("@")) {
+          // Check local fallback
+          const matched = localUsers.find((u) => {
+            const uPhoneClean = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
+            const uPhoneMatch = bdNormalizedPhone && uPhoneClean === bdNormalizedPhone;
+            const uIdMatch = u.student_id && u.student_id.toLowerCase() === inputVal.toLowerCase();
+            return uPhoneMatch || uIdMatch;
+          });
+
+          if (matched) {
+            if (matched.status === "Banned") {
+              setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
+              setIsLoading(false);
+              return;
+            }
+            localStorage.setItem("job_master_current_user", JSON.stringify(matched));
+            onAuthSuccess(matched);
+            setIsLoading(false);
+            onClose();
+            return;
+          }
+
+          setErrorMsg("এই মোবাইল নম্বর বা আইডি দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে সঠিক নম্বর দিন অথবা সাইন-আপ করুন।");
+          setIsLoading(false);
+          return;
         }
       }
 
@@ -253,7 +355,9 @@ export default function AuthModal({
           options: {
             data: {
               full_name: fullName.trim(),
+              name: fullName.trim(),
               phone_number: phoneNumber.trim(),
+              phone: phoneNumber.trim(),
               student_id: finalStudentId,
             },
           },
@@ -261,12 +365,15 @@ export default function AuthModal({
 
         if (authError) {
           console.warn("Supabase signup warning:", authError.message);
-          // If Supabase throws error (e.g. rate limit / user exists), handle gracefully
           if (authError.message.includes("User already registered")) {
             setErrorMsg("এই ইমেইল এড্রেস দিয়ে ইতিমধ্যে একটি একাউন্ট খোলা আছে। অনুগ্রহ করে লগইন করুন।");
-            setIsLoading(false);
-            return;
+          } else if (authError.message.includes("Password should be")) {
+            setErrorMsg("পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।");
+          } else {
+            setErrorMsg("সাইন-আপ ব্যর্থ হয়েছে: " + authError.message);
           }
+          setIsLoading(false);
+          return;
         }
 
         if (authData?.user) {
@@ -314,6 +421,7 @@ export default function AuthModal({
   const handleGoogleSignIn = async () => {
     try {
       setErrorMsg("");
+      setOauthPopupUrl(null);
       setIsLoading(true);
       const supabase = getSupabase();
       if (supabase) {
@@ -321,19 +429,48 @@ export default function AuthModal({
           ? `${window.location.origin}${window.location.pathname}`
           : undefined;
 
-        const { error } = await supabase.auth.signInWithOAuth({
+        const isIframe = typeof window !== "undefined" && window.self !== window.top;
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
             redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
             queryParams: {
               access_type: "offline",
-              prompt: "consent",
+              prompt: "select_account",
             },
           },
         });
+
         if (error) {
           setErrorMsg("গুগল সাইন-ইন শুরু করতে ব্যর্থ হয়েছে: " + error.message);
           setIsLoading(false);
+          return;
+        }
+
+        if (!data?.url) {
+          setErrorMsg("গুগল অথেন্টিকেশন ইউআরএল পাওয়া যায়নি।");
+          setIsLoading(false);
+          return;
+        }
+
+        // Open in popup window or new tab so Google Accounts won't be blocked by X-Frame-Options
+        const popup = window.open(
+          data.url,
+          "jobmaster_google_login",
+          "width=520,height=650,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes"
+        );
+
+        if (!popup || popup.closed || typeof popup.closed === "undefined") {
+          // If popup was blocked by browser
+          if (isIframe) {
+            setOauthPopupUrl(data.url);
+            setErrorMsg("ব্রাউজারে পপ-আপ ব্লক করা আছে। অনুগ্রহ করে নিচের বাটনে ক্লিক করে গুগল লগইন করুন।");
+            setIsLoading(false);
+          } else {
+            window.location.assign(data.url);
+          }
         }
       } else {
         // Fallback simulate demo google sign in
@@ -676,6 +813,23 @@ export default function AuthModal({
                 : "Google দিয়ে রেজিস্টার করুন"}
             </span>
           </button>
+
+          {oauthPopupUrl && (
+            <div className="mt-3 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-center animate-fade-in">
+              <p className="text-[11px] text-amber-900 font-bold mb-1.5 leading-snug">
+                ব্রাউজার বা আইফ্রেম পপ-আপ ব্লক করেছে। অনুগ্রহ করে নিচের বাটনে ক্লিক করুন:
+              </p>
+              <a
+                href={oauthPopupUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white text-[11px] font-black rounded-lg transition-all shadow-xs"
+                onClick={() => setIsLoading(true)}
+              >
+                গুগল সাইন-ইন উইন্ডো খুলুন
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Footer switch */}

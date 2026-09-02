@@ -804,6 +804,7 @@ export default function Home() {
 
         setCurrentUser(profile);
         setIsLoggedIn(true);
+        setShowAuthModal(false);
         setProfileName(profile.full_name || user.email?.split("@")[0] || "শিক্ষার্থী");
         setProfileEmail(profile.email || user.email || "");
         setProfilePhone(profile.phone_number || "");
@@ -856,8 +857,9 @@ export default function Home() {
 
       const supabase = getSupabase();
       if (supabase) {
-        // Exchange code if redirected back from OAuth PKCE flow
+        // Exchange code if redirected back from OAuth PKCE flow or Implicit hash
         if (typeof window !== "undefined") {
+          // 1. PKCE flow code exchange (?code=...)
           const urlParams = new URLSearchParams(window.location.search);
           const code = urlParams.get("code");
           if (code) {
@@ -878,6 +880,53 @@ export default function Home() {
               console.warn("OAuth exchange error:", err);
             });
           }
+
+          // 2. Implicit flow hash token extraction (#access_token=...&refresh_token=...)
+          if (window.location.hash && window.location.hash.includes("access_token=")) {
+            try {
+              const hashString = window.location.hash.startsWith("#") ? window.location.hash.substring(1) : window.location.hash;
+              const hashParams = new URLSearchParams(hashString);
+              const accessToken = hashParams.get("access_token");
+              const refreshToken = hashParams.get("refresh_token");
+              if (accessToken && refreshToken) {
+                supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken,
+                }).then(({ data, error }) => {
+                  if (data?.session) {
+                    syncUserFromSession(data.session);
+                  }
+                  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                }).catch((err) => {
+                  console.warn("OAuth setSession error:", err);
+                });
+              }
+            } catch (hashErr) {
+              console.warn("Hash session parse error:", hashErr);
+            }
+          }
+
+          // 3. Popup window callback detection: If opened as popup by parent window
+          if (window.opener && window.opener !== window) {
+            try {
+              window.opener.postMessage({ type: "SUPABASE_AUTH_SUCCESS" }, "*");
+            } catch (e) {}
+            setTimeout(() => {
+              try { window.close(); } catch (e) {}
+            }, 600);
+          }
+
+          // 4. Main window listener for popup success message
+          const handlePopupMessage = (e: MessageEvent) => {
+            if (e.data?.type === "SUPABASE_AUTH_SUCCESS") {
+              supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session?.user) {
+                  syncUserFromSession(session);
+                }
+              });
+            }
+          };
+          window.addEventListener("message", handlePopupMessage);
         }
 
         supabase.auth.getSession().then(({ data: { session } }) => {
