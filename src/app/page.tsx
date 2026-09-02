@@ -916,17 +916,41 @@ export default function Home() {
             }, 600);
           }
 
-          // 4. Main window listener for popup success message
-          const handlePopupMessage = (e: MessageEvent) => {
-            if (e.data?.type === "SUPABASE_AUTH_SUCCESS") {
-              supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session?.user) {
-                  syncUserFromSession(session);
-                }
-              });
+          // 4. Main window listener for popup success and callback messages
+          const handlePopupMessage = async (e: MessageEvent) => {
+            if (e.data?.type === "SUPABASE_AUTH_SUCCESS" || e.data?.type === "SUPABASE_AUTH_CALLBACK") {
+              if (e.data?.code) {
+                try {
+                  await supabase.auth.exchangeCodeForSession(e.data.code);
+                } catch (err) {}
+              }
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user) {
+                syncUserFromSession(session);
+              }
             }
           };
           window.addEventListener("message", handlePopupMessage);
+
+          // 5. BroadcastChannel listener across tabs/windows
+          if (typeof BroadcastChannel !== "undefined") {
+            try {
+              const bc = new BroadcastChannel("jobmaster_auth_channel");
+              bc.onmessage = async (e) => {
+                if (e.data?.type === "SUPABASE_AUTH_CALLBACK" || e.data?.type === "SUPABASE_AUTH_SUCCESS") {
+                  if (e.data?.code) {
+                    try {
+                      await supabase.auth.exchangeCodeForSession(e.data.code);
+                    } catch (err) {}
+                  }
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (session?.user) {
+                    syncUserFromSession(session);
+                  }
+                }
+              };
+            } catch (bcErr) {}
+          }
         }
 
         supabase.auth.getSession().then(({ data: { session } }) => {

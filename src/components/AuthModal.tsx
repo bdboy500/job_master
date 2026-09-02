@@ -41,7 +41,9 @@ export default function AuthModal({
   // Feedback states
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isLoading = isSubmitting || isGoogleLoading;
   const [oauthPopupUrl, setOauthPopupUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,6 +51,8 @@ export default function AuthModal({
       setMode(initialMode);
       setErrorMsg("");
       setSuccessMsg("");
+      setIsSubmitting(false);
+      setIsGoogleLoading(false);
       setOauthPopupUrl(null);
       setShowSignInPassword(false);
       setShowSignUpPassword(false);
@@ -59,55 +63,41 @@ export default function AuthModal({
     }
   }, [isOpen, initialMode]);
 
-  // Listen for cross-window message from OAuth popup
-  useEffect(() => {
-    if (!isOpen) return;
+  // Helper to process session and complete auth
+  const handleCompleteSessionAuth = React.useCallback(async (code?: string | null, hash?: string | null) => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      setIsGoogleLoading(false);
+      setIsSubmitting(false);
+      return;
+    }
 
-    const handleAuthMessage = async (e: MessageEvent) => {
-      if (e.data?.type === "SUPABASE_AUTH_SUCCESS") {
-        setIsLoading(true);
-        const supabase = getSupabase();
-        if (supabase) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            let profile = await fetchUserProfile(session.user.id);
-            if (!profile) {
-              profile = {
-                id: session.user.id,
-                email: session.user.email || "",
-                full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "শিক্ষার্থী",
-                phone_number: session.user.user_metadata?.phone_number || session.user.user_metadata?.phone || "",
-                student_id: session.user.user_metadata?.student_id || generateStudentId(),
-                role: "Student",
-                status: "Active",
-              };
-              await upsertUserProfile(profile);
-            }
-            localStorage.setItem("job_master_current_user", JSON.stringify(profile));
-            onAuthSuccess(profile);
-            setIsLoading(false);
-            onClose();
+    try {
+      if (code) {
+        try {
+          const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+          if (exErr) {
+            console.warn("exchangeCodeForSession error:", exErr.message);
+          }
+        } catch (exException) {
+          console.warn("Exception during exchangeCodeForSession:", exException);
+        }
+      } else if (hash && hash.includes("access_token=")) {
+        const hashString = hash.startsWith("#") ? hash.substring(1) : hash;
+        const params = new URLSearchParams(hashString);
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        if (accessToken && refreshToken) {
+          try {
+            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          } catch (setErr) {
+            console.warn("setSession error:", setErr);
           }
         }
       }
-    };
 
-    window.addEventListener("message", handleAuthMessage);
-    return () => {
-      window.removeEventListener("message", handleAuthMessage);
-    };
-  }, [isOpen, onAuthSuccess, onClose]);
-
-  // Active polling for session when Google sign-in is in progress
-  useEffect(() => {
-    if (!isLoading || !isOpen) return;
-
-    const interval = setInterval(async () => {
-      const supabase = getSupabase();
-      if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        clearInterval(interval);
         let profile = await fetchUserProfile(session.user.id);
         if (!profile) {
           profile = {
@@ -121,15 +111,122 @@ export default function AuthModal({
           };
           await upsertUserProfile(profile);
         }
+
+        if (profile.status === "Banned") {
+          setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
+          await supabase.auth.signOut();
+          setIsGoogleLoading(false);
+          setIsSubmitting(false);
+          return;
+        }
+
         localStorage.setItem("job_master_current_user", JSON.stringify(profile));
         onAuthSuccess(profile);
-        setIsLoading(false);
+        setIsGoogleLoading(false);
+        setIsSubmitting(false);
         onClose();
+        return;
+      } else {
+        // Session not available yet, turn off loading so UI is not frozen
+        setIsGoogleLoading(false);
+        setIsSubmitting(false);
       }
-    }, 1500);
+    } catch (sessionErr: any) {
+      console.warn("Session exchange error in AuthModal:", sessionErr);
+      setErrorMsg("লগইন সেশন প্রক্রিয়াকরণে সমস্যা হয়েছে: " + (sessionErr?.message || ""));
+      setIsGoogleLoading(false);
+      setIsSubmitting(false);
+    }
+  }, [onAuthSuccess, onClose]);
+
+  // Listen for cross-window messages and BroadcastChannel from OAuth popup
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // 1. Window postMessage listener
+    const handleAuthMessage = async (e: MessageEvent) => {
+      if (e.data?.type === "SUPABASE_AUTH_CALLBACK" || e.data?.type === "SUPABASE_AUTH_SUCCESS") {
+        if (e.data?.error) {
+          setErrorMsg(e.data.errorDescription || e.data.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+          setIsGoogleLoading(false);
+          return;
+        }
+        setIsGoogleLoading(true);
+        await handleCompleteSessionAuth(e.data.code, e.data.hash);
+      }
+    };
+    window.addEventListener("message", handleAuthMessage);
+
+    // 2. BroadcastChannel across windows/tabs on this origin
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        bc = new BroadcastChannel("jobmaster_auth_channel");
+        bc.onmessage = async (e) => {
+          if (e.data?.type === "SUPABASE_AUTH_CALLBACK" || e.data?.type === "SUPABASE_AUTH_SUCCESS") {
+            if (e.data?.error) {
+              setErrorMsg(e.data.errorDescription || e.data.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+              setIsGoogleLoading(false);
+              return;
+            }
+            setIsGoogleLoading(true);
+            await handleCompleteSessionAuth(e.data.code, e.data.hash);
+          }
+        };
+      }
+    } catch (bcErr) {
+      console.warn("BroadcastChannel init warning:", bcErr);
+    }
+
+    // 3. Storage event fallback
+    const handleStorage = async (e: StorageEvent) => {
+      if (e.key === "jobmaster_oauth_signal" && e.newValue) {
+        try {
+          const signal = JSON.parse(e.newValue);
+          if (signal.error) {
+            setErrorMsg(signal.errorDescription || signal.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+            setIsGoogleLoading(false);
+            return;
+          }
+          setIsGoogleLoading(true);
+          await handleCompleteSessionAuth(signal.code, signal.hash);
+        } catch (err) {}
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("message", handleAuthMessage);
+      window.removeEventListener("storage", handleStorage);
+      if (bc) {
+        try { bc.close(); } catch (err) {}
+      }
+    };
+  }, [isOpen, handleCompleteSessionAuth]);
+
+  // Active polling for session when Google sign-in is in progress (timeout after 30s)
+  useEffect(() => {
+    if (!isGoogleLoading || !isOpen) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 25) {
+        clearInterval(interval);
+        setIsGoogleLoading(false);
+        return;
+      }
+      const supabase = getSupabase();
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        clearInterval(interval);
+        await handleCompleteSessionAuth();
+      }
+    }, 1200);
 
     return () => clearInterval(interval);
-  }, [isLoading, isOpen, onAuthSuccess, onClose]);
+  }, [isGoogleLoading, isOpen, handleCompleteSessionAuth]);
 
   if (!isOpen) return null;
 
@@ -144,7 +241,7 @@ export default function AuthModal({
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       const supabase = getSupabase();
@@ -170,13 +267,16 @@ export default function AuthModal({
         if (localMatched?.email) {
           targetEmail = localMatched.email;
         } else if (supabase) {
-          // 2. Query Supabase profiles table for matching phone or student_id
+          // 2. Query Supabase profiles table for matching phone or student_id with 4s timeout
           try {
-            const { data: dbProfile } = await supabase
+            const timeoutQuery = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 4000));
+            const queryPromise = supabase
               .from("profiles")
               .select("id, email, phone_number, student_id, full_name, role, status")
               .or(`phone_number.eq.${cleanPhone},phone_number.eq.${bdNormalizedPhone},phone_number.eq.+88${bdNormalizedPhone},student_id.eq.${inputVal}`)
               .maybeSingle();
+
+            const { data: dbProfile }: any = await Promise.race([queryPromise, timeoutQuery]);
 
             if (dbProfile?.email) {
               targetEmail = dbProfile.email;
@@ -199,97 +299,122 @@ export default function AuthModal({
           if (matched) {
             if (matched.status === "Banned") {
               setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
-              setIsLoading(false);
+              setIsSubmitting(false);
               return;
             }
             localStorage.setItem("job_master_current_user", JSON.stringify(matched));
             onAuthSuccess(matched);
-            setIsLoading(false);
+            setIsSubmitting(false);
             onClose();
             return;
           }
 
           setErrorMsg("এই মোবাইল নম্বর বা আইডি দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে সঠিক নম্বর দিন অথবা সাইন-আপ করুন।");
-          setIsLoading(false);
+          setIsSubmitting(false);
           return;
         }
       }
 
       if (supabase) {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: targetEmail.trim(),
-          password: password.trim(),
-        });
-
-        if (authError) {
-          console.warn("Supabase auth error:", authError.message);
-          // Fallback check against local users if Supabase auth fails or is not enabled
-          const localUsersRaw = localStorage.getItem("job_master_registered_users");
-          const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
-          const matched = localUsers.find((u) => {
-            const uEmailMatch = u.email.toLowerCase() === targetEmail.toLowerCase();
-            const uPhoneClean = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
-            const uPhoneMatch = bdNormalizedPhone && uPhoneClean === bdNormalizedPhone;
-            return uEmailMatch || uPhoneMatch;
+        try {
+          const timeoutAuth = new Promise((_, reject) => setTimeout(() => reject(new Error("NETWORK_TIMEOUT")), 8000));
+          const authPromise = supabase.auth.signInWithPassword({
+            email: targetEmail.trim(),
+            password: password.trim(),
           });
 
-          if (matched) {
-            if (matched.status === "Banned") {
-              setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
-              setIsLoading(false);
+          const { data: authData, error: authError }: any = await Promise.race([authPromise, timeoutAuth]);
+
+          if (authError) {
+            console.warn("Supabase auth error:", authError.message);
+            // Fallback check against local users if Supabase auth fails or is not enabled
+            const localUsersRaw = localStorage.getItem("job_master_registered_users");
+            const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
+            const matched = localUsers.find((u) => {
+              const uEmailMatch = u.email.toLowerCase() === targetEmail.toLowerCase();
+              const uPhoneClean = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
+              const uPhoneMatch = bdNormalizedPhone && uPhoneClean === bdNormalizedPhone;
+              return uEmailMatch || uPhoneMatch;
+            });
+
+            if (matched) {
+              if (matched.status === "Banned") {
+                setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
+                setIsSubmitting(false);
+                return;
+              }
+              localStorage.setItem("job_master_current_user", JSON.stringify(matched));
+              onAuthSuccess(matched);
+              setIsSubmitting(false);
+              onClose();
               return;
             }
-            localStorage.setItem("job_master_current_user", JSON.stringify(matched));
-            onAuthSuccess(matched);
-            setIsLoading(false);
+
+            // Check if account might have been created via Google
+            if (authError.message.includes("Invalid login credentials")) {
+              try {
+                const { data: prof } = await supabase
+                  .from("profiles")
+                  .select("email, full_name")
+                  .eq("email", targetEmail.trim())
+                  .maybeSingle();
+
+                if (prof) {
+                  setErrorMsg("পাসওয়ার্ড সঠিক নয়। আপনি পূর্বে Google দিয়ে লগইন করে থাকলে অনুগ্রহ করে নিচের 'Google দিয়ে সাইন ইন করুন' বাটনে ক্লিক করুন।");
+                  setIsSubmitting(false);
+                  return;
+                }
+              } catch (e) {}
+
+              setErrorMsg(
+                isPhoneOrId
+                  ? "মোবাইল নম্বর অথবা পাসওয়ার্ড সঠিক নয়। দয়া করে সঠিক নম্বর ও পাসওয়ার্ড দিন।"
+                  : "ভুল ইমেইল অথবা পাসওয়ার্ড দেওয়া হয়েছে। আবার চেষ্টা করুন।"
+              );
+            } else {
+              setErrorMsg(authError.message || "লগইন করতে সমস্যা হয়েছে।");
+            }
+            setIsSubmitting(false);
+            return;
+          }
+
+          if (authData?.user) {
+            // Fetch user profile from Supabase profiles table
+            let profile = await fetchUserProfile(authData.user.id);
+
+            if (!profile) {
+              profile = {
+                id: authData.user.id,
+                email: authData.user.email || targetEmail.trim(),
+                full_name: authData.user.user_metadata?.full_name || fullName || targetEmail.split("@")[0],
+                phone_number: authData.user.user_metadata?.phone_number || phoneNumber || "",
+                student_id: authData.user.user_metadata?.student_id || studentId || generateStudentId(),
+                role: "Student",
+                status: "Active",
+              };
+              await upsertUserProfile(profile);
+            }
+
+            if (profile.status === "Banned") {
+              setErrorMsg("আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত/নিষিদ্ধ করা হয়েছে। অ্যাডমিনের সাথে যোগাযোগ করুন।");
+              await supabase.auth.signOut();
+              setIsSubmitting(false);
+              return;
+            }
+
+            localStorage.setItem("job_master_current_user", JSON.stringify(profile));
+            onAuthSuccess(profile);
+            setIsSubmitting(false);
             onClose();
             return;
           }
-
-          // Otherwise show Bengali translation of error
-          if (authError.message.includes("Invalid login credentials")) {
-            setErrorMsg(
-              isPhoneOrId
-                ? "মোবাইল নম্বর অথবা পাসওয়ার্ড সঠিক নয়। দয়া করে সঠিক নম্বর ও পাসওয়ার্ড দিন।"
-                : "ভুল ইমেইল অথবা পাসওয়ার্ড দেওয়া হয়েছে। আবার চেষ্টা করুন।"
-            );
-          } else {
-            setErrorMsg(authError.message || "লগইন করতে সমস্যা হয়েছে।");
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        if (authData?.user) {
-          // Fetch user profile from Supabase profiles table
-          let profile = await fetchUserProfile(authData.user.id);
-
-          if (!profile) {
-            // Create default profile if not exists
-            profile = {
-              id: authData.user.id,
-              email: authData.user.email || targetEmail.trim(),
-              full_name: authData.user.user_metadata?.full_name || fullName || targetEmail.split("@")[0],
-              phone_number: authData.user.user_metadata?.phone_number || phoneNumber || "",
-              student_id: authData.user.user_metadata?.student_id || studentId || generateStudentId(),
-              role: "Student",
-              status: "Active",
-            };
-            await upsertUserProfile(profile);
-          }
-
-          if (profile.status === "Banned") {
-            setErrorMsg("আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত/নিষিদ্ধ করা হয়েছে। অ্যাডমিনের সাথে যোগাযোগ করুন।");
-            await supabase.auth.signOut();
-            setIsLoading(false);
+        } catch (timeoutErr: any) {
+          if (timeoutErr?.message === "NETWORK_TIMEOUT") {
+            setErrorMsg("সার্ভারে সংযোগ করতে সময় বেশি লাগছে। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।");
+            setIsSubmitting(false);
             return;
           }
-
-          localStorage.setItem("job_master_current_user", JSON.stringify(profile));
-          onAuthSuccess(profile);
-          setIsLoading(false);
-          onClose();
-          return;
+          throw timeoutErr;
         }
       }
 
@@ -306,11 +431,11 @@ export default function AuthModal({
 
       localStorage.setItem("job_master_current_user", JSON.stringify(localProfile));
       onAuthSuccess(localProfile);
-      setIsLoading(false);
+      setIsSubmitting(false);
       onClose();
     } catch (err: any) {
       setErrorMsg(err?.message || "লগইন করার সময় ত্রুটি ঘটেছে।");
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -340,7 +465,7 @@ export default function AuthModal({
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     // Student ID is auto-generated in background
     const finalStudentId = generateStudentId();
 
@@ -372,7 +497,7 @@ export default function AuthModal({
           } else {
             setErrorMsg("সাইন-আপ ব্যর্থ হয়েছে: " + authError.message);
           }
-          setIsLoading(false);
+          setIsSubmitting(false);
           return;
         }
 
@@ -409,12 +534,12 @@ export default function AuthModal({
       
       setTimeout(() => {
         onAuthSuccess(newProfile);
-        setIsLoading(false);
+        setIsSubmitting(false);
         onClose();
       }, 800);
     } catch (err: any) {
       setErrorMsg(err?.message || "একাউন্ট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -422,11 +547,13 @@ export default function AuthModal({
     try {
       setErrorMsg("");
       setOauthPopupUrl(null);
-      setIsLoading(true);
+      setIsGoogleLoading(true);
+
       const supabase = getSupabase();
       if (supabase) {
+        // Direct to dedicated OAuth callback endpoint
         const redirectUrl = typeof window !== "undefined"
-          ? `${window.location.origin}${window.location.pathname}`
+          ? `${window.location.origin}/auth/callback`
           : undefined;
 
         const isIframe = typeof window !== "undefined" && window.self !== window.top;
@@ -445,17 +572,17 @@ export default function AuthModal({
 
         if (error) {
           setErrorMsg("গুগল সাইন-ইন শুরু করতে ব্যর্থ হয়েছে: " + error.message);
-          setIsLoading(false);
+          setIsGoogleLoading(false);
           return;
         }
 
         if (!data?.url) {
           setErrorMsg("গুগল অথেন্টিকেশন ইউআরএল পাওয়া যায়নি।");
-          setIsLoading(false);
+          setIsGoogleLoading(false);
           return;
         }
 
-        // Open in popup window or new tab so Google Accounts won't be blocked by X-Frame-Options
+        // Open in popup window so Google Accounts won't be blocked by X-Frame-Options
         const popup = window.open(
           data.url,
           "jobmaster_google_login",
@@ -464,14 +591,34 @@ export default function AuthModal({
 
         if (!popup || popup.closed || typeof popup.closed === "undefined") {
           // If popup was blocked by browser
-          if (isIframe) {
-            setOauthPopupUrl(data.url);
-            setErrorMsg("ব্রাউজারে পপ-আপ ব্লক করা আছে। অনুগ্রহ করে নিচের বাটনে ক্লিক করে গুগল লগইন করুন।");
-            setIsLoading(false);
-          } else {
-            window.location.assign(data.url);
-          }
+          setOauthPopupUrl(data.url);
+          setErrorMsg("ব্রাউজারে পপ-আপ ব্লক করা আছে। অনুগ্রহ করে নিচের বাটনে ক্লিক করে গুগল লগইন সম্পন্ন করুন।");
+          setIsGoogleLoading(false);
+          return;
         }
+
+        // Monitor popup status: if user closes popup without completing login, reset spinner
+        const checkClosed = setInterval(() => {
+          try {
+            if (popup.closed) {
+              clearInterval(checkClosed);
+              setIsGoogleLoading(false);
+            }
+          } catch (e) {
+            clearInterval(checkClosed);
+          }
+        }, 1000);
+
+        // Safety timeout (45 seconds) so spinner never hangs indefinitely
+        setTimeout(() => {
+          try { clearInterval(checkClosed); } catch (e) {}
+          setIsGoogleLoading((prev) => {
+            if (prev) {
+              setErrorMsg("গুগল সাইন-ইনের সময়সীমা শেষ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+            }
+            return false;
+          });
+        }, 45000);
       } else {
         // Fallback simulate demo google sign in
         const googleUser: UserProfile = {
@@ -485,12 +632,12 @@ export default function AuthModal({
         };
         localStorage.setItem("job_master_current_user", JSON.stringify(googleUser));
         onAuthSuccess(googleUser);
-        setIsLoading(false);
+        setIsGoogleLoading(false);
         onClose();
       }
     } catch (err: any) {
       setErrorMsg(err?.message || "গুগল সাইন-ইন প্রক্রিয়া ব্যর্থ হয়েছে।");
-      setIsLoading(false);
+      setIsGoogleLoading(false);
     }
   };
 
@@ -632,8 +779,11 @@ export default function AuthModal({
                 disabled={isLoading}
                 className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
               >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>লগইন হচ্ছে...</span>
+                  </>
                 ) : (
                   <>
                     <LogIn className="w-4 h-4" />
@@ -760,8 +910,11 @@ export default function AuthModal({
                 disabled={isLoading}
                 className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
               >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>একাউন্ট তৈরি হচ্ছে...</span>
+                  </>
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
@@ -787,31 +940,40 @@ export default function AuthModal({
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 shadow-2xs hover:shadow-xs active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2.5"
+            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 shadow-2xs hover:shadow-xs active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-60"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span>
-              {mode === "signin"
-                ? "Google দিয়ে সাইন ইন করুন"
-                : "Google দিয়ে রেজিস্টার করুন"}
-            </span>
+            {isGoogleLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-[#FF6A00] border-t-transparent rounded-full animate-spin" />
+                <span className="text-[#FF6A00] font-bold">Google-এ সংযোগ করা হচ্ছে...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>
+                  {mode === "signin"
+                    ? "Google দিয়ে সাইন ইন করুন"
+                    : "Google দিয়ে রেজিস্টার করুন"}
+                </span>
+              </>
+            )}
           </button>
 
           {oauthPopupUrl && (
@@ -824,7 +986,7 @@ export default function AuthModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white text-[11px] font-black rounded-lg transition-all shadow-xs"
-                onClick={() => setIsLoading(true)}
+                onClick={() => setIsGoogleLoading(true)}
               >
                 গুগল সাইন-ইন উইন্ডো খুলুন
               </a>
