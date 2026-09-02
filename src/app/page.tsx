@@ -856,6 +856,30 @@ export default function Home() {
 
       const supabase = getSupabase();
       if (supabase) {
+        // Exchange code if redirected back from OAuth PKCE flow
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          const code = urlParams.get("code");
+          if (code) {
+            supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+              if (error) {
+                console.warn("OAuth exchangeCodeForSession error:", error.message);
+              } else if (data?.session) {
+                syncUserFromSession(data.session);
+              }
+              // Clean query parameter from URL without reloading
+              const cleanUrl = new URL(window.location.href);
+              cleanUrl.searchParams.delete("code");
+              cleanUrl.searchParams.delete("state");
+              cleanUrl.searchParams.delete("error");
+              cleanUrl.searchParams.delete("error_description");
+              window.history.replaceState({}, document.title, cleanUrl.toString());
+            }).catch((err) => {
+              console.warn("OAuth exchange error:", err);
+            });
+          }
+        }
+
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session?.user) {
             syncUserFromSession(session);
@@ -3423,7 +3447,7 @@ export default function Home() {
                   <div className="space-y-1.5">
                     <h3 className="font-extrabold text-lg sm:text-xl text-slate-900">সময় শেষ! (Time's Up)</h3>
                     <p className="text-slate-500 text-xs leading-relaxed max-w-[280px] mx-auto">
-                      প্রতিটি প্রশ্নের উত্তর ৩০ সেকেন্ডের মধ্যে দিতে হবে। আবার খেলুন অথবা হোম স্ক্রিনে ফিরে যান!
+                      প্রতিটি প্রশ্নের উত্তর ৩০ সেকেন্ডের মধ্যে দিতে হবে। আবার খেলুন অথবা Rankings দেখুন!
                     </p>
                   </div>
                   
@@ -3436,11 +3460,11 @@ export default function Home() {
                       আবার খেলুন
                     </button>
                     <button
-                      onClick={() => setCurrentScreen("home")}
+                      onClick={() => setCurrentScreen("rankings")}
                       className="py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                     >
-                      <HomeIcon className="w-4 h-4" />
-                      <span>হোম স্ক্রিন</span>
+                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <span>Rankings দেখুন</span>
                     </button>
                   </div>
                 </div>
@@ -3703,12 +3727,13 @@ export default function Home() {
                   </p>
                   <button
                     onClick={() => {
-                      setCurrentScreen("home");
+                      setCurrentScreen("rankings");
                       if (soundEnabled) quizAudio.playClick();
                     }}
                     className="mt-2 inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold text-xs rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
                   >
-                    হোম স্ক্রিনে ফিরে যান
+                    <Trophy className="w-4 h-4 text-amber-300" />
+                    <span>Rankings দেখুন</span>
                   </button>
                 </div>
               ) : (

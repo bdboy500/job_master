@@ -211,37 +211,6 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       {/* 1. TOP HERO SECTION WITH BACK & REFRESH ACTION BAR (STATIC UI) */}
       <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-4 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
         
-        {/* Top Action Row with Back Button, Title, and Refresh */}
-        <div className="relative z-10 flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={onBack}
-              className="w-8.5 h-8.5 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all active:scale-90 cursor-pointer border border-white/20 shadow-xs shrink-0"
-              aria-label="Back"
-            >
-              <ArrowLeft className="w-4.5 h-4.5 text-white" />
-            </button>
-            <div>
-              <h1 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-tight">
-                <span>Leaderboard</span>
-                <Trophy className="w-4 h-4 text-amber-200 fill-amber-300/30" />
-              </h1>
-              <p className="text-[10px] text-white/80 font-bold">
-                লাইভ কুইজের সর্বোচ্চ স্কোরার তালিকা
-              </p>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => loadData(true)}
-            disabled={isLoading}
-            className="w-8.5 h-8.5 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all active:rotate-180 border border-white/20 shadow-xs cursor-pointer"
-            title="Refresh Leaderboard"
-          >
-            <RefreshCw className={`w-4 h-4 text-white ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-
         {/* Background Subtle Accent Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)] pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -250,24 +219,23 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         <div className="relative z-10 max-w-md mx-auto mb-3">
           <div className="bg-black/25 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner gap-1">
             {[
-              { id: "Today", label: "আজ", sub: "Today" },
-              { id: "Week", label: "সপ্তাহ", sub: "Week" },
-              { id: "Month", label: "মাস", sub: "Month" },
-              { id: "All Time", label: "সর্বকালীন", sub: "All Time" }
+              { id: "Today", label: "Today" },
+              { id: "Week", label: "Week" },
+              { id: "Month", label: "Month" },
+              { id: "All Time", label: "All Time" }
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 py-2 px-1 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer text-center relative flex flex-col items-center justify-center ${
+                  className={`flex-1 py-2 px-1 text-xs sm:text-sm font-extrabold tracking-wide rounded-xl transition-all duration-200 cursor-pointer text-center relative flex items-center justify-center ${
                     isActive
                       ? "bg-white text-[#FF6A00] shadow-md shadow-black/10 scale-[1.02]"
                       : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
-                  <span className="leading-tight">{tab.label}</span>
-                  <span className={`text-[9px] font-bold ${isActive ? "text-[#FF6A00]/75" : "text-white/70"}`}>{tab.sub}</span>
+                  <span className="leading-none whitespace-nowrap">{tab.label}</span>
                 </button>
               );
             })}

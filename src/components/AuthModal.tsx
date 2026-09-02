@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Lock, Mail, Phone, User, IdCard, LogIn, UserPlus, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, Lock, Mail, Phone, User, IdCard, LogIn, UserPlus, Sparkles, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { getSupabase } from "../lib/supabase";
 import { UserProfile, generateStudentId, upsertUserProfile, fetchUserProfile } from "../lib/user_profiles";
 import { useModalHistory } from "../hooks/useBackButton";
@@ -33,6 +33,11 @@ export default function AuthModal({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [studentId, setStudentId] = useState("");
 
+  // Show/hide password states
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false);
+
   // Feedback states
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -43,6 +48,9 @@ export default function AuthModal({
       setMode(initialMode);
       setErrorMsg("");
       setSuccessMsg("");
+      setShowSignInPassword(false);
+      setShowSignUpPassword(false);
+      setShowSignUpConfirmPassword(false);
       if (!studentId) {
         setStudentId(generateStudentId());
       }
@@ -56,8 +64,9 @@ export default function AuthModal({
     setErrorMsg("");
     setSuccessMsg("");
 
-    if (!email.trim() || !password.trim()) {
-      setErrorMsg("অনুগ্রহ করে আপনার ইমেইল এবং পাসওয়ার্ড দিন।");
+    const inputVal = email.trim();
+    if (!inputVal || !password.trim()) {
+      setErrorMsg("অনুগ্রহ করে আপনার ইমেইল অথবা মোবাইল নম্বর এবং পাসওয়ার্ড দিন।");
       return;
     }
 
@@ -65,9 +74,48 @@ export default function AuthModal({
 
     try {
       const supabase = getSupabase();
+      let targetEmail = inputVal;
+
+      // Determine if the input is a mobile phone number or student ID instead of an email
+      const isPhoneOrId = !inputVal.includes("@");
+      const cleanPhone = inputVal.replace(/[\s-]/g, "");
+      const digitsOnly = cleanPhone.replace(/\D/g, "");
+      const bdNormalizedPhone = digitsOnly.startsWith("880") ? digitsOnly.slice(2) : digitsOnly;
+
+      if (isPhoneOrId) {
+        // 1. Check local registered users list first
+        const localUsersRaw = typeof window !== "undefined" ? localStorage.getItem("job_master_registered_users") : null;
+        const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
+        const localMatched = localUsers.find((u) => {
+          const uPhone = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
+          const isPhoneMatch = bdNormalizedPhone && uPhone && (uPhone === bdNormalizedPhone || uPhone.endsWith(bdNormalizedPhone));
+          const isIdMatch = u.student_id && u.student_id.toLowerCase() === inputVal.toLowerCase();
+          return isPhoneMatch || isIdMatch;
+        });
+
+        if (localMatched?.email) {
+          targetEmail = localMatched.email;
+        } else if (supabase) {
+          // 2. Query Supabase profiles table for matching phone or student_id
+          try {
+            const { data: dbProfile } = await supabase
+              .from("profiles")
+              .select("id, email, phone_number, student_id, full_name, role, status")
+              .or(`phone_number.eq.${cleanPhone},phone_number.eq.${bdNormalizedPhone},phone_number.eq.+88${bdNormalizedPhone},student_id.eq.${inputVal}`)
+              .maybeSingle();
+
+            if (dbProfile?.email) {
+              targetEmail = dbProfile.email;
+            }
+          } catch (dbErr) {
+            console.warn("Phone lookup in profiles error:", dbErr);
+          }
+        }
+      }
+
       if (supabase) {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: targetEmail.trim(),
           password: password.trim(),
         });
 
@@ -76,9 +124,12 @@ export default function AuthModal({
           // Fallback check against local users if Supabase auth fails or is not enabled
           const localUsersRaw = localStorage.getItem("job_master_registered_users");
           const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
-          const matched = localUsers.find(
-            (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-          );
+          const matched = localUsers.find((u) => {
+            const uEmailMatch = u.email.toLowerCase() === targetEmail.toLowerCase();
+            const uPhoneClean = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
+            const uPhoneMatch = bdNormalizedPhone && uPhoneClean === bdNormalizedPhone;
+            return uEmailMatch || uPhoneMatch;
+          });
 
           if (matched) {
             if (matched.status === "Banned") {
@@ -95,7 +146,11 @@ export default function AuthModal({
 
           // Otherwise show Bengali translation of error
           if (authError.message.includes("Invalid login credentials")) {
-            setErrorMsg("ভুল ইমেইল অথবা পাসওয়ার্ড দেওয়া হয়েছে। আবার চেষ্টা করুন।");
+            setErrorMsg(
+              isPhoneOrId
+                ? "মোবাইল নম্বর অথবা পাসওয়ার্ড সঠিক নয়। দয়া করে সঠিক নম্বর ও পাসওয়ার্ড দিন।"
+                : "ভুল ইমেইল অথবা পাসওয়ার্ড দেওয়া হয়েছে। আবার চেষ্টা করুন।"
+            );
           } else {
             setErrorMsg(authError.message || "লগইন করতে সমস্যা হয়েছে।");
           }
@@ -111,8 +166,8 @@ export default function AuthModal({
             // Create default profile if not exists
             profile = {
               id: authData.user.id,
-              email: authData.user.email || email.trim(),
-              full_name: authData.user.user_metadata?.full_name || fullName || email.split("@")[0],
+              email: authData.user.email || targetEmail.trim(),
+              full_name: authData.user.user_metadata?.full_name || fullName || targetEmail.split("@")[0],
               phone_number: authData.user.user_metadata?.phone_number || phoneNumber || "",
               student_id: authData.user.user_metadata?.student_id || studentId || generateStudentId(),
               role: "Student",
@@ -139,9 +194,9 @@ export default function AuthModal({
       // Offline / Local state fallback
       const localProfile: UserProfile = {
         id: `usr-${Date.now()}`,
-        email: email.trim(),
-        full_name: fullName || email.split("@")[0],
-        phone_number: phoneNumber || "01700000000",
+        email: targetEmail.trim(),
+        full_name: fullName || targetEmail.split("@")[0],
+        phone_number: isPhoneOrId ? inputVal : phoneNumber || "01700000000",
         student_id: studentId || generateStudentId(),
         role: "Student",
         status: "Active",
@@ -184,7 +239,8 @@ export default function AuthModal({
     }
 
     setIsLoading(true);
-    const finalStudentId = studentId || generateStudentId();
+    // Student ID is auto-generated in background
+    const finalStudentId = generateStudentId();
 
     try {
       const supabase = getSupabase();
@@ -261,10 +317,18 @@ export default function AuthModal({
       setIsLoading(true);
       const supabase = getSupabase();
       if (supabase) {
+        const redirectUrl = typeof window !== "undefined"
+          ? `${window.location.origin}${window.location.pathname}`
+          : undefined;
+
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+            redirectTo: redirectUrl,
+            queryParams: {
+              access_type: "offline",
+              prompt: "consent",
+            },
           },
         });
         if (error) {
@@ -288,7 +352,7 @@ export default function AuthModal({
         onClose();
       }
     } catch (err: any) {
-      setErrorMsg("গুগল সাইন ইন করতে ব্যর্থ হয়েছে।");
+      setErrorMsg(err?.message || "গুগল সাইন-ইন প্রক্রিয়া ব্যর্থ হয়েছে।");
       setIsLoading(false);
     }
   };
@@ -385,16 +449,16 @@ export default function AuthModal({
             <form onSubmit={handleSignIn} className="space-y-3.5">
               <div className="space-y-1">
                 <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
-                  ইমেইল এড্রেস (Email Address)
+                  ইমেইল অথবা মোবাইল নম্বর (Email or Phone)
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@gmail.com"
+                    placeholder="example@gmail.com অথবা 017XXXXXXXX"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                 </div>
@@ -407,13 +471,22 @@ export default function AuthModal({
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
-                    type="password"
+                    type={showSignInPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignInPassword(!showSignInPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    tabIndex={-1}
+                    aria-label={showSignInPassword ? "Hide password" : "Show password"}
+                  >
+                    {showSignInPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -491,23 +564,6 @@ export default function AuthModal({
                 </div>
               </div>
 
-              {/* Student ID (Auto-generated) */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
-                  স্টুডেন্ট আইডি (Student ID)
-                </label>
-                <div className="relative">
-                  <IdCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                  <input
-                    type="text"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="JM-849201"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 outline-none"
-                  />
-                </div>
-              </div>
-
               {/* Password */}
               <div className="space-y-1">
                 <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
@@ -516,13 +572,22 @@ export default function AuthModal({
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
-                    type="password"
+                    type={showSignUpPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="অন্তত ৬ অক্ষরের পাসওয়ার্ড"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    tabIndex={-1}
+                    aria-label={showSignUpPassword ? "Hide password" : "Show password"}
+                  >
+                    {showSignUpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -534,13 +599,22 @@ export default function AuthModal({
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
-                    type="password"
+                    type={showSignUpConfirmPassword ? "text" : "password"}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="পাসওয়ার্ড নিশ্চিত করুন"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignUpConfirmPassword(!showSignUpConfirmPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    tabIndex={-1}
+                    aria-label={showSignUpConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showSignUpConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
