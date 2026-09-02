@@ -45,6 +45,9 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Job Master",
   },
+  verification: {
+    google: "6jsJ56m1WHmwBZgqSaOYzCmP2SzPrizvTIQpJxf4N0I",
+  },
 };
 
 export const viewport: Viewport = {
@@ -161,6 +164,10 @@ export default function RootLayout({
   return (
     <html lang="bn">
       <head>
+        <meta
+          name="google-site-verification"
+          content="6jsJ56m1WHmwBZgqSaOYzCmP2SzPrizvTIQpJxf4N0I"
+        />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" type="image/png" sizes="192x192" href="/api/icons/icon-192.png" />
         <link rel="apple-touch-icon" href="/api/icons/apple-icon.png" />
