@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="960" viewBox="0 0 460 960">
+  <defs>
+    <!-- Background Gradient for Phone Body -->
+    <linearGradient id="phone-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Glass Bezel Highlight -->
+    <linearGradient id="bezel-highlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#64748B" stop-opacity="0.8" />
+      <stop offset="20%" stop-color="#334155" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9" />
+    </linearGradient>
+
+    <linearGradient id="primary-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7A1A" />
+      <stop offset="100%" stop-color="#FF5400" />
+    </linearGradient>
+
+    <linearGradient id="navy-card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <filter id="soft-shadow" x="-8%" y="-8%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.12" />
+    </filter>
+
+    <filter id="orange-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#FF5400" flood-opacity="0.35" />
+    </filter>
+
+    <clipPath id="screen-clip">
+      <rect x="8" y="8" width="444" height="944" rx="40" />
+    </clipPath>
+  </defs>
+
+  <!-- External Phone Chassis -->
+  <rect x="0" y="0" width="460" height="960" rx="46" fill="url(#phone-body)" />
+  <rect x="2" y="2" width="456" height="956" rx="45" fill="none" stroke="url(#bezel-highlight)" stroke-width="2.5" />
+
+  <!-- Inner Screen Content Clipped to Bezel -->
+  <g clip-path="url(#screen-clip)">
+    <!-- Screen Canvas Background -->
+    <rect x="8" y="8" width="444" height="944" fill="#F8FAFC" />
+
+    <!-- Actual Screen Content -->
+    
+  <!-- Top Circulars Header -->
+  <rect x="8" y="8" width="444" height="120" fill="url(#navy-card)" />
+  <g transform="translate(28, 56)">
+    <!-- Brand -->
+    <text x="0" y="16" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="900" font-size="17" fill="#FFFFFF">চাকরির খবর ও সার্কুলার</text>
+    <text x="0" y="32" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#FF7A1A">দৈনিক কারেন্ট অ্যাফেয়ার্স ও নিয়োগ বিজ্ঞপ্তি</text>
+
+    <g transform="translate(340, 2)">
+      <rect x="0" y="0" width="64" height="28" rx="14" fill="#1E293B" stroke="#334155" stroke-width="1" />
+      <text x="32" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#10B981" text-anchor="middle">নতুন ৪টি</text>
+    </g>
+
+    <!-- Search Input Inside Header -->
+    <g transform="translate(0, 44)">
+      <rect x="0" y="0" width="404" height="34" rx="17" fill="#1E293B" stroke="#334155" stroke-width="1" />
+      <text x="14" y="22" font-size="13">🔍</text>
+      <text x="36" y="22" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="12" fill="#94A3B8">চাকরি বা সার্কুলার সার্চ করুন...</text>
+    </g>
+  </g>
+
+  <!-- Filter Pills -->
+  <g transform="translate(28, 146)">
+    <!-- Tab 1: All (Active) -->
+    <rect x="0" y="0" width="60" height="28" rx="14" fill="#FF5400" />
+    <text x="30" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#FFFFFF" text-anchor="middle">সকল</text>
+
+    <!-- Tab 2: Govt -->
+    <rect x="68" y="0" width="85" height="28" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="110" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#475569" text-anchor="middle">🏛️ সরকারি</text>
+
+    <!-- Tab 3: Bank -->
+    <rect x="161" y="0" width="75" height="28" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="198" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#475569" text-anchor="middle">🏦 ব্যাংক</text>
+
+    <!-- Tab 4: GK Capsule -->
+    <rect x="244" y="0" width="125" height="28" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="306" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#475569" text-anchor="middle">⚡ কারেন্ট অ্যাফেয়ার্স</text>
+  </g>
+
+  <!-- Circular Card 1 (Govt Special) -->
+  <g transform="translate(28, 192)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="135" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    
+    <!-- Top badge -->
+    <rect x="14" y="14" width="80" height="22" rx="11" fill="#EEF2FF" />
+    <text x="54" y="29" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#4F46E5" text-anchor="middle">🏛️ সরকারি চাকরি</text>
+
+    <text x="390" y="29" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11" fill="#EF4444" text-anchor="end">⏱️ শেষ তারিখ: ১৫ নভেম্বর</text>
+
+    <text x="14" y="58" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#0F172A">৪৪তম বিসিএস নন-ক্যাডার বিভিন্ন পদে নিয়োগ</text>
+    
+    <g transform="translate(14, 70)">
+      <text x="0" y="14" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11.5" fill="#64748B">পদসংখ্যা: ৩,১৪২ জন  •  বেতন স্কেল: ২২,০০০ - ৫৩,০৬০/-</text>
+    </g>
+
+    <!-- Bottom Actions -->
+    <g transform="translate(14, 96)">
+      <rect x="0" y="0" width="130" height="26" rx="13" fill="#FFF7ED" stroke="#FFEDD5" stroke-width="1" />
+      <text x="65" y="17" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#FF5400" text-anchor="middle">সার্কুলার বিস্তারিত ➔</text>
+
+      <text x="376" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11" fill="#64748B" text-anchor="end">📄 নোটিশ ডাউনলোড</text>
+    </g>
+  </g>
+
+  <!-- Circular Card 2 (Bank Special) -->
+  <g transform="translate(28, 344)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="135" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    
+    <rect x="14" y="14" width="85" height="22" rx="11" fill="#ECFDF5" />
+    <text x="56" y="29" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#059669" text-anchor="middle">🏦 ব্যাংকার্স সিলেকশন</text>
+
+    <text x="390" y="29" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11" fill="#EF4444" text-anchor="end">⏱️ শেষ তারিখ: ২৮ অক্টোবর</text>
+
+    <text x="14" y="58" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#0F172A">সোনালী ব্যাংক পিএলসি - সিনিয়র অফিসার</text>
+    
+    <g transform="translate(14, 70)">
+      <text x="0" y="14" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11.5" fill="#64748B">পদসংখ্যা: ৮৫০ জন  •  শিক্ষাগত যোগ্যতা: যেকোনো বিষয়ে মাস্টার্স</text>
+    </g>
+
+    <!-- Bottom Actions -->
+    <g transform="translate(14, 96)">
+      <rect x="0" y="0" width="130" height="26" rx="13" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1" />
+      <text x="65" y="17" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#059669" text-anchor="middle">সার্কুলার বিস্তারিত ➔</text>
+
+      <text x="376" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11" fill="#64748B" text-anchor="end">📄 নোটিশ ডাউনলোড</text>
+    </g>
+  </g>
+
+  <!-- Daily Current Affairs Digest Box -->
+  <g transform="translate(28, 498)">
+    <text x="0" y="0" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#0F172A">আজকের সেরা কারেন্ট অ্যাফেয়ার্স ক্যাপসুল</text>
+    <text x="404" y="0" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#FF5400" text-anchor="end">পিডিএফ শিট 📥</text>
+  </g>
+
+  <g transform="translate(28, 512)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="150" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+
+    <!-- Bullet 1 -->
+    <g transform="translate(16, 16)">
+      <circle cx="6" cy="6" r="4" fill="#FF5400" />
+      <text x="18" y="10" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12.5" fill="#0F172A">বাংলাদেশ অর্থনৈতিক সমীক্ষা ২০২৬-এর গুরুত্বপূর্ণ তথ্য</text>
+      <text x="18" y="24" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="10.5" fill="#64748B">মাথাপিছু আয়, জিডিপি প্রবৃদ্ধি ও রেমিট্যান্স প্রবাহ সংক্রান্ত বিশ্লেষণ</text>
+    </g>
+    <line x1="16" y1="52" x2="388" y2="52" stroke="#F1F5F9" stroke-width="1" />
+
+    <!-- Bullet 2 -->
+    <g transform="translate(16, 62)">
+      <circle cx="6" cy="6" r="4" fill="#3B82F6" />
+      <text x="18" y="10" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12.5" fill="#0F172A">জাতিসংঘ ও আন্তর্জাতিক সামিট সম্মেলন আপডেট</text>
+      <text x="18" y="24" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="10.5" fill="#64748B">কপ২৯ জলবায়ু সম্মেলন ও বৈশ্বিক পরিবেশ চুক্তি ২০২৬</text>
+    </g>
+    <line x1="16" y1="98" x2="388" y2="98" stroke="#F1F5F9" stroke-width="1" />
+
+    <!-- Bullet 3 -->
+    <g transform="translate(16, 108)">
+      <circle cx="6" cy="6" r="4" fill="#10B981" />
+      <text x="18" y="10" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12.5" fill="#0F172A">সাহিত্য ও ক্রীড়া অঙ্গনের সাম্প্রতিক পুরস্কার ও রেকর্ড</text>
+      <text x="18" y="24" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="10.5" fill="#64748B">বাংলা একাডেমি ও আন্তর্জাতিক পুরস্কারপ্রাপ্ত ব্যক্তিত্ববর্গ</text>
+    </g>
+  </g>
+
+  <!-- Circular Card 3 (Primary Teacher) -->
+  <g transform="translate(28, 680)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="96" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <rect x="14" y="14" width="95" height="22" rx="11" fill="#FEF3C7" />
+    <text x="61" y="29" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#B45309" text-anchor="middle">📚 প্রাথমিক শিক্ষা অধিদপ্তর</text>
+
+    <text x="14" y="58" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="14.5" fill="#0F172A">সহকারী শিক্ষক নিয়োগ ৩য় ধাপের চূড়ান্ত ফলাফল ও ভাইভা</text>
+    <text x="14" y="78" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11.5" fill="#FF5400">বিস্তারিত নোটিশ দেখতে ক্লিক করুন ➔</text>
+  </g>
+
+  <!-- Bottom Navigation Bar -->
+  <rect x="8" y="870" width="444" height="74" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+  <g transform="translate(8, 875)">
+    <!-- Tab 1: Home -->
+    <g transform="translate(42, 10)">
+      <text x="16" y="22" font-size="18" text-anchor="middle">🏠</text>
+      <text x="16" y="44" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#64748B" text-anchor="middle">হোম</text>
+    </g>
+
+    <!-- Tab 2: Exams -->
+    <g transform="translate(146, 10)">
+      <text x="16" y="22" font-size="18" text-anchor="middle">📝</text>
+      <text x="16" y="44" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#64748B" text-anchor="middle">পরীক্ষা</text>
+    </g>
+
+    <!-- Tab 3: Courses -->
+    <g transform="translate(250, 10)">
+      <text x="16" y="22" font-size="18" text-anchor="middle">🎓</text>
+      <text x="16" y="44" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#64748B" text-anchor="middle">কোর্স</text>
+    </g>
+
+    <!-- Tab 4: Circulars (Active) -->
+    <g transform="translate(354, 10)">
+      <circle cx="16" cy="16" r="16" fill="#FFF7ED" />
+      <text x="16" y="22" font-size="18" text-anchor="middle">📢</text>
+      <text x="16" y="44" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#FF5400" text-anchor="middle">সার্কুলার</text>
+    </g>
+  </g>
+
+
+    <!-- Dynamic Island Pill at Top -->
+    <rect x="170" y="16" width="120" height="28" rx="14" fill="#000000" />
+    <circle cx="270" cy="30" r="5" fill="#1E293B" />
+    <circle cx="195" cy="30" r="4" fill="#0F172A" />
+
+    <!-- Status Bar (09:41, Cellular, Wifi, Battery) -->
+    <text x="36" y="35" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="13" fill="#0F172A">09:41</text>
+    <g transform="translate(378, 23)">
+      <!-- Signal Bars -->
+      <rect x="0" y="8" width="3" height="4" rx="1" fill="#0F172A" />
+      <rect x="5" y="6" width="3" height="6" rx="1" fill="#0F172A" />
+      <rect x="10" y="3" width="3" height="9" rx="1" fill="#0F172A" />
+      <rect x="15" y="0" width="3" height="12" rx="1" fill="#0F172A" />
+      <!-- WiFi Icon -->
+      <path d="M 24,11 A 7,7 0 0,1 36,11 M 26,8 A 10,10 0 0,1 34,8 M 28,5 A 13,13 0 0,1 32,5" stroke="#0F172A" stroke-width="1.8" fill="none" stroke-linecap="round" />
+      <!-- Battery -->
+      <rect x="42" y="1" width="22" height="11" rx="3" fill="none" stroke="#0F172A" stroke-width="1.5" />
+      <rect x="44" y="3" width="15" height="7" rx="1.5" fill="#10B981" />
+      <path d="M 65,4.5 L 65,8.5" stroke="#0F172A" stroke-width="1.5" stroke-linecap="round" />
+    </g>
+
+    <!-- Bottom Home Indicator Bar -->
+    <rect x="160" y="938" width="140" height="4.5" rx="2.25" fill="#94A3B8" />
+  </g>
+</svg>

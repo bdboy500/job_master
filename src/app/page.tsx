@@ -2027,6 +2027,14 @@ export default function Home() {
 
       if (!view && !id && !modal) return false;
 
+      // 0. Privacy Policy deep linking (?view=privacy or ?view=privacy-policy)
+      if (view === "privacy" || view === "privacy-policy" || view === "privacy_policy") {
+        if (typeof window !== "undefined") {
+          window.location.href = "/privacy-policy";
+        }
+        return true;
+      }
+
       // 1. Live Quiz or Quiz Game deep linking (?view=live-quiz or ?view=quiz&id=...)
       if (view === "live-quiz" || view === "live_quiz" || (view === "quiz" && (!id || id === "Live Quiz Game" || id === "live" || id === "live-quiz"))) {
         initialDeepLinkHandledRef.current = true;
@@ -3345,6 +3353,57 @@ export default function Home() {
                   Database: Connected {isUsingFallback && "(Fallback)"}
                 </span>
               </div>
+
+              {/* Website Footer & Privacy Policy Links */}
+              <footer className="pt-4 pb-8 border-t border-slate-200/70 text-center space-y-2 mt-4">
+                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 text-xs font-bold text-slate-500">
+                  <button
+                    onClick={() => {
+                      setCurrentScreen("home");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="hover:text-[#FF6A00] transition-colors cursor-pointer"
+                  >
+                    Home
+                  </button>
+                  <span>•</span>
+                  <button
+                    onClick={() => {
+                      setCurrentScreen("packages");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="hover:text-[#FF6A00] transition-colors cursor-pointer"
+                  >
+                    Packages
+                  </button>
+                  <span>•</span>
+                  <Link
+                    href="/privacy-policy"
+                    prefetch={false}
+                    className="text-[#FF6A00] hover:underline font-extrabold flex items-center gap-1"
+                    id="home-footer-privacy-link"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Privacy Policy (গোপনীয়তা নীতি)</span>
+                  </Link>
+                  <span>•</span>
+                  <button
+                    onClick={() => {
+                      setActiveDrawerModal("contact");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="hover:text-[#FF6A00] transition-colors cursor-pointer"
+                  >
+                    Contact Support
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Job Master • চাকরি আপনার হাতে! • <a href="https://jobmaster.com.bd" className="hover:underline">https://jobmaster.com.bd</a>
+                </p>
+                <p className="text-[9px] text-slate-400">
+                  All Rights Reserved © 2026 Job Master • Official Support: <a href="mailto:mobileseba247@gmail.com" className="text-orange-500 font-semibold hover:underline">mobileseba247@gmail.com</a>
+                </p>
+              </footer>
 
             </div>
           )}
@@ -6919,6 +6978,21 @@ export default function Home() {
               <span>Contact Us</span>
             </button>
 
+            {/* 8. Privacy Policy */}
+            <Link
+              href="/privacy-policy"
+              prefetch={false}
+              onClick={() => {
+                setDrawerOpen(false);
+                if (soundEnabled) quizAudio.playClick();
+              }}
+              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all text-slate-800 hover:bg-slate-100 font-extrabold text-base sm:text-lg cursor-pointer"
+              id="drawer-item-privacy"
+            >
+              <ShieldCheck className="w-6 h-6 text-slate-500" />
+              <span>Privacy Policy</span>
+            </Link>
+
             {/* 9. Logout/LogIn */}
             <button
               onClick={() => {
@@ -6951,9 +7025,21 @@ export default function Home() {
           </div>
 
           {/* Drawer Footer copyright */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center">
+          <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-1.5">
+            <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500">
+              <Link
+                href="/privacy-policy"
+                prefetch={false}
+                onClick={() => setDrawerOpen(false)}
+                className="text-[#FF6A00] hover:underline transition-colors font-extrabold flex items-center gap-1"
+                id="drawer-footer-privacy-link"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                <span>Privacy Policy (গোপনীয়তা নীতি)</span>
+              </Link>
+            </div>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Job Master App v2.4</span>
-            <span className="text-[8px] text-slate-400 mt-0.5 block font-medium">All Rights Reserved © 2026</span>
+            <span className="text-[8px] text-slate-400 mt-0.5 block font-medium">All Rights Reserved © 2026 • jobmaster.com.bd</span>
           </div>
         </div>
 
@@ -7185,6 +7271,17 @@ export default function Home() {
                     >
                       Reset Local Storage Cache
                     </button>
+
+                    {/* Privacy Policy Link in Settings Modal */}
+                    <Link
+                      href="/privacy-policy"
+                      prefetch={false}
+                      onClick={() => setActiveDrawerModal("none")}
+                      className="w-full flex items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-extrabold text-[10px] py-2 rounded-xl transition-colors border border-orange-200/50 mt-1 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Privacy Policy (গোপনীয়তা নীতি)</span>
+                    </Link>
                   </div>
                 )}
 

@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="960" viewBox="0 0 460 960">
+  <defs>
+    <!-- Background Gradient for Phone Body -->
+    <linearGradient id="phone-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Glass Bezel Highlight -->
+    <linearGradient id="bezel-highlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#64748B" stop-opacity="0.8" />
+      <stop offset="20%" stop-color="#334155" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9" />
+    </linearGradient>
+
+    <linearGradient id="primary-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7A1A" />
+      <stop offset="100%" stop-color="#FF5400" />
+    </linearGradient>
+
+    <linearGradient id="navy-card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <filter id="soft-shadow" x="-8%" y="-8%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.12" />
+    </filter>
+
+    <filter id="orange-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#FF5400" flood-opacity="0.35" />
+    </filter>
+
+    <clipPath id="screen-clip">
+      <rect x="8" y="8" width="444" height="944" rx="40" />
+    </clipPath>
+  </defs>
+
+  <!-- External Phone Chassis -->
+  <rect x="0" y="0" width="460" height="960" rx="46" fill="url(#phone-body)" />
+  <rect x="2" y="2" width="456" height="956" rx="45" fill="none" stroke="url(#bezel-highlight)" stroke-width="2.5" />
+
+  <!-- Inner Screen Content Clipped to Bezel -->
+  <g clip-path="url(#screen-clip)">
+    <!-- Screen Canvas Background -->
+    <rect x="8" y="8" width="444" height="944" fill="#F8FAFC" />
+
+    <!-- Actual Screen Content -->
+    
+  <!-- Top Exam Header -->
+  <rect x="8" y="8" width="444" height="105" fill="url(#navy-card)" />
+  <g transform="translate(28, 56)">
+    <!-- Back arrow -->
+    <rect x="0" y="0" width="34" height="34" rx="17" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <text x="17" y="22" font-family="system-ui, sans-serif" font-weight="900" font-size="15" fill="#FFFFFF" text-anchor="middle">←</text>
+
+    <!-- Title -->
+    <text x="48" y="16" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#FFFFFF">৪৬তম বিসিএস স্পেশাল মডেল টেস্ট</text>
+    <text x="48" y="30" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#94A3B8">প্রশ্ন ১২ / ৫০  (২৪% সম্পন্ন)</text>
+
+    <!-- Countdown Timer Pill -->
+    <g transform="translate(290, 2)" filter="url(#orange-glow)">
+      <rect x="0" y="0" width="94" height="30" rx="15" fill="url(#primary-orange)" />
+      <text x="47" y="20" font-family="system-ui, sans-serif" font-weight="900" font-size="13" fill="#FFFFFF" text-anchor="middle">⏱️ ৩৭:৪৫</text>
+    </g>
+  </g>
+
+  <!-- Progress Bar Line -->
+  <rect x="8" y="113" width="444" height="4" fill="#1E293B" />
+  <rect x="8" y="113" width="110" height="4" fill="#FF5400" />
+
+  <!-- Subject Badge & Marks Info -->
+  <g transform="translate(28, 134)">
+    <rect x="0" y="0" width="130" height="24" rx="12" fill="#EEF2FF" />
+    <text x="65" y="16" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#4F46E5" text-anchor="middle">বাংলা ভাষা ও সাহিত্য</text>
+
+    <text x="404" y="16" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11" fill="#64748B" text-anchor="end">মান: ১.০০  |  নেগেটিভ: ০.৫০</text>
+  </g>
+
+  <!-- Question Card -->
+  <g transform="translate(28, 170)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="130" rx="18" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" />
+    <circle cx="28" cy="30" r="14" fill="#FF5400" />
+    <text x="28" y="35" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="900" font-size="12" fill="#FFFFFF" text-anchor="middle">১২</text>
+
+    <text x="54" y="32" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="16" fill="#0F172A">রবীন্দ্রনাথ ঠাকুর তাঁর কোন নাটকটি</text>
+    <text x="54" y="56" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="16" fill="#0F172A">কাজী নজরুল ইসলামকে উৎসর্গ করেছিলেন?</text>
+
+    <!-- Bookmark / Flag icon -->
+    <g transform="translate(360, 20)">
+      <circle cx="12" cy="12" r="14" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <text x="12" y="17" font-size="14" text-anchor="middle">🔖</text>
+    </g>
+
+    <!-- Hints badge -->
+    <rect x="20" y="90" width="135" height="24" rx="12" fill="#F1F5F9" />
+    <text x="67" y="106" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="10.5" fill="#475569" text-anchor="middle">💡 প্রিভিয়াস বিসিএস প্রশ্ন</text>
+  </g>
+
+  <!-- 4 Interactive Option Buttons -->
+  <g transform="translate(28, 318)">
+    <!-- Option A -->
+    <g filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="404" height="58" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" />
+      <circle cx="30" cy="29" r="15" fill="#F1F5F9" />
+      <text x="30" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#475569" text-anchor="middle">ক</text>
+      <text x="60" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="15" fill="#1E293B">রক্তকরবী</text>
+    </g>
+
+    <!-- Option B (Selected / Active) -->
+    <g transform="translate(0, 70)" filter="url(#orange-glow)">
+      <rect x="0" y="0" width="404" height="58" rx="14" fill="#FFF7ED" stroke="#FF5400" stroke-width="2" />
+      <circle cx="30" cy="29" r="15" fill="#FF5400" />
+      <text x="30" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#FFFFFF" text-anchor="middle">খ</text>
+      <text x="60" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#FF5400">বসন্ত</text>
+      <!-- Checked tick -->
+      <circle cx="370" cy="29" r="12" fill="#FF5400" />
+      <text x="370" y="33" font-family="system-ui, sans-serif" font-weight="900" font-size="12" fill="#FFFFFF" text-anchor="middle">✓</text>
+    </g>
+
+    <!-- Option C -->
+    <g transform="translate(0, 140)" filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="404" height="58" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" />
+      <circle cx="30" cy="29" r="15" fill="#F1F5F9" />
+      <text x="30" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#475569" text-anchor="middle">গ</text>
+      <text x="60" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="15" fill="#1E293B">কালের যাত্রা</text>
+    </g>
+
+    <!-- Option D -->
+    <g transform="translate(0, 210)" filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="404" height="58" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" />
+      <circle cx="30" cy="29" r="15" fill="#F1F5F9" />
+      <text x="30" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#475569" text-anchor="middle">ঘ</text>
+      <text x="60" y="34" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="15" fill="#1E293B">বিসর্জন</text>
+    </g>
+  </g>
+
+  <!-- Question Quick Palette Sheet -->
+  <g transform="translate(28, 608)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="140" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="16" y="24" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">প্রশ্ন প্যালেট ও নেভিগেশন</text>
+    <text x="388" y="24" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#10B981" text-anchor="end">১১ উত্তর দেওয়া হয়েছে</text>
+
+    <!-- Numbers Row 1 -->
+    <g transform="translate(16, 38)">
+      <!-- 1 to 10 -->
+      <circle cx="16" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="16" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">১</text>
+      <circle cx="52" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="52" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">২</text>
+      <circle cx="88" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="88" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৩</text>
+      <circle cx="124" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="124" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৪</text>
+      <circle cx="160" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="160" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৫</text>
+      <circle cx="196" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="196" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৬</text>
+      <circle cx="232" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="232" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৭</text>
+      <circle cx="268" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="268" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৮</text>
+      <circle cx="304" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="304" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">৯</text>
+      <circle cx="340" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="340" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">১০</text>
+    </g>
+
+    <!-- Numbers Row 2 -->
+    <g transform="translate(16, 76)">
+      <circle cx="16" cy="16" r="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5" />
+      <text x="16" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#10B981" text-anchor="middle">১১</text>
+      <!-- Current Active 12 -->
+      <circle cx="52" cy="16" r="14" fill="#FF5400" />
+      <text x="52" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="800" fill="#FFFFFF" text-anchor="middle">১২</text>
+      <!-- Unvisited 13 to 20 -->
+      <circle cx="88" cy="16" r="14" fill="#F1F5F9" />
+      <text x="88" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৩</text>
+      <circle cx="124" cy="16" r="14" fill="#F1F5F9" />
+      <text x="124" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৪</text>
+      <circle cx="160" cy="16" r="14" fill="#F1F5F9" />
+      <text x="160" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৫</text>
+      <circle cx="196" cy="16" r="14" fill="#F1F5F9" />
+      <text x="196" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৬</text>
+      <circle cx="232" cy="16" r="14" fill="#F1F5F9" />
+      <text x="232" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৭</text>
+      <circle cx="268" cy="16" r="14" fill="#F1F5F9" />
+      <text x="268" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৮</text>
+      <circle cx="304" cy="16" r="14" fill="#F1F5F9" />
+      <text x="304" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">১৯</text>
+      <circle cx="340" cy="16" r="14" fill="#F1F5F9" />
+      <text x="340" y="20" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#64748B" text-anchor="middle">২০</text>
+    </g>
+  </g>
+
+  <!-- Bottom Action Bar (Previous, Next, Submit) -->
+  <rect x="8" y="864" width="444" height="80" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+  <g transform="translate(28, 880)">
+    <!-- Previous Button -->
+    <rect x="0" y="0" width="110" height="46" rx="23" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1" />
+    <text x="55" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#475569" text-anchor="middle">← পূর্ববর্তী</text>
+
+    <!-- Review / Mark Button -->
+    <rect x="122" y="0" width="120" height="46" rx="23" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+    <text x="182" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#B45309" text-anchor="middle">মার্ক করুন 🔖</text>
+
+    <!-- Next Button (Primary) -->
+    <g transform="translate(254, 0)" filter="url(#orange-glow)">
+      <rect x="0" y="0" width="150" height="46" rx="23" fill="url(#primary-orange)" />
+      <text x="75" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="14" fill="#FFFFFF" text-anchor="middle">পরবর্তী প্রশ্ন ➔</text>
+    </g>
+  </g>
+
+
+    <!-- Dynamic Island Pill at Top -->
+    <rect x="170" y="16" width="120" height="28" rx="14" fill="#000000" />
+    <circle cx="270" cy="30" r="5" fill="#1E293B" />
+    <circle cx="195" cy="30" r="4" fill="#0F172A" />
+
+    <!-- Status Bar (09:41, Cellular, Wifi, Battery) -->
+    <text x="36" y="35" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="13" fill="#0F172A">09:41</text>
+    <g transform="translate(378, 23)">
+      <!-- Signal Bars -->
+      <rect x="0" y="8" width="3" height="4" rx="1" fill="#0F172A" />
+      <rect x="5" y="6" width="3" height="6" rx="1" fill="#0F172A" />
+      <rect x="10" y="3" width="3" height="9" rx="1" fill="#0F172A" />
+      <rect x="15" y="0" width="3" height="12" rx="1" fill="#0F172A" />
+      <!-- WiFi Icon -->
+      <path d="M 24,11 A 7,7 0 0,1 36,11 M 26,8 A 10,10 0 0,1 34,8 M 28,5 A 13,13 0 0,1 32,5" stroke="#0F172A" stroke-width="1.8" fill="none" stroke-linecap="round" />
+      <!-- Battery -->
+      <rect x="42" y="1" width="22" height="11" rx="3" fill="none" stroke="#0F172A" stroke-width="1.5" />
+      <rect x="44" y="3" width="15" height="7" rx="1.5" fill="#10B981" />
+      <path d="M 65,4.5 L 65,8.5" stroke="#0F172A" stroke-width="1.5" stroke-linecap="round" />
+    </g>
+
+    <!-- Bottom Home Indicator Bar -->
+    <rect x="160" y="938" width="140" height="4.5" rx="2.25" fill="#94A3B8" />
+  </g>
+</svg>

@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="960" viewBox="0 0 460 960">
+  <defs>
+    <!-- Background Gradient for Phone Body -->
+    <linearGradient id="phone-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Glass Bezel Highlight -->
+    <linearGradient id="bezel-highlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#64748B" stop-opacity="0.8" />
+      <stop offset="20%" stop-color="#334155" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9" />
+    </linearGradient>
+
+    <linearGradient id="primary-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7A1A" />
+      <stop offset="100%" stop-color="#FF5400" />
+    </linearGradient>
+
+    <linearGradient id="navy-card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <filter id="soft-shadow" x="-8%" y="-8%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.12" />
+    </filter>
+
+    <filter id="orange-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#FF5400" flood-opacity="0.35" />
+    </filter>
+
+    <clipPath id="screen-clip">
+      <rect x="8" y="8" width="444" height="944" rx="40" />
+    </clipPath>
+  </defs>
+
+  <!-- External Phone Chassis -->
+  <rect x="0" y="0" width="460" height="960" rx="46" fill="url(#phone-body)" />
+  <rect x="2" y="2" width="456" height="956" rx="45" fill="none" stroke="url(#bezel-highlight)" stroke-width="2.5" />
+
+  <!-- Inner Screen Content Clipped to Bezel -->
+  <g clip-path="url(#screen-clip)">
+    <!-- Screen Canvas Background -->
+    <rect x="8" y="8" width="444" height="944" fill="#F8FAFC" />
+
+    <!-- Actual Screen Content -->
+    
+  <!-- Top Result Header -->
+  <rect x="8" y="8" width="444" height="115" fill="url(#navy-card)" />
+  <g transform="translate(28, 56)">
+    <!-- Home / Back -->
+    <rect x="0" y="0" width="34" height="34" rx="17" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <text x="17" y="22" font-family="system-ui, sans-serif" font-weight="900" font-size="15" fill="#FFFFFF" text-anchor="middle">←</text>
+
+    <!-- Title -->
+    <text x="48" y="16" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="16" fill="#FFFFFF">পরীক্ষার ফলাফল ও মূল্যায়ন</text>
+    <text x="48" y="32" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="600" font-size="11" fill="#FF7A1A">৪৬তম বিসিএস পূর্ণাঙ্গ মডেল টেস্ট - ০৪</text>
+
+    <g transform="translate(320, 2)">
+      <rect x="0" y="0" width="84" height="30" rx="15" fill="#1E293B" stroke="#334155" stroke-width="1" />
+      <text x="42" y="20" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="11" fill="#10B981" text-anchor="middle">✓ সমাপ্ত</text>
+    </g>
+  </g>
+
+  <!-- Big Circular Score Display Card -->
+  <g transform="translate(28, 138)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="200" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" />
+    
+    <!-- Circular Meter (Gauge) -->
+    <g transform="translate(202, 85)">
+      <circle cx="0" cy="0" r="58" fill="none" stroke="#F1F5F9" stroke-width="10" />
+      <circle cx="0" cy="0" r="58" fill="none" stroke="#FF5400" stroke-width="10" stroke-dasharray="364" stroke-dashoffset="54" stroke-linecap="round" transform="rotate(-90)" />
+      
+      <text x="0" y="-4" font-family="system-ui, sans-serif" font-weight="900" font-size="28" fill="#0F172A" text-anchor="middle">৮৮.৫০</text>
+      <text x="0" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#64748B" text-anchor="middle">মোট ১০০</text>
+    </g>
+
+    <!-- Success Badge -->
+    <g transform="translate(132, 160)">
+      <rect x="0" y="0" width="140" height="26" rx="13" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1" />
+      <text x="70" y="18" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="12" fill="#059669" text-anchor="middle">🎉 উত্তীর্ণ (Qualified)</text>
+    </g>
+  </g>
+
+  <!-- 4 Metrics Grid -->
+  <g transform="translate(28, 354)">
+    <!-- Correct -->
+    <g filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="194" height="68" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="34" r="14" fill="#ECFDF5" />
+      <text x="26" y="39" font-family="system-ui, sans-serif" font-weight="900" font-size="12" fill="#10B981" text-anchor="middle">✓</text>
+      <text x="50" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">সঠিক উত্তর</text>
+      <text x="50" y="46" font-family="system-ui, sans-serif" font-weight="900" font-size="16" fill="#10B981">৪৬ টি</text>
+    </g>
+
+    <!-- Incorrect -->
+    <g transform="translate(210, 0)" filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="194" height="68" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="34" r="14" fill="#FEF2F2" />
+      <text x="26" y="39" font-family="system-ui, sans-serif" font-weight="900" font-size="12" fill="#EF4444" text-anchor="middle">✕</text>
+      <text x="50" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">ভুল উত্তর</text>
+      <text x="50" y="46" font-family="system-ui, sans-serif" font-weight="900" font-size="16" fill="#EF4444">৪ টি (-২.০০)</text>
+    </g>
+
+    <!-- Accuracy -->
+    <g transform="translate(0, 80)" filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="194" height="68" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="34" r="14" fill="#FFF7ED" />
+      <text x="26" y="39" font-size="13" text-anchor="middle">🎯</text>
+      <text x="50" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">নির্ভুলতার হার</text>
+      <text x="50" y="46" font-family="system-ui, sans-serif" font-weight="900" font-size="16" fill="#FF5400">৯২%</text>
+    </g>
+
+    <!-- Time Taken -->
+    <g transform="translate(210, 80)" filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="194" height="68" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="34" r="14" fill="#EEF2FF" />
+      <text x="26" y="39" font-size="13" text-anchor="middle">⏱️</text>
+      <text x="50" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">মোট সময়</text>
+      <text x="50" y="46" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="900" font-size="14" fill="#4F46E5">১৮ মি. ২৫ সে.</text>
+    </g>
+  </g>
+
+  <!-- Nationwide Rank Banner Card -->
+  <g transform="translate(28, 518)" filter="url(#orange-glow)">
+    <rect x="0" y="0" width="404" height="88" rx="16" fill="url(#navy-card)" stroke="#FF5400" stroke-width="1.5" />
+    <circle cx="42" cy="44" r="26" fill="#FF5400" fill-opacity="0.2" />
+    <text x="42" y="53" font-size="28" text-anchor="middle">🏆</text>
+
+    <text x="82" y="36" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#FFFFFF">জাতীয় মেধাতালিকায় আপনার অবস্থান</text>
+    <text x="82" y="56" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="900" font-size="20" fill="#FF7A1A">#৮ম স্থান  <tspan font-size="13" fill="#94A3B8" font-weight="600">(৪,২৬০ জন পরীক্ষার্থীর মধ্যে)</tspan></text>
+    <text x="82" y="74" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="11" fill="#10B981">✨ আপনি শীর্ষ ১% সেরা স্কোরারদের একজন!</text>
+  </g>
+
+  <!-- Subject-wise Accuracy Bars -->
+  <g transform="translate(28, 624)">
+    <text x="0" y="0" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="15" fill="#0F172A">বিষয়ভিত্তিক পারফরম্যান্স</text>
+  </g>
+
+  <g transform="translate(28, 638)" filter="url(#soft-shadow)">
+    <rect x="0" y="0" width="404" height="150" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    
+    <!-- Bar 1: Bangla -->
+    <g transform="translate(18, 14)">
+      <text x="0" y="14" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#0F172A">বাংলা ভাষা ও সাহিত্য</text>
+      <text x="368" y="14" font-family="system-ui, sans-serif" font-weight="800" font-size="12" fill="#10B981" text-anchor="end">৯৪%</text>
+      <rect x="0" y="20" width="368" height="6" rx="3" fill="#F1F5F9" />
+      <rect x="0" y="20" width="346" height="6" rx="3" fill="#10B981" />
+    </g>
+
+    <!-- Bar 2: English -->
+    <g transform="translate(18, 56)">
+      <text x="0" y="14" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#0F172A">ইংরেজি ভাষা ও সাহিত্য</text>
+      <text x="368" y="14" font-family="system-ui, sans-serif" font-weight="800" font-size="12" fill="#3B82F6" text-anchor="end">৮৮%</text>
+      <rect x="0" y="20" width="368" height="6" rx="3" fill="#F1F5F9" />
+      <rect x="0" y="20" width="323" height="6" rx="3" fill="#3B82F6" />
+    </g>
+
+    <!-- Bar 3: GK & Math -->
+    <g transform="translate(18, 98)">
+      <text x="0" y="14" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="700" font-size="12" fill="#0F172A">বাংলাদেশ ও আন্তর্জাতিক বিষয়াবলী</text>
+      <text x="368" y="14" font-family="system-ui, sans-serif" font-weight="800" font-size="12" fill="#F59E0B" text-anchor="end">৯০%</text>
+      <rect x="0" y="20" width="368" height="6" rx="3" fill="#F1F5F9" />
+      <rect x="0" y="20" width="331" height="6" rx="3" fill="#F59E0B" />
+    </g>
+  </g>
+
+  <!-- Bottom CTA Actions -->
+  <rect x="8" y="864" width="444" height="80" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+  <g transform="translate(28, 880)">
+    <!-- Review Answers Button -->
+    <g filter="url(#orange-glow)">
+      <rect x="0" y="0" width="230" height="46" rx="23" fill="url(#primary-orange)" />
+      <text x="115" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#FFFFFF" text-anchor="middle">সঠিক সমাধান ও ব্যাখ্যা ➔</text>
+    </g>
+
+    <!-- Share Result Button -->
+    <g transform="translate(244, 0)">
+      <rect x="0" y="0" width="160" height="46" rx="23" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1" />
+      <text x="80" y="28" font-family="'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif" font-weight="800" font-size="13" fill="#475569" text-anchor="middle">শেয়ার করুন 📤</text>
+    </g>
+  </g>
+
+
+    <!-- Dynamic Island Pill at Top -->
+    <rect x="170" y="16" width="120" height="28" rx="14" fill="#000000" />
+    <circle cx="270" cy="30" r="5" fill="#1E293B" />
+    <circle cx="195" cy="30" r="4" fill="#0F172A" />
+
+    <!-- Status Bar (09:41, Cellular, Wifi, Battery) -->
+    <text x="36" y="35" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="13" fill="#0F172A">09:41</text>
+    <g transform="translate(378, 23)">
+      <!-- Signal Bars -->
+      <rect x="0" y="8" width="3" height="4" rx="1" fill="#0F172A" />
+      <rect x="5" y="6" width="3" height="6" rx="1" fill="#0F172A" />
+      <rect x="10" y="3" width="3" height="9" rx="1" fill="#0F172A" />
+      <rect x="15" y="0" width="3" height="12" rx="1" fill="#0F172A" />
+      <!-- WiFi Icon -->
+      <path d="M 24,11 A 7,7 0 0,1 36,11 M 26,8 A 10,10 0 0,1 34,8 M 28,5 A 13,13 0 0,1 32,5" stroke="#0F172A" stroke-width="1.8" fill="none" stroke-linecap="round" />
+      <!-- Battery -->
+      <rect x="42" y="1" width="22" height="11" rx="3" fill="none" stroke="#0F172A" stroke-width="1.5" />
+      <rect x="44" y="3" width="15" height="7" rx="1.5" fill="#10B981" />
+      <path d="M 65,4.5 L 65,8.5" stroke="#0F172A" stroke-width="1.5" stroke-linecap="round" />
+    </g>
+
+    <!-- Bottom Home Indicator Bar -->
+    <rect x="160" y="938" width="140" height="4.5" rx="2.25" fill="#94A3B8" />
+  </g>
+</svg>

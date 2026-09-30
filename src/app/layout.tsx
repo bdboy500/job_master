@@ -84,7 +84,7 @@ const structuredData = {
       "@id": "https://jobmaster.com.bd/#sitelinks",
       "name": "Job Master Sitelinks & Navigation",
       "description": "জব মাস্টার প্ল্যাটফর্মের মূল সেকশন ও কোর্সসমূহ",
-      "numberOfItems": 6,
+      "numberOfItems": 7,
       "itemListElement": [
         {
           "@type": "SiteNavigationElement",
@@ -133,6 +133,14 @@ const structuredData = {
           "alternateName": "Contact Us",
           "description": "যেকোনো জিজ্ঞাসা, হেল্পলাইন ও সহায়তায় জব মাস্টার টিমের সাথে যোগাযোগ করুন।",
           "url": "https://jobmaster.com.bd/?view=contact",
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 7,
+          "name": "গোপনীয়তা নীতি (Privacy Policy)",
+          "alternateName": "Privacy Policy",
+          "description": "জব মাস্টার প্ল্যাটফর্মের অফিসিয়াল গোপনীয়তা ও ডেটা পলিসি।",
+          "url": "https://jobmaster.com.bd/privacy-policy",
         },
       ],
     },
