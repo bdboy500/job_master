@@ -201,7 +201,7 @@ export default function PrivacyPolicyView({ onBack }: PrivacyPolicyViewProps) {
                   খ. Google Analytics (GA4) ট্র্যাকিং ডাটা
                 </h4>
                 <p className="text-slate-600 text-[11px] sm:text-xs leading-relaxed font-medium">
-                  আমাদের সাইট ও অ্যাপের কার্যকারিতা বজায় রাখতে আমরা <strong>Google Analytics 4 (GA4)</strong> ট্র্যাকিং (ID: <code>G-YEC598XFK7</code>) ব্যবহার করি। এর মাধ্যমে কোন কুইজ ও কোর্সগুলো বেশি ব্যবহৃত হচ্ছে, অ্যাপে কোনো ক্র্যাশ বা প্রযুক্তিগত ত্রুটি ঘটছে কি না তা সামগ্রিক ও পরিচয়বিহীন (Aggregated Anonymous) হিসেবে ট্র্যাক করা হয়।
+                  আমাদের সাইট ও অ্যাপের কার্যকারিতা বজায় রাখতে আমরা <strong>Google Analytics 4 (GA4)</strong> ব্যবহার করি। এর মাধ্যমে কোন কুইজ ও কোর্সগুলো বেশি ব্যবহৃত হচ্ছে, অ্যাপে কোনো ক্র্যাশ বা প্রযুক্তিগত ত্রুটি ঘটছে কি না তা সামগ্রিক ও পরিচয়বিহীন (Aggregated Anonymous) হিসেবে ট্র্যাক করা হয়।
                 </p>
               </div>
             </div>
@@ -256,7 +256,7 @@ export default function PrivacyPolicyView({ onBack }: PrivacyPolicyViewProps) {
                   ২. Google AdSense & Cookies Policy
                 </h4>
                 <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
-                  Publisher: ca-pub-5102509921466107
+                  Certified Google Network
                 </span>
               </div>
               <p className="text-slate-600 text-[11px] sm:text-xs leading-relaxed font-medium">

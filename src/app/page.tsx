@@ -67,7 +67,9 @@ import {
   Tv,
   Film,
   WifiOff,
-  Share2
+  Share2,
+  MessageCircle,
+  Mail
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -91,6 +93,9 @@ const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView")
   ssr: false 
 });
 const PrivacyPolicyView = dynamic(() => import("@/src/components/PrivacyPolicyView"), { 
+  ssr: false 
+});
+const ContactUsView = dynamic(() => import("@/src/components/ContactUsView"), { 
   ssr: false 
 });
 const AuthModal = dynamic(() => import("../components/AuthModal"), { ssr: false });
@@ -398,13 +403,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -2298,8 +2303,8 @@ export default function Home() {
       if (view === "contact" || modal === "contact") {
         initialDeepLinkHandledRef.current = true;
         pendingDeepLinkRef.current = null;
-        setActiveDrawerModal("contact");
-        setDrawerOpen(true);
+        setCurrentScreen("contact");
+        setDrawerOpen(false);
         return true;
       }
 
@@ -2655,7 +2660,7 @@ export default function Home() {
                   setDrawerOpen(false);
                   const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
                   setCurrentScreen(dest);
-                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy") {
+                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy" || currentScreen === "contact") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
                 } else {
@@ -2666,7 +2671,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -2738,6 +2743,10 @@ export default function Home() {
                     <>
                       Privacy <span className="text-[#FF6A00]">Policy</span>
                     </>
+                  ) : currentScreen === "contact" ? (
+                    <>
+                      Contact & <span className="text-[#FF6A00]">Support</span>
+                    </>
                   ) : (
                     <>
                       Job <span className="text-[#FF6A00]">Master</span>
@@ -2767,6 +2776,8 @@ export default function Home() {
                     ? "NOTICES & ANNOUNCEMENTS"
                     : currentScreen === "privacy-policy"
                     ? "গোপনীয়তা নীতি ও ডেটা সুরক্ষা"
+                    : currentScreen === "contact"
+                    ? "যোগাযোগ ও কাস্টমার কেয়ার"
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -2881,25 +2892,6 @@ export default function Home() {
               title="লিংক শেয়ার করুন"
             >
               <Share2 className="w-5 h-5 stroke-[2.2px]" />
-            </button>
-
-            <button 
-              onClick={() => {
-                setDrawerOpen(false);
-                if (currentScreen === "search") {
-                  setCurrentScreen(previousScreen || "home");
-                } else {
-                  setPreviousScreen(currentScreen);
-                  setCurrentScreen("search");
-                }
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className={`p-2 rounded-xl active:scale-95 transition-all cursor-pointer ${
-                currentScreen === "search" ? "bg-orange-50 text-[#FF6A00]" : "text-slate-600 hover:bg-slate-100"
-              }`}
-              title="খুঁজুন"
-            >
-              <Search className="w-[#1E293B] h-5 stroke-[2.2px]" />
             </button>
 
             <button 
@@ -6779,6 +6771,13 @@ export default function Home() {
             <PrivacyPolicyView onBack={() => setCurrentScreen("home")} />
           )}
 
+          {/* ========================================================= */}
+          {/* 11. SCREEN: CONTACT US VIEW                               */}
+          {/* ========================================================= */}
+          {currentScreen === "contact" && (
+            <ContactUsView onBack={() => setCurrentScreen("home")} />
+          )}
+
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -6932,14 +6931,20 @@ export default function Home() {
             {/* 7. Contact Us */}
             <button
               onClick={() => {
-                setActiveDrawerModal("contact");
-                setDrawerOpen(false);
+                attemptExitQuiz(() => {
+                  setDrawerOpen(false);
+                  setCurrentScreen("contact");
+                });
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all text-slate-800 hover:bg-slate-100 font-extrabold text-base sm:text-lg"
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-all ${
+                currentScreen === "contact"
+                  ? "bg-orange-50 text-[#FF6A00] font-black"
+                  : "text-slate-800 hover:bg-slate-100 font-extrabold"
+              } text-base sm:text-lg cursor-pointer`}
               id="drawer-item-contact"
             >
-              <HelpCircle className="w-6 h-6 text-slate-500" />
+              <HelpCircle className={`w-6 h-6 ${currentScreen === "contact" ? "text-[#FF6A00]" : "text-slate-500"}`} />
               <span>Contact Us</span>
             </button>
 
@@ -6971,27 +6976,6 @@ export default function Home() {
                   <span>LogIn</span>
                 </>
               )}
-            </button>
-
-            {/* 9. Privacy Policy (At the bottom of drawer items) */}
-            <button
-              type="button"
-              onClick={() => {
-                attemptExitQuiz(() => {
-                  setDrawerOpen(false);
-                  setCurrentScreen("privacy-policy");
-                });
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
-                currentScreen === "privacy-policy"
-                  ? "bg-orange-50 text-[#FF6A00] font-black"
-                  : "text-slate-600 hover:text-[#FF6A00] hover:bg-orange-50/60 font-bold"
-              } text-sm cursor-pointer mt-1`}
-              id="drawer-item-privacy"
-            >
-              <ShieldCheck className={`w-5 h-5 ${currentScreen === "privacy-policy" ? "text-[#FF6A00]" : "text-slate-400"}`} />
-              <span>Privacy Policy (গোপনীয়তা নীতি)</span>
             </button>
           </div>
 
@@ -7037,7 +7021,6 @@ export default function Home() {
                   {activeDrawerModal === "language" && "Select Language"}
                   {activeDrawerModal === "settings" && "Application Settings"}
                   {activeDrawerModal === "ourapps" && "More Apps by Us"}
-                  {activeDrawerModal === "contact" && "Contact Support"}
                 </span>
                 <button 
                   onClick={() => {
@@ -7247,21 +7230,6 @@ export default function Home() {
                     >
                       Reset Local Storage Cache
                     </button>
-
-                    {/* Privacy Policy Link in Settings Modal */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveDrawerModal("none");
-                        setDrawerOpen(false);
-                        setCurrentScreen("privacy-policy");
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="w-full flex items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-extrabold text-[10px] py-2 rounded-xl transition-colors border border-orange-200/50 mt-1 cursor-pointer"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>Privacy Policy (গোপনীয়তা নীতি)</span>
-                    </button>
                   </div>
                 )}
 
@@ -7299,48 +7267,6 @@ export default function Home() {
                         Install
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* 6. CONTACT US MODAL */}
-                {activeDrawerModal === "contact" && (
-                  <div className="space-y-2.5 text-[11px] text-slate-700">
-                    <p className="text-slate-500 text-[10px] leading-relaxed font-semibold">
-                      Need help? Get in touch with our team directly. We are active 24/7!
-                    </p>
-
-                    <div className="space-y-1.5 font-bold text-slate-700">
-                      <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <span className="text-slate-400">Support Email</span>
-                        <a href="mailto:support@jobmaster.com" className="text-orange-600 hover:underline">support@jobmaster.com</a>
-                      </div>
-                      <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <span className="text-slate-400">WhatsApp Hotline</span>
-                        <span className="text-orange-600">+880 1712-345678</span>
-                      </div>
-                    </div>
-
-                    <form 
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        alert("Message sent successfully! Our support agents will contact you shortly.");
-                        setActiveDrawerModal("none");
-                      }}
-                      className="space-y-1.5 pt-2 border-t border-slate-100"
-                    >
-                      <input 
-                        type="text" 
-                        placeholder="Your Query / Issue" 
-                        required 
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-orange-500 text-[10px] font-semibold"
-                      />
-                      <button 
-                        type="submit"
-                        className="w-full text-center bg-orange-500 hover:bg-orange-600 text-white font-black text-[10px] py-1.5 rounded-lg shadow transition-all active:scale-95"
-                      >
-                        Send Message
-                      </button>
-                    </form>
                   </div>
                 )}
 
@@ -8642,18 +8568,28 @@ export default function Home() {
                 </div>
               </div>
               <div className="space-y-3 pt-2 text-xs font-bold text-slate-700">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span>{"\uD83D\uDCE7"} ইমেইল সাপোর্ট:</span>
-                  <span className="font-mono text-[#FF6A00]">support@jobmaster.app</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span>{"\uD83D\uDCF1"} হেল্পলাইন:</span>
-                  <span className="font-mono text-[#FF6A00]">+880 1700-000000</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span>{"\uD83C\uDF10"} ফেসবুক পেজ:</span>
-                  <span className="text-blue-600">fb.com/jobmasterapp</span>
-                </div>
+                <a
+                  href="mailto:mobileseba247@gmail.com"
+                  className="p-3 bg-slate-50 hover:bg-orange-50/50 rounded-xl border border-slate-100 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[#FF6A00]" />
+                    <span>ইমেইল সাপোর্ট:</span>
+                  </span>
+                  <span className="font-mono text-[#FF6A00] text-xs">mobileseba247@gmail.com</span>
+                </a>
+                <a
+                  href="https://wa.me/8801830235681"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-emerald-50/60 hover:bg-emerald-100/60 rounded-xl border border-emerald-200 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-[#25D366] fill-[#25D366]" />
+                    <span className="text-emerald-900 font-extrabold">WhatsApp হেল্পলাইন:</span>
+                  </span>
+                  <span className="font-mono text-emerald-700 font-black text-xs">01830235681</span>
+                </a>
               </div>
               <button
                 onClick={() => setShowContactModal(false)}

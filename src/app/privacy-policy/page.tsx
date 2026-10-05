@@ -243,7 +243,7 @@ export default function PrivacyPolicyPage() {
                     খ. Google Analytics (GA4) ট্র্যাকিং ডাটা
                   </h3>
                   <p className="text-slate-600 text-[11px] sm:text-xs leading-relaxed font-medium">
-                    অ্যাপ ও ওয়েবসাইটের ইউজার এক্সপেরিয়েন্স উন্নত করতে আমরা <strong>Google Analytics (GA4)</strong> ব্যবহার করি (ট্যাগ আইডি: <code>G-YEC598XFK7</code>)। এর মাধ্যমে ইউজার কোন কোন পেজ বা কুইজে বেশি সময় ব্যয় করছেন, ত্রুটি বা ক্র্যাশ হচ্ছে কি না তা সামগ্রিক ও অনামী (Anonymous Aggregated) পরিসংখ্যান হিসেবে সংরক্ষিত হয়। কোনো ব্যক্তিগত গোপনীয় তথ্য এতে স্টোর করা হয় না।
+                    অ্যাপ ও ওয়েবসাইটের ইউজার এক্সপেরিয়েন্স উন্নত করতে আমরা <strong>Google Analytics (GA4)</strong> ব্যবহার করি। এর মাধ্যমে ইউজার কোন কোন পেজ বা কুইজে বেশি সময় ব্যয় করছেন, ত্রুটি বা ক্র্যাশ হচ্ছে কি না তা সামগ্রিক ও অনামী (Anonymous Aggregated) পরিসংখ্যান হিসেবে সংরক্ষিত হয়। কোনো ব্যক্তিগত গোপনীয় তথ্য এতে স্টোর করা হয় না।
                   </p>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function PrivacyPolicyPage() {
                     Google AdSense & DoubleClick Cookies Policy
                   </h3>
                   <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
-                    Publisher ID: ca-pub-5102509921466107
+                    Certified Google Network
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed font-medium">
