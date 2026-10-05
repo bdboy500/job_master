@@ -608,7 +608,9 @@ export function useAppNavigationHistory(
         navState.currentScreen === "search" ||
         navState.currentScreen === "notice" ||
         navState.currentScreen === "all-live-exams" ||
-        navState.currentScreen === "rankings"
+        navState.currentScreen === "rankings" ||
+        navState.currentScreen === "privacy-policy" ||
+        navState.currentScreen === "privacy"
       ) {
         handlers.setCurrentScreen("home");
         return;

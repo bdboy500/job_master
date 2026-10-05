@@ -326,6 +326,20 @@ export default function PrivacyPolicyPage() {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
+
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/60 space-y-2 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                    Google AdSense & DoubleClick Cookies Policy
+                  </h3>
+                  <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                    Publisher ID: ca-pub-5102509921466107
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed font-medium">
+                  Job Master তার সাইটে প্রাসঙ্গিক ও শিক্ষামূলক বিজ্ঞাপন পরিবেশনের উদ্দেশ্যে Google AdSense ব্যবহার করে। গুগল একজন তৃতীয় পক্ষ সরবরাহকারী হিসেবে কুকিজ (যেমন DoubleClick DART Cookie) ব্যবহার করে ব্যবহারকারীদের পূর্ববর্তী ওয়েব ভিজিটের ভিত্তিতে বিজ্ঞাপন দেখাতে পারে। ব্যবহারকারীরা চাইলে গুগল অ্যাডস সেটিংসে (<a href="https://www.google.com/settings/ads" target="_blank" rel="noreferrer" className="text-orange-600 font-bold underline">Google Ads Settings</a>) গিয়ে পারসোনালাইজড বিজ্ঞাপন বন্ধ (Opt-out) করতে পারেন।
+                </p>
+              </div>
             </div>
           </section>
 

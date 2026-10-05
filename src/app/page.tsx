@@ -90,6 +90,9 @@ const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView")
   loading: () => <LeaderboardSkeleton />,
   ssr: false 
 });
+const PrivacyPolicyView = dynamic(() => import("@/src/components/PrivacyPolicyView"), { 
+  ssr: false 
+});
 const AuthModal = dynamic(() => import("../components/AuthModal"), { ssr: false });
 const ExamStartModal = dynamic(() => import("../components/ExamStartModal"), { ssr: false });
 const IntroOffer = dynamic(() => import("../components/intro-offer"), { ssr: false });
@@ -395,13 +398,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -2028,10 +2031,10 @@ export default function Home() {
       if (!view && !id && !modal) return false;
 
       // 0. Privacy Policy deep linking (?view=privacy or ?view=privacy-policy)
-      if (view === "privacy" || view === "privacy-policy" || view === "privacy_policy") {
-        if (typeof window !== "undefined") {
-          window.location.href = "/privacy-policy";
-        }
+      if (view === "privacy" || view === "privacy-policy" || view === "privacy_policy" || modal === "privacy") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setCurrentScreen("privacy-policy");
         return true;
       }
 
@@ -2652,7 +2655,7 @@ export default function Home() {
                   setDrawerOpen(false);
                   const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
                   setCurrentScreen(dest);
-                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice") {
+                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
                 } else {
@@ -2663,7 +2666,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -2731,6 +2734,10 @@ export default function Home() {
                     <>
                       Notice <span className="text-[#FF6A00]">Board</span>
                     </>
+                  ) : currentScreen === "privacy-policy" ? (
+                    <>
+                      Privacy <span className="text-[#FF6A00]">Policy</span>
+                    </>
                   ) : (
                     <>
                       Job <span className="text-[#FF6A00]">Master</span>
@@ -2758,6 +2765,8 @@ export default function Home() {
                     ? "TOP PERFORMERS & RANKINGS"
                     : currentScreen === "notice"
                     ? "NOTICES & ANNOUNCEMENTS"
+                    : currentScreen === "privacy-policy"
+                    ? "গোপনীয়তা নীতি ও ডেটা সুরক্ষা"
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -6763,6 +6772,13 @@ export default function Home() {
             />
           )}
 
+          {/* ========================================================= */}
+          {/* 10. SCREEN: PRIVACY POLICY VIEW                           */}
+          {/* ========================================================= */}
+          {currentScreen === "privacy-policy" && (
+            <PrivacyPolicyView onBack={() => setCurrentScreen("home")} />
+          )}
+
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -6958,33 +6974,44 @@ export default function Home() {
             </button>
 
             {/* 9. Privacy Policy (At the bottom of drawer items) */}
-            <Link
-              href="/privacy-policy"
-              prefetch={false}
+            <button
+              type="button"
               onClick={() => {
-                setDrawerOpen(false);
+                attemptExitQuiz(() => {
+                  setDrawerOpen(false);
+                  setCurrentScreen("privacy-policy");
+                });
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-bold text-sm cursor-pointer mt-1"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
+                currentScreen === "privacy-policy"
+                  ? "bg-orange-50 text-[#FF6A00] font-black"
+                  : "text-slate-600 hover:text-[#FF6A00] hover:bg-orange-50/60 font-bold"
+              } text-sm cursor-pointer mt-1`}
               id="drawer-item-privacy"
             >
-              <ShieldCheck className="w-5 h-5 text-slate-400" />
+              <ShieldCheck className={`w-5 h-5 ${currentScreen === "privacy-policy" ? "text-[#FF6A00]" : "text-slate-400"}`} />
               <span>Privacy Policy (গোপনীয়তা নীতি)</span>
-            </Link>
+            </button>
           </div>
 
           {/* Drawer Footer copyright & Privacy */}
           <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-2">
-            <Link
-              href="/privacy-policy"
-              prefetch={false}
-              onClick={() => setDrawerOpen(false)}
-              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#FF6A00] transition-colors py-1.5 px-3 rounded-lg hover:bg-orange-50 border border-slate-200/80 bg-white shadow-2xs"
+            <button
+              type="button"
+              onClick={() => {
+                attemptExitQuiz(() => {
+                  setDrawerOpen(false);
+                  setCurrentScreen("privacy-policy");
+                });
+                if (soundEnabled) quizAudio.playClick();
+              }}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#FF6A00] transition-colors py-1.5 px-3 rounded-lg hover:bg-orange-50 border border-slate-200/80 bg-white shadow-2xs cursor-pointer"
               id="drawer-footer-privacy-link"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-[#FF6A00]" />
               <span>Privacy Policy (গোপনীয়তা নীতি)</span>
-            </Link>
+            </button>
             <div className="space-y-0.5">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Job Master App v2.4</span>
               <span className="text-[8px] text-slate-400 block font-medium">All Rights Reserved © 2026 • jobmaster.com.bd</span>
@@ -7222,15 +7249,19 @@ export default function Home() {
                     </button>
 
                     {/* Privacy Policy Link in Settings Modal */}
-                    <Link
-                      href="/privacy-policy"
-                      prefetch={false}
-                      onClick={() => setActiveDrawerModal("none")}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveDrawerModal("none");
+                        setDrawerOpen(false);
+                        setCurrentScreen("privacy-policy");
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
                       className="w-full flex items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-extrabold text-[10px] py-2 rounded-xl transition-colors border border-orange-200/50 mt-1 cursor-pointer"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>Privacy Policy (গোপনীয়তা নীতি)</span>
-                    </Link>
+                    </button>
                   </div>
                 )}
 
