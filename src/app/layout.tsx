@@ -187,6 +187,12 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Google AdSense Verification */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5102509921466107"
+          crossOrigin="anonymous"
+        />
         <meta
           name="google-site-verification"
           content="6jsJ56m1WHmwBZgqSaOYzCmP2SzPrizvTIQpJxf4N0I"

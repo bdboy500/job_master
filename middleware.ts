@@ -16,6 +16,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico, manifest.json, sw.js, service-worker.js, all images and static files
      */
-    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sw\\.js|service-worker\\.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico|json|js)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sw\\.js|service-worker\\.js|ads\\.txt|robots\\.txt|.*\\.(?:png|jpg|jpeg|svg|webp|ico|json|js|txt)$).*)',
   ],
 };
