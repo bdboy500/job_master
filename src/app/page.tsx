@@ -6980,7 +6980,7 @@ export default function Home() {
           </div>
 
           {/* Drawer Footer copyright & Privacy */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-2">
+          <div className="p-4 pt-3 pb-24 md:pb-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-2">
             <button
               type="button"
               onClick={() => {
@@ -6990,10 +6990,10 @@ export default function Home() {
                 });
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#FF6A00] transition-colors py-1.5 px-3 rounded-lg hover:bg-orange-50 border border-slate-200/80 bg-white shadow-2xs cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-2 px-3.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
               id="drawer-footer-privacy-link"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#FF6A00]" />
+              <ShieldCheck className="w-4 h-4 text-[#FF6A00]" />
               <span>Privacy Policy (গোপনীয়তা নীতি)</span>
             </button>
             <div className="space-y-0.5">
