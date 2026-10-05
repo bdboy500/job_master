@@ -29,16 +29,16 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Job Master - চাকরি আপনার হাতে!",
     description: "Job Master - চাকরি আপনার হাতে! বিসিএস, ব্যাংক, প্রাইমারি শিক্ষক নিয়োগ ও অন্যান্য প্রতিযোগিতামূলক পরীক্ষার প্রস্তুতি।",
-    images: ["/api/icons/icon-192.png"],
+    images: ["/icon-192.png"],
   },
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/api/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/api/icons/favicon.ico" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico" },
     ],
-    shortcut: "/api/icons/favicon.ico",
-    apple: "/api/icons/apple-icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -55,7 +55,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#FF6A00",
+  themeColor: "#0056b3",
 };
 
 // Google Sitelinks & SEO Structured Data (JSON-LD)
@@ -198,10 +198,13 @@ export default function RootLayout({
           content="6jsJ56m1WHmwBZgqSaOYzCmP2SzPrizvTIQpJxf4N0I"
         />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/api/icons/icon-192.png" />
-        <link rel="apple-touch-icon" href="/api/icons/apple-icon.png" />
-        <meta name="theme-color" content="#FF6A00" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+        <meta name="theme-color" content="#0056b3" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Job Master" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
