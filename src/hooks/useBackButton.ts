@@ -404,11 +404,6 @@ export function useAppNavigationHistory(
       !navState.quizStarted;
 
     if (isAtHomeClean) {
-      // If there are still unparsed deep link parameters in current URL during initial render, do not overwrite yet
-      const curSearch = window.location.search;
-      if (curSearch && curSearch.includes("view=")) {
-        return;
-      }
       lastStateKeyRef.current = stateKey;
       try {
         window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.pathname);
@@ -416,13 +411,25 @@ export function useAppNavigationHistory(
       return;
     }
 
-    // Only push if the state key actually changed
+    // Quiz state transitions (e.g. playing -> completed/score) should replace history instead of pushing new entries
+    const isQuizInternalTransition =
+      navState.currentScreen === "quiz" &&
+      lastStateKeyRef.current.includes("quiz_") &&
+      stateKey.includes("quiz_");
+
+    // Only push if the state key actually changed and not an internal quiz status update
     if (stateKey !== lastStateKeyRef.current) {
       lastStateKeyRef.current = stateKey;
-      pushedCountRef.current += 1;
-      try {
-        window.history.pushState({ appNav: true, key: stateKey }, "", targetUrl);
-      } catch (e) {}
+      if (isQuizInternalTransition) {
+        try {
+          window.history.replaceState({ appNav: true, key: stateKey }, "", targetUrl);
+        } catch (e) {}
+      } else {
+        pushedCountRef.current += 1;
+        try {
+          window.history.pushState({ appNav: true, key: stateKey }, "", targetUrl);
+        } catch (e) {}
+      }
     } else {
       try {
         window.history.replaceState({ appNav: true, key: stateKey }, "", targetUrl);
@@ -438,6 +445,39 @@ export function useAppNavigationHistory(
       isPopstateHandlingRef.current = true;
       if (pushedCountRef.current > 0) {
         pushedCountRef.current -= 1;
+      }
+
+      // Root Home Protection: If already at Home with no overlays/modals active, stay at Home and do NOT pop into past quiz
+      const isAlreadyCleanAtHome = navState.currentScreen === "home" &&
+        !navState.drawerOpen &&
+        (!navState.activeDrawerModal || navState.activeDrawerModal === "none") &&
+        !navState.showAuthModal &&
+        !navState.showContactModal &&
+        !navState.showAboutModal &&
+        !navState.showSearchModal &&
+        !navState.showNotificationModal &&
+        !navState.showSettingsModal &&
+        !navState.showLogoutConfirmModal &&
+        !navState.showQuitConfirmModal &&
+        !navState.isEditProfileOpen &&
+        !navState.isChangePasswordOpen &&
+        !navState.selectedLiveExamModal &&
+        !navState.takingExamModal &&
+        !navState.viewingAnswerSheetData &&
+        !navState.viewingPaperModal &&
+        !navState.archiveModalOpen &&
+        !navState.quickToolModal &&
+        !navState.selectedPurchasePkg &&
+        !navState.quizStarted;
+
+      if (isAlreadyCleanAtHome) {
+        lastStateKeyRef.current = stateKey;
+        try {
+          window.history.replaceState({ appRoot: true, key: stateKey }, "", window.location.pathname);
+        } catch (e) {}
+        handlers.setCurrentScreen("home");
+        if (handlers.setQuizStarted) handlers.setQuizStarted(false);
+        return;
       }
 
       // 0. If Exit Confirmation Warning Popup is OPEN:

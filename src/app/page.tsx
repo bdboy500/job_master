@@ -686,6 +686,11 @@ export default function Home() {
     setScore(0);
     setSubmittedCount(0);
     setCurrentScreen("home");
+    if (typeof window !== "undefined") {
+      try {
+        window.history.replaceState({ appRoot: true }, "", window.location.pathname);
+      } catch (e) {}
+    }
   }, []);
 
   // Quit Confirm Modal State
@@ -2490,23 +2495,6 @@ export default function Home() {
       }
     }
   }, [processDeepLinkQuery, examPapers, packagesList, allCoursesData, allPrepSubjectsData]);
-
-  // Global popstate and click listener to handle deep-link URL changes dynamically
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handlePopStateUrl = () => {
-      const curSearch = window.location.search;
-      if (curSearch && curSearch.includes("view=")) {
-        processDeepLinkQuery(curSearch);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopStateUrl);
-    return () => {
-      window.removeEventListener("popstate", handlePopStateUrl);
-    };
-  }, [processDeepLinkQuery]);
 
   // Handle option select - Instant feedback & score update
   const handleSelectOption = (index: number) => {
