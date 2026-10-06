@@ -8,13 +8,14 @@ export async function GET(request: NextRequest) {
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
 
-  // Lightweight HTML page that notifies opener / BroadcastChannel and self-closes
+  // Lightweight HTML page that notifies opener / BroadcastChannel or self-exchanges in Android WebView
   const html = `<!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="utf-8">
   <title>লগইন সম্পন্ন হচ্ছে - Job Master</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -58,10 +59,10 @@ export async function GET(request: NextRequest) {
   <div class="card">
     <div class="spinner"></div>
     <h2>লগইন সম্পন্ন হচ্ছে...</h2>
-    <p>অনুগ্রহ করে কয়েক মুহূর্ত অপেক্ষা করুন। এই উইন্ডোটি স্বয়ংক্রিয়ভাবে বন্ধ হয়ে যাবে।</p>
+    <p>অনুগ্রহ করে কয়েক মুহূর্ত অপেক্ষা করুন। অ্যাপে ফিরে যাওয়া হচ্ছে...</p>
   </div>
   <script>
-    (function() {
+    (async function() {
       var code = ${JSON.stringify(code)};
       var error = ${JSON.stringify(error)};
       var errorDescription = ${JSON.stringify(errorDescription)};
@@ -77,16 +78,17 @@ export async function GET(request: NextRequest) {
         errorDescription: errorDescription
       };
 
-      // 1. PostMessage to opener window if accessible
+      var hasOpener = false;
       try {
-        if (window.opener && window.opener !== window) {
+        if (window.opener && window.opener !== window && !window.opener.closed) {
           window.opener.postMessage(payload, "*");
+          hasOpener = true;
         }
       } catch (e) {
-        console.warn("Opener postMessage error:", e);
+        console.warn("Opener postMessage notice:", e);
       }
 
-      // 2. Broadcast via BroadcastChannel (works even if opener is severed by cross-origin redirect)
+      // BroadcastChannel across windows/tabs
       try {
         if (typeof BroadcastChannel !== "undefined") {
           var bc = new BroadcastChannel("jobmaster_auth_channel");
@@ -95,11 +97,9 @@ export async function GET(request: NextRequest) {
             try { bc.close(); } catch (err) {}
           }, 500);
         }
-      } catch (e) {
-        console.warn("BroadcastChannel error:", e);
-      }
+      } catch (e) {}
 
-      // 3. Fallback: Save to localStorage signal
+      // Fallback: Save to localStorage signal
       try {
         localStorage.setItem("jobmaster_oauth_signal", JSON.stringify({
           time: Date.now(),
@@ -109,12 +109,86 @@ export async function GET(request: NextRequest) {
         }));
       } catch (e) {}
 
-      // Auto-close popup after short delay
+      // Check if Android WebView or standalone navigation (no opener)
+      var isAndroidWebView = Boolean(window.AndroidInterface) || !hasOpener;
+
+      if (isAndroidWebView) {
+        // Complete session in current WebView window
+        try {
+          if (window.supabase) {
+            var sb = window.supabase.createClient(
+              "https://cqwssqcpxrwkivrrmuou.supabase.co",
+              "sb_publishable_LmhA6lMdI1LwZ4SnCaiPMg_0Fu5Saze"
+            );
+
+            if (code) {
+              try {
+                var ex = await sb.auth.exchangeCodeForSession(code);
+                if (ex && ex.data && ex.data.session) {
+                  var user = ex.data.session.user;
+                  var profRes = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+                  var prof = profRes.data || {
+                    id: user.id,
+                    email: user.email || "",
+                    full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "শিক্ষার্থী",
+                    phone_number: user.user_metadata?.phone_number || "",
+                    student_id: "JM-" + Math.floor(100000 + Math.random() * 900000),
+                    role: "Student",
+                    status: "Active"
+                  };
+                  localStorage.setItem("job_master_current_user", JSON.stringify(prof));
+                }
+              } catch (exErr) {
+                console.warn("Exchange code notice:", exErr);
+              }
+            } else if (hash && hash.includes("access_token=")) {
+              try {
+                var hashStr = hash.startsWith("#") ? hash.substring(1) : hash;
+                var params = new URLSearchParams(hashStr);
+                var at = params.get("access_token");
+                var rt = params.get("refresh_token");
+                if (at && rt) {
+                  await sb.auth.setSession({ access_token: at, refresh_token: rt });
+                  var uRes = await sb.auth.getUser();
+                  if (uRes && uRes.data && uRes.data.user) {
+                    var user = uRes.data.user;
+                    var profRes = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+                    var prof = profRes.data || {
+                      id: user.id,
+                      email: user.email || "",
+                      full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "শিক্ষার্থী",
+                      phone_number: user.user_metadata?.phone_number || "",
+                      student_id: "JM-" + Math.floor(100000 + Math.random() * 900000),
+                      role: "Student",
+                      status: "Active"
+                    };
+                    localStorage.setItem("job_master_current_user", JSON.stringify(prof));
+                  }
+                }
+              } catch (hashErr) {
+                console.warn("Hash session notice:", hashErr);
+              }
+            }
+          }
+        } catch (authErr) {
+          console.warn("Direct auth exchange warning:", authErr);
+        }
+
+        // Instantly navigate back to home page
+        window.location.replace("/");
+        return;
+      }
+
+      // If desktop popup window:
       setTimeout(function() {
         try {
           window.close();
         } catch (e) {}
-      }, 750);
+        // Fallback if window.close was ignored
+        setTimeout(function() {
+          window.location.replace("/");
+        }, 500);
+      }, 700);
     })();
   </script>
 </body>

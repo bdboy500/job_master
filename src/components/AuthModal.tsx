@@ -357,6 +357,19 @@ export default function AuthModal({
           return;
         }
 
+        // Check if running inside Android WebView (e.g. Kotlin app with AndroidInterface)
+        const isAndroidWebView = typeof window !== "undefined" && (
+          Boolean((window as any).AndroidInterface) || 
+          navigator.userAgent.includes("; wv") ||
+          (navigator.userAgent.includes("Android") && navigator.userAgent.includes("Version/"))
+        );
+
+        if (isAndroidWebView) {
+          // In Android WebView, navigate directly in the current window
+          window.location.href = data.url;
+          return;
+        }
+
         // Open in popup window so Google Accounts won't be blocked by X-Frame-Options
         const popup = window.open(
           data.url,
