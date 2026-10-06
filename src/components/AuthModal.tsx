@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Lock, Mail, Phone, User, IdCard, LogIn, UserPlus, Sparkles, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { getSupabase } from "../lib/supabase";
 import { UserProfile, generateStudentId, upsertUserProfile, fetchUserProfile } from "../lib/user_profiles";
+import { loginUserAccount, registerUserAccount } from "../lib/user_auth";
 import { useModalHistory } from "../hooks/useBackButton";
 
 interface AuthModalProps {
@@ -244,197 +245,21 @@ export default function AuthModal({
     setIsSubmitting(true);
 
     try {
-      const supabase = getSupabase();
-      let targetEmail = inputVal;
-
-      // Determine if the input is a mobile phone number or student ID instead of an email
-      const isPhoneOrId = !inputVal.includes("@");
-      const cleanPhone = inputVal.replace(/[\s-]/g, "");
-      const digitsOnly = cleanPhone.replace(/\D/g, "");
-      const bdNormalizedPhone = digitsOnly.startsWith("880") ? digitsOnly.slice(2) : digitsOnly;
-
-      if (isPhoneOrId) {
-        // 1. Check local registered users list first
-        const localUsersRaw = typeof window !== "undefined" ? localStorage.getItem("job_master_registered_users") : null;
-        const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
-        const localMatched = localUsers.find((u) => {
-          const uPhone = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
-          const isPhoneMatch = bdNormalizedPhone && uPhone && (uPhone === bdNormalizedPhone || uPhone.endsWith(bdNormalizedPhone));
-          const isIdMatch = u.student_id && u.student_id.toLowerCase() === inputVal.toLowerCase();
-          return isPhoneMatch || isIdMatch;
-        });
-
-        if (localMatched?.email) {
-          targetEmail = localMatched.email;
-        } else if (supabase) {
-          // 2. Query Supabase profiles table for matching phone or student_id with 4s timeout
-          try {
-            const timeoutQuery = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 4000));
-            const queryPromise = supabase
-              .from("profiles")
-              .select("id, email, phone_number, student_id, full_name, role, status")
-              .or(`phone_number.eq.${cleanPhone},phone_number.eq.${bdNormalizedPhone},phone_number.eq.+88${bdNormalizedPhone},student_id.eq.${inputVal}`)
-              .maybeSingle();
-
-            const { data: dbProfile }: any = await Promise.race([queryPromise, timeoutQuery]);
-
-            if (dbProfile?.email) {
-              targetEmail = dbProfile.email;
-            }
-          } catch (dbErr) {
-            console.warn("Phone lookup in profiles error:", dbErr);
-          }
-        }
-
-        // If phone or student ID did not match any registered email address:
-        if (!targetEmail.includes("@")) {
-          // Check local fallback
-          const matched = localUsers.find((u) => {
-            const uPhoneClean = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
-            const uPhoneMatch = bdNormalizedPhone && uPhoneClean === bdNormalizedPhone;
-            const uIdMatch = u.student_id && u.student_id.toLowerCase() === inputVal.toLowerCase();
-            return uPhoneMatch || uIdMatch;
-          });
-
-          if (matched) {
-            if (matched.status === "Banned") {
-              setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
-              setIsSubmitting(false);
-              return;
-            }
-            localStorage.setItem("job_master_current_user", JSON.stringify(matched));
-            onAuthSuccess(matched);
-            setIsSubmitting(false);
-            onClose();
-            return;
-          }
-
-          setErrorMsg("এই মোবাইল নম্বর বা আইডি দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে সঠিক নম্বর দিন অথবা সাইন-আপ করুন।");
-          setIsSubmitting(false);
-          return;
-        }
+      const result = await loginUserAccount(inputVal, password.trim());
+      if (!result.success || !result.user) {
+        setErrorMsg(result.error || "লগইন করতে সমস্যা হয়েছে। অনুগ্রহ করে সঠিক পাসওয়ার্ড দিন।");
+        setIsSubmitting(false);
+        return;
       }
 
-      if (supabase) {
-        try {
-          const timeoutAuth = new Promise((_, reject) => setTimeout(() => reject(new Error("NETWORK_TIMEOUT")), 8000));
-          const authPromise = supabase.auth.signInWithPassword({
-            email: targetEmail.trim(),
-            password: password.trim(),
-          });
-
-          const { data: authData, error: authError }: any = await Promise.race([authPromise, timeoutAuth]);
-
-          if (authError) {
-            console.warn("Supabase auth error:", authError.message);
-            // Fallback check against local users if Supabase auth fails or is not enabled
-            const localUsersRaw = localStorage.getItem("job_master_registered_users");
-            const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
-            const matched = localUsers.find((u) => {
-              const uEmailMatch = u.email.toLowerCase() === targetEmail.toLowerCase();
-              const uPhoneClean = (u.phone_number || "").replace(/\D/g, "").replace(/^88/, "");
-              const uPhoneMatch = bdNormalizedPhone && uPhoneClean === bdNormalizedPhone;
-              return uEmailMatch || uPhoneMatch;
-            });
-
-            if (matched) {
-              if (matched.status === "Banned") {
-                setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
-                setIsSubmitting(false);
-                return;
-              }
-              localStorage.setItem("job_master_current_user", JSON.stringify(matched));
-              onAuthSuccess(matched);
-              setIsSubmitting(false);
-              onClose();
-              return;
-            }
-
-            // Check if account might have been created via Google
-            if (authError.message.includes("Invalid login credentials")) {
-              try {
-                const { data: prof } = await supabase
-                  .from("profiles")
-                  .select("email, full_name")
-                  .eq("email", targetEmail.trim())
-                  .maybeSingle();
-
-                if (prof) {
-                  setErrorMsg("পাসওয়ার্ড সঠিক নয়। আপনি পূর্বে Google দিয়ে লগইন করে থাকলে অনুগ্রহ করে নিচের 'Google দিয়ে সাইন ইন করুন' বাটনে ক্লিক করুন।");
-                  setIsSubmitting(false);
-                  return;
-                }
-              } catch (e) {}
-
-              setErrorMsg(
-                isPhoneOrId
-                  ? "মোবাইল নম্বর অথবা পাসওয়ার্ড সঠিক নয়। দয়া করে সঠিক নম্বর ও পাসওয়ার্ড দিন।"
-                  : "ভুল ইমেইল অথবা পাসওয়ার্ড দেওয়া হয়েছে। আবার চেষ্টা করুন।"
-              );
-            } else {
-              setErrorMsg(authError.message || "লগইন করতে সমস্যা হয়েছে।");
-            }
-            setIsSubmitting(false);
-            return;
-          }
-
-          if (authData?.user) {
-            // Fetch user profile from Supabase profiles table
-            let profile = await fetchUserProfile(authData.user.id);
-
-            if (!profile) {
-              profile = {
-                id: authData.user.id,
-                email: authData.user.email || targetEmail.trim(),
-                full_name: authData.user.user_metadata?.full_name || fullName || targetEmail.split("@")[0],
-                phone_number: authData.user.user_metadata?.phone_number || phoneNumber || "",
-                student_id: authData.user.user_metadata?.student_id || studentId || generateStudentId(),
-                role: "Student",
-                status: "Active",
-              };
-              await upsertUserProfile(profile);
-            }
-
-            if (profile.status === "Banned") {
-              setErrorMsg("আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত/নিষিদ্ধ করা হয়েছে। অ্যাডমিনের সাথে যোগাযোগ করুন।");
-              await supabase.auth.signOut();
-              setIsSubmitting(false);
-              return;
-            }
-
-            localStorage.setItem("job_master_current_user", JSON.stringify(profile));
-            onAuthSuccess(profile);
-            setIsSubmitting(false);
-            onClose();
-            return;
-          }
-        } catch (timeoutErr: any) {
-          if (timeoutErr?.message === "NETWORK_TIMEOUT") {
-            setErrorMsg("সার্ভারে সংযোগ করতে সময় বেশি লাগছে। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।");
-            setIsSubmitting(false);
-            return;
-          }
-          throw timeoutErr;
-        }
-      }
-
-      // Offline / Local state fallback
-      const localProfile: UserProfile = {
-        id: `usr-${Date.now()}`,
-        email: targetEmail.trim(),
-        full_name: fullName || targetEmail.split("@")[0],
-        phone_number: isPhoneOrId ? inputVal : phoneNumber || "01700000000",
-        student_id: studentId || generateStudentId(),
-        role: "Student",
-        status: "Active",
-      };
-
-      localStorage.setItem("job_master_current_user", JSON.stringify(localProfile));
-      onAuthSuccess(localProfile);
-      setIsSubmitting(false);
-      onClose();
+      setSuccessMsg("🎉 সফলভাবে লগইন সম্পন্ন হয়েছে!");
+      setTimeout(() => {
+        onAuthSuccess(result.user!);
+        setIsSubmitting(false);
+        onClose();
+      }, 500);
     } catch (err: any) {
-      setErrorMsg(err?.message || "লগইন করার সময় ত্রুটি ঘটেছে।");
+      setErrorMsg(err?.message || "লগইন করার সময় ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
       setIsSubmitting(false);
     }
   };
@@ -466,77 +291,27 @@ export default function AuthModal({
     }
 
     setIsSubmitting(true);
-    // Student ID is auto-generated in background
-    const finalStudentId = generateStudentId();
 
     try {
-      const supabase = getSupabase();
-      let createdUserId = `usr-${Date.now()}`;
-
-      if (supabase) {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password.trim(),
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              name: fullName.trim(),
-              phone_number: phoneNumber.trim(),
-              phone: phoneNumber.trim(),
-              student_id: finalStudentId,
-            },
-          },
-        });
-
-        if (authError) {
-          console.warn("Supabase signup warning:", authError.message);
-          if (authError.message.includes("User already registered")) {
-            setErrorMsg("এই ইমেইল এড্রেস দিয়ে ইতিমধ্যে একটি একাউন্ট খোলা আছে। অনুগ্রহ করে লগইন করুন।");
-          } else if (authError.message.includes("Password should be")) {
-            setErrorMsg("পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।");
-          } else {
-            setErrorMsg("সাইন-আপ ব্যর্থ হয়েছে: " + authError.message);
-          }
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (authData?.user) {
-          createdUserId = authData.user.id;
-        }
-      }
-
-      const newProfile: UserProfile = {
-        id: createdUserId,
+      const regResult = await registerUserAccount({
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber.trim(),
         email: email.trim(),
-        full_name: fullName.trim(),
-        phone_number: phoneNumber.trim(),
-        student_id: finalStudentId,
-        role: "Student",
-        status: "Active",
-        created_at: new Date().toISOString(),
-      };
+        password: password.trim(),
+      });
 
-      // Upsert to Supabase DB profiles table
-      await upsertUserProfile(newProfile);
-
-      // Save to local storage cache & registered users array
-      const localUsersRaw = localStorage.getItem("job_master_registered_users");
-      const localUsers: UserProfile[] = localUsersRaw ? JSON.parse(localUsersRaw) : [];
-      if (!localUsers.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
-        localUsers.push(newProfile);
-        localStorage.setItem("job_master_registered_users", JSON.stringify(localUsers));
+      if (!regResult.success || !regResult.user) {
+        setErrorMsg(regResult.error || "একাউন্ট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+        setIsSubmitting(false);
+        return;
       }
-
-      localStorage.setItem("job_master_current_user", JSON.stringify(newProfile));
 
       setSuccessMsg("🎉 অভিনন্দন! আপনার একাউন্ট সফলভাবে তৈরি হয়েছে।");
-      
       setTimeout(() => {
-        onAuthSuccess(newProfile);
+        onAuthSuccess(regResult.user!);
         setIsSubmitting(false);
         onClose();
-      }, 800);
+      }, 700);
     } catch (err: any) {
       setErrorMsg(err?.message || "একাউন্ট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
       setIsSubmitting(false);

@@ -85,6 +85,7 @@ import ProfileImage from "../components/ProfileImage";
 import LeaderboardSkeleton from "../components/LeaderboardSkeleton";
 import { useModalHistory, useExamExitProtection, useAppNavigationHistory, generateShareUrl, buildUrlSearchString } from "../hooks/useBackButton";
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
+import { updateUsernameOnServer, changeUserPasswordOnServer } from "../lib/user_auth";
 import { useOneSignal } from "../hooks/useOneSignal";
 
 // Code-split heavy interactive modals & components via next/dynamic
@@ -458,6 +459,133 @@ export default function Home() {
   };
   const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
+
+  // Edit Profile form state & feedback
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [editProfileError, setEditProfileError] = useState<string>("");
+  const [editProfileSuccess, setEditProfileSuccess] = useState<string>("");
+
+  // Change Password form state & feedback
+  const [currentPasswordInput, setCurrentPasswordInput] = useState<string>("");
+  const [newPasswordInput, setNewPasswordInput] = useState<string>("");
+  const [confirmNewPasswordInput, setConfirmNewPasswordInput] = useState<string>("");
+  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
+  const [changePasswordError, setChangePasswordError] = useState<string>("");
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState<string>("");
+
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setEditProfileError("");
+    setEditProfileSuccess("");
+
+    const newName = profileName.trim();
+    if (!newName) {
+      setEditProfileError("অনুগ্রহ করে আপনার নাম লিখুন।");
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      const userId = currentUser?.id || `usr-${Date.now()}`;
+      const res = await updateUsernameOnServer(
+        userId,
+        newName,
+        profilePhone.trim(),
+        profileAvatarUrl
+      );
+
+      if (!res.success || !res.user) {
+        setEditProfileError(res.error || "প্রোফাইল আপডেট করতে সমস্যা হয়েছে।");
+        setIsSavingProfile(false);
+        return;
+      }
+
+      // Update state & storage
+      setCurrentUser(res.user);
+      setProfileName(res.user.full_name);
+      if (res.user.phone_number) setProfilePhone(res.user.phone_number);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("job_master_current_user", JSON.stringify(res.user));
+      }
+
+      // Update in registered users cache array
+      const localUsersRaw = localStorage.getItem("job_master_registered_users");
+      if (localUsersRaw) {
+        try {
+          const localUsers: UserProfile[] = JSON.parse(localUsersRaw);
+          const idx = localUsers.findIndex(u => u.id === userId || (u.email && u.email.toLowerCase() === profileEmail.toLowerCase()));
+          if (idx !== -1) {
+            localUsers[idx] = { ...localUsers[idx], full_name: newName, phone_number: profilePhone.trim(), avatar_url: profileAvatarUrl };
+            localStorage.setItem("job_master_registered_users", JSON.stringify(localUsers));
+          }
+        } catch (err) {}
+      }
+
+      setEditProfileSuccess("🎉 আপনার ইউজার নেম ও তথ্য সার্ভারে সফলভাবে আপডেট হয়েছে!");
+      if (soundEnabled) quizAudio.playSuccess();
+
+      setTimeout(() => {
+        setIsEditProfileOpen(false);
+        setEditProfileSuccess("");
+        setIsSavingProfile(false);
+      }, 1000);
+    } catch (err: any) {
+      setEditProfileError(err?.message || "প্রোফাইল আপডেট করতে সমস্যা হয়েছে।");
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+
+    if (!newPasswordInput.trim() || newPasswordInput.trim().length < 6) {
+      setChangePasswordError("নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।");
+      return;
+    }
+
+    if (newPasswordInput.trim() !== confirmNewPasswordInput.trim()) {
+      setChangePasswordError("নতুন পাসওয়ার্ড এবং নিশ্চিতকরণ পাসওয়ার্ড মিলছে না।");
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const userId = currentUser?.id || "";
+      const userEmail = currentUser?.email || profileEmail || "";
+
+      const res = await changeUserPasswordOnServer(
+        userId,
+        userEmail,
+        currentPasswordInput.trim(),
+        newPasswordInput.trim()
+      );
+
+      if (!res.success) {
+        setChangePasswordError(res.error || "পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে।");
+        setIsChangingPassword(false);
+        return;
+      }
+
+      setChangePasswordSuccess(res.message || "🎉 আপনার নতুন পাসওয়ার্ড সার্ভারে সফলভাবে সংরক্ষিত হয়েছে!");
+      if (soundEnabled) quizAudio.playSuccess();
+      setCurrentPasswordInput("");
+      setNewPasswordInput("");
+      setConfirmNewPasswordInput("");
+
+      setTimeout(() => {
+        setIsChangePasswordOpen(false);
+        setChangePasswordSuccess("");
+        setIsChangingPassword(false);
+      }, 1200);
+    } catch (err: any) {
+      setChangePasswordError(err?.message || "পাসওয়ার্ড আপডেট করতে সমস্যা হয়েছে।");
+      setIsChangingPassword(false);
+    }
+  };
   
   // Database & Loaded Questions State
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -8638,7 +8766,11 @@ export default function Home() {
           <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
             <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
               <button 
-                onClick={() => setIsEditProfileOpen(false)}
+                onClick={() => {
+                  setIsEditProfileOpen(false);
+                  setEditProfileError("");
+                  setEditProfileSuccess("");
+                }}
                 className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -8654,7 +8786,19 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-1 text-xs">
+              {editProfileError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold animate-fade-in">
+                  {editProfileError}
+                </div>
+              )}
+
+              {editProfileSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-bold animate-fade-in">
+                  {editProfileSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveProfile} className="space-y-3 pt-1 text-xs">
                 {/* Photo Upload Box */}
                 <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
                   <ProfileImage
@@ -8689,47 +8833,73 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Full Name</label>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    User Name / Full Name (পূর্ণ নাম) <span className="text-red-500">*</span>
+                  </label>
                   <input 
                     type="text" 
+                    required
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                    placeholder="আপনার নাম লিখুন"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00] focus:bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Email Address</label>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    Mobile Number (মোবাইল নম্বর)
+                  </label>
+                  <input 
+                    type="tel" 
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00] focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    Email Address (লগইন ইমেইল)
+                  </label>
                   <input 
                     type="email" 
+                    readOnly
                     value={profileEmail}
-                    onChange={(e) => setProfileEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                    className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Student ID</label>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    Student ID (আইডি)
+                  </label>
                   <input 
                     type="text" 
+                    readOnly
                     value={profileId}
-                    onChange={(e) => setProfileId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                    className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed font-mono"
                   />
                 </div>
 
                 <div className="pt-2">
                   <button
-                    onClick={() => {
-                      setIsEditProfileOpen(false);
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-extrabold rounded-xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer"
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] disabled:bg-slate-300 text-white font-extrabold rounded-xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Save Changes
+                    {isSavingProfile ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>সার্ভারে সেভ হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes (সংরক্ষণ করুন)</span>
+                    )}
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         )}
@@ -8739,7 +8909,11 @@ export default function Home() {
           <div className="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-left">
             <div className="bg-white rounded-[2rem] p-6 max-w-md w-full space-y-4 border border-slate-100 shadow-2xl relative">
               <button 
-                onClick={() => setIsChangePasswordOpen(false)}
+                onClick={() => {
+                  setIsChangePasswordOpen(false);
+                  setChangePasswordError("");
+                  setChangePasswordSuccess("");
+                }}
                 className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -8755,37 +8929,77 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-1 text-xs">
+              {changePasswordError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold animate-fade-in">
+                  {changePasswordError}
+                </div>
+              )}
+
+              {changePasswordSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-bold animate-fade-in">
+                  {changePasswordSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleUpdatePassword} className="space-y-3 pt-1 text-xs">
                 <div>
-                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">Current Password</label>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    Current Password (বর্তমান পাসওয়ার্ড - ঐচ্ছিক)
+                  </label>
                   <input 
                     type="password" 
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                    value={currentPasswordInput}
+                    onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                    placeholder="বর্তমান পাসওয়ার্ড দিন"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00] focus:bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">New Password</label>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    New Password (নতুন পাসওয়ার্ড) <span className="text-red-500">*</span>
+                  </label>
                   <input 
                     type="password" 
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00]"
+                    required
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    placeholder="অন্তত ৬ অক্ষর..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00] focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
+                    Confirm New Password (নতুন পাসওয়ার্ড নিশ্চিত করুন) <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="password" 
+                    required
+                    value={confirmNewPasswordInput}
+                    onChange={(e) => setConfirmNewPasswordInput(e.target.value)}
+                    placeholder="আবার নতুন পাসওয়ার্ড লিখুন"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00] focus:bg-white"
                   />
                 </div>
 
                 <div className="pt-2">
                   <button
-                    onClick={() => {
-                      setIsChangePasswordOpen(false);
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-extrabold rounded-xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer"
+                    type="submit"
+                    disabled={isChangingPassword}
+                    className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] disabled:bg-slate-300 text-white font-extrabold rounded-xl text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Update Password
+                    {isChangingPassword ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>সার্ভারে পাসওয়ার্ড আপডেট হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <span>Update Password (পাসওয়ার্ড পরিবর্তন করুন)</span>
+                    )}
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         )}
