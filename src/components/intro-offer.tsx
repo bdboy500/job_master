@@ -2,22 +2,51 @@
 
 import React, { useState, useEffect } from "react";
 import { Sparkles, X, Gift, Zap, ArrowRight, ShieldCheck } from "lucide-react";
-import { getCachedAppSettings, fetchAppSettingsFromDb, PopupNotificationConfig, DEFAULT_POPUP_CONFIG } from "@/src/lib/app_settings";
+import { getCachedAppSettings, fetchAppSettingsFromDb, PopupNotificationConfig, DEFAULT_POPUP_CONFIG, subscribeToAppSettings } from "@/src/lib/app_settings";
 
 interface IntroOfferProps {
   onClose?: () => void;
   onAction?: (targetScreen?: string) => void;
   disabled?: boolean;
+  config?: PopupNotificationConfig;
 }
 
-export default function IntroOffer({ onClose, onAction, disabled = false }: IntroOfferProps) {
+export default function IntroOffer({ onClose, onAction, disabled = false, config }: IntroOfferProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [popupConfig, setPopupConfig] = useState<PopupNotificationConfig>(
-    getCachedAppSettings().popupNotification || DEFAULT_POPUP_CONFIG
-  );
+  const [popupConfig, setPopupConfig] = useState<PopupNotificationConfig>(() => {
+    if (config) return config;
+    const cached = getCachedAppSettings().popupNotification;
+    return cached || DEFAULT_POPUP_CONFIG;
+  });
+
+  // Sync prop updates immediately
+  useEffect(() => {
+    if (config) {
+      setPopupConfig(config);
+      if (config.enabled === false) {
+        setIsOpen(false);
+      }
+    }
+  }, [config]);
+
+  // Subscribe to real-time app settings updates across tabs/windows
+  useEffect(() => {
+    const unsub = subscribeToAppSettings((s) => {
+      if (s?.popupNotification) {
+        setPopupConfig(s.popupNotification);
+        if (s.popupNotification.enabled === false) {
+          setIsOpen(false);
+        }
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
-    if (disabled) return;
+    if (disabled || config?.enabled === false) {
+      setIsOpen(false);
+      return;
+    }
     let isMounted = true;
 
     async function checkAndOpen() {
@@ -29,12 +58,13 @@ export default function IntroOffer({ onClose, onAction, disabled = false }: Intr
           }
         }
 
-        const settings = await fetchAppSettingsFromDb();
-        const conf = settings.popupNotification || DEFAULT_POPUP_CONFIG;
+        const settings = await fetchAppSettingsFromDb(true);
+        const conf = config || settings.popupNotification || DEFAULT_POPUP_CONFIG;
         if (!isMounted) return;
         setPopupConfig(conf);
 
         if (conf.enabled === false) {
+          setIsOpen(false);
           return;
         }
 

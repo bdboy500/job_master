@@ -46,18 +46,13 @@ export default function LeaderboardSkeleton({ onBack }: LeaderboardSkeletonProps
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)] pointer-events-none" />
 
         {/* TIME PERIOD TABS SKELETON */}
-        <div className="relative z-10 max-w-md mx-auto mb-3">
+        <div className="relative z-10 max-w-md mx-auto mb-4">
           <div className="bg-black/20 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner gap-1.5">
             <div className="flex-1 h-8 rounded-xl bg-white/30 shadow-xs animate-shimmer" />
             <div className="flex-1 h-8 rounded-xl bg-white/15 animate-shimmer" />
             <div className="flex-1 h-8 rounded-xl bg-white/15 animate-shimmer" />
             <div className="flex-1 h-8 rounded-xl bg-white/15 animate-shimmer" />
           </div>
-        </div>
-
-        {/* Reset Info Pill Skeleton */}
-        <div className="relative z-10 text-center mb-4 flex justify-center">
-          <div className="h-6 w-56 rounded-full bg-black/20 border border-white/15 animate-shimmer" />
         </div>
 
         {/* TOP 3 PODIUM SECTION SKELETON */}

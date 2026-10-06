@@ -192,19 +192,6 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       ? userInActiveListIndex + 1
       : null;
 
-  const getResetInfoText = () => {
-    switch (activeTab) {
-      case "Today":
-        return "প্রতিদিন রাত ১২:০০ টায় স্বয়ংক্রিয়ভাবে জিরো (০) হবে";
-      case "Week":
-        return "প্রতি শুক্রবার রাত ১২:০০ টায় স্বয়ংক্রিয়ভাবে জিরো (০) হবে";
-      case "Month":
-        return "প্রতি মাসের শেষ দিন রাত ১২:০০ টায় স্বয়ংক্রিয়ভাবে জিরো (০) হবে";
-      case "All Time":
-        return "আজীবন অর্জিত লাইভ কুইজ স্কোর";
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
       
@@ -216,7 +203,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
         {/* TIME PERIOD TABS (STATIC UI) */}
-        <div className="relative z-10 max-w-md mx-auto mb-3">
+        <div className="relative z-10 max-w-md mx-auto mb-4">
           <div className="bg-black/25 backdrop-blur-md p-1.5 rounded-2xl flex items-center justify-between border border-white/20 shadow-inner gap-1">
             {[
               { id: "Today", label: "Today" },
@@ -240,14 +227,6 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
               );
             })}
           </div>
-        </div>
-
-        {/* Automatic Reset Schedule Indicator (STATIC UI) */}
-        <div className="relative z-10 text-center mb-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-xs text-[10.5px] font-bold text-white/90 border border-white/15">
-            <Sparkles className="w-3 h-3 text-amber-300" />
-            <span>{getResetInfoText()}</span>
-          </span>
         </div>
 
         {/* TOP 3 PODIUM SECTION (DYNAMIC SKELETON WHEN LOADING, DATA WHEN LOADED) */}

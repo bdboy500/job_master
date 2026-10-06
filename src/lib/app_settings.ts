@@ -97,8 +97,8 @@ export function getCachedAppSettings(): AppSettings {
 
 export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppSettings> {
   const now = Date.now();
-  // Low egress caching: Reuse cache if refreshed within last 2 minutes unless forced
-  if (!forceRefresh && memorySettingsCache && (now - lastFetchedAt < 120000)) {
+  // Low egress caching: Reuse cache if refreshed within last 5 seconds unless forced
+  if (!forceRefresh && memorySettingsCache && (now - lastFetchedAt < 5000)) {
     return memorySettingsCache;
   }
 

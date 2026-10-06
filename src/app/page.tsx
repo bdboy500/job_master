@@ -9275,10 +9275,13 @@ export default function Home() {
         />
 
         {/* Intro Special Offer Popup Modal */}
-        <IntroOffer 
-          disabled={currentScreen === "quiz" || takingExamModal !== null || (typeof window !== "undefined" && (window.location.search.includes("quiz") || window.location.search.includes("live-quiz")))} 
-          onAction={(targetScreen) => setCurrentScreen((targetScreen as any) || "all-live-exams")} 
-        />
+        {appSettings?.popupNotification?.enabled !== false && (
+          <IntroOffer 
+            config={appSettings?.popupNotification}
+            disabled={currentScreen === "quiz" || takingExamModal !== null || (typeof window !== "undefined" && (window.location.search.includes("quiz") || window.location.search.includes("live-quiz")))} 
+            onAction={(targetScreen) => setCurrentScreen((targetScreen as any) || "all-live-exams")} 
+          />
+        )}
 
         {/* Soft-Prompt Push Notification Modal */}
         <PushPermissionModal

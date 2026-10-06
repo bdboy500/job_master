@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import ClientProviders from "../components/ClientProviders";
 
@@ -171,13 +172,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="bn">
-      <head>
+      <body>
         {/* Google tag (gtag.js) */}
-        <script
-          async
+        <Script
+          id="google-analytics-tag"
+          strategy="afterInteractive"
           src="https://www.googletagmanager.com/gtag/js?id=G-YEC598XFK7"
         />
-        <script
+        <Script
+          id="google-analytics-config"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
@@ -188,29 +192,17 @@ export default function RootLayout({
           }}
         />
         {/* Google AdSense Verification */}
-        <script
-          async
+        <Script
+          id="google-adsense"
+          strategy="afterInteractive"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5102509921466107"
           crossOrigin="anonymous"
         />
-        <meta
-          name="google-site-verification"
-          content="6jsJ56m1WHmwBZgqSaOYzCmP2SzPrizvTIQpJxf4N0I"
-        />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
-        <meta name="theme-color" content="#0056b3" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Job Master" />
         <script
+          id="json-ld-structured-data"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-      </head>
-      <body>
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>

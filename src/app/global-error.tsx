@@ -1,7 +1,6 @@
 'use client';
 
 export default function GlobalError({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -10,16 +9,23 @@ export default function GlobalError({
   return (
     <html lang="bn">
       <body>
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 p-4 text-center">
-          <div className="max-w-md w-full bg-white border border-slate-200/80 rounded-2xl shadow-xl p-8 space-y-4">
-            <h2 className="text-xl font-bold text-slate-800">Something went wrong!</h2>
-            <button
-              onClick={() => reset()}
-              className="px-6 py-3 bg-[#FF6A00] text-white font-semibold rounded-xl"
-            >
-              Try again
-            </button>
-          </div>
+        <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif" }}>
+          <h2>ত্রুটি দেখা দিয়েছে (Something went wrong)</h2>
+          <button
+            onClick={() => reset()}
+            style={{
+              padding: "10px 20px",
+              marginTop: "16px",
+              backgroundColor: "#FF6A00",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            পুনরায় চেষ্টা করুন
+          </button>
         </div>
       </body>
     </html>

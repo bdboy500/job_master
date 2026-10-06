@@ -993,7 +993,7 @@ export default function AdminPage() {
     const unsubPkgs = subscribeToPackages(setPackagesList);
 
     // Fetch courses & prep subjects & appSettings & subscribe
-    fetchAppSettingsFromDb().then((s) => {
+    fetchAppSettingsFromDb(true).then((s) => {
       if (s) setAppSettings(s);
     });
     const unsubAppSettings = subscribeToAppSettings((s) => {
@@ -6889,16 +6889,26 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
-                        const updated = {
+                        const newEnabled = !(current.enabled !== false);
+                        const updated: AppSettings = {
                           ...appSettings,
                           popupNotification: {
                             ...current,
-                            enabled: !(current.enabled !== false)
+                            enabled: newEnabled
                           }
                         };
                         setAppSettings(updated);
+                        const ok = await saveAppSettingsToDb(updated);
+                        if (ok) {
+                          triggerNotification(
+                            "success",
+                            newEnabled ? "পপ-আপ নোটিফিকেশন চালু করা হয়েছে!" : "পপ-আপ নোটিফিকেশন সফলভাবে বন্ধ করা হয়েছে এবং মেইন সাইটে আর দেখাবে না।"
+                          );
+                        } else {
+                          triggerNotification("error", "সেটিংস আপডেট করতে সমস্যা হয়েছে।");
+                        }
                       }}
                       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                         appSettings.popupNotification?.enabled !== false ? "bg-[#FF6A00]" : "bg-slate-300"
