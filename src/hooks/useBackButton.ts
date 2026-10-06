@@ -269,7 +269,9 @@ export function useAppNavigationHistory(
     quickToolModal?: any;
     selectedPurchasePkg?: any;
     quizStarted?: boolean;
+    isCompleted?: boolean;
     isSubmitted?: boolean;
+    isTimedOut?: boolean;
     previousScreen?: string;
     courseOriginScreen?: string;
     prepSubjectOrigin?: string;
@@ -305,6 +307,8 @@ export function useAppNavigationHistory(
     setArchiveModalOpen?: (open: boolean) => void;
     setQuickToolModal?: (modal: any) => void;
     setSelectedPurchasePkg?: (pkg: any) => void;
+    setQuizStarted?: (started: boolean) => void;
+    handleResetQuizToHome?: () => void;
   }
 ) {
   const isPopstateHandlingRef = useRef<boolean>(false);
@@ -342,7 +346,7 @@ export function useAppNavigationHistory(
     navState.archiveModalOpen ? "archive_open" : "",
     navState.quickToolModal ? "quicktool_open" : "",
     navState.selectedPurchasePkg ? `pkg_${navState.selectedPurchasePkg.id || "open"}` : "",
-    navState.quizStarted ? "quiz_started" : "",
+    (navState.quizStarted && !navState.isCompleted && !navState.isSubmitted && !navState.isTimedOut) ? "quiz_playing" : (navState.isCompleted ? "quiz_completed" : ""),
   ].join("|");
 
   // Push / Replace history state whenever user navigates or opens modals/drawers
@@ -453,8 +457,14 @@ export function useAppNavigationHistory(
         return;
       }
 
-      // 2. ACTIVE QUIZ PROTECTION: If actively playing a quiz (and not submitted)
-      if (navState.quizStarted && !navState.isSubmitted) {
+      // 2. ACTIVE QUIZ PROTECTION: Only if actively playing a quiz (and not completed, timed out, or submitted)
+      if (
+        navState.currentScreen === "quiz" &&
+        navState.quizStarted &&
+        !navState.isCompleted &&
+        !navState.isTimedOut &&
+        !navState.isSubmitted
+      ) {
         try {
           window.history.pushState({ appNav: true, key: lastStateKeyRef.current }, "", window.location.href);
           pushedCountRef.current += 1;
@@ -566,6 +576,18 @@ export function useAppNavigationHistory(
       // 10. SCREEN HIERARCHY & SUB-VIEW BACK NAVIGATION (1-by-1)
       if (navState.activeExamSection) {
         if (handlers.setActiveExamSection) handlers.setActiveExamSection(null);
+        return;
+      }
+
+      if (navState.currentScreen === "quiz") {
+        if (handlers.setQuizStarted) {
+          handlers.setQuizStarted(false);
+        }
+        if (handlers.handleResetQuizToHome) {
+          handlers.handleResetQuizToHome();
+        } else {
+          handlers.setCurrentScreen("home");
+        }
         return;
       }
 

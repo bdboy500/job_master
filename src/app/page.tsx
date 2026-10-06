@@ -674,6 +674,19 @@ export default function Home() {
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(30);
   const [isTimedOut, setIsTimedOut] = useState<boolean>(false);
+  const isCompleted = quizStarted && questions.length > 0 && currentQuestionIndex >= questions.length;
+
+  const handleResetQuizToHome = useCallback(() => {
+    setQuizStarted(false);
+    setLoading(false);
+    setIsTimedOut(false);
+    setIsSubmitted(false);
+    setSelectedOptionIndex(null);
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setSubmittedCount(0);
+    setCurrentScreen("home");
+  }, []);
 
   // Quit Confirm Modal State
   const [showQuitConfirmModal, setShowQuitConfirmModal] = useState<boolean>(false);
@@ -724,6 +737,9 @@ export default function Home() {
       quickToolModal,
       selectedPurchasePkg,
       quizStarted,
+      isCompleted,
+      isSubmitted,
+      isTimedOut,
       activeQuizTitle,
       searchQuery: desktopSearchQuery,
       previousScreen,
@@ -759,6 +775,8 @@ export default function Home() {
       setArchiveModalOpen,
       setQuickToolModal,
       setSelectedPurchasePkg,
+      setQuizStarted,
+      handleResetQuizToHome,
     }
   );
 
@@ -805,7 +823,6 @@ export default function Home() {
 
   // Derive active question
   const currentQuestion: Question | undefined = questions[currentQuestionIndex];
-  const isCompleted = quizStarted && questions.length > 0 && currentQuestionIndex >= questions.length;
 
   // Intercept navigation during active quiz
   const attemptExitQuiz = (targetAction?: () => void) => {
@@ -2733,11 +2750,11 @@ export default function Home() {
                   if (quizStarted && !isCompleted && !isTimedOut) {
                     attemptExitQuiz(() => {
                       setDrawerOpen(false);
-                      setCurrentScreen("home");
+                      handleResetQuizToHome();
                     });
                   } else {
                     setDrawerOpen(false);
-                    setCurrentScreen("home");
+                    handleResetQuizToHome();
                   }
                 } else if (currentScreen === "course-detail") {
                   if (activeExamSection) {
@@ -2813,6 +2830,14 @@ export default function Home() {
                 if (currentScreen === "packages") {
                   const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
                   setCurrentScreen(dest);
+                } else if (currentScreen === "quiz") {
+                  if (quizStarted && !isCompleted && !isTimedOut) {
+                    attemptExitQuiz(() => {
+                      handleResetQuizToHome();
+                    });
+                  } else {
+                    handleResetQuizToHome();
+                  }
                 } else {
                   attemptExitQuiz(() => setCurrentScreen("home"));
                 }
