@@ -868,10 +868,18 @@ export default function Home() {
     }
 
     if (activeQuizTitle === "Live Quiz Game" && scoreObtained > 0) {
+      let effectiveUserId = currentUser?.id || profileId;
+      if (!effectiveUserId && typeof window !== "undefined") {
+        effectiveUserId = localStorage.getItem("jobmaster_device_user_id") || "";
+        if (!effectiveUserId) {
+          effectiveUserId = "user_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+          localStorage.setItem("jobmaster_device_user_id", effectiveUserId);
+        }
+      }
       submitLiveQuizScore({
-        userId: currentUser?.id || profileId || "user_" + Date.now(),
+        userId: effectiveUserId || "user_" + Date.now(),
         userName: profileName || currentUser?.full_name || "শিক্ষার্থী",
-        studentId: profileId || undefined,
+        studentId: profileId || currentUser?.student_id || undefined,
         avatarUrl: profileAvatarUrl || currentUser?.avatar_url || "",
         score: scoreObtained
       });
@@ -1515,8 +1523,8 @@ export default function Home() {
       localStorage.removeItem("job_master_pending_paper_id");
     }
 
-    // If user cancelled login while attempting to take quiz or is on quiz screen, safely return to home
-    if (!isLoggedIn && (currentScreen === "quiz" || hadQuizIntent || takingExamModal !== null)) {
+    // If user cancelled login while attempting to take exam modal, safely return to home
+    if (!isLoggedIn && takingExamModal !== null) {
       setQuizStarted(false);
       setLoading(false);
       setTakingExamModal(null);
@@ -1988,7 +1996,8 @@ export default function Home() {
     setIsTimedOut(false);
     setCurrentScreen("quiz");
 
-    executeWithAuth(async () => {
+    // Any user can play live quiz games without logging in!
+    (async () => {
       try {
         let selectedQuestions: Question[] = [];
 
@@ -2036,7 +2045,7 @@ export default function Home() {
       } finally {
         setIsStartingQuiz(false);
       }
-    }, "quiz");
+    })();
   };
 
   // Global Share & Deep Link Engine State
@@ -3658,48 +3667,7 @@ export default function Home() {
                 );
               })()}
 
-              {/* Not Logged In Auth Required Guard for Quiz */}
-              {!loading && !isLoggedIn && questions.length === 0 && (
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-4 shadow-sm animate-fade-in max-w-md mx-auto my-4">
-                  <div className="w-16 h-16 rounded-3xl bg-orange-50 border border-orange-200/60 text-[#FF6A00] flex items-center justify-center shadow-2xs">
-                    <Lock className="w-8 h-8 stroke-[2.2px]" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <span className="inline-block px-3 py-1 bg-orange-100/80 text-[#FF6A00] text-[11px] font-black rounded-full">
-                      Sign In Required
-                    </span>
-                    <h3 className="font-black text-lg sm:text-xl text-slate-900">
-                      Sign In to Join Live Quiz
-                    </h3>
-                    <p className="text-slate-500 text-xs leading-relaxed">
-                      Please sign in or sign up to participate in Live Quiz and track your position on the leaderboard.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 w-full pt-2">
-                    <button
-                      onClick={() => openAuthScreen("signin")}
-                      className="py-3.5 px-4 bg-gradient-to-r from-[#FF6A00] to-[#FF5500] hover:from-[#FF5500] hover:to-[#E54800] text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      <span>Sign In / Sign Up</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setQuizStarted(false);
-                        setLoading(false);
-                        setCurrentScreen("home");
-                        try {
-                          window.history.replaceState({ appRoot: true }, "", "/");
-                        } catch (e) {}
-                      }}
-                      className="py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <HomeIcon className="w-4 h-4" />
-                      <span>হোম পেজ</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+
 
               {/* Loader: Full Quiz Question Skeleton with Left-to-Right Shimmer Sweep */}
               {loading && (
