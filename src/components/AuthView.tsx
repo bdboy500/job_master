@@ -2,18 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  ArrowLeft,
   Mail,
   Lock,
   Eye,
   EyeOff,
   User,
   Phone,
-  UserPlus,
-  LogIn,
   AlertCircle,
   CheckCircle2,
-  GraduationCap,
 } from "lucide-react";
 import { getSupabase } from "../lib/supabase";
 import {
@@ -31,12 +27,14 @@ interface AuthViewProps {
   onBack: () => void;
   onAuthSuccess: (user: UserProfile) => void;
   initialMode?: "signin" | "signup";
+  onModeChange?: (mode: "signin" | "signup") => void;
 }
 
 export default function AuthView({
   onBack,
   onAuthSuccess,
   initialMode = "signin",
+  onModeChange,
 }: AuthViewProps) {
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
@@ -417,29 +415,18 @@ export default function AuthView({
     }
   };
 
+  const handleModeSwitch = (newMode: "signin" | "signup") => {
+    setMode(newMode);
+    setErrorMsg("");
+    setSuccessMsg("");
+    if (newMode === "signup" && !studentId) {
+      setStudentId(generateStudentId());
+    }
+    onModeChange?.(newMode);
+  };
+
   return (
     <div className="flex-1 w-full bg-slate-50 min-h-screen flex flex-col selection:bg-orange-500 selection:text-white animate-fade-in text-left">
-      {/* Top App Bar */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3 shadow-2xs flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-black text-xs sm:text-sm transition-all active:scale-95 cursor-pointer border border-orange-200/60"
-          id="auth-back-btn"
-        >
-          <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-          <span>Back</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          <div className="bg-[#FF6A00] p-1.5 rounded-xl text-white shadow-2xs">
-            <GraduationCap className="w-4 h-4" />
-          </div>
-          <span className="font-black text-slate-800 text-sm">
-            Job Master <span className="text-[#FF6A00]">{mode === "signin" ? "Sign In" : "Sign Up"}</span>
-          </span>
-        </div>
-      </div>
-
       {/* Main Spacious Container */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
         <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden p-6 sm:p-8">
@@ -447,44 +434,28 @@ export default function AuthView({
           {/* Clean Segmented Tab Switch (Sign In / Sign Up) */}
           <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6 border border-slate-200/80">
             <button
-              onClick={() => {
-                setMode("signin");
-                setErrorMsg("");
-                setSuccessMsg("");
-              }}
-              className={`flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              type="button"
+              onClick={() => handleModeSwitch("signin")}
+              className={`flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                 mode === "signin"
                   ? "bg-white text-[#FF6A00] shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In</span>
+              Sign In
             </button>
 
             <button
-              onClick={() => {
-                setMode("signup");
-                setErrorMsg("");
-                setSuccessMsg("");
-                if (!studentId) setStudentId(generateStudentId());
-              }}
-              className={`flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              type="button"
+              onClick={() => handleModeSwitch("signup")}
+              className={`flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                 mode === "signup"
                   ? "bg-white text-[#FF6A00] shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Sign Up</span>
+              Sign Up
             </button>
-          </div>
-
-          {/* Form Header Title */}
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {mode === "signin" ? "Sign In" : "Sign Up"}
-            </h1>
           </div>
 
           {/* Alert messages */}
@@ -559,10 +530,7 @@ export default function AuthView({
                     <span>Signing in...</span>
                   </>
                 ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    <span>Sign In</span>
-                  </>
+                  <span>Sign In</span>
                 )}
               </button>
             </form>
@@ -685,10 +653,7 @@ export default function AuthView({
                     <span>Creating account...</span>
                   </>
                 ) : (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>Sign Up</span>
-                  </>
+                  <span>Sign Up</span>
                 )}
               </button>
             </form>
@@ -765,12 +730,7 @@ export default function AuthView({
                 Don&apos;t have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode("signup");
-                    setErrorMsg("");
-                    setSuccessMsg("");
-                    if (!studentId) setStudentId(generateStudentId());
-                  }}
+                  onClick={() => handleModeSwitch("signup")}
                   className="text-[#FF6A00] font-black hover:underline cursor-pointer ml-1"
                 >
                   Sign Up
@@ -781,11 +741,7 @@ export default function AuthView({
                 Already have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode("signin");
-                    setErrorMsg("");
-                    setSuccessMsg("");
-                  }}
+                  onClick={() => handleModeSwitch("signin")}
                   className="text-[#FF6A00] font-black hover:underline cursor-pointer ml-1"
                 >
                   Sign In

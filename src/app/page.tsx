@@ -2810,6 +2810,9 @@ export default function Home() {
                   setDrawerOpen(false);
                   const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
                   setCurrentScreen(dest);
+                } else if (currentScreen === "auth") {
+                  setDrawerOpen(false);
+                  handleCloseAuthScreen();
                 } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy" || currentScreen === "contact") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
@@ -2821,7 +2824,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -2832,7 +2835,9 @@ export default function Home() {
             
             <button 
               onClick={() => {
-                if (currentScreen === "packages") {
+                if (currentScreen === "auth") {
+                  handleCloseAuthScreen();
+                } else if (currentScreen === "packages") {
                   const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
                   setCurrentScreen(dest);
                 } else if (currentScreen === "quiz") {
@@ -2905,6 +2910,14 @@ export default function Home() {
                     <>
                       Contact & <span className="text-[#FF6A00]">Support</span>
                     </>
+                  ) : currentScreen === "auth" ? (
+                    <>
+                      {authModalMode === "signup" ? (
+                        <>Sign <span className="text-[#FF6A00]">Up</span></>
+                      ) : (
+                        <>Sign <span className="text-[#FF6A00]">In</span></>
+                      )}
+                    </>
                   ) : (
                     <>
                       Job <span className="text-[#FF6A00]">Master</span>
@@ -2936,6 +2949,8 @@ export default function Home() {
                     ? "গোপনীয়তা নীতি ও ডেটা সুরক্ষা"
                     : currentScreen === "contact"
                     ? "যোগাযোগ ও কাস্টমার কেয়ার"
+                    : currentScreen === "auth"
+                    ? (authModalMode === "signup" ? "CREATE NEW ACCOUNT" : "ACCOUNT LOGIN")
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -3093,7 +3108,7 @@ export default function Home() {
                   {profileName.split(" ")[0]}
                 </span>
               </button>
-            ) : (
+            ) : currentScreen !== "auth" ? (
               <button
                 onClick={() => {
                   openAuthScreen("signin");
@@ -3104,7 +3119,7 @@ export default function Home() {
                 <User className="w-3.5 h-3.5 stroke-[2.5px]" />
                 <span className="hidden sm:inline-block">Sign In</span>
               </button>
-            )}
+            ) : null}
           </div>
         </header>
 
@@ -6935,6 +6950,7 @@ export default function Home() {
               onBack={handleCloseAuthScreen}
               onAuthSuccess={handleAuthSuccess}
               initialMode={authModalMode}
+              onModeChange={(newMode) => setAuthModalMode(newMode)}
             />
           )}
 
