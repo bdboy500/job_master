@@ -405,13 +405,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -2813,7 +2813,7 @@ export default function Home() {
                 } else if (currentScreen === "auth") {
                   setDrawerOpen(false);
                   handleCloseAuthScreen();
-                } else if (currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy" || currentScreen === "contact") {
+                } else if (currentScreen === "daily-quick-test" || currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy" || currentScreen === "contact") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
                 } else {
@@ -2824,7 +2824,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" || currentScreen === "daily-quick-test" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -2918,6 +2918,10 @@ export default function Home() {
                         <>Sign <span className="text-[#FF6A00]">In</span></>
                       )}
                     </>
+                  ) : currentScreen === "daily-quick-test" ? (
+                    <>
+                      Daily <span className="text-[#FF6A00]">Quick Test</span>
+                    </>
                   ) : (
                     <>
                       Job <span className="text-[#FF6A00]">Master</span>
@@ -2951,6 +2955,8 @@ export default function Home() {
                     ? "যোগাযোগ ও কাস্টমার কেয়ার"
                     : currentScreen === "auth"
                     ? (authModalMode === "signup" ? "CREATE NEW ACCOUNT" : "ACCOUNT LOGIN")
+                    : currentScreen === "daily-quick-test"
+                    ? "⚡ ডেইলি কুইক টেস্ট (DAILY SHORT QUIZ)"
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -3515,6 +3521,60 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Daily Quick Test Section (Placed exclusively below Pro Feature section on Home screen) */}
+              <div className="pt-2 sm:pt-3">
+                {(() => {
+                  const dailyCount = examPapers.filter(p => {
+                    const status = getExamStatus(p);
+                    if (status !== "Live") return false;
+                    return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
+                  }).length;
+
+                  return (
+                    <div 
+                      onClick={() => {
+                        if (soundEnabled) quizAudio.playClick();
+                        setPreviousScreen("home");
+                        setCurrentScreen("daily-quick-test");
+                      }}
+                      className="w-full bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl sm:rounded-3xl p-4 sm:p-4.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group text-left"
+                    >
+                      {/* Left side: Icon + Text */}
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          ⚡
+                        </div>
+                        <div className="space-y-0.5 truncate text-left">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                              Daily Quick Test
+                            </h4>
+                            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md hidden sm:inline-block">
+                              ডেইলি কুইক টেস্ট
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-400 truncate">
+                            প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right side: Badge + Arrow */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                          dailyCount > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-amber-50 text-amber-700 border border-amber-200/80"
+                        }`}>
+                          {dailyCount > 0 ? `${dailyCount} Live` : "Live Now"}
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
+                          <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Database / Sync health card */}
               <div className="bg-slate-100/50 rounded-2xl p-4 flex items-center justify-between text-[11px] font-semibold text-slate-500">
                 <span className="flex items-center gap-1.5">
@@ -4068,6 +4128,146 @@ export default function Home() {
           )}
 
           {/* ========================================================= */}
+          {/* SCREEN: DAILY QUICK TEST SCREEN                           */}
+          {/* ========================================================= */}
+          {currentScreen === "daily-quick-test" && (
+            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+              {/* Header Banner */}
+              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#FF6A00] rounded-3xl p-5 text-white shadow-sm flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">⚡</span>
+                    <h3 className="text-lg sm:text-xl font-black">Daily Quick Test</h3>
+                  </div>
+                  <p className="text-xs text-amber-100 font-bold">
+                    প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট ও দ্রুত রিভিশন
+                  </p>
+                </div>
+                {(() => {
+                  const dailyCount = examPapers.filter(p => {
+                    const status = getExamStatus(p);
+                    if (status === "Archive") return false;
+                    return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
+                  }).length;
+                  return (
+                    <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-2xl text-xs font-black">
+                      {dailyCount}টি পরীক্ষা
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Papers List */}
+              {(() => {
+                const rawDailyPapers = examPapers.filter(p => {
+                  const currentStatus = getExamStatus(p);
+                  if (currentStatus === "Archive") return false;
+                  return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
+                });
+
+                const dailyPapers = sortExamPapersForDisplay(rawDailyPapers);
+
+                if (dailyPapers.length === 0) {
+                  return (
+                    <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
+                      <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
+                        ⚡
+                      </div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-800">
+                        বর্তমানে কোনো ডেইলি কুইক টেস্ট লাইভ নেই
+                      </h3>
+                      <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
+                        নতুন ডেইলি কুইক টেস্ট প্রকাশিত হলে এখানে দেখতে পাবেন। আগের সকল পরীক্ষা আর্কাইভ থেকে অনুশীলন করতে পারেন।
+                      </p>
+                      <button
+                        onClick={() => {
+                          setArchiveFilterCategory("daily");
+                          setArchiveModalOpen(true);
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="px-4 py-2 bg-[#FF6A00] text-white text-xs font-black rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm shadow-orange-500/20 inline-block"
+                      >
+                        আর্কাইভ থেকে পূর্বের কুইক টেস্ট দেখুন
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {dailyPapers.map((paper) => {
+                      const computedStatus = getExamStatus(paper);
+                      const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
+                      const durationMins = Math.floor(totalSec / 60);
+
+                      return (
+                        <div key={paper.id} className="bg-white border border-slate-200/80 hover:border-amber-300 rounded-[2rem] p-5 shadow-2xs space-y-3.5 transition-all">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-[11px] font-extrabold text-slate-500">
+                              📅 {paper.examDate || "Live Now"}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                                ⚡ Daily Quick Test
+                              </span>
+                              {computedStatus === "Live" && (
+                                <span className="bg-emerald-50 text-emerald-600 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100">
+                                  ● Live
+                                </span>
+                              )}
+                              {computedStatus === "Upcoming" && (
+                                <span className="bg-amber-50 text-amber-700 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">
+                                  ⏳ Upcoming
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                            <span>Marks: {paper.totalMarks || paper.questions?.length || 10}</span>
+                            <span>•</span>
+                            <span>Duration: {durationMins} mins</span>
+                          </div>
+
+                          <div className="space-y-1">
+                            {paper.topic && (
+                              <div className="text-xs font-extrabold text-[#FF6A00]">
+                                Topic: <span className="text-slate-800 font-bold">"{paper.topic}"</span>
+                              </div>
+                            )}
+                            <h4 className="text-sm font-black text-slate-800 leading-snug">
+                              <MathRenderer content={paper.title} />
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 pt-1">
+                            <button
+                              onClick={() => {
+                                setSelectedLiveExamModal(paper);
+                                if (soundEnabled) quizAudio.playClick();
+                              }}
+                              className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <span>📝 পরীক্ষা দিন</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleOpenViewPaper(paper)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <span>📄 প্রশ্নপত্র</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ========================================================= */}
           {/* 3. SCREEN: COURSES SCREEN                                 */}
           {/* ========================================================= */}
           {currentScreen === "courses" && (
@@ -4435,15 +4635,6 @@ export default function Home() {
                   <div className="flex flex-col gap-3">
                     {(() => {
                       const prepSections = [
-                        { 
-                          id: "daily", 
-                          title: "Daily Quick Test", 
-                          banglaTitle: "⚡ ডেইলি কুইক টেস্ট",
-                          desc: "প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট",
-                          color: "border-amber-200/90 hover:border-amber-400 bg-white",
-                          iconBg: "bg-amber-100 text-amber-700",
-                          icon: "⚡"
-                        },
                         { 
                           id: "weekly", 
                           title: "Weekly Model Test", 
@@ -4861,31 +5052,22 @@ export default function Home() {
                     {(() => {
                       const allPrepSections = [
                         { 
-                          id: "daily", 
-                          title: "Daily Quick Test", 
-                          banglaTitle: "⚡ ডেইলি কুইক টেস্ট",
-                          desc: "প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট",
-                          color: "border-amber-200/90 hover:border-amber-400 bg-white",
-                          iconBg: "bg-amber-100 text-amber-700",
-                          icon: "⚡"
-                        },
-                        { 
                           id: "weekly", 
                           title: "Weekly Model Test", 
-                          banglaTitle: "\uD83D\uDCC5 সাপ্তাহিক মডেল টেস্ট",
+                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
                           desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
                           color: "border-purple-200/90 hover:border-purple-400 bg-white",
                           iconBg: "bg-purple-100 text-purple-700",
-                          icon: "\uD83D\uDCC5"
+                          icon: "📅"
                         },
                         { 
                           id: "subject", 
                           title: "Subject Wise Test", 
-                          banglaTitle: "\uD83D\uDCDA বিষয়ভিত্তিক পরীক্ষা",
+                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
                           desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
                           color: "border-blue-200/90 hover:border-blue-400 bg-white",
                           iconBg: "bg-blue-100 text-blue-700",
-                          icon: "\uD83D\uDCDA"
+                          icon: "📚"
                         }
                       ];
 
@@ -5384,31 +5566,22 @@ export default function Home() {
                     {(() => {
                       const allSections = [
                         { 
-                          id: "daily", 
-                          title: "Daily Quick Test", 
-                          banglaTitle: "⚡ ডেইলি কুইক টেস্ট",
-                          desc: "প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট",
-                          color: "border-amber-200/90 hover:border-amber-400 bg-white",
-                          iconBg: "bg-amber-100 text-amber-700",
-                          icon: "⚡"
-                        },
-                        { 
                           id: "weekly", 
                           title: "Weekly Model Test", 
-                          banglaTitle: "\uD83D\uDCC5 সাপ্তাহিক মডেল টেস্ট",
+                          banglaTitle: "📅 সাপ্তাহিক মডেল টেস্ট",
                           desc: "সাপ্তাহিক লাইভ ফুল মডেল টেস্ট",
                           color: "border-purple-200/90 hover:border-purple-400 bg-white",
                           iconBg: "bg-purple-100 text-purple-700",
-                          icon: "\uD83D\uDCC5"
+                          icon: "📅"
                         },
                         { 
                           id: "subject", 
                           title: "Subject Wise Test", 
-                          banglaTitle: "\uD83D\uDCDA বিষয়ভিত্তিক পরীক্ষা",
+                          banglaTitle: "📚 বিষয়ভিত্তিক পরীক্ষা",
                           desc: "বিষয় অনুযায়ী নির্দিষ্ট অধ্যায়ের কুইজ",
                           color: "border-blue-200/90 hover:border-blue-400 bg-white",
                           iconBg: "bg-blue-100 text-blue-700",
-                          icon: "\uD83D\uDCDA"
+                          icon: "📚"
                         }
                       ];
 
