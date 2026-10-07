@@ -99,6 +99,7 @@ const PrivacyPolicyView = dynamic(() => import("@/src/components/PrivacyPolicyVi
 const ContactUsView = dynamic(() => import("@/src/components/ContactUsView"), { 
   ssr: false 
 });
+const AuthView = dynamic(() => import("../components/AuthView"), { ssr: false });
 const AuthModal = dynamic(() => import("../components/AuthModal"), { ssr: false });
 const ExamStartModal = dynamic(() => import("../components/ExamStartModal"), { ssr: false });
 const IntroOffer = dynamic(() => import("../components/intro-offer"), { ssr: false });
@@ -404,13 +405,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -430,6 +431,15 @@ export default function Home() {
   const [authModalCustomTitle, setAuthModalCustomTitle] = useState<string>("");
   const [authModalCustomSubtitle, setAuthModalCustomSubtitle] = useState<string>("");
   const [pendingExamAction, setPendingExamAction] = useState<(() => void) | null>(null);
+
+  // Automatically route any legacy auth modal trigger to the dedicated full Auth screen
+  useEffect(() => {
+    if (showAuthModal) {
+      setShowAuthModal(false);
+      setPreviousScreen(currentScreen === "auth" ? "home" : currentScreen);
+      setCurrentScreen("auth");
+    }
+  }, [showAuthModal, currentScreen]);
 
   const [profileName, setProfileName] = useState<string>("Guest User");
   const [profileEmail, setProfileEmail] = useState<string>("guest@jobmaster.com");
@@ -1470,7 +1480,23 @@ export default function Home() {
       } else if (pendingIntent === "live_quiz" || pendingIntent === "quiz") {
         setCurrentScreen("quiz");
       }
+    } else if (currentScreen === "auth") {
+      const dest = previousScreen && previousScreen !== "auth" ? previousScreen : "home";
+      setCurrentScreen(dest);
     }
+  };
+
+  const openAuthScreen = (mode: "signin" | "signup" = "signin") => {
+    setPreviousScreen(currentScreen === "auth" ? "home" : currentScreen);
+    setAuthModalMode(mode);
+    setCurrentScreen("auth");
+    setShowAuthModal(false);
+  };
+
+  const handleCloseAuthScreen = () => {
+    const dest = previousScreen && previousScreen !== "auth" ? previousScreen : "home";
+    setCurrentScreen(dest);
+    setPendingExamAction(null);
   };
 
   const handleCloseAuthModal = () => {
@@ -1559,17 +1585,8 @@ export default function Home() {
       }
     }
 
-    if (intentType === "quiz" || intentType === "live_quiz") {
-      setAuthModalCustomTitle("লাইভ কুইজে অংশ নিতে লগইন করুন");
-      setAuthModalCustomSubtitle("লাইভ কুইজে অংশ নিয়ে উপহার ও মেধা যাচাই করতে লগইন অথবা ফ্রি রেজিস্ট্রেশন করা আবশ্যক।");
-    } else {
-      setAuthModalCustomTitle("");
-      setAuthModalCustomSubtitle("");
-    }
-
     setPendingExamAction(() => action);
-    setAuthModalMode("signin");
-    setShowAuthModal(true);
+    openAuthScreen("signin");
   };
 
   const ensurePaperQuestionsLoaded = async (paper: ExamPaper): Promise<ExamPaper> => {
@@ -3079,14 +3096,13 @@ export default function Home() {
             ) : (
               <button
                 onClick={() => {
-                  setAuthModalMode("signin");
-                  setShowAuthModal(true);
+                  openAuthScreen("signin");
                   if (soundEnabled) quizAudio.playClick();
                 }}
                 className="px-2.5 py-1.5 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl font-extrabold text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
               >
                 <User className="w-3.5 h-3.5 stroke-[2.5px]" />
-                <span className="hidden sm:inline-block">সাইন ইন</span>
+                <span className="hidden sm:inline-block">Sign In</span>
               </button>
             )}
           </div>
@@ -3575,27 +3591,22 @@ export default function Home() {
                   </div>
                   <div className="space-y-1.5">
                     <span className="inline-block px-3 py-1 bg-orange-100/80 text-[#FF6A00] text-[11px] font-black rounded-full">
-                      লগইন প্রয়োজন
+                      Sign In Required
                     </span>
                     <h3 className="font-black text-lg sm:text-xl text-slate-900">
-                      লাইভ কুইজে অংশ নিতে লগইন করুন
+                      Sign In to Join Live Quiz
                     </h3>
                     <p className="text-slate-500 text-xs leading-relaxed">
-                      লাইভ কুইজে অংশ নিতে, আকর্ষণীয় উপহার জিততে ও লিডারবোর্ডে আপনার নাম অন্তর্ভুক্ত করতে অনুগ্রহ করে লগইন অথবা রেজিস্টার করুন।
+                      Please sign in or sign up to participate in Live Quiz and track your position on the leaderboard.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3 w-full pt-2">
                     <button
-                      onClick={() => {
-                        setAuthModalMode("signin");
-                        setAuthModalCustomTitle("লাইভ কুইজে অংশ নিতে লগইন করুন");
-                        setAuthModalCustomSubtitle("পুরস্কার জিততে ও লিডারবোর্ডে স্কোর যুক্ত করতে লগইন অথবা ফ্রি রেজিস্ট্রেশন করুন।");
-                        setShowAuthModal(true);
-                      }}
+                      onClick={() => openAuthScreen("signin")}
                       className="py-3.5 px-4 bg-gradient-to-r from-[#FF6A00] to-[#FF5500] hover:from-[#FF5500] hover:to-[#E54800] text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <LogIn className="w-4 h-4" />
-                      <span>লগইন / রেজিস্টার</span>
+                      <span>Sign In / Sign Up</span>
                     </button>
                     <button
                       onClick={() => {
@@ -6403,10 +6414,7 @@ export default function Home() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => {
-                        setAuthModalMode("signin");
-                        setShowAuthModal(true);
-                      }}
+                      onClick={() => openAuthScreen("signin")}
                       className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-orange-50 transition-colors group cursor-pointer text-left"
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -6414,7 +6422,7 @@ export default function Home() {
                           <LogIn className="w-4.5 h-4.5 stroke-[2.2]" />
                         </div>
                         <span className="text-xs sm:text-sm font-extrabold text-[#FF6A00] group-hover:text-orange-700 transition-colors truncate">
-                          সাইন ইন বা নতুন একাউন্ট (Sign In / Up)
+                          Sign In / Sign Up
                         </span>
                       </div>
                       <ChevronRight className="w-4 h-4 text-orange-300 group-hover:text-[#FF6A00] group-hover:translate-x-0.5 transition-all shrink-0" />
@@ -6919,6 +6927,17 @@ export default function Home() {
             <ContactUsView onBack={() => setCurrentScreen("home")} />
           )}
 
+          {/* ========================================================= */}
+          {/* 12. SCREEN: AUTHENTICATION (SIGN IN / SIGN UP) VIEW      */}
+          {/* ========================================================= */}
+          {currentScreen === "auth" && (
+            <AuthView
+              onBack={handleCloseAuthScreen}
+              onAuthSuccess={handleAuthSuccess}
+              initialMode={authModalMode}
+            />
+          )}
+
         </div>
 
         {/* Backdrop overlay for Drawer */}
@@ -7096,8 +7115,7 @@ export default function Home() {
                 if (isLoggedIn) {
                   promptSignOut();
                 } else {
-                  setAuthModalMode("signin");
-                  setShowAuthModal(true);
+                  openAuthScreen("signin");
                   if (soundEnabled) quizAudio.playClick();
                 }
               }}
@@ -7114,7 +7132,7 @@ export default function Home() {
               ) : (
                 <>
                   <LogIn className="w-6 h-6 text-[#FF6A00]" />
-                  <span>LogIn</span>
+                  <span>Sign In</span>
                 </>
               )}
             </button>

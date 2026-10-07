@@ -1,32 +1,44 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Lock, Mail, Phone, User, IdCard, LogIn, UserPlus, Sparkles, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  ArrowLeft,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  User,
+  Phone,
+  UserPlus,
+  LogIn,
+  AlertCircle,
+  CheckCircle2,
+  GraduationCap,
+} from "lucide-react";
 import { getSupabase } from "../lib/supabase";
-import { UserProfile, generateStudentId, upsertUserProfile, fetchUserProfile } from "../lib/user_profiles";
-import { loginUserAccount, registerUserAccount } from "../lib/user_auth";
-import { useModalHistory } from "../hooks/useBackButton";
+import {
+  UserProfile,
+  fetchUserProfile,
+  upsertUserProfile,
+  generateStudentId,
+} from "../lib/user_profiles";
+import {
+  loginUserAccount,
+  registerUserAccount,
+} from "../lib/user_auth";
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface AuthViewProps {
+  onBack: () => void;
   onAuthSuccess: (user: UserProfile) => void;
   initialMode?: "signin" | "signup";
-  customTitle?: string;
-  customSubtitle?: string;
 }
 
-export default function AuthModal({
-  isOpen,
-  onClose,
+export default function AuthView({
+  onBack,
   onAuthSuccess,
   initialMode = "signin",
-  customTitle,
-  customSubtitle,
-}: AuthModalProps) {
+}: AuthViewProps) {
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
-  
-  // Form fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -48,24 +60,22 @@ export default function AuthModal({
   const [oauthPopupUrl, setOauthPopupUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setMode(initialMode);
-      setErrorMsg("");
-      setSuccessMsg("");
-      setIsSubmitting(false);
-      setIsGoogleLoading(false);
-      setOauthPopupUrl(null);
-      setShowSignInPassword(false);
-      setShowSignUpPassword(false);
-      setShowSignUpConfirmPassword(false);
-      if (!studentId) {
-        setStudentId(generateStudentId());
-      }
+    setMode(initialMode);
+    setErrorMsg("");
+    setSuccessMsg("");
+    setIsSubmitting(false);
+    setIsGoogleLoading(false);
+    setOauthPopupUrl(null);
+    setShowSignInPassword(false);
+    setShowSignUpPassword(false);
+    setShowSignUpConfirmPassword(false);
+    if (!studentId) {
+      setStudentId(generateStudentId());
     }
-  }, [isOpen, initialMode]);
+  }, [initialMode]);
 
   // Helper to process session and complete auth
-  const handleCompleteSessionAuth = React.useCallback(async (code?: string | null, hash?: string | null) => {
+  const handleCompleteSessionAuth = useCallback(async (code?: string | null, hash?: string | null) => {
     const supabase = getSupabase();
     if (!supabase) {
       setIsGoogleLoading(false);
@@ -104,7 +114,7 @@ export default function AuthModal({
           profile = {
             id: session.user.id,
             email: session.user.email || "",
-            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "শিক্ষার্থী",
+            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "User",
             phone_number: session.user.user_metadata?.phone_number || session.user.user_metadata?.phone || "",
             student_id: session.user.user_metadata?.student_id || generateStudentId(),
             role: "Student",
@@ -114,7 +124,7 @@ export default function AuthModal({
         }
 
         if (profile.status === "Banned") {
-          setErrorMsg("আপনার অ্যাকাউন্টটি অ্যাডমিন কর্তৃক স্থগিত/নিষিদ্ধ করা হয়েছে।");
+          setErrorMsg("Account suspended or restricted by administrator.");
           await supabase.auth.signOut();
           setIsGoogleLoading(false);
           setIsSubmitting(false);
@@ -125,30 +135,25 @@ export default function AuthModal({
         onAuthSuccess(profile);
         setIsGoogleLoading(false);
         setIsSubmitting(false);
-        onClose();
         return;
       } else {
-        // Session not available yet, turn off loading so UI is not frozen
         setIsGoogleLoading(false);
         setIsSubmitting(false);
       }
     } catch (sessionErr: any) {
-      console.warn("Session exchange error in AuthModal:", sessionErr);
-      setErrorMsg("লগইন সেশন প্রক্রিয়াকরণে সমস্যা হয়েছে: " + (sessionErr?.message || ""));
+      console.warn("Session exchange error in AuthView:", sessionErr);
+      setErrorMsg("Authentication session error: " + (sessionErr?.message || ""));
       setIsGoogleLoading(false);
       setIsSubmitting(false);
     }
-  }, [onAuthSuccess, onClose]);
+  }, [onAuthSuccess]);
 
   // Listen for cross-window messages and BroadcastChannel from OAuth popup
   useEffect(() => {
-    if (!isOpen) return;
-
-    // 1. Window postMessage listener
     const handleAuthMessage = async (e: MessageEvent) => {
       if (e.data?.type === "SUPABASE_AUTH_CALLBACK" || e.data?.type === "SUPABASE_AUTH_SUCCESS") {
         if (e.data?.error) {
-          setErrorMsg(e.data.errorDescription || e.data.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+          setErrorMsg(e.data.errorDescription || e.data.error || "Google authentication failed.");
           setIsGoogleLoading(false);
           return;
         }
@@ -158,7 +163,6 @@ export default function AuthModal({
     };
     window.addEventListener("message", handleAuthMessage);
 
-    // 2. BroadcastChannel across windows/tabs on this origin
     let bc: BroadcastChannel | null = null;
     try {
       if (typeof BroadcastChannel !== "undefined") {
@@ -166,7 +170,7 @@ export default function AuthModal({
         bc.onmessage = async (e) => {
           if (e.data?.type === "SUPABASE_AUTH_CALLBACK" || e.data?.type === "SUPABASE_AUTH_SUCCESS") {
             if (e.data?.error) {
-              setErrorMsg(e.data.errorDescription || e.data.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+              setErrorMsg(e.data.errorDescription || e.data.error || "Google authentication failed.");
               setIsGoogleLoading(false);
               return;
             }
@@ -179,13 +183,12 @@ export default function AuthModal({
       console.warn("BroadcastChannel init warning:", bcErr);
     }
 
-    // 3. Storage event fallback
     const handleStorage = async (e: StorageEvent) => {
       if (e.key === "jobmaster_oauth_signal" && e.newValue) {
         try {
           const signal = JSON.parse(e.newValue);
           if (signal.error) {
-            setErrorMsg(signal.errorDescription || signal.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+            setErrorMsg(signal.errorDescription || signal.error || "Google authentication failed.");
             setIsGoogleLoading(false);
             return;
           }
@@ -203,11 +206,11 @@ export default function AuthModal({
         try { bc.close(); } catch (err) {}
       }
     };
-  }, [isOpen, handleCompleteSessionAuth]);
+  }, [handleCompleteSessionAuth]);
 
-  // Active polling for session when Google sign-in is in progress (timeout after 30s)
+  // Polling for session when Google sign-in is active
   useEffect(() => {
-    if (!isGoogleLoading || !isOpen) return;
+    if (!isGoogleLoading) return;
 
     let attempts = 0;
     const interval = setInterval(async () => {
@@ -227,9 +230,7 @@ export default function AuthModal({
     }, 1200);
 
     return () => clearInterval(interval);
-  }, [isGoogleLoading, isOpen, handleCompleteSessionAuth]);
-
-  if (!isOpen) return null;
+  }, [isGoogleLoading, handleCompleteSessionAuth]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,7 +239,7 @@ export default function AuthModal({
 
     const inputVal = email.trim();
     if (!inputVal || !password.trim()) {
-      setErrorMsg("অনুগ্রহ করে আপনার ইমেইল অথবা মোবাইল নম্বর এবং পাসওয়ার্ড দিন।");
+      setErrorMsg("Please enter your email or phone number and password.");
       return;
     }
 
@@ -247,19 +248,18 @@ export default function AuthModal({
     try {
       const result = await loginUserAccount(inputVal, password.trim());
       if (!result.success || !result.user) {
-        setErrorMsg(result.error || "লগইন করতে সমস্যা হয়েছে। অনুগ্রহ করে সঠিক পাসওয়ার্ড দিন।");
+        setErrorMsg(result.error || "Sign in failed. Please check your credentials.");
         setIsSubmitting(false);
         return;
       }
 
-      setSuccessMsg("🎉 সফলভাবে লগইন সম্পন্ন হয়েছে!");
+      setSuccessMsg("Signed in successfully!");
       setTimeout(() => {
         onAuthSuccess(result.user!);
         setIsSubmitting(false);
-        onClose();
       }, 500);
     } catch (err: any) {
-      setErrorMsg(err?.message || "লগইন করার সময় ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      setErrorMsg(err?.message || "Sign in error occurred. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -270,23 +270,23 @@ export default function AuthModal({
     setSuccessMsg("");
 
     if (!fullName.trim()) {
-      setErrorMsg("অনুগ্রহ করে আপনার সম্পূর্ণ নাম লিখুন।");
+      setErrorMsg("Please enter your full name.");
       return;
     }
     if (!phoneNumber.trim()) {
-      setErrorMsg("অনুগ্রহ করে আপনার মোবাইল নম্বর লিখুন।");
+      setErrorMsg("Please enter your mobile phone number.");
       return;
     }
     if (!email.trim()) {
-      setErrorMsg("অনুগ্রহ করে একটি সঠিক ইমেইল এড্রেস দিন।");
+      setErrorMsg("Please enter a valid email address.");
       return;
     }
     if (!password.trim() || password.length < 6) {
-      setErrorMsg("পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।");
+      setErrorMsg("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setErrorMsg("পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না।");
+      setErrorMsg("Password and Confirm Password do not match.");
       return;
     }
 
@@ -301,19 +301,18 @@ export default function AuthModal({
       });
 
       if (!regResult.success || !regResult.user) {
-        setErrorMsg(regResult.error || "একাউন্ট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+        setErrorMsg(regResult.error || "Account creation failed. Please try again.");
         setIsSubmitting(false);
         return;
       }
 
-      setSuccessMsg("🎉 অভিনন্দন! আপনার একাউন্ট সফলভাবে তৈরি হয়েছে।");
+      setSuccessMsg("Account created successfully!");
       setTimeout(() => {
         onAuthSuccess(regResult.user!);
         setIsSubmitting(false);
-        onClose();
-      }, 700);
+      }, 600);
     } catch (err: any) {
-      setErrorMsg(err?.message || "একাউন্ট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      setErrorMsg(err?.message || "Account creation error occurred. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -326,12 +325,9 @@ export default function AuthModal({
 
       const supabase = getSupabase();
       if (supabase) {
-        // Direct to dedicated OAuth callback endpoint
         const redirectUrl = typeof window !== "undefined"
           ? `${window.location.origin}/auth/callback`
           : undefined;
-
-        const isIframe = typeof window !== "undefined" && window.self !== window.top;
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -346,18 +342,17 @@ export default function AuthModal({
         });
 
         if (error) {
-          setErrorMsg("গুগল সাইন-ইন শুরু করতে ব্যর্থ হয়েছে: " + error.message);
+          setErrorMsg("Failed to initialize Google sign in: " + error.message);
           setIsGoogleLoading(false);
           return;
         }
 
         if (!data?.url) {
-          setErrorMsg("গুগল অথেন্টিকেশন ইউআরএল পাওয়া যায়নি।");
+          setErrorMsg("Google authentication URL not available.");
           setIsGoogleLoading(false);
           return;
         }
 
-        // Check if running inside Android WebView (e.g. Kotlin app with AndroidInterface)
         const isAndroidWebView = typeof window !== "undefined" && (
           Boolean((window as any).AndroidInterface) || 
           navigator.userAgent.includes("; wv") ||
@@ -365,12 +360,10 @@ export default function AuthModal({
         );
 
         if (isAndroidWebView) {
-          // In Android WebView, navigate directly in the current window
           window.location.href = data.url;
           return;
         }
 
-        // Open in popup window so Google Accounts won't be blocked by X-Frame-Options
         const popup = window.open(
           data.url,
           "jobmaster_google_login",
@@ -378,14 +371,12 @@ export default function AuthModal({
         );
 
         if (!popup || popup.closed || typeof popup.closed === "undefined") {
-          // If popup was blocked by browser
           setOauthPopupUrl(data.url);
-          setErrorMsg("ব্রাউজারে পপ-আপ ব্লক করা আছে। অনুগ্রহ করে নিচের বাটনে ক্লিক করে গুগল লগইন সম্পন্ন করুন।");
+          setErrorMsg("Browser blocked the popup window. Please click the button below to proceed:");
           setIsGoogleLoading(false);
           return;
         }
 
-        // Monitor popup status: if user closes popup without completing login, reset spinner
         const checkClosed = setInterval(() => {
           try {
             if (popup.closed) {
@@ -397,18 +388,16 @@ export default function AuthModal({
           }
         }, 1000);
 
-        // Safety timeout (45 seconds) so spinner never hangs indefinitely
         setTimeout(() => {
           try { clearInterval(checkClosed); } catch (e) {}
           setIsGoogleLoading((prev) => {
             if (prev) {
-              setErrorMsg("গুগল সাইন-ইনের সময়সীমা শেষ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+              setErrorMsg("Google sign in timed out. Please try again.");
             }
             return false;
           });
         }, 45000);
       } else {
-        // Fallback simulate demo google sign in
         const googleUser: UserProfile = {
           id: `goog-${Date.now()}`,
           email: "student.google@gmail.com",
@@ -421,49 +410,55 @@ export default function AuthModal({
         localStorage.setItem("job_master_current_user", JSON.stringify(googleUser));
         onAuthSuccess(googleUser);
         setIsGoogleLoading(false);
-        onClose();
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || "গুগল সাইন-ইন প্রক্রিয়া ব্যর্থ হয়েছে।");
+      setErrorMsg(err?.message || "Google sign in failed.");
       setIsGoogleLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-      <div 
-        className="bg-white border border-slate-100 rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#FF6A00] to-[#FF4E00] p-5 text-white relative shrink-0">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all active:scale-90 cursor-pointer"
-            title="Close"
-          >
-            <X className="w-4 h-4 stroke-[2.5]" />
-          </button>
+    <div className="flex-1 w-full bg-slate-50 min-h-screen flex flex-col selection:bg-orange-500 selection:text-white animate-fade-in text-left">
+      {/* Top App Bar */}
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3 shadow-2xs flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-black text-xs sm:text-sm transition-all active:scale-95 cursor-pointer border border-orange-200/60"
+          id="auth-back-btn"
+        >
+          <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+          <span>Back</span>
+        </button>
 
-          <h2 className="text-xl font-black tracking-tight leading-tight mt-1">
-            {customTitle || (mode === "signin" ? "Sign In" : "Sign Up")}
-          </h2>
+        <div className="flex items-center gap-2">
+          <div className="bg-[#FF6A00] p-1.5 rounded-xl text-white shadow-2xs">
+            <GraduationCap className="w-4 h-4" />
+          </div>
+          <span className="font-black text-slate-800 text-sm">
+            Job Master <span className="text-[#FF6A00]">{mode === "signin" ? "Sign In" : "Sign Up"}</span>
+          </span>
+        </div>
+      </div>
 
-          {/* Toggle Tabs */}
-          <div className="flex bg-black/20 p-1 rounded-xl mt-4 border border-white/10">
+      {/* Main Spacious Container */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
+        <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden p-6 sm:p-8">
+          
+          {/* Clean Segmented Tab Switch (Sign In / Sign Up) */}
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6 border border-slate-200/80">
             <button
               onClick={() => {
                 setMode("signin");
                 setErrorMsg("");
                 setSuccessMsg("");
               }}
-              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 mode === "signin"
-                  ? "bg-white text-[#FF4E00] shadow-sm"
-                  : "text-white/80 hover:text-white"
+                  ? "bg-white text-[#FF6A00] shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <LogIn className="w-3.5 h-3.5" />
+              <LogIn className="w-4 h-4" />
               <span>Sign In</span>
             </button>
 
@@ -474,74 +469,77 @@ export default function AuthModal({
                 setSuccessMsg("");
                 if (!studentId) setStudentId(generateStudentId());
               }}
-              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 mode === "signup"
-                  ? "bg-white text-[#FF4E00] shadow-sm"
-                  : "text-white/80 hover:text-white"
+                  ? "bg-white text-[#FF6A00] shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <UserPlus className="w-3.5 h-3.5" />
+              <UserPlus className="w-4 h-4" />
               <span>Sign Up</span>
             </button>
           </div>
-        </div>
 
-        {/* Scrollable Form Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
-          {/* Error Message */}
+          {/* Form Header Title */}
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {mode === "signin" ? "Sign In" : "Sign Up"}
+            </h1>
+          </div>
+
+          {/* Alert messages */}
           {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold flex items-start gap-2 animate-shake">
+            <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs sm:text-sm font-bold flex items-start gap-2.5 animate-shake">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          {/* Success Message */}
           {successMsg && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-2 animate-fade-in">
+            <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2.5 animate-fade-in">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
               <span>{successMsg}</span>
             </div>
           )}
 
-          {/* MODE: SIGN IN FORM */}
+          {/* SIGN IN FORM */}
           {mode === "signin" && (
-            <form onSubmit={handleSignIn} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+            <form onSubmit={handleSignIn} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Email or Phone
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="example@gmail.com / 017XXXXXXXX"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type={showSignInPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSignInPassword(!showSignInPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-1"
                     tabIndex={-1}
                     aria-label={showSignInPassword ? "Hide password" : "Show password"}
                   >
@@ -553,7 +551,7 @@ export default function AuthModal({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                className="w-full py-3.5 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-black text-sm rounded-2xl shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -570,82 +568,78 @@ export default function AuthModal({
             </form>
           )}
 
-          {/* MODE: SIGN UP FORM */}
+          {/* SIGN UP FORM */}
           {mode === "signup" && (
-            <form onSubmit={handleSignUp} className="space-y-3">
-              {/* Full Name */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+            <form onSubmit={handleSignUp} className="space-y-3.5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Full Name *
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Mobile Number */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Mobile Number *
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type="tel"
                     required
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="017XXXXXXXX"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Email Address */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Email Address *
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="example@gmail.com"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Password *
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type={showSignUpPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Minimum 6 characters"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-1"
                     tabIndex={-1}
                     aria-label={showSignUpPassword ? "Hide password" : "Show password"}
                   >
@@ -654,25 +648,24 @@ export default function AuthModal({
                 </div>
               </div>
 
-              {/* Confirm Password */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase block pl-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
                   Confirm Password *
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
                   <input
                     type={showSignUpConfirmPassword ? "text" : "password"}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowSignUpConfirmPassword(!showSignUpConfirmPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-0.5"
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-1"
                     tabIndex={-1}
                     aria-label={showSignUpConfirmPassword ? "Hide password" : "Show password"}
                   >
@@ -684,7 +677,7 @@ export default function AuthModal({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                className="w-full py-3.5 bg-[#FF6A00] hover:bg-[#e05d00] text-white font-black text-sm rounded-2xl shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -702,11 +695,11 @@ export default function AuthModal({
           )}
 
           {/* Divider */}
-          <div className="relative my-4">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200" />
             </div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold">
+            <div className="relative flex justify-center text-xs uppercase font-extrabold">
               <span className="bg-white px-3 text-slate-400">OR</span>
             </div>
           </div>
@@ -716,7 +709,7 @@ export default function AuthModal({
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 shadow-2xs hover:shadow-xs active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-60"
+            className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-sm rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-60"
           >
             {isGoogleLoading ? (
               <>
@@ -725,7 +718,7 @@ export default function AuthModal({
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -749,55 +742,58 @@ export default function AuthModal({
           </button>
 
           {oauthPopupUrl && (
-            <div className="mt-3 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-center animate-fade-in">
-              <p className="text-[11px] text-amber-900 font-bold mb-1.5 leading-snug">
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-center animate-fade-in">
+              <p className="text-xs text-amber-900 font-bold mb-2">
                 Popup window blocked. Click below to continue:
               </p>
               <a
                 href={oauthPopupUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white text-[11px] font-black rounded-lg transition-all shadow-xs"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#FF6A00] hover:bg-[#e55f00] text-white text-xs font-black rounded-xl transition-all shadow-xs"
                 onClick={() => setIsGoogleLoading(true)}
               >
                 Open Google Sign In Window
               </a>
             </div>
           )}
-        </div>
 
-        {/* Footer switch */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 text-center text-xs font-semibold text-slate-600 shrink-0">
-          {mode === "signin" ? (
-            <p>
-              Don&apos;t have an account?{" "}
-              <button
-                onClick={() => {
-                  setMode("signup");
-                  setErrorMsg("");
-                  setSuccessMsg("");
-                  if (!studentId) setStudentId(generateStudentId());
-                }}
-                className="text-[#FF6A00] font-black hover:underline cursor-pointer ml-1"
-              >
-                Sign Up
-              </button>
-            </p>
-          ) : (
-            <p>
-              Already have an account?{" "}
-              <button
-                onClick={() => {
-                  setMode("signin");
-                  setErrorMsg("");
-                  setSuccessMsg("");
-                }}
-                className="text-[#FF6A00] font-black hover:underline cursor-pointer ml-1"
-              >
-                Sign In
-              </button>
-            </p>
-          )}
+          {/* Footer toggle switch */}
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs sm:text-sm font-semibold text-slate-600">
+            {mode === "signin" ? (
+              <p>
+                Don&apos;t have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signup");
+                    setErrorMsg("");
+                    setSuccessMsg("");
+                    if (!studentId) setStudentId(generateStudentId());
+                  }}
+                  className="text-[#FF6A00] font-black hover:underline cursor-pointer ml-1"
+                >
+                  Sign Up
+                </button>
+              </p>
+            ) : (
+              <p>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signin");
+                    setErrorMsg("");
+                    setSuccessMsg("");
+                  }}
+                  className="text-[#FF6A00] font-black hover:underline cursor-pointer ml-1"
+                >
+                  Sign In
+                </button>
+              </p>
+            )}
+          </div>
+
         </div>
       </div>
     </div>

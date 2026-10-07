@@ -659,6 +659,14 @@ export function useAppNavigationHistory(
         return;
       }
 
+      if (navState.currentScreen === "auth") {
+        const dest = (navState.previousScreen && navState.previousScreen !== "auth")
+          ? navState.previousScreen
+          : "home";
+        handlers.setCurrentScreen(dest);
+        return;
+      }
+
       if (
         navState.currentScreen === "courses" ||
         navState.currentScreen === "prep-all-subjects" ||
