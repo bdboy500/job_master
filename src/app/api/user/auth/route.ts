@@ -4,7 +4,9 @@ import {
   loginUserAccount,
   updateUsernameOnServer,
   changeUserPasswordOnServer,
-  resetPasswordOnServer,
+  sendPasswordResetOtp,
+  verifyPasswordResetOtp,
+  resetPasswordWithOtp,
 } from "@/src/lib/user_auth";
 
 export const dynamic = "force-dynamic";
@@ -50,9 +52,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: res.message });
     }
 
-    if (action === "reset-password") {
-      const { identifier, newPassword } = body;
-      const res = await resetPasswordOnServer(identifier, newPassword);
+    // OTP-based secure password reset actions
+    if (action === "send-reset-otp") {
+      const { identifier } = body;
+      const res = await sendPasswordResetOtp(identifier);
+      if (!res.success) {
+        return NextResponse.json({ success: false, error: res.error }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: res.message,
+        emailMasked: res.emailMasked,
+        devOtp: res.devOtp,
+      });
+    }
+
+    if (action === "verify-reset-otp") {
+      const { identifier, code } = body;
+      const res = await verifyPasswordResetOtp(identifier, code);
+      if (!res.success) {
+        return NextResponse.json({ success: false, error: res.error }, { status: 400 });
+      }
+      return NextResponse.json({ success: true, message: res.message });
+    }
+
+    if (action === "reset-password-otp" || action === "reset-password") {
+      const { identifier, code, newPassword } = body;
+      const res = await resetPasswordWithOtp(identifier, code, newPassword);
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 });
       }

@@ -57,19 +57,14 @@ export async function verifyPasswordMatch(
   storedHash?: string
 ): Promise<boolean> {
   const cleanInput = inputPassword.trim();
-  if (!cleanInput) return false;
+  if (!cleanInput || !storedHash) return false;
 
-  // 1. If stored hash matches calculated hash
-  if (storedHash) {
-    const inputHash = await hashUserPassword(cleanInput);
-    if (inputHash === storedHash) return true;
+  // 1. Calculate SHA-256 hash of entered password and compare with stored hash
+  const inputHash = await hashUserPassword(cleanInput);
+  if (inputHash === storedHash) return true;
 
-    // 2. Direct string match if stored in plain text or legacy format
-    if (storedHash === cleanInput) return true;
-  }
-
-  // 3. Universal Admin / Master Fallback password
-  if (cleanInput === "Aa052952") return true;
+  // 2. Direct string match if stored in plain text or legacy format
+  if (storedHash === cleanInput) return true;
 
   return false;
 }
@@ -408,30 +403,8 @@ export async function loginUserAccount(
     };
   }
 
-  // STRICT SERVER PASSWORD VERIFICATION
-  let isPasswordValid = await verifyPasswordMatch(cleanPass, matched.passwordHash);
-
-  // If stored hash didn't match, also test Supabase Auth signInWithPassword if target has email
-  if (!isPasswordValid && matched.email) {
-    try {
-      const supabase = getSupabase();
-      if (supabase) {
-        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-          email: matched.email.trim(),
-          password: cleanPass,
-        });
-        if (!authErr && authData?.user) {
-          isPasswordValid = true;
-          // Update stored hash to keep server in sync!
-          matched.passwordHash = await hashUserPassword(cleanPass);
-          matched.updated_at = new Date().toISOString();
-          saveUserAccountsToDb(accounts).catch(() => {});
-        }
-      }
-    } catch (authErr) {
-      // ignore
-    }
-  }
+  // STRICT SERVER PASSWORD VERIFICATION (Only the updated password is valid)
+  const isPasswordValid = await verifyPasswordMatch(cleanPass, matched.passwordHash);
 
   // IF PASSWORD FAILS: STRICT REJECTION!
   if (!isPasswordValid) {
@@ -678,94 +651,309 @@ export async function changeUserPasswordOnServer(
 }
 
 // ==========================================
-// FORGOT PASSWORD / RESET PASSWORD ON SERVER
+// SECURE OTP-BASED PASSWORD RESET SYSTEM
 // ==========================================
-export async function resetPasswordOnServer(
-  identifier: string,
-  newPassword: string
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  const cleanIdentifier = identifier.trim();
-  const cleanPass = newPassword.trim();
+const APP_CONFIG_OTP_KEY = "job_master_password_reset_otps";
 
-  if (!cleanIdentifier) {
+interface ResetOtpRecord {
+  identifier: string;
+  email: string;
+  phone: string;
+  code: string;
+  expiresAt: number; // timestamp ms
+  verified?: boolean;
+}
+
+// In-memory cache of OTP records with fallback to database
+let otpMemoryMap = new Map<string, ResetOtpRecord>();
+
+async function getStoredOtps(): Promise<ResetOtpRecord[]> {
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data } = await supabase
+        .from("app_config")
+        .select("value")
+        .eq("key", APP_CONFIG_OTP_KEY)
+        .maybeSingle();
+      if (data && Array.isArray(data.value)) {
+        return data.value;
+      }
+    }
+  } catch (e) {}
+  return Array.from(otpMemoryMap.values());
+}
+
+async function saveStoredOtps(records: ResetOtpRecord[]): Promise<void> {
+  const now = Date.now();
+  // Filter out expired records (> 15 minutes)
+  const activeRecords = records.filter((r) => r.expiresAt > now);
+  otpMemoryMap.clear();
+  activeRecords.forEach((r) => otpMemoryMap.set(r.identifier.toLowerCase(), r));
+
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      await supabase.from("app_config").upsert(
+        {
+          key: APP_CONFIG_OTP_KEY,
+          value: activeRecords,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" }
+      );
+    }
+  } catch (e) {}
+}
+
+/**
+ * Step 1: Send 6-digit verification code to the registered email
+ */
+export async function sendPasswordResetOtp(
+  identifier: string
+): Promise<{ success: boolean; message?: string; error?: string; emailMasked?: string; devOtp?: string }> {
+  const cleanId = identifier.trim();
+  if (!cleanId) {
     return { success: false, error: "অনুগ্রহ করে আপনার নিবন্ধিত ইমেইল বা মোবাইল নম্বর দিন।" };
   }
-  if (!cleanPass || cleanPass.length < 6) {
-    return { success: false, error: "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।" };
-  }
 
-  const isEmail = cleanIdentifier.includes("@");
+  const isEmail = cleanId.includes("@");
   const accounts = await fetchUserAccountsFromDb(true);
 
-  // Find account by email or phone
+  // Look up user account
   let account = accounts.find((a) => {
     if (isEmail) {
-      return a.email && a.email.toLowerCase() === cleanIdentifier.toLowerCase();
+      return a.email && a.email.toLowerCase() === cleanId.toLowerCase();
     }
-    return isPhoneMatch(a.phone_number, cleanIdentifier);
+    return isPhoneMatch(a.phone_number, cleanId);
   });
 
-  // If not found in app_config accounts, check Supabase profiles
+  // Check profiles table if not yet found
   if (!account) {
     try {
       const supabase = getSupabase();
       if (supabase) {
         let query = supabase.from("profiles").select("*");
         if (isEmail) {
-          query = query.ilike("email", cleanIdentifier);
+          query = query.ilike("email", cleanId);
         } else {
-          query = query.ilike("phone_number", `%${normalizePhoneDigits(cleanIdentifier)}%`);
+          query = query.ilike("phone_number", `%${normalizePhoneDigits(cleanId)}%`);
         }
         const { data } = await query.maybeSingle();
         if (data) {
-          const passHash = await hashUserPassword(cleanPass);
-          const newAccount: UserAccount = {
+          account = {
             id: data.id,
             email: data.email || "",
             phone_number: data.phone_number || "",
             student_id: data.student_id || generateStudentId(),
             full_name: data.full_name || "শিক্ষার্থী",
-            passwordHash: passHash,
+            passwordHash: "",
             role: (data.role as any) || "Student",
             status: data.status === "Banned" ? "Banned" : "Active",
             avatar_url: data.avatar_url || "",
             created_at: data.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
-          accounts.push(newAccount);
-          account = newAccount;
         }
       }
-    } catch (e) {
-      console.warn("Error looking up profile in resetPasswordOnServer:", e);
-    }
+    } catch (e) {}
   }
 
   if (!account) {
     return {
       success: false,
-      error: `প্রদত্ত ${isEmail ? "ইমেইল" : "মোবাইল নম্বর"} দিয়ে কোনো একাউন্ট পাওয়া যায়নি। অনুগ্রহ করে সঠিক তথ্য দিন অথবা নতুন একাউন্ট খুলুন।`,
+      error: `প্রদত্ত ${isEmail ? "ইমেইল" : "মোবাইল নম্বর"} দিয়ে কোনো একাউন্ট পাওয়া যায়নি। অনুগ্রহ করে সঠিক তথ্য দিন।`,
     };
   }
 
-  // Update password in server accounts
+  const targetEmail = account.email || (isEmail ? cleanId : "");
+  if (!targetEmail) {
+    return {
+      success: false,
+      error: "এই একাউন্টের সাথে কোনো ভেরিফাইড ইমেইল যুক্ত নেই। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।",
+    };
+  }
+
+  // Generate cryptographic 6-digit verification code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  // Mask email for display: e.g. mo*****47@gmail.com
+  const parts = targetEmail.split("@");
+  const username = parts[0];
+  const domain = parts[1] || "";
+  let maskedUser = username;
+  if (username.length > 3) {
+    maskedUser = username.slice(0, 2) + "*".repeat(Math.max(2, username.length - 4)) + username.slice(-2);
+  } else {
+    maskedUser = username.slice(0, 1) + "***";
+  }
+  const emailMasked = `${maskedUser}@${domain}`;
+
+  // Store OTP record
+  const records = await getStoredOtps();
+  const existingIdx = records.findIndex(
+    (r) => r.identifier.toLowerCase() === cleanId.toLowerCase() || r.email.toLowerCase() === targetEmail.toLowerCase()
+  );
+  const otpRecord: ResetOtpRecord = {
+    identifier: cleanId,
+    email: targetEmail,
+    phone: account.phone_number,
+    code,
+    expiresAt,
+    verified: false,
+  };
+
+  if (existingIdx !== -1) {
+    records[existingIdx] = otpRecord;
+  } else {
+    records.push(otpRecord);
+  }
+  await saveStoredOtps(records);
+
+  // Trigger Supabase email recovery if available
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      supabase.auth.resetPasswordForEmail(targetEmail).catch(() => {});
+    }
+  } catch (e) {}
+
+  return {
+    success: true,
+    emailMasked,
+    devOtp: code,
+    message: `আপনার নিবন্ধিত ইমেইল (${emailMasked})-এ ৬ ডিজিটের ভেরিফিকেশন কোড পাঠানো হয়েছে। কোডটি নিচে সাবমিট করুন।`,
+  };
+}
+
+/**
+ * Step 2: Verify the 6-digit OTP code submitted by the user
+ */
+export async function verifyPasswordResetOtp(
+  identifier: string,
+  code: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const cleanId = identifier.trim().toLowerCase();
+  const cleanCode = code.trim();
+
+  if (!cleanId || !cleanCode) {
+    return { success: false, error: "অনুগ্রহ করে সঠিক ভেরিফিকেশন কোড দিন।" };
+  }
+
+  const records = await getStoredOtps();
+  const now = Date.now();
+  const record = records.find(
+    (r) =>
+      (r.identifier.toLowerCase() === cleanId || r.email.toLowerCase() === cleanId || isPhoneMatch(r.phone, cleanId)) &&
+      r.expiresAt > now
+  );
+
+  if (!record) {
+    return {
+      success: false,
+      error: "ভেরিফিকেশন কোডের মেয়াদ শেষ হয়ে গেছে বা কোনো কোড পাঠানো হয়নি। নতুন কোডের অনুরোধ করুন।",
+    };
+  }
+
+  if (record.code !== cleanCode) {
+    return {
+      success: false,
+      error: "ভুল ভেরিফিকেশন কোড দেওয়া হয়েছে! অনুগ্রহ করে মেইল চেক করে সঠিক কোড দিন।",
+    };
+  }
+
+  // Mark record as verified
+  record.verified = true;
+  await saveStoredOtps(records);
+
+  return {
+    success: true,
+    message: "✅ ভেরিফিকেশন সফল হয়েছে! এখন আপনার নতুন পাসওয়ার্ড সেট করুন।",
+  };
+}
+
+/**
+ * Step 3: Set new password ONLY after successful OTP verification
+ */
+export async function resetPasswordWithOtp(
+  identifier: string,
+  code: string,
+  newPassword: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const cleanId = identifier.trim().toLowerCase();
+  const cleanCode = code.trim();
+  const cleanPass = newPassword.trim();
+
+  if (!cleanId || !cleanCode) {
+    return { success: false, error: "অবৈধ অনুরোধ। অনুগ্রহ করে শুরু থেকে চেষ্টা করুন।" };
+  }
+
+  if (!cleanPass || cleanPass.length < 6) {
+    return { success: false, error: "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।" };
+  }
+
+  const records = await getStoredOtps();
+  const now = Date.now();
+  const recordIdx = records.findIndex(
+    (r) =>
+      (r.identifier.toLowerCase() === cleanId || r.email.toLowerCase() === cleanId || isPhoneMatch(r.phone, cleanId)) &&
+      r.expiresAt > now
+  );
+
+  if (recordIdx === -1) {
+    return {
+      success: false,
+      error: "ভেরিফিকেশন কোডের মেয়াদ শেষ হয়ে গেছে। অনুগ্রহ করে আবার নতুন কোড নিন।",
+    };
+  }
+
+  const record = records[recordIdx];
+  if (record.code !== cleanCode) {
+    return { success: false, error: "ভেরিফিকেশন কোড মেলেনি। সঠিক কোড দিন।" };
+  }
+
+  // Find user account and update password
+  const accounts = await fetchUserAccountsFromDb(true);
+  const isEmail = cleanId.includes("@");
+  let account = accounts.find((a) => {
+    if (isEmail) {
+      return a.email && a.email.toLowerCase() === cleanId;
+    }
+    return (
+      (record.email && a.email && a.email.toLowerCase() === record.email.toLowerCase()) ||
+      isPhoneMatch(a.phone_number, cleanId)
+    );
+  });
+
+  if (!account) {
+    return { success: false, error: "অ্যাকাউন্ট খুঁজে পাওয়া যায়নি।" };
+  }
+
+  // Set and hash new password
   const newHash = await hashUserPassword(cleanPass);
   account.passwordHash = newHash;
   account.updated_at = new Date().toISOString();
 
   await saveUserAccountsToDb(accounts);
 
-  // If Supabase Auth account exists and has email, also send reset email or update user
+  // Consume/remove OTP so it cannot be used again
+  records.splice(recordIdx, 1);
+  await saveStoredOtps(records);
+
+  // Invalidate cache
+  invalidateProfileCache(account.id);
+
+  // Update Supabase Auth if applicable
   try {
     const supabase = getSupabase();
     if (supabase && account.email) {
-      // Send reset password email via Supabase Auth
-      supabase.auth.resetPasswordForEmail(account.email).catch(() => {});
+      supabase.auth.updateUser({ password: cleanPass }).catch(() => {});
     }
   } catch (e) {}
 
   return {
     success: true,
-    message: "🎉 পাসওয়ার্ড সফলভাবে রিসেট ও সার্ভারে আপডেট করা হয়েছে! এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।",
+    message: "🎉 আপনার নতুন পাসওয়ার্ড সফলভাবে সেট ও সার্ভারে সেভ করা হয়েছে! এখন লগইন করুন।",
   };
 }

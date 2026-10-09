@@ -1634,10 +1634,18 @@ export default function Home() {
     openAuthScreen("signin");
   };
 
-  const ensurePaperQuestionsLoaded = async (paper: ExamPaper): Promise<ExamPaper> => {
+  const ensurePaperQuestionsLoaded = async (paper: ExamPaper): Promise<ExamPaper | null> => {
+    // 1. If paper already has valid loaded questions, use them
     if (paper.questions && Array.isArray(paper.questions) && paper.questions.length > 0) {
       return paper;
     }
+
+    // 2. Strict offline check: if user is offline, DO NOT load demo questions!
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showShareToast("⚠️ ইন্টারনেট সংযোগ নেই! পরীক্ষা শুরু করতে ইন্টারনেট কানেকশন চালু করুন।", "offline");
+      return null;
+    }
+
     setIsPaperLoading(true);
     try {
       const fullPaper = await fetchExamPaperById(paper.id);
@@ -1652,13 +1660,9 @@ export default function Home() {
     }
     setIsPaperLoading(false);
 
-    // Fallback: If questions are still empty, populate from default questions so exam never breaks
-    const fallbackQuestions = QUIZ_QUESTIONS.slice(0, paper.questionCount || 10);
-    const populatedPaper: ExamPaper = {
-      ...paper,
-      questions: fallbackQuestions
-    };
-    return populatedPaper;
+    // If server could not be reached or questions are empty, warn user instead of showing demo questions
+    showShareToast("⚠️ ইন্টারনেট সংযোগ না থাকায় বা সার্ভার সমস্যার কারণে প্রশ্ন লোড করা যায়নি।", "offline");
+    return null;
   };
 
   const handleOpenTakeExamDirectly = async (paper: ExamPaper) => {
@@ -1675,8 +1679,18 @@ export default function Home() {
       return;
     }
 
+    // Check if device is offline before attempting exam
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showShareToast("⚠️ ইন্টারনেট কানেকশন নেই! পরীক্ষা দিতে ইন্টারনেট সংযোগ নিশ্চিত করুন।", "offline");
+      return;
+    }
+
     // Lazy load full questions on demand if not loaded yet
     const fullPaper = await ensurePaperQuestionsLoaded(paper);
+    if (!fullPaper || !fullPaper.questions || fullPaper.questions.length === 0) {
+      // Questions failed to load and no demo questions injected
+      return;
+    }
 
     if (typeof window !== "undefined") {
       try {
@@ -1706,6 +1720,7 @@ export default function Home() {
   const handleOpenViewPaper = async (paper: ExamPaper) => {
     // Lazy load full questions on demand if not loaded yet
     const fullPaper = await ensurePaperQuestionsLoaded(paper);
+    if (!fullPaper) return;
     setViewingPaperModal(fullPaper);
     setPaperFilterSubject("All");
     setRevealedAnswers({});
@@ -2085,16 +2100,18 @@ export default function Home() {
     })();
   };
 
-  // Global Share & Deep Link Engine State
+  // Global Notification Toast Engine State
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<"success" | "error" | "offline">("success");
   const shareToastTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showShareToast = (msg: string) => {
+  const showShareToast = (msg: string, type: "success" | "error" | "offline" = "success") => {
     if (shareToastTimerRef.current) clearTimeout(shareToastTimerRef.current);
+    setToastType(type);
     setShareToastMessage(msg);
     shareToastTimerRef.current = setTimeout(() => {
       setShareToastMessage(null);
-    }, 2500);
+    }, 3500);
   };
 
   const handleShareLink = async (params: {
@@ -9511,11 +9528,23 @@ export default function Home() {
           onDismiss={handleDismissSoftPrompt}
         />
 
-        {/* Share Toast Notification */}
+        {/* Universal In-App Toast Notification (Offline / Success / Error) */}
         {shareToastMessage && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2000] bg-slate-900/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 border border-white/20 animate-fade-in pointer-events-none">
-            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{shareToastMessage}</span>
+          <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-[2000] backdrop-blur-md text-xs sm:text-sm font-black px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border animate-fade-in pointer-events-none max-w-[90vw] text-center ${
+            toastType === "offline"
+              ? "bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-950/40"
+              : toastType === "error"
+              ? "bg-rose-950/95 text-rose-200 border-rose-500/40 shadow-rose-950/40"
+              : "bg-slate-900/95 text-white border-white/20 shadow-slate-950/50"
+          }`}>
+            {toastType === "offline" ? (
+              <WifiOff className="w-4.5 h-4.5 text-amber-400 shrink-0 animate-pulse" />
+            ) : toastType === "error" ? (
+              <AlertCircle className="w-4.5 h-4.5 text-rose-400 shrink-0" />
+            ) : (
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            <span className="leading-snug">{shareToastMessage}</span>
           </div>
         )}
 
