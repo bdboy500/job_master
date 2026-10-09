@@ -1,5 +1,5 @@
 import { getSupabase } from "./supabase";
-import { UserProfile, upsertUserProfile, generateStudentId } from "./user_profiles";
+import { UserProfile, upsertUserProfile, generateStudentId, invalidateProfileCache } from "./user_profiles";
 
 export interface UserAccount {
   id: string;
@@ -463,27 +463,48 @@ export async function loginUserAccount(
 }
 
 // ==========================================
-// EDIT PROFILE (Update User Name on Server)
+// EDIT PROFILE (Update User Name, Phone, Email on Server)
 // ==========================================
 export async function updateUsernameOnServer(
   userId: string,
   newFullName: string,
   phoneNumber?: string,
-  avatarUrl?: string
+  avatarUrl?: string,
+  newEmail?: string
 ): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
   const cleanName = newFullName.trim();
   if (!cleanName) {
     return { success: false, error: "অনুগ্রহ করে আপনার নাম লিখুন।" };
   }
 
+  const cleanEmail = newEmail ? newEmail.trim().toLowerCase() : undefined;
+  const cleanPhone = phoneNumber !== undefined ? phoneNumber.trim() : undefined;
+
   // 1. Update in server accounts (app_config)
   const accounts = await fetchUserAccountsFromDb(true);
-  const idx = accounts.findIndex((a) => a.id === userId);
+  const idx = accounts.findIndex((a) => a.id === userId || (cleanEmail && a.email.toLowerCase() === cleanEmail));
   let updatedAccount: UserAccount;
+
+  // Check email uniqueness if email changed
+  if (cleanEmail && idx !== -1 && accounts[idx].email && accounts[idx].email.toLowerCase() !== cleanEmail) {
+    const emailConflict = accounts.find((a) => a.id !== userId && a.email.toLowerCase() === cleanEmail);
+    if (emailConflict) {
+      return { success: false, error: "এই ইমেইল এড্রেসটি ইতিমধ্যে অন্য একাউন্টে ব্যবহৃত হচ্ছে।" };
+    }
+  }
+
+  // Check phone uniqueness if phone changed
+  if (cleanPhone && idx !== -1 && accounts[idx].phone_number && !isPhoneMatch(accounts[idx].phone_number, cleanPhone)) {
+    const phoneConflict = accounts.find((a) => a.id !== userId && isPhoneMatch(a.phone_number, cleanPhone));
+    if (phoneConflict) {
+      return { success: false, error: "এই মোবাইল নম্বরটি ইতিমধ্যে অন্য একাউন্টে ব্যবহৃত হচ্ছে।" };
+    }
+  }
 
   if (idx !== -1) {
     accounts[idx].full_name = cleanName;
-    if (phoneNumber !== undefined) accounts[idx].phone_number = phoneNumber.trim();
+    if (cleanPhone !== undefined) accounts[idx].phone_number = cleanPhone;
+    if (cleanEmail !== undefined && cleanEmail) accounts[idx].email = cleanEmail;
     if (avatarUrl !== undefined) accounts[idx].avatar_url = avatarUrl;
     accounts[idx].updated_at = new Date().toISOString();
     updatedAccount = accounts[idx];
@@ -491,8 +512,8 @@ export async function updateUsernameOnServer(
     // If not yet in accounts list, add it
     updatedAccount = {
       id: userId,
-      email: "",
-      phone_number: phoneNumber ? phoneNumber.trim() : "",
+      email: cleanEmail || "",
+      phone_number: cleanPhone || "",
       student_id: generateStudentId(),
       full_name: cleanName,
       passwordHash: await hashUserPassword("Aa052952"),
@@ -507,32 +528,46 @@ export async function updateUsernameOnServer(
 
   await saveUserAccountsToDb(accounts);
 
-  // 2. Update Supabase profiles table
+  // 2. Update Supabase profiles table directly and forcefully
   try {
     const supabase = getSupabase();
     if (supabase) {
+      const profilePayload: any = {
+        id: updatedAccount.id,
+        full_name: cleanName,
+        phone_number: updatedAccount.phone_number,
+        student_id: updatedAccount.student_id,
+        role: updatedAccount.role || "Student",
+        status: updatedAccount.status || "Active",
+        updated_at: new Date().toISOString(),
+      };
+      if (updatedAccount.email) profilePayload.email = updatedAccount.email;
+      if (avatarUrl !== undefined) profilePayload.avatar_url = avatarUrl;
+
       await supabase
         .from("profiles")
-        .update({
-          full_name: cleanName,
-          phone_number: phoneNumber !== undefined ? phoneNumber.trim() : updatedAccount.phone_number,
-          avatar_url: avatarUrl !== undefined ? avatarUrl : updatedAccount.avatar_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
+        .upsert(profilePayload, { onConflict: "id" });
 
-      // 3. Update Supabase Auth user metadata if session active
-      supabase.auth.updateUser({
+      // 3. Update Supabase Auth user metadata & email if session active
+      const authUpdatePayload: any = {
         data: {
           full_name: cleanName,
           name: cleanName,
-          phone_number: phoneNumber !== undefined ? phoneNumber.trim() : updatedAccount.phone_number,
+          phone_number: updatedAccount.phone_number,
+          student_id: updatedAccount.student_id,
         },
-      }).catch(() => {});
+      };
+      if (cleanEmail) {
+        authUpdatePayload.email = cleanEmail;
+      }
+      supabase.auth.updateUser(authUpdatePayload).catch(() => {});
     }
   } catch (dbErr) {
     console.warn("Notice updating Supabase profiles:", dbErr);
   }
+
+  // Clear in-memory profile cache so next fetch gets freshest data
+  invalidateProfileCache(userId);
 
   const profile: UserProfile = {
     id: updatedAccount.id,
@@ -566,7 +601,7 @@ export async function changeUserPasswordOnServer(
   const cleanCurrent = currentPassword.trim();
 
   if (!cleanNew || cleanNew.length < 6) {
-    return { success: false, error: "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।" };
+    return { success: false, error: "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে باشد।" };
   }
 
   const accounts = await fetchUserAccountsFromDb(true);
@@ -639,5 +674,98 @@ export async function changeUserPasswordOnServer(
   return {
     success: true,
     message: "🎉 আপনার নতুন পাসওয়ার্ড সার্ভারে সফলভাবে সংরক্ষিত হয়েছে!",
+  };
+}
+
+// ==========================================
+// FORGOT PASSWORD / RESET PASSWORD ON SERVER
+// ==========================================
+export async function resetPasswordOnServer(
+  identifier: string,
+  newPassword: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const cleanIdentifier = identifier.trim();
+  const cleanPass = newPassword.trim();
+
+  if (!cleanIdentifier) {
+    return { success: false, error: "অনুগ্রহ করে আপনার নিবন্ধিত ইমেইল বা মোবাইল নম্বর দিন।" };
+  }
+  if (!cleanPass || cleanPass.length < 6) {
+    return { success: false, error: "নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।" };
+  }
+
+  const isEmail = cleanIdentifier.includes("@");
+  const accounts = await fetchUserAccountsFromDb(true);
+
+  // Find account by email or phone
+  let account = accounts.find((a) => {
+    if (isEmail) {
+      return a.email && a.email.toLowerCase() === cleanIdentifier.toLowerCase();
+    }
+    return isPhoneMatch(a.phone_number, cleanIdentifier);
+  });
+
+  // If not found in app_config accounts, check Supabase profiles
+  if (!account) {
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        let query = supabase.from("profiles").select("*");
+        if (isEmail) {
+          query = query.ilike("email", cleanIdentifier);
+        } else {
+          query = query.ilike("phone_number", `%${normalizePhoneDigits(cleanIdentifier)}%`);
+        }
+        const { data } = await query.maybeSingle();
+        if (data) {
+          const passHash = await hashUserPassword(cleanPass);
+          const newAccount: UserAccount = {
+            id: data.id,
+            email: data.email || "",
+            phone_number: data.phone_number || "",
+            student_id: data.student_id || generateStudentId(),
+            full_name: data.full_name || "শিক্ষার্থী",
+            passwordHash: passHash,
+            role: (data.role as any) || "Student",
+            status: data.status === "Banned" ? "Banned" : "Active",
+            avatar_url: data.avatar_url || "",
+            created_at: data.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          accounts.push(newAccount);
+          account = newAccount;
+        }
+      }
+    } catch (e) {
+      console.warn("Error looking up profile in resetPasswordOnServer:", e);
+    }
+  }
+
+  if (!account) {
+    return {
+      success: false,
+      error: `প্রদত্ত ${isEmail ? "ইমেইল" : "মোবাইল নম্বর"} দিয়ে কোনো একাউন্ট পাওয়া যায়নি। অনুগ্রহ করে সঠিক তথ্য দিন অথবা নতুন একাউন্ট খুলুন।`,
+    };
+  }
+
+  // Update password in server accounts
+  const newHash = await hashUserPassword(cleanPass);
+  account.passwordHash = newHash;
+  account.updated_at = new Date().toISOString();
+
+  await saveUserAccountsToDb(accounts);
+
+  // If Supabase Auth account exists and has email, also send reset email or update user
+  try {
+    const supabase = getSupabase();
+    if (supabase && account.email) {
+      // Send reset password email via Supabase Auth
+      supabase.auth.resetPasswordForEmail(account.email).catch(() => {});
+    }
+  } catch (e) {}
+
+  return {
+    success: true,
+    message: "🎉 পাসওয়ার্ড সফলভাবে রিসেট ও সার্ভারে আপডেট করা হয়েছে! এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।",
   };
 }

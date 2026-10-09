@@ -22,6 +22,16 @@ const profilePromises = new Map<string, Promise<UserProfile | null>>();
 const profileMemoryCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
 const CACHE_TTL_MS = 10000; // 10 seconds cache for single user profile
 
+export function invalidateProfileCache(userId?: string) {
+  if (userId) {
+    profileMemoryCache.delete(userId);
+    profilePromises.delete(userId);
+  } else {
+    profileMemoryCache.clear();
+    profilePromises.delete("");
+  }
+}
+
 export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
   const now = Date.now();
   const cached = profileMemoryCache.get(userId);
@@ -94,6 +104,7 @@ export async function upsertUserProfile(profile: UserProfile): Promise<boolean> 
       console.warn("Supabase profile upsert warning:", error.message);
       return false;
     }
+    profileMemoryCache.set(profile.id, { data: profile, timestamp: Date.now() });
     return true;
   } catch (err) {
     console.error("Error upserting user profile:", err);

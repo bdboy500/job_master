@@ -10,6 +10,11 @@ import {
   Phone,
   AlertCircle,
   CheckCircle2,
+  KeyRound,
+  ArrowLeft,
+  Sparkles,
+  ShieldCheck,
+  IdCard,
 } from "lucide-react";
 import { getSupabase } from "../lib/supabase";
 import {
@@ -21,6 +26,7 @@ import {
 import {
   loginUserAccount,
   registerUserAccount,
+  resetPasswordOnServer,
 } from "../lib/user_auth";
 
 interface AuthViewProps {
@@ -53,6 +59,16 @@ export default function AuthView({
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Forgot / Reset Password state
+  const [isResetPasswordView, setIsResetPasswordView] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState("");
+  const [resetErrorMsg, setResetErrorMsg] = useState("");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const isLoading = isSubmitting || isGoogleLoading;
   const [oauthPopupUrl, setOauthPopupUrl] = useState<string | null>(null);
@@ -262,6 +278,79 @@ export default function AuthView({
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetErrorMsg("");
+    setResetSuccessMsg("");
+
+    const idVal = resetIdentifier.trim();
+    const newPass = resetNewPassword.trim();
+    const confirmPass = resetConfirmPassword.trim();
+
+    if (!idVal) {
+      setResetErrorMsg("অনুগ্রহ করে আপনার নিবন্ধিত ইমেইল বা মোবাইল নম্বর দিন।");
+      return;
+    }
+    if (!newPass || newPass.length < 6) {
+      setResetErrorMsg("নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।");
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setResetErrorMsg("নতুন পাসওয়ার্ড এবং নিশ্চিতকরণ পাসওয়ার্ড মিলছে না।");
+      return;
+    }
+
+    setIsResetting(true);
+
+    try {
+      // 1. First call server API endpoint /api/user/auth
+      let success = false;
+      let msg = "";
+      try {
+        const apiRes = await fetch("/api/user/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reset-password",
+            identifier: idVal,
+            newPassword: newPass,
+          }),
+        });
+        const data = await apiRes.json();
+        if (data.success) {
+          success = true;
+          msg = data.message || "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!";
+        } else {
+          setResetErrorMsg(data.error || "পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে।");
+        }
+      } catch (apiErr) {
+        // Fallback to direct library call
+        const directRes = await resetPasswordOnServer(idVal, newPass);
+        if (directRes.success) {
+          success = true;
+          msg = directRes.message || "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!";
+        } else {
+          setResetErrorMsg(directRes.error || "পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে।");
+        }
+      }
+
+      if (success) {
+        setResetSuccessMsg(msg || "🎉 নতুন পাসওয়ার্ড সার্ভারে সফলভাবে সংরক্ষিত হয়েছে!");
+        setPassword(newPass);
+        setEmail(idVal);
+        setTimeout(() => {
+          setIsResetPasswordView(false);
+          setResetSuccessMsg("");
+          setSuccessMsg("🎉 পাসওয়ার্ড সফলভাবে রিসেট হয়েছে! এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।");
+        }, 1500);
+      }
+    } catch (err: any) {
+      setResetErrorMsg(err?.message || "সার্ভার এরর: পাসওয়ার্ড রিসেট করা সম্ভব হয়নি।");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
@@ -417,6 +506,9 @@ export default function AuthView({
 
   const handleModeSwitch = (newMode: "signin" | "signup") => {
     setMode(newMode);
+    setIsResetPasswordView(false);
+    setResetErrorMsg("");
+    setResetSuccessMsg("");
     setErrorMsg("");
     setSuccessMsg("");
     if (newMode === "signup" && !studentId) {
@@ -469,8 +561,127 @@ export default function AuthView({
         </div>
       )}
 
+      {/* FORGOT / RESET PASSWORD VIEW */}
+      {isResetPasswordView && mode === "signin" && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-orange-50 text-[#FF6A00] rounded-xl">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm text-slate-900">পাসওয়ার্ড রিসেট (Password Reset)</h3>
+                <p className="text-[11px] font-bold text-slate-400">নতুন পাসওয়ার্ড সেট করে সার্ভারে সংরক্ষণ করুন</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsResetPasswordView(false);
+                setResetErrorMsg("");
+                setResetSuccessMsg("");
+              }}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl flex items-center gap-1 cursor-pointer transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </button>
+          </div>
+
+          {resetErrorMsg && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-start gap-2 animate-shake">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+              <span>{resetErrorMsg}</span>
+            </div>
+          )}
+
+          {resetSuccessMsg && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{resetSuccessMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleResetPassword} className="space-y-3.5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
+                Registered Email or Phone (নিবন্ধিত ইমেইল বা মোবাইল নম্বর) *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+                <input
+                  type="text"
+                  required
+                  value={resetIdentifier}
+                  onChange={(e) => setResetIdentifier(e.target.value)}
+                  placeholder="example@gmail.com / 017XXXXXXXX"
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
+                New Password (নতুন পাসওয়ার্ড) *
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+                <input
+                  type={showResetPassword ? "text" : "password"}
+                  required
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="কমপক্ষে ৬ অক্ষর লিখুন"
+                  className="w-full pl-11 pr-11 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer p-1"
+                  tabIndex={-1}
+                >
+                  {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
+                Confirm New Password (নিশ্চিতকরণ) *
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+                <input
+                  type={showResetPassword ? "text" : "password"}
+                  required
+                  value={resetConfirmPassword}
+                  onChange={(e) => setResetConfirmPassword(e.target.value)}
+                  placeholder="আবারও একই পাসওয়ার্ড লিখুন"
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:border-[#FF6A00] focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isResetting}
+              className="w-full py-3.5 bg-[#FF6A00] hover:bg-[#e05d00] disabled:bg-slate-300 text-white font-black text-sm rounded-2xl active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
+            >
+              {isResetting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>সার্ভারে পাসওয়ার্ড আপডেট হচ্ছে...</span>
+                </>
+              ) : (
+                <span>রিসেট ও সেভ করুন (Reset & Save)</span>
+              )}
+            </button>
+          </form>
+        </div>
+      )}
+
       {/* SIGN IN FORM */}
-      {mode === "signin" && (
+      {!isResetPasswordView && mode === "signin" && (
         <form onSubmit={handleSignIn} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
@@ -490,9 +701,23 @@ export default function AuthView({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
-              Password
-            </label>
+            <div className="flex items-center justify-between pl-1 pr-1">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetIdentifier(email);
+                  setIsResetPasswordView(true);
+                  setResetErrorMsg("");
+                  setResetSuccessMsg("");
+                }}
+                className="text-[11px] font-black text-[#FF6A00] hover:underline cursor-pointer"
+              >
+                Forgot Password? (পাসওয়ার্ড ভুলে গেছেন?)
+              </button>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
               <input
@@ -535,6 +760,24 @@ export default function AuthView({
       {/* SIGN UP FORM */}
       {mode === "signup" && (
         <form onSubmit={handleSignUp} className="space-y-3.5">
+          {/* Auto Generated Student ID Info Banner */}
+          <div className="p-3 bg-amber-50/90 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 bg-amber-100 text-[#FF6A00] rounded-xl shrink-0">
+                <IdCard className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-extrabold text-slate-700 text-[11px] leading-tight">Student ID (অটো জেনারেটেড)</p>
+                <p className="font-mono font-black text-slate-900 text-xs tracking-wider truncate">
+                  {studentId || "JM-XXXXXX"}
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider bg-white text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
+              Auto Server ID
+            </span>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
               Full Name *

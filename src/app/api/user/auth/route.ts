@@ -4,6 +4,7 @@ import {
   loginUserAccount,
   updateUsernameOnServer,
   changeUserPasswordOnServer,
+  resetPasswordOnServer,
 } from "@/src/lib/user_auth";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +33,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "update-profile") {
-      const { userId, newFullName, phoneNumber, avatarUrl } = body;
-      const res = await updateUsernameOnServer(userId, newFullName, phoneNumber, avatarUrl);
+      const { userId, newFullName, phoneNumber, avatarUrl, newEmail } = body;
+      const res = await updateUsernameOnServer(userId, newFullName, phoneNumber, avatarUrl, newEmail);
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 });
       }
@@ -43,6 +44,15 @@ export async function POST(req: NextRequest) {
     if (action === "change-password") {
       const { userId, userEmail, currentPassword, newPassword } = body;
       const res = await changeUserPasswordOnServer(userId, userEmail, currentPassword, newPassword);
+      if (!res.success) {
+        return NextResponse.json({ success: false, error: res.error }, { status: 400 });
+      }
+      return NextResponse.json({ success: true, message: res.message });
+    }
+
+    if (action === "reset-password") {
+      const { identifier, newPassword } = body;
+      const res = await resetPasswordOnServer(identifier, newPassword);
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 });
       }

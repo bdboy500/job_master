@@ -489,8 +489,16 @@ export default function Home() {
     setEditProfileSuccess("");
 
     const newName = profileName.trim();
+    const newPhone = profilePhone.trim();
+    const newEmail = profileEmail.trim();
+
     if (!newName) {
       setEditProfileError("অনুগ্রহ করে আপনার নাম লিখুন।");
+      return;
+    }
+
+    if (newEmail && !newEmail.includes("@")) {
+      setEditProfileError("অনুগ্রহ করে একটি সঠিক ইমেইল এড্রেস লিখুন।");
       return;
     }
 
@@ -498,12 +506,33 @@ export default function Home() {
 
     try {
       const userId = currentUser?.id || `usr-${Date.now()}`;
-      const res = await updateUsernameOnServer(
-        userId,
-        newName,
-        profilePhone.trim(),
-        profileAvatarUrl
-      );
+      let res: any;
+      try {
+        const apiRes = await fetch("/api/user/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "update-profile",
+            userId,
+            newFullName: newName,
+            phoneNumber: newPhone,
+            avatarUrl: profileAvatarUrl,
+            newEmail,
+          }),
+        });
+        const apiData = await apiRes.json();
+        if (apiData.success && apiData.user) {
+          res = apiData;
+        } else {
+          // Fallback to library function
+          res = await updateUsernameOnServer(userId, newName, newPhone, profileAvatarUrl, newEmail);
+          if (!res.success && apiData.error) {
+            res.error = apiData.error;
+          }
+        }
+      } catch (e) {
+        res = await updateUsernameOnServer(userId, newName, newPhone, profileAvatarUrl, newEmail);
+      }
 
       if (!res.success || !res.user) {
         setEditProfileError(res.error || "প্রোফাইল আপডেট করতে সমস্যা হয়েছে।");
@@ -515,6 +544,8 @@ export default function Home() {
       setCurrentUser(res.user);
       setProfileName(res.user.full_name);
       if (res.user.phone_number) setProfilePhone(res.user.phone_number);
+      if (res.user.email) setProfileEmail(res.user.email);
+      if (res.user.student_id) setProfileId(res.user.student_id);
       if (typeof window !== "undefined") {
         localStorage.setItem("job_master_current_user", JSON.stringify(res.user));
       }
@@ -524,15 +555,21 @@ export default function Home() {
       if (localUsersRaw) {
         try {
           const localUsers: UserProfile[] = JSON.parse(localUsersRaw);
-          const idx = localUsers.findIndex(u => u.id === userId || (u.email && u.email.toLowerCase() === profileEmail.toLowerCase()));
+          const idx = localUsers.findIndex(u => u.id === userId || (u.email && u.email.toLowerCase() === newEmail.toLowerCase()));
           if (idx !== -1) {
-            localUsers[idx] = { ...localUsers[idx], full_name: newName, phone_number: profilePhone.trim(), avatar_url: profileAvatarUrl };
+            localUsers[idx] = { 
+              ...localUsers[idx], 
+              full_name: newName, 
+              phone_number: newPhone, 
+              email: newEmail || localUsers[idx].email,
+              avatar_url: profileAvatarUrl 
+            };
             localStorage.setItem("job_master_registered_users", JSON.stringify(localUsers));
           }
         } catch (err) {}
       }
 
-      setEditProfileSuccess("🎉 আপনার ইউজার নেম ও তথ্য সার্ভারে সফলভাবে আপডেট হয়েছে!");
+      setEditProfileSuccess("🎉 আপনার নাম, মোবাইল নম্বর ও ইমেইল সার্ভারে সফলভাবে আপডেট হয়েছে!");
       if (soundEnabled) quizAudio.playSuccess();
 
       setTimeout(() => {
@@ -6515,6 +6552,14 @@ export default function Home() {
                   {/* Edit Profile */}
                   <button
                     onClick={() => {
+                      if (currentUser) {
+                        setProfileName(currentUser.full_name || profileName);
+                        setProfilePhone(currentUser.phone_number || profilePhone);
+                        setProfileEmail(currentUser.email || profileEmail);
+                        setProfileId(currentUser.student_id || profileId);
+                      }
+                      setEditProfileError("");
+                      setEditProfileSuccess("");
                       setIsEditProfileOpen(true);
                       if (soundEnabled) quizAudio.playClick();
                     }}
@@ -9049,13 +9094,14 @@ export default function Home() {
 
                 <div>
                   <label className="block text-[11px] font-extrabold text-slate-600 mb-1">
-                    Email Address (লগইন ইমেইল)
+                    Email Address (ইমেইল এড্রেস)
                   </label>
                   <input 
                     type="email" 
-                    readOnly
                     value={profileEmail}
-                    className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 cursor-not-allowed"
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    placeholder="example@gmail.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#FF6A00] focus:bg-white"
                   />
                 </div>
 
