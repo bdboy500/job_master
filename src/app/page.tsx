@@ -47,6 +47,7 @@ import {
   Package,
   Download,
   ShieldCheck,
+  ExternalLink,
   Archive,
   Filter,
   Zap,
@@ -6801,13 +6802,16 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Apple-style Security & Payment Notice */}
-              <div className="bg-slate-100/80 border border-slate-200/60 rounded-2xl p-4 text-center space-y-1">
+              {/* Notice: Payment feature coming soon / Demo Only */}
+              <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 text-center space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-[11px] font-black uppercase tracking-wider mx-auto">
+                  <span>Demo Only • Payment Feature Coming Soon</span>
+                </div>
                 <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
-                  {"\uD83D\uDEE1"}️ <span>ইনস্ট্যান্ট এক্সেস ও সেফ পেমেন্ট</span>
+                  ℹ️ <span>পেমেন্ট গেটওয়ে শীঘ্রই যুক্ত হবে</span>
                 </p>
-                <p className="text-[10px] font-semibold text-slate-500">
-                  bKash, Nagad বা Rocket এর মাধ্যমে পেমেন্ট সম্পন্ন করে মুহূর্তেই সকল ফিচারের আনলিমিটেড এক্সেস সক্রিয় করুন।
+                <p className="text-[11px] font-medium text-slate-600 leading-relaxed max-w-sm mx-auto">
+                  বর্তমানে এই প্যাকেজ তালিকাটি শুধুমাত্র ডেমো ও প্রিভিউ প্রদর্শনীর জন্য রাখা হয়েছে। খুব শীঘ্রই সরাসরি অনলাইন পেমেন্ট গেটওয়ে সক্রিয় করা হবে।
                 </p>
               </div>
             </div>
@@ -7359,13 +7363,12 @@ export default function Home() {
 
           {/* Drawer Footer copyright & Privacy */}
           <div className="p-4 pt-3 pb-24 md:pb-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-2">
-            <button
-              type="button"
+            <a
+              href="https://jobmaster.com.bd/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => {
-                attemptExitQuiz(() => {
-                  setDrawerOpen(false);
-                  setCurrentScreen("privacy-policy");
-                });
+                setDrawerOpen(false);
                 if (soundEnabled) quizAudio.playClick();
               }}
               className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-2 px-3.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
@@ -7373,7 +7376,8 @@ export default function Home() {
             >
               <ShieldCheck className="w-4 h-4 text-[#FF6A00]" />
               <span>Privacy Policy (গোপনীয়তা নীতি)</span>
-            </button>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#FF6A00]" />
+            </a>
             <div className="space-y-0.5">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Job Master App v2.4</span>
               <span className="text-[8px] text-slate-400 block font-medium">All Rights Reserved © 2026 • jobmaster.com.bd</span>
@@ -8617,39 +8621,28 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3 text-left space-y-2">
-                <p className="text-[11px] font-bold text-slate-700">পেমেন্ট মাধ্যম নির্বাচন করুন:</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-white border-2 border-[#007AFF] rounded-xl p-2 text-center text-xs font-bold text-slate-800 shadow-2xs cursor-pointer">
-                    bKash
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
-                    Nagad
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-600 hover:border-[#007AFF] transition-all cursor-pointer">
-                    Rocket
-                  </div>
+              {/* Coming Soon & Demo Notice instead of mock payment methods */}
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-left space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-black uppercase rounded-lg tracking-wider">
+                    Demo Only
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-800">Payment feature is coming soon</span>
                 </div>
-                <div className="text-[10px] text-[#FF6A00] font-bold pt-1">
-                  মার্চেন্ট / বিকাশ নম্বর: <span className="font-mono text-slate-900 font-extrabold">01700000000</span>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  প্যাকেজ সাবস্ক্রিপশন ও অনলাইন পেমেন্ট সিস্টেম বর্তমানে উন্নয়নাধীন রয়েছে। শীঘ্রই নিরাপদ পেমেন্ট গেটওয়ে যুক্ত হবে।
+                </p>
+                <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200/60 text-[11px] text-slate-700 font-medium">
+                  💡 <span className="font-bold">রিভিউয়ারদের জন্য তথ্য (For Reviewers):</span> এটি একটি ইন্টারফেস প্রিভিউ (UI Preview), কোনো লাইভ পেমেন্ট গেটওয়ে এখনও সক্রিয় করা হয়নি।
                 </div>
               </div>
 
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setSelectedPurchasePkg(null)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
                 >
-                  বাতিল করুন
-                </button>
-                <button
-                  onClick={() => {
-                    alert(`ধন্যবাদ! ${selectedPurchasePkg.title} এর জন্য আপনার পেমেন্ট অর্ডার গ্রহণ করা হয়েছে।`);
-                    setSelectedPurchasePkg(null);
-                  }}
-                  className="flex-1 py-3 bg-[#007AFF] hover:bg-blue-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-                >
-                  পেমেন্ট সম্পন্ন করুন
+                  বন্ধ করুন (Close)
                 </button>
               </div>
             </div>
