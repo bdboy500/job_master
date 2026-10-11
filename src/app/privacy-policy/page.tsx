@@ -130,6 +130,113 @@ export default function PrivacyPolicyPage() {
           </div>
         </section>
 
+        {/* ========================================================= */}
+        {/* GOVERNMENT INFORMATION & DISCLAIMER (Google Play Policy)  */}
+        {/* ========================================================= */}
+        <section 
+          className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 sm:p-8 shadow-xs space-y-5"
+          id="government-information-disclaimer"
+        >
+          {/* Section Header */}
+          <div className="flex items-start gap-3 border-b border-amber-200/90 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+              <AlertCircle className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="inline-block text-[11px] font-black uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2.5 py-0.5 rounded-full mb-1">
+                Google Play Policy Notice • প্লে স্টোর নীতিমালা সংক্রান্ত নোটিশ
+              </div>
+              <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug">
+                Government Information &amp; Disclaimer (সরকারি তথ্য ও অস্বীকৃতি)
+              </h2>
+            </div>
+          </div>
+
+          {/* English Version */}
+          <div className="space-y-2.5 bg-white rounded-2xl p-4 sm:p-6 border border-amber-200 shadow-2xs text-slate-800">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-900">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>Government Information &amp; Disclaimer (English)</span>
+            </div>
+            <p className="text-xs sm:text-sm font-semibold text-slate-900 leading-relaxed">
+              Job Master is an independent educational application designed to assist job seekers with exam preparation. This app does <strong className="text-rose-700 underline underline-offset-2">NOT</strong> represent a government entity, nor is it affiliated with, endorsed by, or connected to any government organization or the Bangladesh Public Service Commission (BPSC).
+            </p>
+            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              All exam-related information, syllabi, and public notices are collected from official public domains and government websites, including:
+            </p>
+            <ul className="space-y-2 pt-1 text-xs sm:text-sm font-semibold">
+              <li className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="text-slate-800 font-bold">Bangladesh Public Service Commission:</span>
+                <a 
+                  href="http://www.bpsc.gov.bd/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#FF6A00] hover:underline font-bold inline-flex items-center gap-1"
+                >
+                  http://www.bpsc.gov.bd/
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                </a>
+              </li>
+              <li className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-slate-800 font-bold">National Web Portal of Bangladesh:</span>
+                <a 
+                  href="https://bangladesh.gov.bd/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#FF6A00] hover:underline font-bold inline-flex items-center gap-1"
+                >
+                  https://bangladesh.gov.bd/
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Bengali Version */}
+          <div className="space-y-2.5 bg-white rounded-2xl p-4 sm:p-6 border border-amber-200 shadow-2xs text-slate-800">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-900">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>সরকারি তথ্য ও অস্বীকৃতি বিবৃতি (বাংলা)</span>
+            </div>
+            <p className="text-xs sm:text-sm font-semibold text-slate-900 leading-relaxed">
+              <strong>Job Master</strong> একটি সম্পূর্ণ স্বতন্ত্র শিক্ষামূলক অ্যাপ্লিকেশন যা চাকরিপ্রার্থীদের পরীক্ষার প্রস্তুতি ও অনুশীলনে সহায়তা করার জন্য তৈরি করা হয়েছে। এই অ্যাপটি কোনো সরকারি সংস্থা বা বাংলাদেশ সরকারি কর্ম কমিশন (BPSC)-এর প্রতিনিধিত্ব করে না এবং কোনো সরকারি প্রতিষ্ঠানের সাথে অনুমোদিত, সমর্থিত বা সংযুক্ত নয়।
+            </p>
+            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              পরীক্ষা সংক্রান্ত যাবতীয় তথ্য, সিলেবাস এবং সরকারি নোটিশ উন্মুক্ত পাবলিক ডোমেন ও অফিশিয়াল সরকারি ওয়েবসাইট থেকে সংগৃহীত, যার মধ্যে রয়েছে:
+            </p>
+            <ul className="space-y-2 pt-1 text-xs sm:text-sm font-semibold">
+              <li className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="text-slate-800 font-bold">বাংলাদেশ সরকারি কর্ম কমিশন (BPSC):</span>
+                <a 
+                  href="http://www.bpsc.gov.bd/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#FF6A00] hover:underline font-bold inline-flex items-center gap-1"
+                >
+                  http://www.bpsc.gov.bd/
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                </a>
+              </li>
+              <li className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-slate-800 font-bold">জাতীয় তথ্য বাতায়ন:</span>
+                <a 
+                  href="https://bangladesh.gov.bd/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#FF6A00] hover:underline font-bold inline-flex items-center gap-1"
+                >
+                  https://bangladesh.gov.bd/
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
+
         {/* Quick Summary Highlights Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-start gap-3">

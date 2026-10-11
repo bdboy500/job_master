@@ -756,11 +756,9 @@ export default function AuthModal({
                         <span>আবার পাঠান</span>
                       </button>
                     </div>
-                    {devOtpHint && (
-                      <p className="text-[10px] font-mono text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded font-bold">
-                        🔑 ওটিপি কোড: <span className="font-black text-emerald-950">{devOtpHint}</span>
-                      </p>
-                    )}
+                    <p className="text-[10px] text-slate-500 bg-slate-100/90 px-2 py-1 rounded font-medium">
+                      📩 আপনার ইমেইলে পাঠানো ৬-ডিজিটের কোড দিন (ইনবক্স বা স্প্যাম ফোল্ডার দেখুন)।
+                    </p>
                   </div>
 
                   <div className="space-y-1">

@@ -711,7 +711,15 @@ async function saveStoredOtps(records: ResetOtpRecord[]): Promise<void> {
  */
 export async function sendPasswordResetOtp(
   identifier: string
-): Promise<{ success: boolean; message?: string; error?: string; emailMasked?: string; devOtp?: string }> {
+): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+  emailMasked?: string;
+  targetEmail?: string;
+  studentName?: string;
+  code?: string;
+}> {
   const cleanId = identifier.trim();
   if (!cleanId) {
     return { success: false, error: "অনুগ্রহ করে আপনার নিবন্ধিত ইমেইল বা মোবাইল নম্বর দিন।" };
@@ -811,7 +819,7 @@ export async function sendPasswordResetOtp(
   }
   await saveStoredOtps(records);
 
-  // Trigger Supabase email recovery if available
+  // Also trigger Supabase email recovery if configured
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -822,8 +830,10 @@ export async function sendPasswordResetOtp(
   return {
     success: true,
     emailMasked,
-    devOtp: code,
-    message: `আপনার নিবন্ধিত ইমেইল (${emailMasked})-এ ৬ ডিজিটের ভেরিফিকেশন কোড পাঠানো হয়েছে। কোডটি নিচে সাবমিট করুন।`,
+    targetEmail,
+    studentName: account.full_name,
+    code,
+    message: `আপনার নিবন্ধিত ইমেইল (${emailMasked})-এ ৬ ডিজিটের ভেরিফিকেশন কোড পাঠানো হয়েছে। অনুগ্রহ করে ইনবক্স বা স্প্যাম ফোল্ডার চেক করে কোডটি সাবমিট করুন।`,
   };
 }
 

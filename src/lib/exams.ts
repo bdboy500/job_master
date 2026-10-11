@@ -430,13 +430,6 @@ export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> 
 
       if (!error && data) {
         const fullPaper = parseRawExamPaper(data);
-        // If questions array is empty (e.g., fallback), slice from DEFAULT_EXAM_PAPERS if matching ID exists
-        if (!fullPaper.questions || fullPaper.questions.length === 0) {
-          const defaultMatch = DEFAULT_EXAM_PAPERS.find(p => p.id === id);
-          if (defaultMatch && defaultMatch.questions) {
-            fullPaper.questions = defaultMatch.questions;
-          }
-        }
         
         // Update memory cache
         if (examPapersMemoryCache) {
@@ -454,10 +447,7 @@ export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> 
     console.error("Error fetching full exam paper by id:", err);
   }
 
-  // Fallback to DEFAULT_EXAM_PAPERS
-  const defaultMatch = DEFAULT_EXAM_PAPERS.find(p => p.id === id);
-  if (defaultMatch) return defaultMatch;
-
+  // Do NOT fallback to demo questions if network or fetch failed!
   return null;
 }
 

@@ -1636,15 +1636,16 @@ export default function Home() {
   };
 
   const ensurePaperQuestionsLoaded = async (paper: ExamPaper): Promise<ExamPaper | null> => {
-    // 1. If paper already has valid loaded questions, use them
-    if (paper.questions && Array.isArray(paper.questions) && paper.questions.length > 0) {
-      return paper;
+    // 1. Strict offline check FIRST: if user is offline, NEVER proceed and NEVER load demo questions!
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showShareToast("⚠️ ইন্টারনেট কানেকশন নেই! পরীক্ষা দিতে ইন্টারনেট সংযোগ নিশ্চিত করুন।", "offline");
+      return null;
     }
 
-    // 2. Strict offline check: if user is offline, DO NOT load demo questions!
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      showShareToast("⚠️ ইন্টারনেট সংযোগ নেই! পরীক্ষা শুরু করতে ইন্টারনেট কানেকশন চালু করুন।", "offline");
-      return null;
+    // 2. If paper already has valid loaded questions from database, use them
+    const isMockDefault = DEFAULT_EXAM_PAPERS.some(d => d.id === paper.id);
+    if (!isMockDefault && paper.questions && Array.isArray(paper.questions) && paper.questions.length > 0) {
+      return paper;
     }
 
     setIsPaperLoading(true);
@@ -1662,7 +1663,7 @@ export default function Home() {
     setIsPaperLoading(false);
 
     // If server could not be reached or questions are empty, warn user instead of showing demo questions
-    showShareToast("⚠️ ইন্টারনেট সংযোগ না থাকায় বা সার্ভার সমস্যার কারণে প্রশ্ন লোড করা যায়নি।", "offline");
+    showShareToast("⚠️ ইন্টারনেট সংযোগ নেই বা প্রশ্ন লোড করা যায়নি! ইন্টারনেট চেক করে আবার চেষ্টা করুন।", "offline");
     return null;
   };
 
@@ -1671,6 +1672,13 @@ export default function Home() {
       localStorage.removeItem("job_master_pending_paper_id");
       localStorage.removeItem("job_master_pending_intent");
     }
+
+    // Strict offline check
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showShareToast("⚠️ ইন্টারনেট কানেকশন নেই! পরীক্ষা দিতে ইন্টারনেট সংযোগ নিশ্চিত করুন।", "offline");
+      return;
+    }
+
     const currentStatus = getExamStatus(paper);
     if (currentStatus === "Upcoming") {
       const startTimeFormatted = paper.startDateTime 
@@ -1680,16 +1688,10 @@ export default function Home() {
       return;
     }
 
-    // Check if device is offline before attempting exam
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      showShareToast("⚠️ ইন্টারনেট কানেকশন নেই! পরীক্ষা দিতে ইন্টারনেট সংযোগ নিশ্চিত করুন।", "offline");
-      return;
-    }
-
     // Lazy load full questions on demand if not loaded yet
     const fullPaper = await ensurePaperQuestionsLoaded(paper);
     if (!fullPaper || !fullPaper.questions || fullPaper.questions.length === 0) {
-      // Questions failed to load and no demo questions injected
+      // Questions failed to load - do NOT inject demo questions!
       return;
     }
 
@@ -1715,6 +1717,10 @@ export default function Home() {
 
   // Exam Paper Handlers
   const handleOpenTakeExam = (paper: ExamPaper) => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showShareToast("⚠️ ইন্টারনেট কানেকশন নেই! পরীক্ষা দিতে ইন্টারনেট সংযোগ নিশ্চিত করুন।", "offline");
+      return;
+    }
     executeWithAuth(() => handleOpenTakeExamDirectly(paper), "exams", paper.id);
   };
 
@@ -6663,6 +6669,11 @@ export default function Home() {
                 <span className="inline-block text-[10px] font-black uppercase tracking-widest text-[#007AFF] bg-[#007AFF]/10 px-3 py-0.5 rounded-full">
                   PRICING & MEMBERSHIP
                 </span>
+                <div className="pt-1">
+                  <span className="inline-block text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/90 border border-amber-200 px-3 py-1 rounded-full">
+                    Demo Only • Payment feature is coming soon
+                  </span>
+                </div>
                 <p className="text-xs font-semibold text-slate-500 max-w-xs mx-auto">
                   সকল প্রস্তুতির সেরা প্ল্যান বেছে নিন
                 </p>
@@ -7310,6 +7321,25 @@ export default function Home() {
               <Settings className="w-6 h-6 text-slate-500" />
               <span>Settings</span>
             </button>
+
+            {/* 6. Privacy Policy (প্রাইভেসি পলিসি) */}
+            <a
+              href="https://jobmaster.com.bd/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                setDrawerOpen(false);
+                if (soundEnabled) quizAudio.playClick();
+              }}
+              className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-left transition-all text-slate-800 hover:bg-slate-100 font-extrabold text-base sm:text-lg cursor-pointer"
+              id="drawer-item-privacy-policy"
+            >
+              <div className="flex items-center gap-3.5">
+                <ShieldCheck className="w-6 h-6 text-emerald-600" />
+                <span>Privacy Policy</span>
+              </div>
+              <ExternalLink className="w-4 h-4 text-slate-400" />
+            </a>
 
             {/* 7. Contact Us */}
             <button

@@ -8,6 +8,7 @@ import {
   verifyPasswordResetOtp,
   resetPasswordWithOtp,
 } from "@/src/lib/user_auth";
+import { sendPasswordResetEmail } from "@/src/lib/email_service";
 
 export const dynamic = "force-dynamic";
 
@@ -59,11 +60,20 @@ export async function POST(req: NextRequest) {
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 });
       }
+
+      // Send 6-digit OTP to user email via SMTP server
+      if (res.targetEmail && res.code) {
+        try {
+          await sendPasswordResetEmail(res.targetEmail, res.studentName || "শিক্ষার্থী", res.code);
+        } catch (mailErr) {
+          console.error("Failed to send OTP email:", mailErr);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         message: res.message,
         emailMasked: res.emailMasked,
-        devOtp: res.devOtp,
       });
     }
 

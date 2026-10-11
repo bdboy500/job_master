@@ -731,11 +731,9 @@ export default function AuthView({
                     <span>আবার পাঠান</span>
                   </button>
                 </p>
-                {devOtpHint && (
-                  <p className="text-[11px] font-mono text-emerald-800 bg-emerald-100/80 px-2 py-1 rounded-lg mt-1 font-bold">
-                    🔑 ভেরিফিকেশন ওটিপি কোড: <span className="text-sm font-black text-emerald-950">{devOtpHint}</span>
-                  </p>
-                )}
+                <p className="text-[11px] text-slate-500 bg-slate-100/80 px-2.5 py-1.5 rounded-lg mt-1 font-medium">
+                  📩 আপনার মেইলে পাঠানো ৬-ডিজিটের কোডটি নিচে দিন। যদি ইনবক্সে না পান, স্প্যাম (Spam) ফোল্ডার চেক করুন।
+                </p>
               </div>
 
               <div className="space-y-1.5">
