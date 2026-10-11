@@ -138,16 +138,13 @@ export default function PrivacyPolicyPage() {
           id="government-information-disclaimer"
         >
           {/* Section Header */}
-          <div className="flex items-start gap-3 border-b border-amber-200/90 pb-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+          <div className="flex items-center gap-3 border-b border-amber-200/90 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <AlertCircle className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
-              <div className="inline-block text-[11px] font-black uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2.5 py-0.5 rounded-full mb-1">
-                Google Play Policy Notice • প্লে স্টোর নীতিমালা সংক্রান্ত নোটিশ
-              </div>
               <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug">
-                Government Information &amp; Disclaimer (সরকারি তথ্য ও অস্বীকৃতি)
+                Government Information &amp; Disclaimer
               </h2>
             </div>
           </div>
@@ -156,7 +153,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-2.5 bg-white rounded-2xl p-4 sm:p-6 border border-amber-200 shadow-2xs text-slate-800">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-900">
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              <span>Government Information &amp; Disclaimer (English)</span>
+              <span>Government Information &amp; Disclaimer</span>
             </div>
             <p className="text-xs sm:text-sm font-semibold text-slate-900 leading-relaxed">
               Job Master is an independent educational application designed to assist job seekers with exam preparation. This app does <strong className="text-rose-700 underline underline-offset-2">NOT</strong> represent a government entity, nor is it affiliated with, endorsed by, or connected to any government organization or the Bangladesh Public Service Commission (BPSC).
@@ -198,7 +195,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-2.5 bg-white rounded-2xl p-4 sm:p-6 border border-amber-200 shadow-2xs text-slate-800">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-900">
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              <span>সরকারি তথ্য ও অস্বীকৃতি বিবৃতি (বাংলা)</span>
+              <span>সরকারি তথ্য ও অস্বীকৃতি</span>
             </div>
             <p className="text-xs sm:text-sm font-semibold text-slate-900 leading-relaxed">
               <strong>Job Master</strong> একটি সম্পূর্ণ স্বতন্ত্র শিক্ষামূলক অ্যাপ্লিকেশন যা চাকরিপ্রার্থীদের পরীক্ষার প্রস্তুতি ও অনুশীলনে সহায়তা করার জন্য তৈরি করা হয়েছে। এই অ্যাপটি কোনো সরকারি সংস্থা বা বাংলাদেশ সরকারি কর্ম কমিশন (BPSC)-এর প্রতিনিধিত্ব করে না এবং কোনো সরকারি প্রতিষ্ঠানের সাথে অনুমোদিত, সমর্থিত বা সংযুক্ত নয়।
