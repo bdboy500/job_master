@@ -3200,13 +3200,13 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y md:px-20 lg:px-48 xl:px-72 2xl:px-96">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y px-0">
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}
           {/* ========================================================= */}
           {currentScreen === "home" && (
-            <div className="px-3.5 sm:px-5 pt-2 sm:pt-5 pb-5 space-y-3.5 sm:space-y-6 animate-fade-in">
+            <div className="px-1.5 sm:px-2.5 pt-2 sm:pt-3 pb-5 space-y-3.5 sm:space-y-5 animate-fade-in">
               
               {/* ========================================================= */}
               {/* LIVE EXAM SECTION (লাইভ পরীক্ষা)                         */}
@@ -3664,7 +3664,7 @@ export default function Home() {
           {/* 2. SCREEN: ACTIVE PLAYABLE QUIZ CONTAINER                 */}
           {/* ========================================================= */}
           {currentScreen === "quiz" && (
-            <div className="p-4 sm:p-5 space-y-4 sm:space-y-5 animate-fade-in text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in text-left">
               
               {/* TOP HUD (ss2 Style): Left Correct Count & Green Pill | Center Circular Countdown | Right Wrong Count & Red Pill */}
               {(() => {
@@ -4036,7 +4036,7 @@ export default function Home() {
           {/* SCREEN: ALL LIVE EXAMS SCREEN                             */}
           {/* ========================================================= */}
           {currentScreen === "all-live-exams" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12 text-left">
               <div className="pt-1 pb-1">
                 <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
                   সকল লাইভ পরীক্ষা (Live Exams)
@@ -4160,7 +4160,7 @@ export default function Home() {
           {/* SCREEN: DAILY QUICK TEST SCREEN                           */}
           {/* ========================================================= */}
           {currentScreen === "daily-quick-test" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12 text-left">
               {/* Header Banner */}
               <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#FF6A00] rounded-3xl p-5 text-white shadow-sm flex items-center justify-between">
                 <div className="space-y-1">
@@ -4300,7 +4300,7 @@ export default function Home() {
           {/* 3. SCREEN: COURSES SCREEN                                 */}
           {/* ========================================================= */}
           {currentScreen === "courses" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12">
               <div className="pt-1 pb-1 text-center">
                 <h3 className="font-extrabold text-base sm:text-lg text-[#FF6A00] tracking-tight">
                   Our Courses
@@ -4347,7 +4347,7 @@ export default function Home() {
           {/* PREPARATION HUB ALL SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-all-subjects" && (
-            <div className="p-5 space-y-4 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
               
               <div className="pt-1 pb-1">
                 <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
@@ -4394,7 +4394,7 @@ export default function Home() {
           {/* PREPARATION HUB SUB-SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub" && (
-            <div className="p-5 space-y-4 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
               
               {/* Sub-subjects grid (Only shown when no exam section is active) */}
               {!activeExamSection && (
@@ -5017,7 +5017,7 @@ export default function Home() {
           {/* PREPARATION HUB SUB-SUBJECT DETAIL SCREEN (Requirement 2, 3, 4) */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
-            <div className="p-5 space-y-5 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
               
               {/* Level 3 Topics / Sub-categories Bar */}
               {selectedPrepSubSubject.subCategories2 && selectedPrepSubSubject.subCategories2.length > 0 && (
@@ -5586,7 +5586,7 @@ export default function Home() {
           {/* COURSE DETAIL SCREEN                                      */}
           {/* ========================================================= */}
           {currentScreen === "course-detail" && selectedCourseDetail && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
               
               {/* CASE 1: Main Course Screen - Only Stacked Exam Section List (Apple Style) */}
               {!activeExamSection && (
@@ -5966,7 +5966,7 @@ export default function Home() {
           {/* 4. SCREEN: ROUTINE & STUDY PLANNER                        */}
           {/* ========================================================= */}
           {currentScreen === "routine" && (
-            <div className="p-5 space-y-5 animate-fade-in">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in">
               <div className="space-y-1">
                 <h3 className="font-extrabold text-lg text-slate-900 tracking-tight">Daily routine</h3>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Plan your exam success checklist</p>
@@ -6069,7 +6069,7 @@ export default function Home() {
           {/* 5. SCREEN: TEST CENTER / CHOOSE MOCK                      */}
           {/* ========================================================= */}
           {currentScreen === "tests" && (
-            <div className="p-5 space-y-5 animate-fade-in">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in">
               <div className="space-y-1">
                 <h3 className="font-extrabold text-lg text-slate-900 tracking-tight">Exam Results & Tests</h3>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your last exam performance & mock test bank</p>
@@ -6325,7 +6325,7 @@ export default function Home() {
           {/* NOTICE BOARD / NOTIFICATIONS SCREEN                       */}
           {/* ========================================================= */}
           {currentScreen === "notice" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12 text-left">
               
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -6412,7 +6412,7 @@ export default function Home() {
           {/* 6. SCREEN: PROFILE / STUDENT DATA (Apple UI Style)         */}
           {/* ========================================================= */}
           {currentScreen === "profile" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12 text-left">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12 text-left">
               
               {/* Avatar identity card (Horizontal Left-to-Right layout, clean white card) */}
               <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs flex items-center gap-4">
@@ -6663,7 +6663,7 @@ export default function Home() {
           {/* 7. SCREEN: PACKAGES (Apple UI Style)                       */}
           {/* ========================================================= */}
           {currentScreen === "packages" && (
-            <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12">
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12">
               {/* Header Banner - reduced top padding & removed "প্যাকেজসমূহ" header */}
               <div className="text-center space-y-1 pt-0 mt-0">
                 <span className="inline-block text-[10px] font-black uppercase tracking-widest text-[#007AFF] bg-[#007AFF]/10 px-3 py-0.5 rounded-full">
@@ -6871,7 +6871,7 @@ export default function Home() {
             );
 
             return (
-              <div className="p-4 sm:p-6 space-y-5 animate-fade-in text-left pb-16">
+              <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in text-left pb-16">
                 
                 {/* Top Search Input Box */}
                 <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 shadow-sm space-y-3">

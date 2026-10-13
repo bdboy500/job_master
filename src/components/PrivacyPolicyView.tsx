@@ -74,7 +74,7 @@ export default function PrivacyPolicyView({ onBack }: PrivacyPolicyViewProps) {
         </button>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <div className="max-w-3xl mx-auto px-1.5 sm:px-2.5 py-4 sm:py-6 space-y-5">
         {/* Hero Card */}
         <section className="bg-gradient-to-br from-[#1E293B] via-[#0F172A] to-[#1E293B] text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden border border-slate-700/60">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl pointer-events-none" />

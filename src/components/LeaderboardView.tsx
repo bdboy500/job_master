@@ -196,7 +196,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
     <div className="min-h-screen bg-[#F8F9FC] text-slate-900 pb-20 flex flex-col font-sans select-none animate-fade-in">
       
       {/* 1. TOP HERO SECTION WITH BACK & REFRESH ACTION BAR (STATIC UI) */}
-      <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-4 pb-8 px-4 sm:px-6 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
+      <div className="bg-gradient-to-b from-[#FF5500] via-[#FF6A00] to-[#E55B00] text-white pt-4 pb-8 px-2 sm:px-3 rounded-b-[2.5rem] shadow-xl relative overflow-hidden shrink-0">
         
         {/* Background Subtle Accent Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)] pointer-events-none" />
@@ -410,7 +410,7 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
       </div>
 
       {/* REST OF LEADERBOARD LIST (Ranks 4-10+) */}
-      <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 -mt-3 z-30 space-y-3">
+      <div className="max-w-2xl mx-auto w-full px-1.5 sm:px-2.5 -mt-3 z-30 space-y-3">
         
         {/* "YOUR POSITION" HIGHLIGHTED HORIZONTAL CARD COMPONENT */}
         {isLoading ? (

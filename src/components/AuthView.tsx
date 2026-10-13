@@ -575,7 +575,7 @@ export default function AuthView({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-10 selection:bg-orange-500 selection:text-white animate-fade-in text-left">
+    <div className="w-full max-w-md mx-auto px-1.5 sm:px-2.5 pt-3 sm:pt-4 pb-10 selection:bg-orange-500 selection:text-white animate-fade-in text-left">
       {/* Clean Segmented Tab Switch (Sign In / Sign Up) - Directly below Top App Bar */}
       <div className="flex bg-slate-200/80 p-1.5 rounded-2xl mb-5">
         <button
