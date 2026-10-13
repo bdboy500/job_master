@@ -33,6 +33,32 @@ html {
   scroll-behavior: smooth;
   height: 100%;
   width: 100%;
+  /* Mobile-first adaptive font sizing: compact & comfortable on mobile */
+  font-size: 14px;
+}
+
+@media (min-width: 360px) {
+  html {
+    font-size: 14.5px;
+  }
+}
+
+@media (min-width: 480px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 15.5px;
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 16px;
+  }
 }
 
 body {

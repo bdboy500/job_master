@@ -3395,7 +3395,7 @@ export default function Home() {
               {/* Our Courses Section */}
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
+                  <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
                     Our Courses
                   </h3>
                   <button 
@@ -3459,7 +3459,7 @@ export default function Home() {
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
                   {/* LEFT SIDE: Title and Subtitle */}
                   <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
-                    <h3 className="text-xl sm:text-lg font-black tracking-tight leading-tight text-white">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight leading-tight text-white">
                       Live Quiz Game
                     </h3>
                     <p className="text-white/95 text-sm sm:text-xs font-extrabold tracking-wide truncate max-w-full">
@@ -3499,7 +3499,7 @@ export default function Home() {
               {/* Preparation Hub Section */}
               <div className="space-y-2 pt-2 sm:pt-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
+                  <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
                     Preparation Hub
                   </h3>
                   <button 
@@ -3545,7 +3545,7 @@ export default function Home() {
               {appSettings.proSectionActive !== false && (
                 <div className="space-y-2 pt-2 sm:pt-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-black text-xl sm:text-lg text-[#FF6A00] tracking-tight">
+                    <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
                       Pro Feature
                     </h3>
                     <span className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60">
@@ -4302,7 +4302,7 @@ export default function Home() {
           {currentScreen === "courses" && (
             <div className="p-4 sm:p-5 space-y-4 animate-fade-in pb-12">
               <div className="pt-1 pb-1 text-center">
-                <h3 className="font-extrabold text-lg sm:text-xl text-[#FF6A00] tracking-tight">
+                <h3 className="font-extrabold text-base sm:text-lg text-[#FF6A00] tracking-tight">
                   Our Courses
                 </h3>
               </div>
