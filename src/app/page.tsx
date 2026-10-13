@@ -3298,7 +3298,7 @@ export default function Home() {
                                     className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] relative"
                                   >
                                     {/* Top Banner Strip */}
-                                    <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-4 py-2.5 flex items-center justify-between text-white shadow-2xs">
+                                    <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-3.5 py-1.5 sm:px-4 sm:py-2 flex items-center justify-between text-white shadow-2xs">
                                       <span className="text-xs font-black tracking-wide flex items-center gap-1.5">
                                         <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
                                         For All Job
@@ -3328,12 +3328,12 @@ export default function Home() {
                                     </div>
 
                                     {/* Card Content */}
-                                    <div className="p-4 sm:p-5 space-y-3">
+                                    <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 space-y-1.5 sm:space-y-2">
                                       <div>
                                         <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
                                           {currentLive.title}
                                         </h4>
-                                        <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
+                                        <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center gap-2">
                                           <span>প্রশ্ন {qCount} টি</span>
                                           <span className="text-slate-300">•</span>
                                           <span>{mins} মিনিট</span>
@@ -3341,9 +3341,9 @@ export default function Home() {
                                       </div>
 
                                       {/* Footer Row: Live Timer & Participant Count */}
-                                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
+                                      <div className="pt-1.5 sm:pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
                                         {/* Live Timer */}
-                                        <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100/80">
+                                        <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100/80">
                                           <span className="relative flex h-2 w-2 shrink-0">
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                                             <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -3430,7 +3430,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
+                        <span className="text-[13.5px] max-[359px]:text-[13.5px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -3449,7 +3449,7 @@ export default function Home() {
                     <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-[#FF6A00]/10 rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
                       <Briefcase className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#FF6A00] tracking-tight truncate min-w-0">সকল কোর্স দেখুন</span>
+                    <span className="text-[13.5px] max-[359px]:text-[13.5px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#FF6A00] tracking-tight truncate min-w-0">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
@@ -4091,7 +4091,7 @@ export default function Home() {
                         className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-[0.99] relative"
                       >
                         {/* Top Banner Strip */}
-                        <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-4 py-2.5 flex items-center justify-between text-white shadow-2xs">
+                        <div className="bg-gradient-to-r from-[#FF6A00] via-[#FF5500] to-[#E54800] px-3.5 py-1.5 sm:px-4 sm:py-2 flex items-center justify-between text-white shadow-2xs">
                           <span className="text-xs font-black tracking-wide flex items-center gap-1.5">
                             <Briefcase className="w-3.5 h-3.5 stroke-[2.5]" />
                             For All Job
@@ -4121,12 +4121,12 @@ export default function Home() {
                         </div>
 
                         {/* Card Content */}
-                        <div className="p-4 sm:p-5 space-y-3">
+                        <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 space-y-1.5 sm:space-y-2">
                           <div>
                             <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
                               {currentLive.title}
                             </h4>
-                            <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
+                            <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center gap-2">
                               <span>প্রশ্ন {qCount} টি</span>
                               <span className="text-slate-300">•</span>
                               <span>{mins} মিনিট</span>
@@ -4134,8 +4134,8 @@ export default function Home() {
                           </div>
 
                           {/* Footer Row: Live Timer & Participant Count */}
-                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
-                            <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100/80">
+                          <div className="pt-1.5 sm:pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-extrabold">
+                            <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100/80">
                               <span className="relative flex h-2 w-2 shrink-0">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -4332,7 +4332,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
                           <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
+                        <span className="text-[13.5px] max-[359px]:text-[13.5px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
