@@ -3425,10 +3425,10 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
+                        className="bg-white border border-slate-100 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
                       >
-                        <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
-                          <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${course.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
+                          <CourseIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
                         <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
@@ -3444,10 +3444,10 @@ export default function Home() {
                       setCurrentScreen("courses");
                       if (soundEnabled) quizAudio.playClick();
                     }}
-                    className="bg-orange-100/90 hover:bg-orange-200/80 border border-orange-200/90 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center justify-center gap-1.5 min-[360px]:gap-2 sm:gap-2 shadow-2xs transition-all cursor-pointer active:scale-95 text-[#FF6A00] min-w-0"
+                    className="bg-orange-100/90 hover:bg-orange-200/80 border border-orange-200/90 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center justify-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-2xs transition-all cursor-pointer active:scale-95 text-[#FF6A00] min-w-0"
                   >
-                    <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-[#FF6A00]/10 rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
-                      <Briefcase className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
+                    <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 bg-[#FF6A00]/10 rounded-lg min-[360px]:rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
+                      <Briefcase className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5px]" />
                     </div>
                     <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#FF6A00] tracking-tight truncate min-w-0">সকল কোর্স দেখুন</span>
                   </div>
@@ -3527,10 +3527,10 @@ export default function Home() {
                           setCurrentScreen("prep-sub");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
+                        className="bg-white border border-slate-100 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
                       >
-                        <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
-                          <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
+                          <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
                         <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {subject.name}
@@ -3569,10 +3569,10 @@ export default function Home() {
                               setPreviousScreen("home");
                               setCurrentScreen("prep-sub");
                             }}
-                            className="bg-white border border-purple-100/80 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3.5 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer active:scale-95 min-w-0"
+                            className="bg-white border border-purple-100/80 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer active:scale-95 min-w-0"
                           >
-                            <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${subject.text || "text-purple-600"} shrink-0 shadow-2xs`}>
-                              <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                            <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-purple-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-purple-600"} shrink-0 shadow-2xs`}>
+                              <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                             </div>
                             <div className="flex flex-col min-w-0 text-left">
                               <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-slate-800 tracking-tight truncate min-w-0">
@@ -4327,10 +4327,10 @@ export default function Home() {
                           setCurrentScreen("course-detail");
                           if (soundEnabled) quizAudio.playClick();
                         }}
-                        className="bg-white border border-slate-100 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:p-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-3 shadow-xs hover:shadow-md hover:border-orange-200 transition-all cursor-pointer active:scale-95 min-w-0"
+                        className="bg-white border border-slate-100 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md hover:border-orange-200 transition-all cursor-pointer active:scale-95 min-w-0"
                       >
-                        <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
-                          <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${course.bg} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
+                          <CourseIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
                         <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
@@ -4373,10 +4373,10 @@ export default function Home() {
                         setCurrentScreen("prep-sub");
                         if (soundEnabled) quizAudio.playClick();
                       }}
-                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl px-2 py-3 min-[360px]:px-2.5 min-[360px]:py-3 sm:px-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-2 sm:gap-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left min-w-0"
+                      className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-95 group text-left min-w-0"
                     >
-                      <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg} ${subject.text} rounded-xl flex items-center justify-center shrink-0`}>
-                        <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                      <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${subject.bg} ${subject.text} rounded-lg min-[360px]:rounded-xl flex items-center justify-center shrink-0`}>
+                        <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight block truncate group-hover:text-[#FF6A00] transition-colors min-w-0">
