@@ -3430,7 +3430,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[12.5px] min-[360px]:text-[13px] min-[480px]:text-[13.5px] sm:text-sm lg:text-[14.5px] font-extrabold text-[#334155] tracking-tight truncate min-w-0">
+                        <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -3449,7 +3449,7 @@ export default function Home() {
                     <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-[#FF6A00]/10 rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
                       <Briefcase className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-[12.5px] min-[360px]:text-[13px] min-[480px]:text-[13.5px] sm:text-sm lg:text-[14.5px] font-extrabold text-[#FF6A00] tracking-tight truncate min-w-0">সকল কোর্স দেখুন</span>
+                    <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#FF6A00] tracking-tight truncate min-w-0">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
@@ -4332,7 +4332,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
                           <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[12.5px] min-[360px]:text-[13px] min-[480px]:text-[13.5px] sm:text-sm lg:text-[14.5px] font-extrabold text-[#334155] tracking-tight truncate min-w-0">
+                        <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
