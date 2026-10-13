@@ -2812,12 +2812,12 @@ export default function Home() {
         <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/25 rounded-full blur-[120px] pointer-events-none z-0 hidden sm:block" />
 
         {/* Primary Container - Adaptive Full Desktop & Tablet View */}
-        <div className="w-full max-w-full bg-slate-50 h-[100dvh] md:h-screen md:max-h-screen rounded-none border-none shadow-none flex flex-col justify-between relative overflow-hidden z-10">
+        <div className="w-full max-w-full bg-slate-50 flex-1 flex flex-col min-h-0 relative overflow-hidden z-10">
 
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-20 lg:px-48 xl:px-72 2xl:px-96 pt-3 pb-3 sm:pt-4 sm:pb-3 flex items-center justify-between shadow-sm z-40 shrink-0 sticky top-0 touch-none select-none">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 md:px-20 lg:px-48 xl:px-72 2xl:px-96 py-2.5 sm:py-3 flex items-center justify-between shadow-xs z-40 shrink-0 sticky top-0 select-none">
           {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 mr-2">
             <button 
               onClick={() => {
                 setDrawerOpen(false);
@@ -2923,15 +2923,15 @@ export default function Home() {
                 }
                 if (soundEnabled) quizAudio.playClick();
               }}
-              className="flex items-center gap-2 ml-1 text-left cursor-pointer active:scale-95 transition-all"
+              className="flex items-center gap-1.5 sm:gap-2 ml-0.5 sm:ml-1 text-left cursor-pointer active:scale-95 transition-all min-w-0 flex-1"
               id="header-brand-button"
             >
               {/* Custom icon combining orange graduation cap */}
-              <div className="bg-[#FF6A00] p-1.5 sm:p-2 rounded-xl shadow-md shadow-orange-500/20">
+              <div className="bg-[#FF6A00] p-1.5 sm:p-2 rounded-xl shadow-md shadow-orange-500/20 shrink-0">
                 <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="flex flex-col">
-                <span className="font-black text-[#1E293B] text-lg sm:text-xl tracking-tight leading-none">
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="font-black text-[#1E293B] text-base sm:text-lg md:text-xl tracking-tight leading-snug truncate">
                   {currentScreen === "course-detail" && selectedCourseDetail ? (
                     <>
                       {selectedCourseDetail.title.split(" ")[0]} <span className="text-[#FF6A00]">{selectedCourseDetail.title.split(" ").slice(1).join(" ")}</span>
@@ -2998,7 +2998,7 @@ export default function Home() {
                     </>
                   )}
                 </span>
-                <span className="text-[10px] sm:text-xs font-bold tracking-[0.05em] text-[#94A3B8] uppercase mt-0.5">
+                <span className="text-[10px] sm:text-xs font-bold tracking-[0.05em] text-[#94A3B8] uppercase mt-0.5 truncate">
                   {currentScreen === "course-detail" && selectedCourseDetail 
                     ? `${selectedCourseDetail.category} Course Details` 
                     : currentScreen === "prep-all-subjects" 
@@ -3081,7 +3081,7 @@ export default function Home() {
           </nav>
 
           {/* Right side: Share, Search, Notification, and Settings icons */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Quick Share Link Button */}
             <button 
               onClick={() => {
@@ -3200,7 +3200,7 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 overflow-y-auto overscroll-y-auto pb-2 md:pb-0 bg-slate-50/60 relative touch-pan-y md:px-20 lg:px-48 xl:px-72 2xl:px-96">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y md:px-20 lg:px-48 xl:px-72 2xl:px-96">
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}
@@ -3430,7 +3430,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
                           <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight whitespace-nowrap min-w-0">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -3449,7 +3449,7 @@ export default function Home() {
                     <div className="w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8 sm:h-8 bg-[#FF6A00]/10 rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0">
                       <Briefcase className="w-4 h-4 sm:w-4 sm:h-4 stroke-[2.5px]" />
                     </div>
-                    <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#FF6A00] tracking-tight whitespace-nowrap min-w-0">সকল কোর্স দেখুন</span>
+                    <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#FF6A00] tracking-tight truncate min-w-0">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
@@ -3532,7 +3532,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${subject.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
                           <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight whitespace-nowrap min-w-0">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {subject.name}
                         </span>
                       </div>
@@ -3575,11 +3575,11 @@ export default function Home() {
                               <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                             </div>
                             <div className="flex flex-col min-w-0 text-left">
-                              <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-slate-800 tracking-tight whitespace-nowrap min-w-0">
+                              <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-slate-800 tracking-tight truncate min-w-0">
                                 {subject.name}
                               </span>
                               {subject.sub && (
-                                <span className="text-[10px] min-[360px]:text-[10.5px] sm:text-xs font-bold text-slate-400 whitespace-nowrap min-w-0">
+                                <span className="text-[10px] min-[360px]:text-[10.5px] sm:text-xs font-bold text-slate-400 truncate min-w-0">
                                   {subject.sub}
                                 </span>
                               )}
@@ -4332,7 +4332,7 @@ export default function Home() {
                         <div className={`w-8 h-8 min-[360px]:w-8.5 min-[360px]:h-8.5 sm:w-10 sm:h-10 ${course.bg} rounded-xl flex items-center justify-center ${course.iconColor} shrink-0`}>
                           <CourseIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight whitespace-nowrap min-w-0">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -4379,7 +4379,7 @@ export default function Home() {
                         <SubIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight block whitespace-nowrap group-hover:text-[#FF6A00] transition-colors min-w-0">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight block truncate group-hover:text-[#FF6A00] transition-colors min-w-0">
                           {subject.name}
                         </span>
                       </div>
@@ -7689,7 +7689,7 @@ export default function Home() {
 
         {/* Android/iOS App-Style Bottom Navigation Bar (Persistent across all screens including Quiz) */}
         <nav 
-          className="md:hidden shrink-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-2.5 pb-2 shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 relative touch-none select-none"
+          className="md:hidden shrink-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 relative select-none"
           id="mobile-bottom-nav"
         >
           {/* Home Tab */}

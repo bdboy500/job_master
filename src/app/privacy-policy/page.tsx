@@ -144,7 +144,7 @@ export default function PrivacyPolicyPage() {
             </div>
             <div>
               <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug">
-                Disclaimer (ডিসক্লেমার)
+                Disclaimer/ডিসক্লেমার
               </h2>
             </div>
           </div>
