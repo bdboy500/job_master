@@ -37,15 +37,17 @@ html {
   font-size: 14px;
 }
 
-@media (min-width: 360px) {
+/* সাধারণ মোবাইল (৩৬০px – ৪৭৯px): রুট ফন্ট সাইজ 14px */
+@media (min-width: 360px) and (max-width: 479px) {
   html {
-    font-size: 14.5px;
+    font-size: 14px;
   }
 }
 
-@media (min-width: 480px) {
+/* বড় মোবাইল / ফ্যাবলেট (৪৮০px – ৬৩৯px): রুট ফন্ট সাইজ 14px */
+@media (min-width: 480px) and (max-width: 639px) {
   html {
-    font-size: 15px;
+    font-size: 14px;
   }
 }
 
