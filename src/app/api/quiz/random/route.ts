@@ -6,12 +6,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const LIVE_QUIZ_ALLOWED_SUBJECTS = [
-  "Bangladesh Affairs",
-  "International Affairs",
-  "Geography",
-  "General Science",
-  "Technology",
-  "Mental Ability"
+  "General Knowledge(GK)"
 ];
 
 function isSubjectMatch(subjectName: string, targetSubject: string): boolean {
@@ -19,7 +14,21 @@ function isSubjectMatch(subjectName: string, targetSubject: string): boolean {
   const s = subjectName.trim().toLowerCase();
   const t = targetSubject.trim().toLowerCase();
 
-  if (s.includes(t)) return true;
+  if (s === t || s.includes(t) || t.includes(s)) return true;
+
+  if (t === "general knowledge(gk)" || t === "general knowledge" || t === "gk") {
+    return (
+      s === "general knowledge(gk)" ||
+      s === "general knowledge (gk)" ||
+      s.includes("general knowledge") ||
+      s.includes("gk") ||
+      s.includes("সাধারণ জ্ঞান")
+    );
+  }
+
+  if (t === "recent & updated" || t === "recent" || t === "updated") {
+    return s.includes("recent") || s.includes("updated") || s.includes("সাম্প্রতিক") || s.includes("আপডেট");
+  }
 
   if (t === "bangladesh affairs") return s.includes("bangladesh") || s.includes("বাংলাদেশ");
   if (t === "international affairs") return s.includes("international") || s.includes("আন্তর্জাতিক");
@@ -122,21 +131,19 @@ export async function GET(req: NextRequest) {
     let selectedQuestions: Question[] = [];
 
     if (isLiveQuiz) {
-      // Filter candidates that match ANY of the 6 allowed subjects ONLY
+      // Live Quiz Game: ONLY "General Knowledge(GK)" questions allowed!
       const candidateQuestions = pool.filter(q => {
-        const subj = q.subject || "";
-        return LIVE_QUIZ_ALLOWED_SUBJECTS.some(allowed => isSubjectMatch(subj, allowed));
+        const subj = q.subject || q.subjectName || "";
+        return isSubjectMatch(subj, "General Knowledge(GK)");
       });
 
-      // Use QUIZ_QUESTIONS allowed candidates as secondary safety if candidates < 10
-      let safeCandidates = candidateQuestions;
-      if (safeCandidates.length < 10) {
+      let safeCandidates = [...candidateQuestions];
+      if (safeCandidates.length < limit) {
         const fallbackCandidates = QUIZ_QUESTIONS.filter(q => {
-          const subj = q.subject || "";
-          return LIVE_QUIZ_ALLOWED_SUBJECTS.some(allowed => isSubjectMatch(subj, allowed));
+          const subj = q.subject || q.subjectName || "";
+          return isSubjectMatch(subj, "General Knowledge(GK)");
         }).map(normalizeRawQuestion);
 
-        // Combine unique candidates
         const existingIds = new Set(safeCandidates.map(q => q.id));
         for (const f of fallbackCandidates) {
           if (!existingIds.has(f.id)) {
@@ -145,50 +152,9 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Group by the 6 allowed subjects
-      const subjectBuckets: Record<string, Question[]> = {};
-      for (const subjName of LIVE_QUIZ_ALLOWED_SUBJECTS) {
-        subjectBuckets[subjName] = [];
-      }
-
-      for (const q of safeCandidates) {
-        const subj = q.subject || "";
-        for (const allowed of LIVE_QUIZ_ALLOWED_SUBJECTS) {
-          if (isSubjectMatch(subj, allowed)) {
-            subjectBuckets[allowed].push(q);
-            break;
-          }
-        }
-      }
-
-      const pickedIds = new Set<string | number>();
-      const pickedQuestions: Question[] = [];
-
-      // Step A: Pick AT LEAST 1 question from each available allowed subject
-      for (const subjName of LIVE_QUIZ_ALLOWED_SUBJECTS) {
-        const bucket = subjectBuckets[subjName];
-        if (bucket && bucket.length > 0) {
-          // Shuffle bucket and pick 1
-          const randomQ = bucket[Math.floor(Math.random() * bucket.length)];
-          if (!pickedIds.has(randomQ.id)) {
-            pickedIds.add(randomQ.id);
-            pickedQuestions.push(randomQ);
-          }
-        }
-      }
-
-      // Step B: Fill the rest up to `limit` (10) from all remaining allowed candidates
-      const remainingCandidates = safeCandidates.filter(q => !pickedIds.has(q.id));
-      const shuffledRemaining = [...remainingCandidates].sort(() => Math.random() - 0.5);
-
-      for (const q of shuffledRemaining) {
-        if (pickedQuestions.length >= limit) break;
-        pickedIds.add(q.id);
-        pickedQuestions.push(q);
-      }
-
-      // Final shuffle of selected questions
-      selectedQuestions = [...pickedQuestions].sort(() => Math.random() - 0.5);
+      // Shuffle candidate questions randomly
+      const shuffledCandidates = [...safeCandidates].sort(() => Math.random() - 0.5);
+      selectedQuestions = shuffledCandidates.slice(0, limit);
     } else {
       const subject = searchParams.get("subject");
       let filteredPool = pool;

@@ -379,6 +379,16 @@ function matchesSubject(questionSubject: string, targetSubjects: string[]): bool
       return qSub.includes("biology") || qSub.includes("জীব");
     }
 
+    // 12. Recent & Updated
+    if (tSub.includes("recent") || tSub.includes("updated") || tSub.includes("সাম্প্রতিক") || tSub.includes("আপডেট")) {
+      return qSub.includes("recent") || qSub.includes("updated") || qSub.includes("সাম্প্রতিক") || qSub.includes("আপডেট");
+    }
+
+    // 13. General Knowledge(GK)
+    if (tSub.includes("general knowledge") || tSub.includes("gk") || tSub.includes("সাধারণ জ্ঞান")) {
+      return qSub.includes("general knowledge") || qSub.includes("gk") || qSub.includes("সাধারণ জ্ঞান");
+    }
+
     return false;
   });
 }
@@ -527,7 +537,9 @@ export default function AdminPage() {
     "Good Governance",
     "Physics",
     "Chemistry",
-    "Biology"
+    "Biology",
+    "Recent & Updated",
+    "General Knowledge(GK)"
   ];
 
   // Subject Bengali Names & Metadata Map
@@ -548,7 +560,9 @@ export default function AdminPage() {
     "Good Governance": { bn: "নৈতিকতা ও সুশাসন" },
     "Physics": { bn: "পদার্থবিজ্ঞান" },
     "Chemistry": { bn: "রসায়ন" },
-    "Biology": { bn: "জীববিজ্ঞান" }
+    "Biology": { bn: "জীববিজ্ঞান" },
+    "Recent & Updated": { bn: "সাম্প্রতিক ও আপডেটেড" },
+    "General Knowledge(GK)": { bn: "সাধারণ জ্ঞান (GK)" }
   };
 
   // Dynamic Courses & Exam Types list
