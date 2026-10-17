@@ -194,7 +194,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
         />
       </head>
-      <body className="antialiased min-h-screen">
+      <body className="antialiased min-h-full h-full">
         {/* Google tag (gtag.js) */}
         <Script
           id="google-analytics-tag"
