@@ -2799,7 +2799,7 @@ export default function Home() {
 
   return (
     <PwaProvider>
-      <div className="h-[100dvh] max-h-[100dvh] w-full bg-slate-50 flex flex-col items-center justify-start p-0 selection:bg-orange-500 selection:text-white relative overflow-hidden">
+      <div className="h-full min-h-full h-[100dvh] max-h-[100dvh] w-full bg-slate-50 flex flex-col items-center justify-start p-0 selection:bg-orange-500 selection:text-white relative overflow-hidden">
         
         {/* Global PWA Toast & Guide Modals */}
         <InstallPwaPopup />
@@ -7689,7 +7689,7 @@ export default function Home() {
 
         {/* Android/iOS App-Style Bottom Navigation Bar (Persistent across all screens including Quiz) */}
         <nav 
-          className="md:hidden fixed bottom-0 left-0 right-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 select-none"
+          className="md:hidden fixed bottom-0 left-0 right-0 w-full bg-[#FFF5ED] border-t-2 border-[#FF6A00]/30 flex justify-around items-center pt-1.5 pb-[clamp(0.35rem,env(safe-area-inset-bottom),0.85rem)] shadow-[0_-6px_20px_rgba(255,106,0,0.08)] z-50 transition-all duration-300 select-none"
           id="mobile-bottom-nav"
         >
           {/* Home Tab */}
