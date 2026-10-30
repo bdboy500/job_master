@@ -131,10 +131,43 @@ export default function LeaderboardView({ onBack, currentUserProfile, profileAva
     return typeof val === "number" && !isNaN(val) ? val : Number(val) || 0;
   };
 
-  // Sort users according to active tab score
+  // Sort users according to active tab score with strict client-side deduplication
   const getSortedUsers = () => {
-    const sorted = [...leaderboardUsers];
-    return sorted.sort((a, b) => getScoreForTab(b) - getScoreForTab(a));
+    const userMap = new Map<string, LeaderboardUser>();
+
+    for (const u of leaderboardUsers) {
+      const uUid = String(u.id || "").trim();
+      const uSid = String(u.student_id || "").trim();
+      const uAvatar = String(u.avatar_url || "").trim();
+      const isGoogleAvatar = uAvatar.includes("lh3.googleusercontent.com");
+
+      // Key by Google avatar if available, or student_id, or user ID
+      const canonicalKey = isGoogleAvatar ? uAvatar : (uSid || uUid);
+
+      if (!userMap.has(canonicalKey)) {
+        userMap.set(canonicalKey, { ...u });
+      } else {
+        const existing = userMap.get(canonicalKey)!;
+        existing.today_score = Math.max(existing.today_score || 0, u.today_score || 0);
+        existing.week_score = Math.max(existing.week_score || 0, u.week_score || 0);
+        existing.month_score = Math.max(existing.month_score || 0, u.month_score || 0);
+        existing.all_time_score = Math.max(existing.all_time_score || 0, u.all_time_score || 0);
+
+        // Prefer non-default / updated Bengali name
+        if (u.name && u.name !== "শিক্ষার্থী" && (!existing.name || existing.name === "শিক্ষার্থী" || existing.name === "Eomsdv")) {
+          existing.name = u.name;
+        }
+        if (uSid && uSid.startsWith("JM-") && (!existing.student_id || existing.student_id === "JM-748193")) {
+          existing.student_id = uSid;
+        }
+        if (uAvatar && !existing.avatar_url) {
+          existing.avatar_url = uAvatar;
+        }
+      }
+    }
+
+    const deduped = Array.from(userMap.values());
+    return deduped.sort((a, b) => getScoreForTab(b) - getScoreForTab(a));
   };
 
   const sortedUsers = getSortedUsers();

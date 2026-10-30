@@ -507,6 +507,7 @@ export default function Home() {
 
     try {
       const userId = currentUser?.id || `usr-${Date.now()}`;
+      const activeStudentId = currentUser?.student_id || profileId || undefined;
       let res: any;
       try {
         const apiRes = await fetch("/api/user/auth", {
@@ -519,6 +520,7 @@ export default function Home() {
             phoneNumber: newPhone,
             avatarUrl: profileAvatarUrl,
             newEmail,
+            studentId: activeStudentId,
           }),
         });
         const apiData = await apiRes.json();
@@ -526,13 +528,13 @@ export default function Home() {
           res = apiData;
         } else {
           // Fallback to library function
-          res = await updateUsernameOnServer(userId, newName, newPhone, profileAvatarUrl, newEmail);
+          res = await updateUsernameOnServer(userId, newName, newPhone, profileAvatarUrl, newEmail, activeStudentId);
           if (!res.success && apiData.error) {
             res.error = apiData.error;
           }
         }
       } catch (e) {
-        res = await updateUsernameOnServer(userId, newName, newPhone, profileAvatarUrl, newEmail);
+        res = await updateUsernameOnServer(userId, newName, newPhone, profileAvatarUrl, newEmail, activeStudentId);
       }
 
       if (!res.success || !res.user) {
@@ -541,14 +543,33 @@ export default function Home() {
         return;
       }
 
+      const confirmedStudentId = res.user.student_id || activeStudentId || profileId;
+
       // Update state & storage
       setCurrentUser(res.user);
       setProfileName(res.user.full_name);
       if (res.user.phone_number) setProfilePhone(res.user.phone_number);
       if (res.user.email) setProfileEmail(res.user.email);
-      if (res.user.student_id) setProfileId(res.user.student_id);
+      if (confirmedStudentId) setProfileId(confirmedStudentId);
       if (typeof window !== "undefined") {
-        localStorage.setItem("job_master_current_user", JSON.stringify(res.user));
+        localStorage.setItem("job_master_current_user", JSON.stringify({ ...res.user, student_id: confirmedStudentId }));
+      }
+
+      // Synchronize Leaderboard immediately with updated name, permanent student_id & deduplicate
+      try {
+        await fetch("/api/leaderboard", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            userName: newName,
+            studentId: confirmedStudentId,
+            avatarUrl: profileAvatarUrl,
+            oldStudentId: profileId && profileId !== confirmedStudentId ? profileId : undefined,
+          }),
+        });
+      } catch (lbErr) {
+        console.warn("Leaderboard sync warning:", lbErr);
       }
 
       // Update in registered users cache array
@@ -1016,13 +1037,15 @@ export default function Home() {
           return;
         }
 
+        const persistentSid = profile.student_id || currentUser?.student_id || profileId || (profile.id ? `JM-${profile.id.substring(0, 6)}` : generateStudentId());
+        profile.student_id = persistentSid;
         setCurrentUser(profile);
         setIsLoggedIn(true);
         setShowAuthModal(false);
         setProfileName(profile.full_name || user.email?.split("@")[0] || "শিক্ষার্থী");
         setProfileEmail(profile.email || user.email || "");
         setProfilePhone(profile.phone_number || "");
-        setProfileId(profile.student_id || generateStudentId());
+        setProfileId(persistentSid);
         localStorage.setItem("job_master_current_user", JSON.stringify(profile));
 
         // Rule 1 & Rule 2 & Rule 3: Profile Avatar Resolution
@@ -1471,12 +1494,14 @@ export default function Home() {
 
   // Auth Protection Gatekeeper for Exams & Quizzes (Lazy Auth)
   const handleAuthSuccess = async (user: UserProfile) => {
+    const persistentSid = user.student_id || currentUser?.student_id || profileId || (user.id ? `JM-${user.id.substring(0, 6)}` : generateStudentId());
+    user.student_id = persistentSid;
     setCurrentUser(user);
     setIsLoggedIn(true);
     setProfileName(user.full_name || "শিক্ষার্থী");
     setProfileEmail(user.email || "");
     setProfilePhone(user.phone_number || "");
-    setProfileId(user.student_id || generateStudentId());
+    setProfileId(persistentSid);
     setShowAuthModal(false);
     setAuthModalCustomTitle("");
     setAuthModalCustomSubtitle("");
@@ -1590,12 +1615,13 @@ export default function Home() {
         try {
           const u = JSON.parse(cached);
           if (u && u.id && u.status !== "Banned") {
-            setCurrentUser(u);
+            const finalSid = u.student_id || profileId || (u.id ? `JM-${u.id.substring(0, 6)}` : generateStudentId());
+            setCurrentUser({ ...u, student_id: finalSid });
             setIsLoggedIn(true);
             setProfileName(u.full_name || "শিক্ষার্থী");
             setProfileEmail(u.email || "");
             setProfilePhone(u.phone_number || "");
-            setProfileId(u.student_id || generateStudentId());
+            setProfileId(finalSid);
             action();
             return;
           }

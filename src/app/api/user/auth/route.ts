@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "update-profile") {
-      const { userId, newFullName, phoneNumber, avatarUrl, newEmail } = body;
-      const res = await updateUsernameOnServer(userId, newFullName, phoneNumber, avatarUrl, newEmail);
+      const { userId, newFullName, phoneNumber, avatarUrl, newEmail, studentId } = body;
+      const res = await updateUsernameOnServer(userId, newFullName, phoneNumber, avatarUrl, newEmail, studentId);
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 });
       }

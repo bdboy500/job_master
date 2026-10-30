@@ -87,12 +87,31 @@ export async function upsertUserProfile(profile: UserProfile): Promise<boolean> 
     const supabase = getSupabase();
     if (!supabase) return false;
 
+    // Check if profile already exists in DB to NEVER overwrite or change existing student_id
+    let finalStudentId = profile.student_id;
+    if (!finalStudentId) {
+      try {
+        const { data: exData } = await supabase
+          .from("profiles")
+          .select("student_id")
+          .eq("id", profile.id)
+          .maybeSingle();
+        if (exData?.student_id) {
+          finalStudentId = exData.student_id;
+        } else {
+          finalStudentId = generateStudentId();
+        }
+      } catch (e) {
+        finalStudentId = generateStudentId();
+      }
+    }
+
     const payload = {
       id: profile.id,
       email: profile.email,
       full_name: profile.full_name,
       phone_number: profile.phone_number,
-      student_id: profile.student_id,
+      student_id: finalStudentId,
       role: profile.role || "Student",
       status: profile.status || "Active",
       created_at: profile.created_at || new Date().toISOString(),
@@ -104,6 +123,7 @@ export async function upsertUserProfile(profile: UserProfile): Promise<boolean> 
       console.warn("Supabase profile upsert warning:", error.message);
       return false;
     }
+    profile.student_id = finalStudentId;
     profileMemoryCache.set(profile.id, { data: profile, timestamp: Date.now() });
     return true;
   } catch (err) {

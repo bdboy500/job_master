@@ -246,8 +246,11 @@ async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> 
     console.warn("Error augmenting store from Supabase DB:", err);
   }
 
-  // Sanitize all output users and enforce active cycle zeroing
-  const sanitizedUsers = baseUsers.map((u) => {
+  // Deduplicate and consolidate all users by canonical identity
+  // (ID, Student ID, Unique Google Avatar, or known profile alias)
+  const dedupedMap = new Map<string, LeaderboardUser>();
+
+  for (const u of baseUsers) {
     const isTodayScoreValid = isBDToday(u.updated_at);
     const isWeekScoreValid = isBDThisWeek(u.updated_at);
     const isMonthScoreValid = isBDThisMonth(u.updated_at);
@@ -257,21 +260,104 @@ async function loadServerStore(forceDbSync = false): Promise<LeaderboardUser[]> 
     const rawMonth = isMonthScoreValid ? Number(u.month_score ?? (u as any).score ?? rawWeek) : 0;
     const rawAllTime = Number(u.all_time_score ?? (u as any).score ?? rawMonth);
 
-    return {
-      id: u.id || `user_${Date.now()}`,
-      name: u.name || "শিক্ষার্থী",
-      student_id: u.student_id || `JM-${Math.floor(100000 + Math.random() * 900000)}`,
-      avatar_url: u.avatar_url || "",
-      today_score: isNaN(rawToday) ? 0 : rawToday,
-      week_score: isNaN(rawWeek) ? 0 : rawWeek,
-      month_score: isNaN(rawMonth) ? 0 : rawMonth,
-      all_time_score: isNaN(rawAllTime) ? 0 : rawAllTime,
-      updated_at: u.updated_at || new Date().toISOString()
-    };
-  });
+    const safeToday = isNaN(rawToday) ? 0 : rawToday;
+    const safeWeek = isNaN(rawWeek) ? 0 : rawWeek;
+    const safeMonth = isNaN(rawMonth) ? 0 : rawMonth;
+    const safeAllTime = isNaN(rawAllTime) ? 0 : rawAllTime;
+
+    const uUid = String(u.id || "").trim();
+    const uSid = String(u.student_id || "").trim();
+    const uAvatar = String(u.avatar_url || "").trim();
+    const isGoogleAvatar = uAvatar.includes("lh3.googleusercontent.com");
+
+    // Look for matching existing user in dedupedMap
+    let matchedKey: string | null = null;
+    for (const [key, existing] of dedupedMap.entries()) {
+      // 1. Same user ID
+      if (uUid && existing.id && existing.id === uUid) {
+        matchedKey = key;
+        break;
+      }
+      // 2. Same student ID
+      if (uSid && existing.student_id && existing.student_id === uSid) {
+        matchedKey = key;
+        break;
+      }
+      // 3. Same Google avatar URL (identifies the same person across profile renames/student ID shifts)
+      if (isGoogleAvatar && existing.avatar_url && existing.avatar_url === uAvatar) {
+        matchedKey = key;
+        break;
+      }
+      // 4. Known profile alias ("Eomsdv" with "JM-748193" <-> "আহসান হাবীব" with "JM-863962")
+      const isAhsanHabibAlias =
+        (uSid === "JM-748193" && existing.student_id === "JM-863962") ||
+        (uSid === "JM-863962" && existing.student_id === "JM-748193") ||
+        (u.name === "Eomsdv" && existing.name === "আহসান হাবীব") ||
+        (u.name === "আহসান হাবীব" && existing.name === "Eomsdv");
+      if (isAhsanHabibAlias) {
+        matchedKey = key;
+        break;
+      }
+    }
+
+    if (matchedKey) {
+      const ex = dedupedMap.get(matchedKey)!;
+      // Consolidate max scores
+      ex.today_score = Math.max(ex.today_score || 0, safeToday);
+      ex.week_score = Math.max(ex.week_score || 0, safeWeek);
+      ex.month_score = Math.max(ex.month_score || 0, safeMonth);
+      ex.all_time_score = Math.max(ex.all_time_score || 0, safeAllTime);
+
+      // Always choose the updated real name over placeholder or old name
+      if (u.name && u.name !== "শিক্ষার্থী") {
+        if (!ex.name || ex.name === "শিক্ষার্থী" || ex.name === "Eomsdv" || u.name === "আহসান হাবীব") {
+          ex.name = u.name;
+        }
+      }
+
+      // Preserve canonical modern student ID
+      if (uSid && uSid.startsWith("JM-") && (!ex.student_id || ex.student_id === "JM-748193")) {
+        ex.student_id = uSid;
+      }
+
+      // Preserve avatar
+      if (uAvatar && !ex.avatar_url) {
+        ex.avatar_url = uAvatar;
+      }
+
+      // Keep latest timestamp
+      if (u.updated_at && (!ex.updated_at || new Date(u.updated_at) > new Date(ex.updated_at))) {
+        ex.updated_at = u.updated_at;
+      }
+
+      dedupedMap.set(matchedKey, ex);
+    } else {
+      const canonicalKey = uSid || uUid || `user_${Date.now()}_${Math.random()}`;
+      dedupedMap.set(canonicalKey, {
+        id: uUid || canonicalKey,
+        name: u.name || "শিক্ষার্থী",
+        student_id: uSid || `JM-${Math.floor(100000 + Math.random() * 900000)}`,
+        avatar_url: uAvatar || "",
+        today_score: safeToday,
+        week_score: safeWeek,
+        month_score: safeMonth,
+        all_time_score: safeAllTime,
+        updated_at: u.updated_at || new Date().toISOString()
+      });
+    }
+  }
+
+  const sanitizedUsers = Array.from(dedupedMap.values());
+  const hadDuplicates = sanitizedUsers.length < baseUsers.length;
 
   globalLeaderboardStore = sanitizedUsers;
   lastDbSyncTime = Date.now();
+
+  // If duplicates were merged/purged, persist cleaned store asynchronously
+  if (hadDuplicates) {
+    saveServerStore(sanitizedUsers).catch(() => {});
+  }
+
   return globalLeaderboardStore;
 }
 
@@ -305,6 +391,89 @@ export async function GET(req: NextRequest) {
   const force = searchParams.get("force") === "true";
   const users = await loadServerStore(force);
   return NextResponse.json({ users });
+}
+
+// PUT /api/leaderboard - Sync Profile changes (Name, Student ID, Avatar) and Deduplicate Leaderboard
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { userId, userName, studentId, avatarUrl, oldStudentId } = body;
+
+    if (!userId && !studentId) {
+      return NextResponse.json({ error: "Missing userId or studentId" }, { status: 400 });
+    }
+
+    const currentUsers = await loadServerStore(true);
+    let matchedCount = 0;
+
+    // Search and update all matching entries
+    const matchingIndices: number[] = [];
+    for (let i = 0; i < currentUsers.length; i++) {
+      const u = currentUsers[i];
+      const idMatch = userId && u.id === userId;
+      const sidMatch = studentId && u.student_id === studentId;
+      const oldSidMatch = oldStudentId && u.student_id === oldStudentId;
+      const avatarMatch = avatarUrl && u.avatar_url && u.avatar_url === avatarUrl && avatarUrl.includes("lh3.googleusercontent.com");
+      const aliasMatch =
+        (u.name === "Eomsdv" && (userName === "আহসান হাবীব" || studentId === "JM-863962")) ||
+        (u.student_id === "JM-748193" && (studentId === "JM-863962" || userName === "আহসান হাবীব"));
+
+      if (idMatch || sidMatch || oldSidMatch || avatarMatch || aliasMatch) {
+        matchingIndices.push(i);
+      }
+    }
+
+    if (matchingIndices.length > 0) {
+      const primaryIdx = matchingIndices[0];
+      const primary = currentUsers[primaryIdx];
+      if (userId) primary.id = userId;
+      if (userName) primary.name = userName;
+      if (studentId) primary.student_id = studentId;
+      if (avatarUrl) primary.avatar_url = avatarUrl;
+
+      // Merge scores from any duplicate records
+      for (let i = 1; i < matchingIndices.length; i++) {
+        const other = currentUsers[matchingIndices[i]];
+        primary.today_score = Math.max(primary.today_score || 0, other.today_score || 0);
+        primary.week_score = Math.max(primary.week_score || 0, other.week_score || 0);
+        primary.month_score = Math.max(primary.month_score || 0, other.month_score || 0);
+        primary.all_time_score = Math.max(primary.all_time_score || 0, other.all_time_score || 0);
+      }
+      primary.updated_at = new Date().toISOString();
+      currentUsers[primaryIdx] = primary;
+
+      const toRemove = new Set(matchingIndices.slice(1));
+      const cleaned = currentUsers.filter((_, idx) => !toRemove.has(idx));
+      await saveServerStore(cleaned);
+      matchedCount = matchingIndices.length;
+    }
+
+    // Also update Supabase quiz_scores table so DB is completely synced
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        const scorePayload: any = {
+          updated_at: new Date().toISOString()
+        };
+        if (userName) scorePayload.user_name = userName;
+        if (studentId) scorePayload.student_id = studentId;
+        if (avatarUrl) scorePayload.avatar_url = avatarUrl;
+
+        await supabase
+          .from("quiz_scores")
+          .update(scorePayload)
+          .or(`user_id.eq.${userId}${studentId ? `,student_id.eq.${studentId}` : ""}${oldStudentId ? `,student_id.eq.${oldStudentId}` : ""}`);
+      }
+    } catch (dbErr) {
+      console.warn("DB quiz_scores sync warning:", dbErr);
+    }
+
+    const refreshed = await loadServerStore(true);
+    return NextResponse.json({ success: true, matchedCount, users: refreshed });
+  } catch (err: any) {
+    console.error("PUT /api/leaderboard error:", err);
+    return NextResponse.json({ error: err?.message || "Leaderboard sync failed" }, { status: 500 });
+  }
 }
 
 // POST /api/leaderboard - Submit Live Quiz score with 4-score Supabase update & Cycle resets

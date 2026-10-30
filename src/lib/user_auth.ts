@@ -443,7 +443,8 @@ export async function updateUsernameOnServer(
   newFullName: string,
   phoneNumber?: string,
   avatarUrl?: string,
-  newEmail?: string
+  newEmail?: string,
+  studentId?: string
 ): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
   const cleanName = newFullName.trim();
   if (!cleanName) {
@@ -455,7 +456,9 @@ export async function updateUsernameOnServer(
 
   // 1. Update in server accounts (app_config)
   const accounts = await fetchUserAccountsFromDb(true);
-  const idx = accounts.findIndex((a) => a.id === userId || (cleanEmail && a.email.toLowerCase() === cleanEmail));
+  const idx = accounts.findIndex(
+    (a) => a.id === userId || (cleanEmail && a.email && a.email.toLowerCase() === cleanEmail) || (studentId && a.student_id === studentId)
+  );
   let updatedAccount: UserAccount;
 
   // Check email uniqueness if email changed
@@ -474,20 +477,62 @@ export async function updateUsernameOnServer(
     }
   }
 
+  // 2. Strict Student ID Preservation (NEVER CHANGE A STUDENT'S ID)
+  let finalStudentId = "";
+  if (idx !== -1 && accounts[idx].student_id) {
+    finalStudentId = accounts[idx].student_id;
+  } else if (studentId && studentId.trim().startsWith("JM-")) {
+    finalStudentId = studentId.trim();
+  } else {
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("student_id")
+          .eq("id", userId)
+          .maybeSingle();
+        if (pData?.student_id) {
+          finalStudentId = pData.student_id;
+        } else if (cleanEmail) {
+          const { data: pEmailData } = await supabase
+            .from("profiles")
+            .select("student_id")
+            .eq("email", cleanEmail)
+            .maybeSingle();
+          if (pEmailData?.student_id) finalStudentId = pEmailData.student_id;
+        }
+        if (!finalStudentId) {
+          const { data: qData } = await supabase
+            .from("quiz_scores")
+            .select("student_id")
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (qData?.student_id) finalStudentId = qData.student_id;
+        }
+      }
+    } catch (e) {}
+
+    if (!finalStudentId) {
+      finalStudentId = generateStudentId();
+    }
+  }
+
   if (idx !== -1) {
     accounts[idx].full_name = cleanName;
     if (cleanPhone !== undefined) accounts[idx].phone_number = cleanPhone;
     if (cleanEmail !== undefined && cleanEmail) accounts[idx].email = cleanEmail;
     if (avatarUrl !== undefined) accounts[idx].avatar_url = avatarUrl;
+    accounts[idx].student_id = finalStudentId; // Keep permanent student_id locked
     accounts[idx].updated_at = new Date().toISOString();
     updatedAccount = accounts[idx];
   } else {
-    // If not yet in accounts list, add it
+    // If not yet in accounts list, add it with the permanent student ID
     updatedAccount = {
       id: userId,
       email: cleanEmail || "",
       phone_number: cleanPhone || "",
-      student_id: generateStudentId(),
+      student_id: finalStudentId,
       full_name: cleanName,
       passwordHash: await hashUserPassword("Aa052952"),
       role: "Student",
@@ -501,7 +546,7 @@ export async function updateUsernameOnServer(
 
   await saveUserAccountsToDb(accounts);
 
-  // 2. Update Supabase profiles table directly and forcefully
+  // 3. Update Supabase profiles table directly and forcefully
   try {
     const supabase = getSupabase();
     if (supabase) {
@@ -509,7 +554,7 @@ export async function updateUsernameOnServer(
         id: updatedAccount.id,
         full_name: cleanName,
         phone_number: updatedAccount.phone_number,
-        student_id: updatedAccount.student_id,
+        student_id: finalStudentId,
         role: updatedAccount.role || "Student",
         status: updatedAccount.status || "Active",
         updated_at: new Date().toISOString(),
@@ -521,22 +566,35 @@ export async function updateUsernameOnServer(
         .from("profiles")
         .upsert(profilePayload, { onConflict: "id" });
 
-      // 3. Update Supabase Auth user metadata & email if session active
+      // Update Supabase Auth user metadata & email if session active
       const authUpdatePayload: any = {
         data: {
           full_name: cleanName,
           name: cleanName,
           phone_number: updatedAccount.phone_number,
-          student_id: updatedAccount.student_id,
+          student_id: finalStudentId,
         },
       };
       if (cleanEmail) {
         authUpdatePayload.email = cleanEmail;
       }
       supabase.auth.updateUser(authUpdatePayload).catch(() => {});
+
+      // 4. Update ALL quiz_scores records for this user to reflect the new name, student ID, and avatar
+      const scoreUpdatePayload: any = {
+        user_name: cleanName,
+        student_id: finalStudentId,
+        updated_at: new Date().toISOString(),
+      };
+      if (avatarUrl) scoreUpdatePayload.avatar_url = avatarUrl;
+
+      await supabase
+        .from("quiz_scores")
+        .update(scoreUpdatePayload)
+        .or(`user_id.eq.${userId},student_id.eq.${finalStudentId}`);
     }
   } catch (dbErr) {
-    console.warn("Notice updating Supabase profiles:", dbErr);
+    console.warn("Notice updating Supabase profiles & scores:", dbErr);
   }
 
   // Clear in-memory profile cache so next fetch gets freshest data
@@ -547,7 +605,7 @@ export async function updateUsernameOnServer(
     email: updatedAccount.email,
     full_name: cleanName,
     phone_number: updatedAccount.phone_number,
-    student_id: updatedAccount.student_id,
+    student_id: finalStudentId,
     role: updatedAccount.role,
     status: updatedAccount.status,
     avatar_url: updatedAccount.avatar_url || "",
