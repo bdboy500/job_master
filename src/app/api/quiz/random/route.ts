@@ -5,10 +5,6 @@ import { QUIZ_QUESTIONS, Question } from "@/src/data";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const LIVE_QUIZ_ALLOWED_SUBJECTS = [
-  "General Knowledge(GK)"
-];
-
 function isSubjectMatch(subjectName: string, targetSubject: string): boolean {
   if (!subjectName) return false;
   const s = subjectName.trim().toLowerCase();
@@ -77,17 +73,22 @@ function normalizeRawQuestion(q: any): Question {
   };
 }
 
+// Unbiased Fisher-Yates Shuffle
+function fisherYatesShuffle<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function shuffleQuestionOptions(q: Question): Question {
   const originalOptions = [...q.options];
   const correctOptionText = originalOptions[q.correctIndex] ?? originalOptions[0];
 
   // Fisher-Yates shuffle options
-  const shuffledOptions = [...originalOptions];
-  for (let i = shuffledOptions.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
-  }
-
+  const shuffledOptions = fisherYatesShuffle(originalOptions);
   const newCorrectIndex = shuffledOptions.indexOf(correctOptionText);
 
   return {
@@ -103,11 +104,20 @@ export async function GET(req: NextRequest) {
     const mode = searchParams.get("mode");
     const isLiveQuiz = mode === "live_quiz" || searchParams.get("subject") === "Live Quiz Game";
     const limitParam = searchParams.get("limit");
-    const limit = limitParam ? parseInt(limitParam, 10) : 10;
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : 10;
 
-    let pool: Question[] = [];
+    // International quiz standard: support excludeIds to eliminate repeated questions across rounds
+    const excludeIdsParam = searchParams.get("excludeIds") || searchParams.get("seenIds") || "";
+    const excludeIds = new Set<string>(
+      excludeIdsParam
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+    );
 
-    // 1. Try fetching from Supabase questions table
+    let dbPool: Question[] = [];
+
+    // 1. Fetch questions from Supabase questions table
     try {
       const supabase = getSupabase();
       if (supabase) {
@@ -116,61 +126,123 @@ export async function GET(req: NextRequest) {
           .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at");
 
         if (!error && data && data.length > 0) {
-          pool = data.map(normalizeRawQuestion);
+          dbPool = data.map(normalizeRawQuestion);
         }
       }
     } catch (e) {
       console.warn("Error querying Supabase in /api/quiz/random:", e);
     }
 
-    // 2. Fallback to QUIZ_QUESTIONS if pool is empty
-    if (pool.length === 0) {
-      pool = QUIZ_QUESTIONS.map(normalizeRawQuestion);
-    }
-
-    let selectedQuestions: Question[] = [];
+    let candidatePool: Question[] = [];
 
     if (isLiveQuiz) {
       // Live Quiz Game: ONLY "General Knowledge(GK)" questions allowed!
-      const candidateQuestions = pool.filter(q => {
+      const dbGkQuestions = dbPool.filter(q => {
         const subj = q.subject || q.subjectName || "";
         return isSubjectMatch(subj, "General Knowledge(GK)");
       });
 
-      let safeCandidates = [...candidateQuestions];
-      if (safeCandidates.length < limit) {
-        const fallbackCandidates = QUIZ_QUESTIONS.filter(q => {
-          const subj = q.subject || q.subjectName || "";
-          return isSubjectMatch(subj, "General Knowledge(GK)");
-        }).map(normalizeRawQuestion);
+      const fallbackGkQuestions = QUIZ_QUESTIONS.filter(q => {
+        const subj = q.subject || q.subjectName || "";
+        return isSubjectMatch(subj, "General Knowledge(GK)");
+      }).map(normalizeRawQuestion);
 
-        const existingIds = new Set(safeCandidates.map(q => q.id));
-        for (const f of fallbackCandidates) {
-          if (!existingIds.has(f.id)) {
-            safeCandidates.push(f);
-          }
+      // Merge Supabase questions with fallback GK questions to guarantee a deep pool
+      const seenIds = new Set<string | number>();
+      const seenTexts = new Set<string>();
+
+      for (const q of dbGkQuestions) {
+        const textKey = q.question.trim().toLowerCase();
+        if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
+          seenIds.add(q.id);
+          seenTexts.add(textKey);
+          candidatePool.push(q);
         }
       }
 
-      // Shuffle candidate questions randomly
-      const shuffledCandidates = [...safeCandidates].sort(() => Math.random() - 0.5);
-      selectedQuestions = shuffledCandidates.slice(0, limit);
+      for (const q of fallbackGkQuestions) {
+        const textKey = q.question.trim().toLowerCase();
+        if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
+          seenIds.add(q.id);
+          seenTexts.add(textKey);
+          candidatePool.push(q);
+        }
+      }
     } else {
       const subject = searchParams.get("subject");
-      let filteredPool = pool;
-      if (subject && subject !== "all") {
-        filteredPool = pool.filter(q => isSubjectMatch(q.subject || "", subject));
-      }
-      if (filteredPool.length === 0) filteredPool = pool;
+      const fullPool = dbPool.length > 0 ? dbPool : QUIZ_QUESTIONS.map(normalizeRawQuestion);
 
-      const shuffled = [...filteredPool].sort(() => Math.random() - 0.5);
-      selectedQuestions = shuffled.slice(0, limit);
+      if (subject && subject !== "all") {
+        candidatePool = fullPool.filter(q => isSubjectMatch(q.subject || "", subject));
+      } else {
+        candidatePool = fullPool;
+      }
+
+      if (candidatePool.length === 0) {
+        candidatePool = QUIZ_QUESTIONS.map(normalizeRawQuestion);
+      }
     }
 
-    // Step C: Shuffle options for EVERY selected question so option positions are randomized
+    // Step A: Deduplicate candidate pool
+    const uniqueCandidates: Question[] = [];
+    const dedupKeys = new Set<string>();
+    for (const q of candidatePool) {
+      const key = `${q.id}:::${q.question.trim().toLowerCase()}`;
+      if (!dedupKeys.has(key)) {
+        dedupKeys.add(key);
+        uniqueCandidates.push(q);
+      }
+    }
+
+    // Step B: Partition into unseen (preferred) vs already seen (excluded)
+    const unseenCandidates = uniqueCandidates.filter(q => {
+      const idStr = String(q.id);
+      const text = q.question.trim().toLowerCase();
+      return !excludeIds.has(idStr) && !excludeIds.has(text);
+    });
+
+    const seenCandidates = uniqueCandidates.filter(q => {
+      const idStr = String(q.id);
+      const text = q.question.trim().toLowerCase();
+      return excludeIds.has(idStr) || excludeIds.has(text);
+    });
+
+    const shuffledUnseen = fisherYatesShuffle(unseenCandidates);
+    const shuffledSeen = fisherYatesShuffle(seenCandidates);
+
+    let selectedQuestions: Question[] = [];
+    let cycleReset = false;
+
+    if (shuffledUnseen.length >= limit) {
+      // Ideal case: Plenty of unseen questions! Pick exclusively from unseen
+      selectedQuestions = shuffledUnseen.slice(0, limit);
+    } else {
+      // The unseen pool is nearly exhausted (or smaller than limit).
+      // Take all remaining unseen questions, then fill remaining spots from shuffled seen questions.
+      selectedQuestions = [
+        ...shuffledUnseen,
+        ...shuffledSeen.slice(0, Math.max(0, limit - shuffledUnseen.length))
+      ];
+      cycleReset = true; // Signal client that all questions have been seen and cycle can reset
+    }
+
+    // If still less than limit for any reason, re-shuffle candidate pool
+    if (selectedQuestions.length < limit && uniqueCandidates.length > 0) {
+      const remainingNeeded = limit - selectedQuestions.length;
+      const alreadyPickedIds = new Set(selectedQuestions.map(q => q.id));
+      const poolShuffled = fisherYatesShuffle(uniqueCandidates.filter(q => !alreadyPickedIds.has(q.id)));
+      selectedQuestions = [...selectedQuestions, ...poolShuffled.slice(0, remainingNeeded)];
+    }
+
+    // Step C: Shuffle options for EVERY selected question
     const finalQuestions = selectedQuestions.map(shuffleQuestionOptions);
 
-    return NextResponse.json({ questions: finalQuestions });
+    return NextResponse.json({
+      questions: finalQuestions,
+      totalPoolCount: uniqueCandidates.length,
+      unseenCountRemaining: Math.max(0, unseenCandidates.length - finalQuestions.length),
+      cycleReset
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }

@@ -2062,11 +2062,34 @@ export default function Home() {
 
         if (title === "Live Quiz Game") {
           try {
-            const res = await fetch("/api/quiz/random?mode=live_quiz", { cache: "no-store" });
+            let seenIds: string[] = [];
+            if (typeof window !== "undefined") {
+              try {
+                const raw = localStorage.getItem("jobmaster_seen_live_quiz_ids");
+                if (raw) seenIds = JSON.parse(raw);
+              } catch (e) {}
+            }
+
+            const excludeParam = Array.isArray(seenIds) && seenIds.length > 0 
+              ? `&excludeIds=${encodeURIComponent(seenIds.join(","))}` 
+              : "";
+
+            const res = await fetch(`/api/quiz/random?mode=live_quiz${excludeParam}`, { cache: "no-store" });
             if (!res.ok) throw new Error("Fetch failed");
             const data = await res.json();
             if (Array.isArray(data.questions) && data.questions.length > 0) {
               selectedQuestions = data.questions.map(q => shuffleQuestionOptions(q));
+
+              // Store seen IDs so future games get completely new questions
+              if (typeof window !== "undefined") {
+                try {
+                  const newIds = selectedQuestions.map(q => String(q.id));
+                  const combined = data.cycleReset 
+                    ? newIds 
+                    : Array.from(new Set([...seenIds, ...newIds])).slice(-300);
+                  localStorage.setItem("jobmaster_seen_live_quiz_ids", JSON.stringify(combined));
+                } catch (e) {}
+              }
             } else {
               throw new Error("Empty response");
             }
@@ -3535,7 +3558,7 @@ export default function Home() {
                             Daily Quick Test
                           </h4>
                           <p className="text-[11px] font-bold text-slate-400 truncate">
-                            প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট
+                            শর্ট কুইজ টেস্ট
                           </p>
                         </div>
                       </div>
@@ -3559,11 +3582,12 @@ export default function Home() {
                           <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
                         </button>
 
-                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
-                          dailyCount > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-amber-50 text-amber-700 border border-amber-200/80"
-                        }`}>
-                          {dailyCount > 0 ? `${dailyCount} Live` : "Live Now"}
-                        </span>
+                        {dailyCount > 0 && (
+                          <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                            <span>Live Now</span>
+                          </span>
+                        )}
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
                           <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
                         </div>
@@ -4192,7 +4216,7 @@ export default function Home() {
                     <h3 className="text-lg sm:text-xl font-black">Daily Quick Test</h3>
                   </div>
                   <p className="text-xs text-amber-100 font-bold">
-                    প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট ও দ্রুত রিভিশন
+                    শর্ট কুইজ টেস্ট ও দ্রুত রিভিশন
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
