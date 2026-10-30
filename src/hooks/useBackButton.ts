@@ -209,6 +209,9 @@ export function buildUrlSearchString(navState: {
     case "all-live-exams":
       params.set("view", "all-live-exams");
       break;
+    case "daily-quick-test":
+      params.set("view", "daily-quick-test");
+      break;
     case "rankings":
       params.set("view", "rankings");
       break;

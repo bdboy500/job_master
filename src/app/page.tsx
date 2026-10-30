@@ -2362,6 +2362,13 @@ export default function Home() {
         return true;
       }
 
+      if (view === "daily-quick-test" || view === "daily_quick_test" || view === "daily-test" || view === "daily") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setCurrentScreen("daily-quick-test");
+        return true;
+      }
+
       if (view === "tests" || view === "all-tests" || view === "archive") {
         initialDeepLinkHandledRef.current = true;
         pendingDeepLinkRef.current = null;
@@ -2815,7 +2822,7 @@ export default function Home() {
         <div className="w-full max-w-full bg-slate-50 flex-1 flex flex-col min-h-0 relative overflow-hidden z-10">
 
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 md:px-20 lg:px-48 xl:px-72 2xl:px-96 py-2.5 sm:py-3 flex items-center justify-between shadow-xs z-40 shrink-0 sticky top-0 select-none">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 md:px-12 lg:px-[16.666%] xl:px-[16.666%] 2xl:px-[20%] py-2.5 sm:py-3 flex items-center justify-between shadow-xs z-40 shrink-0 sticky top-0 select-none">
           {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 mr-2">
             <button 
@@ -3026,7 +3033,7 @@ export default function Home() {
                     : currentScreen === "auth"
                     ? (authModalMode === "signup" ? "CREATE NEW ACCOUNT" : "ACCOUNT LOGIN")
                     : currentScreen === "daily-quick-test"
-                    ? "⚡ ডেইলি কুইক টেস্ট (DAILY SHORT QUIZ)"
+                    ? "⚡ DAILY QUICK TEST"
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -3127,6 +3134,10 @@ export default function Home() {
                   shareView = "all-live-exams";
                   shareTitle = "JobMaster Live Exams";
                   shareText = "চলতি সপ্তাহের সকল লাইভ পরীক্ষা সমূহ!";
+                } else if (currentScreen === "daily-quick-test") {
+                  shareView = "daily-quick-test";
+                  shareTitle = "JobMaster Daily Quick Test";
+                  shareText = "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন!";
                 }
 
                 handleShareLink({
@@ -3200,7 +3211,7 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y px-0">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y px-0 sm:px-6 md:px-12 lg:px-[16.666%] xl:px-[16.666%] 2xl:px-[20%]">
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}
@@ -3496,6 +3507,72 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Daily Quick Test Section (Placed between Live Quiz Game and Preparation Hub) */}
+              <div className="pt-1 sm:pt-1.5">
+                {(() => {
+                  const dailyCount = examPapers.filter(p => {
+                    const status = getExamStatus(p);
+                    if (status !== "Live") return false;
+                    return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
+                  }).length;
+
+                  return (
+                    <div 
+                      onClick={() => {
+                        if (soundEnabled) quizAudio.playClick();
+                        setPreviousScreen("home");
+                        setCurrentScreen("daily-quick-test");
+                      }}
+                      className="w-full bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group text-left"
+                    >
+                      {/* Left side: Icon + Text */}
+                      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg sm:text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          ⚡
+                        </div>
+                        <div className="space-y-0.5 truncate text-left min-w-0">
+                          <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                            Daily Quick Test
+                          </h4>
+                          <p className="text-[11px] font-bold text-slate-400 truncate">
+                            প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right side: Share/Copy Button + Badge + Arrow */}
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {/* Copy / Share Link Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShareLink({
+                              view: "daily-quick-test",
+                              title: "JobMaster Daily Quick Test",
+                              text: "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
+                            });
+                          }}
+                          title="Daily Quick Test লিংক কপি / শেয়ার করুন"
+                          className="p-2 sm:p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center justify-center"
+                        >
+                          <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
+                        </button>
+
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                          dailyCount > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-amber-50 text-amber-700 border border-amber-200/80"
+                        }`}>
+                          {dailyCount > 0 ? `${dailyCount} Live` : "Live Now"}
+                        </span>
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
+                          <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Preparation Hub Section */}
               <div className="space-y-2 pt-2 sm:pt-3">
                 <div className="flex items-center justify-between">
@@ -3590,60 +3667,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-
-              {/* Daily Quick Test Section (Placed exclusively below Pro Feature section on Home screen) */}
-              <div className="pt-2 sm:pt-3">
-                {(() => {
-                  const dailyCount = examPapers.filter(p => {
-                    const status = getExamStatus(p);
-                    if (status !== "Live") return false;
-                    return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
-                  }).length;
-
-                  return (
-                    <div 
-                      onClick={() => {
-                        if (soundEnabled) quizAudio.playClick();
-                        setPreviousScreen("home");
-                        setCurrentScreen("daily-quick-test");
-                      }}
-                      className="w-full bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl sm:rounded-3xl p-4 sm:p-4.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group text-left"
-                    >
-                      {/* Left side: Icon + Text */}
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          ⚡
-                        </div>
-                        <div className="space-y-0.5 truncate text-left">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
-                              Daily Quick Test
-                            </h4>
-                            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md hidden sm:inline-block">
-                              ডেইলি কুইক টেস্ট
-                            </span>
-                          </div>
-                          <p className="text-[11px] font-bold text-slate-400 truncate">
-                            প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Right side: Badge + Arrow */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
-                          dailyCount > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-amber-50 text-amber-700 border border-amber-200/80"
-                        }`}>
-                          {dailyCount > 0 ? `${dailyCount} Live` : "Live Now"}
-                        </span>
-                        <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
-                          <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
 
               {/* Database / Sync health card */}
               <div className="bg-slate-100/50 rounded-2xl p-4 flex items-center justify-between text-[11px] font-semibold text-slate-500">
@@ -4162,8 +4185,8 @@ export default function Home() {
           {currentScreen === "daily-quick-test" && (
             <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12 text-left">
               {/* Header Banner */}
-              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#FF6A00] rounded-3xl p-5 text-white shadow-sm flex items-center justify-between">
-                <div className="space-y-1">
+              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#FF6A00] rounded-3xl p-5 text-white shadow-sm flex items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">⚡</span>
                     <h3 className="text-lg sm:text-xl font-black">Daily Quick Test</h3>
@@ -4172,18 +4195,35 @@ export default function Home() {
                     প্রতিদিনের বিষয়ভিত্তিক শর্ট কুইজ টেস্ট ও দ্রুত রিভিশন
                   </p>
                 </div>
-                {(() => {
-                  const dailyCount = examPapers.filter(p => {
-                    const status = getExamStatus(p);
-                    if (status === "Archive") return false;
-                    return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
-                  }).length;
-                  return (
-                    <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-2xl text-xs font-black">
-                      {dailyCount}টি পরীক্ষা
-                    </div>
-                  );
-                })()}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleShareLink({
+                        view: "daily-quick-test",
+                        title: "JobMaster Daily Quick Test",
+                        text: "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
+                      });
+                    }}
+                    title="লিংক কপি / শেয়ার করুন"
+                    className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-xs"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share</span>
+                  </button>
+                  {(() => {
+                    const dailyCount = examPapers.filter(p => {
+                      const status = getExamStatus(p);
+                      if (status !== "Archive") return false;
+                      return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
+                    }).length;
+                    return (
+                      <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-2xl text-xs font-black hidden min-[400px]:block">
+                        {dailyCount}টি পরীক্ষা
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
 
               {/* Papers List */}
