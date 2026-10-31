@@ -98,6 +98,15 @@ export function shuffleQuestionOptions(q: Question): Question {
   };
 }
 
+interface CacheEntry {
+  questions: Question[];
+  timestamp: number;
+}
+
+// In-memory cache to eliminate repeated Supabase queries, maximize speed, and reduce egress to near-zero
+const serverQuizCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 4 * 60 * 1000; // 4 minutes
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -115,71 +124,117 @@ export async function GET(req: NextRequest) {
         .filter(Boolean)
     );
 
-    let dbPool: Question[] = [];
-
-    // 1. Fetch questions from Supabase questions table
-    try {
-      const supabase = getSupabase();
-      if (supabase) {
-        const { data, error } = await supabase
-          .from("questions")
-          .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at");
-
-        if (!error && data && data.length > 0) {
-          dbPool = data.map(normalizeRawQuestion);
-        }
-      }
-    } catch (e) {
-      console.warn("Error querying Supabase in /api/quiz/random:", e);
-    }
-
     let candidatePool: Question[] = [];
 
     if (isLiveQuiz) {
-      // Live Quiz Game: ONLY "General Knowledge(GK)" questions allowed!
-      const dbGkQuestions = dbPool.filter(q => {
-        const subj = q.subject || q.subjectName || "";
-        return isSubjectMatch(subj, "General Knowledge(GK)");
-      });
+      // 1. Check in-memory server cache for Live Quiz GK questions (0 egress, sub-10ms response)
+      const cacheKey = "live_quiz_gk";
+      const cached = serverQuizCache.get(cacheKey);
 
-      const fallbackGkQuestions = QUIZ_QUESTIONS.filter(q => {
-        const subj = q.subject || q.subjectName || "";
-        return isSubjectMatch(subj, "General Knowledge(GK)");
-      }).map(normalizeRawQuestion);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.questions.length > 0) {
+        candidatePool = [...cached.questions];
+      } else {
+        // Query Supabase ONLY for GK questions with essential columns (drastically cuts egress)
+        let fetchedGk: Question[] = [];
+        try {
+          const supabase = getSupabase();
+          if (supabase) {
+            const { data, error } = await supabase
+              .from("questions")
+              .select("id, subjectName, questionText, options, correctOptionIndex, explanation")
+              .in("subjectName", [
+                "General Knowledge(GK)",
+                "General Knowledge (GK)",
+                "General Knowledge",
+                "GK",
+                "general knowledge",
+                "gk",
+                "সাধারণ জ্ঞান"
+              ]);
 
-      // Merge Supabase questions with fallback GK questions to guarantee a deep pool
-      const seenIds = new Set<string | number>();
-      const seenTexts = new Set<string>();
-
-      for (const q of dbGkQuestions) {
-        const textKey = q.question.trim().toLowerCase();
-        if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
-          seenIds.add(q.id);
-          seenTexts.add(textKey);
-          candidatePool.push(q);
+            if (!error && data && data.length > 0) {
+              fetchedGk = data.map(normalizeRawQuestion);
+            }
+          }
+        } catch (e) {
+          console.warn("Error querying GK questions from Supabase:", e);
         }
-      }
 
-      for (const q of fallbackGkQuestions) {
-        const textKey = q.question.trim().toLowerCase();
-        if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
-          seenIds.add(q.id);
-          seenTexts.add(textKey);
-          candidatePool.push(q);
+        const fallbackGkQuestions = QUIZ_QUESTIONS.filter(q => {
+          const subj = q.subject || q.subjectName || "";
+          return isSubjectMatch(subj, "General Knowledge(GK)");
+        }).map(normalizeRawQuestion);
+
+        // Merge Supabase questions with fallback GK questions to guarantee a deep pool
+        const seenIds = new Set<string | number>();
+        const seenTexts = new Set<string>();
+        const merged: Question[] = [];
+
+        for (const q of fetchedGk) {
+          const textKey = q.question.trim().toLowerCase();
+          if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
+            seenIds.add(q.id);
+            seenTexts.add(textKey);
+            merged.push(q);
+          }
+        }
+
+        for (const q of fallbackGkQuestions) {
+          const textKey = q.question.trim().toLowerCase();
+          if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
+            seenIds.add(q.id);
+            seenTexts.add(textKey);
+            merged.push(q);
+          }
+        }
+
+        if (merged.length > 0) {
+          serverQuizCache.set(cacheKey, { questions: merged, timestamp: Date.now() });
+          candidatePool = [...merged];
+        } else {
+          candidatePool = fallbackGkQuestions;
         }
       }
     } else {
-      const subject = searchParams.get("subject");
-      const fullPool = dbPool.length > 0 ? dbPool : QUIZ_QUESTIONS.map(normalizeRawQuestion);
+      const subject = searchParams.get("subject") || "all";
+      const cacheKey = `subject_${subject.toLowerCase()}`;
+      const cached = serverQuizCache.get(cacheKey);
 
-      if (subject && subject !== "all") {
-        candidatePool = fullPool.filter(q => isSubjectMatch(q.subject || "", subject));
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.questions.length > 0) {
+        candidatePool = [...cached.questions];
       } else {
-        candidatePool = fullPool;
-      }
+        let fetched: Question[] = [];
+        try {
+          const supabase = getSupabase();
+          if (supabase) {
+            let query = supabase
+              .from("questions")
+              .select("id, subjectName, questionText, options, correctOptionIndex, explanation")
+              .limit(60);
 
-      if (candidatePool.length === 0) {
-        candidatePool = QUIZ_QUESTIONS.map(normalizeRawQuestion);
+            if (subject !== "all" && subject.trim() !== "") {
+              query = query.ilike("subjectName", `%${subject}%`);
+            }
+
+            const { data, error } = await query;
+            if (!error && data && data.length > 0) {
+              fetched = data.map(normalizeRawQuestion);
+            }
+          }
+        } catch (e) {
+          console.warn("Error querying questions from Supabase:", e);
+        }
+
+        const fallback = QUIZ_QUESTIONS.filter(q => {
+          if (subject === "all") return true;
+          return isSubjectMatch(q.subject || "", subject);
+        }).map(normalizeRawQuestion);
+
+        const merged = fetched.length > 0 ? fetched : fallback;
+        if (merged.length > 0) {
+          serverQuizCache.set(cacheKey, { questions: merged, timestamp: Date.now() });
+        }
+        candidatePool = merged.length > 0 ? merged : QUIZ_QUESTIONS.map(normalizeRawQuestion);
       }
     }
 

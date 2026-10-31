@@ -393,6 +393,51 @@ function matchesSubject(questionSubject: string, targetSubjects: string[]): bool
   });
 }
 
+function getSubjectVariants(subject: string): string[] {
+  if (!subject || subject === "All") return [];
+  const s = subject.trim();
+  const variants = new Set<string>([s]);
+  const lower = s.toLowerCase();
+
+  // General Knowledge variants
+  if (lower.includes("general knowledge") || lower.includes("gk") || lower.includes("সাধারণ জ্ঞান")) {
+    variants.add("General Knowledge(GK)");
+    variants.add("General Knowledge (GK)");
+    variants.add("General Knowledge");
+    variants.add("GK");
+    variants.add("general knowledge");
+    variants.add("gk");
+  } 
+  // Recent & Updated variants
+  else if (lower.includes("recent") || lower.includes("updated") || lower.includes("সাম্প্রতিক") || lower.includes("আপডেট")) {
+    variants.add("Recent & Updated");
+    variants.add("Recent and Updated");
+    variants.add("Recent & updated");
+    variants.add("Recent");
+  }
+  // Math Algebra variants
+  else if (lower.includes("algebra") || lower.includes("বীজগণিত")) {
+    variants.add("Mathematics (Algebra )");
+    variants.add("Mathematics (Algebra)");
+    variants.add("Algebra");
+    variants.add("Mathematics(Algebra)");
+  }
+  // Math Arithmetic variants
+  else if (lower.includes("arithmetic") || lower.includes("পাটিগণিত")) {
+    variants.add("Mathematics (Arithmetic)");
+    variants.add("Arithmetic");
+    variants.add("Mathematics(Arithmetic)");
+  }
+  // Math Geometry variants
+  else if (lower.includes("geometry") || lower.includes("জ্যামিতি")) {
+    variants.add("Mathematics (Geometry)");
+    variants.add("Geometry");
+    variants.add("Mathematics(Geometry)");
+  }
+
+  return Array.from(variants);
+}
+
 interface AdminUser {
   id: string;
   email: string;
@@ -2095,9 +2140,20 @@ export default function AdminPage() {
       
       if (supabase) {
         // 1. Exact count query for dashboard and stats without downloading table body
-        const { count, error: countErr } = await supabase
+        let countQuery = supabase
           .from("questions")
           .select("id", { count: "exact", head: true });
+
+        if (subjectVal && subjectVal !== "All") {
+          const variants = getSubjectVariants(subjectVal);
+          if (variants.length === 1) {
+            countQuery = countQuery.eq("subjectName", variants[0]);
+          } else if (variants.length > 1) {
+            countQuery = countQuery.in("subjectName", variants);
+          }
+        }
+
+        const { count, error: countErr } = await countQuery;
 
         let currentTotal = count || 0;
         if (!countErr && count !== null && count !== undefined) {
@@ -2113,9 +2169,11 @@ export default function AdminPage() {
           .limit(fetchLimit);
 
         if (subjectVal && subjectVal !== "All") {
-          // If subjectVal is not a compound/sub-discipline with parentheses, apply server eq filter
-          if (!subjectVal.includes("(") && !subjectVal.includes("/")) {
-            query = query.eq("subjectName", subjectVal);
+          const variants = getSubjectVariants(subjectVal);
+          if (variants.length === 1) {
+            query = query.eq("subjectName", variants[0]);
+          } else if (variants.length > 1) {
+            query = query.in("subjectName", variants);
           }
         }
 
@@ -2160,7 +2218,9 @@ export default function AdminPage() {
           const finalCount = isSearching ? normalized.length : (currentTotal || normalized.length);
           setTotalQuestionsCount(finalCount);
           questionsCacheRef.current.set(cacheKey, { questions: sliced, totalCount: finalCount });
-          localStorage.setItem("job_master_admin_questions", JSON.stringify(normalized));
+          if (subjectVal === "All" && !isSearching && normalized.length > 0) {
+            localStorage.setItem("job_master_admin_questions", JSON.stringify(normalized));
+          }
         }
       }
     } catch (err: any) {
@@ -2226,8 +2286,9 @@ export default function AdminPage() {
       // Optimistic instant subject count update (0ms, 0 bytes egress)
       updateOptimisticSubjectCounts("add", { subject: newSubjectName });
 
-      // Reload database list
-      await loadQuestionsFromDb();
+      // Clear cache and reload database list
+      questionsCacheRef.current.clear();
+      await loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery, true);
     } catch (err: any) {
       console.error("Error creating question in Supabase:", err);
       // Fallback local operation if database not synced yet
@@ -2304,7 +2365,6 @@ export default function AdminPage() {
         for (const key of [standardKey, ...fallbacks]) {
           if (editingQuestion && key in editingQuestion) {
             matchedKey = key;
-            break;
           }
         }
         payload[matchedKey] = val;
@@ -2338,7 +2398,8 @@ export default function AdminPage() {
       updateOptimisticSubjectCounts("update", { oldSubject: previousSubject, newSubject: editSubjectName });
 
       setEditingQuestion(null);
-      await loadQuestionsFromDb();
+      questionsCacheRef.current.clear();
+      await loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery, true);
     } catch (err: any) {
       console.error("Error updating question in Supabase:", err);
       // Fallback local update
@@ -2390,7 +2451,8 @@ export default function AdminPage() {
         updateOptimisticSubjectCounts("delete", { subject: targetSubject });
       }
 
-      await loadQuestionsFromDb();
+      questionsCacheRef.current.clear();
+      await loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery, true);
     } catch (err: any) {
       console.error("Error deleting question from Supabase:", err);
       // Fallback local delete
@@ -2433,7 +2495,8 @@ export default function AdminPage() {
       }
 
       triggerNotification("success", "৩১টি ডেমো প্রশ্ন সফলভাবে Supabase-এ সিড করা হয়েছে!");
-      await loadQuestionsFromDb();
+      questionsCacheRef.current.clear();
+      await loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery, true);
       fetchSubjectWiseCounts(true);
     } catch (err: any) {
       console.error("Error seeding database:", err);
@@ -3802,7 +3865,12 @@ export default function AdminPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Manual Sync */}
                         <button
-                          onClick={() => loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery)}
+                          onClick={() => {
+                            questionsCacheRef.current.clear();
+                            loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery, true);
+                            fetchSubjectWiseCounts(true);
+                            triggerNotification("success", "ডেটাবেজ থেকে সর্বশেষ প্রশ্নসমূহ সফলভাবে রিফ্রেশ করা হয়েছে!");
+                          }}
                           disabled={dbLoading}
                           className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                           title="লাইভ Supabase থেকে ডেটা রিফ্রেশ করুন"

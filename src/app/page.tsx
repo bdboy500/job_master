@@ -14,6 +14,8 @@ import {
   Trophy,
   AlertTriangle, 
   AlertCircle,
+  RefreshCw,
+  Loader2,
   ChevronRight,
   ChevronDown,
   ChevronUp,
@@ -3740,7 +3742,8 @@ export default function Home() {
             <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in text-left">
               
               {/* TOP HUD (ss2 Style): Left Correct Count & Green Pill | Center Circular Countdown | Right Wrong Count & Red Pill */}
-              {(() => {
+              {/* Strictly hidden on result screen, exit screen, timed out screen, or loading state */}
+              {quizStarted && !isCompleted && !isTimedOut && !loading && currentQuestion && (() => {
                 const wrongCount = Math.max(0, submittedCount - score);
                 return (
                   <div className="bg-white border border-slate-200/80 rounded-3xl p-3 sm:p-4 shadow-xs flex items-center justify-between px-4 sm:px-6">
@@ -3805,46 +3808,59 @@ export default function Home() {
 
               {/* Loader: Full Quiz Question Skeleton with Left-to-Right Shimmer Sweep */}
               {loading && (
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 sm:space-y-5 animate-fade-in">
-                  {/* Top Row: Question Count Skeleton + Live Quiz Skeleton */}
-                  <div className="flex items-center justify-between">
-                    <div className="h-7 w-28 rounded-xl bg-orange-100/70 animate-shimmer" />
-                    <div className="h-7 w-24 rounded-full bg-rose-100/80 border border-rose-200/60 animate-shimmer" />
-                  </div>
+                <div className="space-y-3.5 animate-fade-in">
+                  <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
+                    {/* Top Row: Question Count Skeleton + Live Quiz Skeleton */}
+                    <div className="flex items-center justify-between">
+                      <div className="h-7 w-28 rounded-xl bg-orange-100/70 animate-shimmer" />
+                      <div className="h-7 w-24 rounded-full bg-rose-100/80 border border-rose-200/60 animate-shimmer" />
+                    </div>
 
-                  {/* Question Title Skeleton (2 lines) */}
-                  <div className="space-y-2 pt-1">
-                    <div className="h-5 w-11/12 bg-slate-200/80 rounded-lg animate-shimmer" />
-                    <div className="h-5 w-3/4 bg-slate-200/80 rounded-lg animate-shimmer" />
-                  </div>
+                    {/* Question Title Skeleton (2 lines) */}
+                    <div className="space-y-2 pt-1">
+                      <div className="h-5 w-11/12 bg-slate-200/80 rounded-lg animate-shimmer" />
+                      <div className="h-5 w-3/4 bg-slate-200/80 rounded-lg animate-shimmer" />
+                    </div>
 
-                  {/* Options List Skeleton (4 Options) */}
-                  <div className="space-y-2.5 sm:space-y-3 pt-1">
-                    {[1, 2, 3, 4].map((idx) => (
-                      <div
-                        key={idx}
-                        className="w-full p-3.5 sm:p-4 rounded-2xl border-2 border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-7 h-7 rounded-xl bg-orange-200/70 shrink-0 animate-shimmer" />
-                          <div
-                            className={`h-4 rounded-md bg-slate-200 animate-shimmer ${
-                              idx === 1 ? "w-3/5" : idx === 2 ? "w-4/5" : idx === 3 ? "w-1/2" : "w-2/3"
-                            }`}
-                          />
+                    {/* Options List Skeleton (4 Options) */}
+                    <div className="space-y-2.5 sm:space-y-3 pt-1">
+                      {[1, 2, 3, 4].map((idx) => (
+                        <div
+                          key={idx}
+                          className="w-full p-3.5 sm:p-4 rounded-2xl border-2 border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-7 h-7 rounded-xl bg-orange-200/70 shrink-0 animate-shimmer" />
+                            <div
+                              className={`h-4 rounded-md bg-slate-200 animate-shimmer ${
+                                idx === 1 ? "w-3/5" : idx === 2 ? "w-4/5" : idx === 3 ? "w-1/2" : "w-2/3"
+                              }`}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    {/* Action Button Skeleton */}
+                    <div className="pt-2">
+                      <div className="w-full h-13 rounded-2xl bg-gradient-to-r from-orange-200 via-amber-100 to-orange-200 animate-shimmer" />
+                    </div>
+
+                    {/* Bottom Question Count Indicator Skeleton */}
+                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-center">
+                      <div className="h-4 w-48 rounded-md bg-slate-100 animate-shimmer" />
+                    </div>
                   </div>
 
-                  {/* Action Button Skeleton */}
-                  <div className="pt-2">
-                    <div className="w-full h-13 rounded-2xl bg-gradient-to-r from-orange-200 via-amber-100 to-orange-200 animate-shimmer" />
-                  </div>
-
-                  {/* Bottom Question Count Indicator Skeleton */}
-                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-center">
-                    <div className="h-4 w-48 rounded-md bg-slate-100 animate-shimmer" />
+                  {/* Informative loading banner underneath skeleton */}
+                  <div className="bg-white/95 border border-orange-200/80 rounded-2xl py-3 px-4 shadow-xs flex flex-col items-center justify-center text-center gap-1.5 animate-pulse">
+                    <div className="flex items-center gap-2 text-[#FF6A00] font-black text-xs sm:text-sm">
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#FF6A00]" />
+                      <span>কুইজ লোড হচ্ছে...</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-bold">
+                      সার্ভার থেকে দ্রুত প্রশ্ন প্রস্তুত করা হচ্ছে, অনুগ্রহ করে একটু অপেক্ষা করুন
+                    </p>
                   </div>
                 </div>
               )}
