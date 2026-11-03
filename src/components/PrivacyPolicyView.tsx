@@ -156,12 +156,12 @@ export default function PrivacyPolicyView({ onBack }: PrivacyPolicyViewProps) {
                 <Globe className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="text-slate-800 font-bold">Bangladesh Public Service Commission:</span>
                 <a 
-                  href="http://www.bpsc.gov.bd/" 
+                  href="https://bpsc.gov.bd" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-[#FF6A00] hover:underline font-bold inline-flex items-center gap-1"
                 >
-                  http://www.bpsc.gov.bd/
+                  https://bpsc.gov.bd
                   <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                 </a>
               </li>
@@ -198,12 +198,12 @@ export default function PrivacyPolicyView({ onBack }: PrivacyPolicyViewProps) {
                 <Globe className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="text-slate-800 font-bold">বাংলাদেশ সরকারি কর্ম কমিশন (BPSC):</span>
                 <a 
-                  href="http://www.bpsc.gov.bd/" 
+                  href="https://bpsc.gov.bd" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-[#FF6A00] hover:underline font-bold inline-flex items-center gap-1"
                 >
-                  http://www.bpsc.gov.bd/
+                  https://bpsc.gov.bd
                   <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                 </a>
               </li>

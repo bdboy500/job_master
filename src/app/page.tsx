@@ -1743,13 +1743,13 @@ export default function Home() {
     if (soundEnabled) quizAudio.playClick();
   };
 
-  // Exam Paper Handlers
+  // Exam Paper Handlers - Accessible directly by all students (no registration or login required)
   const handleOpenTakeExam = (paper: ExamPaper) => {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       showShareToast("⚠️ ইন্টারনেট কানেকশন নেই! পরীক্ষা দিতে ইন্টারনেট সংযোগ নিশ্চিত করুন।", "offline");
       return;
     }
-    executeWithAuth(() => handleOpenTakeExamDirectly(paper), "exams", paper.id);
+    handleOpenTakeExamDirectly(paper);
   };
 
   const handleOpenViewPaper = async (paper: ExamPaper) => {
