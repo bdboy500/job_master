@@ -17,6 +17,7 @@ import {
   Trophy,
   Crown,
   Check, 
+  CheckSquare,
   X, 
   HelpCircle, 
   Megaphone,
@@ -733,22 +734,24 @@ export default function AdminPage() {
   const loadPaperQuestionsFromDb = async (
     overrideSubjects?: string[],
     overrideQuery?: string,
-    overrideForceRefresh: boolean = false
+    overrideForceRefresh: boolean = false,
+    overrideCount?: number
   ): Promise<Question[]> => {
     const targetSubjects = overrideSubjects !== undefined ? overrideSubjects : paperSearchSubjects;
     const targetQuery = overrideQuery !== undefined ? overrideQuery : paperSearchQuery;
+    const targetCount = overrideCount !== undefined ? overrideCount : paperTargetCount;
     const cleanQuery = targetQuery.trim();
 
     // Text search query
     const effectiveQuery = cleanQuery.length >= 2 ? cleanQuery.toLowerCase() : "";
 
-    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${normalizeSearchText(effectiveQuery)}`;
+    const cacheKey = `${paperCategoryType}_${paperPrepSubjectId}_${paperProModule}_${paperCourse}_${[...targetSubjects].sort().join(",")}_${normalizeSearchText(effectiveQuery)}_${targetCount}`;
 
     if (!overrideForceRefresh && paperQuestionsCacheRef.current.has(cacheKey)) {
       const cached = paperQuestionsCacheRef.current.get(cacheKey)!;
-      // Shuffle & pick top 10 random for display
-      const random10 = [...cached].sort(() => 0.5 - Math.random()).slice(0, 10);
-      setPaperAvailableQuestions(random10);
+      // Shuffle & pick top targetCount questions for display
+      const sliced = [...cached].sort(() => 0.5 - Math.random()).slice(0, targetCount);
+      setPaperAvailableQuestions(sliced);
       setPaperHasFetched(true);
       return cached;
     }
@@ -763,7 +766,17 @@ export default function AdminPage() {
           .from("questions")
           .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
           .order("created_at", { ascending: false })
-          .limit(300);
+          .limit(1000);
+
+        if (targetSubjects.length > 0 && !targetSubjects.includes("All")) {
+          const allVariants: string[] = [];
+          targetSubjects.forEach(s => {
+            allVariants.push(...getSubjectVariants(s));
+          });
+          if (allVariants.length > 0) {
+            query = query.in("subjectName", Array.from(new Set(allVariants)));
+          }
+        }
 
         const { data, error } = await query;
         if (!error && Array.isArray(data) && data.length > 0) {
@@ -812,10 +825,10 @@ export default function AdminPage() {
 
     paperQuestionsCacheRef.current.set(cacheKey, merged);
 
-    // If search query is active, show the top matching questions in ranked order (up to 30), otherwise pick 10 random
+    // Show up to targetCount questions (10, 20, 50, 100, 200) based on selected capacity
     const displayList = cleanQuery.length > 0
-      ? merged.slice(0, 30)
-      : [...merged].sort(() => 0.5 - Math.random()).slice(0, 10);
+      ? merged.slice(0, targetCount)
+      : [...merged].sort(() => 0.5 - Math.random()).slice(0, targetCount);
 
     setPaperAvailableQuestions(displayList);
     setPaperHasFetched(true);
@@ -1550,6 +1563,23 @@ export default function AdminPage() {
     }
     setPaperQuestions(prev => [...prev, normQ]);
     triggerNotification("success", "প্রশ্নটি প্রশ্নপত্রে যোগ করা হয়েছে।");
+  };
+
+  const handleSelectAllAvailableQuestions = () => {
+    if (paperAvailableQuestions.length === 0) {
+      triggerNotification("error", "যোগ করার জন্য কোনো প্রশ্ন লোড করা নেই! প্রথমে '🔍 প্রশ্ন লোড করুন' বাটনে ক্লিক করুন।");
+      return;
+    }
+    const unadded = paperAvailableQuestions.filter(q => {
+      const normQ = normalizeQuestion(q);
+      return !paperQuestions.some(item => item.id === normQ.id || (item.question || item.questionText) === normQ.question);
+    });
+    if (unadded.length === 0) {
+      triggerNotification("error", "প্রদর্শিত সবকয়টি প্রশ্ন ইতিমধ্যেই প্রশ্নপত্রে যুক্ত আছে।");
+      return;
+    }
+    setPaperQuestions(prev => [...prev, ...unadded.map(normalizeQuestion)]);
+    triggerNotification("success", `সবগুলো (${unadded.length} টি) প্রশ্ন এক ক্লিকে সফলভাবে যুক্ত করা হয়েছে!`);
   };
 
   const handleRemoveQuestionFromPaper = (index: number) => {
@@ -4597,7 +4627,13 @@ export default function AdminPage() {
                           <button
                             type="button"
                             key={cnt}
-                            onClick={() => setPaperTargetCount(cnt)}
+                            onClick={() => {
+                              setPaperTargetCount(cnt);
+                              if (paperHasFetched) {
+                                paperQuestionsCacheRef.current.clear();
+                                loadPaperQuestionsFromDb(paperSearchSubjects, paperSearchQuery, true, cnt);
+                              }
+                            }}
                             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                               paperTargetCount === cnt
                                 ? "bg-[#FF6A00] text-white shadow-sm"
@@ -4631,7 +4667,10 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => loadPaperQuestionsFromDb()}
+                          onClick={() => {
+                            paperQuestionsCacheRef.current.clear();
+                            loadPaperQuestionsFromDb(paperSearchSubjects, paperSearchQuery, true, paperTargetCount);
+                          }}
                           disabled={paperLoadingQuestions}
                           className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                         >
@@ -4684,7 +4723,7 @@ export default function AdminPage() {
                               onClick={() => togglePaperSearchSubject("All")}
                               className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
                                 paperSearchSubjects.includes("All")
-                                  ? "bg-purple-600 text-white shadow-2xs"
+                                   ? "bg-purple-600 text-white shadow-2xs"
                                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
                               }`}
                             >
@@ -4717,10 +4756,35 @@ export default function AdminPage() {
                           }
                         </div>
                       </div>
+
+                      {/* সিলেক্ট অল অপশন (সব প্রশ্ন এক ক্লিকে যুক্ত করার বার) */}
+                      <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 bg-gradient-to-r from-purple-50 via-purple-50/60 to-orange-50/50 border border-purple-200/90 rounded-2xl shadow-xs">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="w-4 h-4 text-purple-700 shrink-0" />
+                          <span className="text-xs font-extrabold text-slate-800">
+                            লোডকৃত প্রশ্ন: <span className="text-purple-700 font-black">{paperAvailableQuestions.length}</span> টি
+                            {paperAvailableQuestions.length > 0 && (
+                              <span className="text-[11px] text-slate-500 font-bold ml-1.5">
+                                (প্রশ্নপত্রে যুক্ত: {paperAvailableQuestions.filter(q => paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question)).length} টি)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleSelectAllAvailableQuestions}
+                          disabled={paperAvailableQuestions.length === 0}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <CheckSquare className="w-4 h-4" />
+                          <span>সিলেক্ট অল (সবগুলো প্রশ্ন এক ক্লিকে প্রশ্নপত্রে যোগ করুন)</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Searched Results Box */}
-                    <div className="max-h-56 overflow-y-auto border border-slate-100 rounded-2xl bg-slate-50/50 p-2 space-y-2">
+                    <div className="max-h-96 overflow-y-auto border border-slate-100 rounded-2xl bg-slate-50/50 p-2 space-y-2">
                       {paperLoadingQuestions ? (
                         <div className="p-6 text-center text-xs font-bold text-purple-600 flex items-center justify-center gap-2">
                           <RefreshCw className="w-4 h-4 animate-spin" />
@@ -4733,7 +4797,10 @@ export default function AdminPage() {
                           </p>
                           <button
                             type="button"
-                            onClick={() => loadPaperQuestionsFromDb()}
+                            onClick={() => {
+                              paperQuestionsCacheRef.current.clear();
+                              loadPaperQuestionsFromDb(paperSearchSubjects, paperSearchQuery, true, paperTargetCount);
+                            }}
                             className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5"
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
@@ -4746,7 +4813,6 @@ export default function AdminPage() {
                         </div>
                       ) : (
                         paperAvailableQuestions
-                          .slice(0, 30)
                           .map((q, idx) => {
                             const isAdded = paperQuestions.some(pq => pq.id === q.id || (pq.question || pq.questionText) === q.question);
                             return (
