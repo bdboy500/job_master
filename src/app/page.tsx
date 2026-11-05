@@ -3720,18 +3720,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Database / Sync health card */}
-              <div className="bg-slate-100/50 rounded-2xl p-4 flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                  Server Latency: Normal
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  Database: Connected {isUsingFallback && "(Fallback)"}
-                </span>
-              </div>
-
             </div>
           )}
 
@@ -7428,25 +7416,6 @@ export default function Home() {
               <span>Settings</span>
             </button>
 
-            {/* 6. Privacy Policy (প্রাইভেসি পলিসি) */}
-            <a
-              href="https://jobmaster.com.bd/privacy-policy"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-left transition-all text-slate-800 hover:bg-slate-100 font-extrabold text-base sm:text-lg cursor-pointer"
-              id="drawer-item-privacy-policy"
-            >
-              <div className="flex items-center gap-3.5">
-                <ShieldCheck className="w-6 h-6 text-emerald-600" />
-                <span>Privacy Policy</span>
-              </div>
-              <ExternalLink className="w-4 h-4 text-slate-400" />
-            </a>
-
             {/* 7. Contact Us */}
             <button
               onClick={() => {
@@ -7514,8 +7483,21 @@ export default function Home() {
               <span>Privacy Policy (গোপনীয়তা নীতি)</span>
               <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#FF6A00]" />
             </a>
-            <div className="space-y-0.5">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Job Master App v2.4</span>
+
+            {/* Server Latency & Database Connected Status */}
+            <div className="flex items-center justify-center gap-2.5 text-[9.5px] font-bold text-slate-500 py-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Server Latency: Normal</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Database: Connected {isUsingFallback && "(Fallback)"}</span>
+              </span>
+            </div>
+
+            <div>
               <span className="text-[8px] text-slate-400 block font-medium">All Rights Reserved © 2026 • jobmaster.com.bd</span>
             </div>
           </div>
