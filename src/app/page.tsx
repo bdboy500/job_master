@@ -426,6 +426,46 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<"BN" | "EN">("BN");
   const [activeDrawerModal, setActiveDrawerModal] = useState<"none" | "package" | "bookstore" | "language" | "settings" | "ourapps" | "contact">("none");
+  const [showInstallAppButton, setShowInstallAppButton] = useState<boolean>(false);
+
+  // Detect mobile & tablet browser environment (hide on desktop browsers and inside Android app/WebView)
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") return;
+
+    const ua = navigator.userAgent || "";
+
+    // 1. Detect if running inside Android WebView or standalone PWA/TWA app
+    const isAndroidWebView = 
+      /;\s*wv\b/i.test(ua) || 
+      (/\bwv\b/i.test(ua) && /Android/i.test(ua)) || 
+      (/Version\/[0-9.]+/i.test(ua) && /Chrome\/[0-9.]+/i.test(ua) && /Android/i.test(ua));
+
+    const isStandalone = 
+      (typeof window.matchMedia === "function" && window.matchMedia('(display-mode: standalone)').matches) || 
+      (navigator as any).standalone === true ||
+      (document.referrer && document.referrer.includes('android-app://'));
+
+    const isInsideJobMasterApp = 
+      isAndroidWebView || 
+      isStandalone || 
+      ua.includes("com.bd.jobmaster.app") ||
+      ua.includes("JobMasterApp") ||
+      (window as any).isJobMasterApp === true;
+
+    if (isInsideJobMasterApp) {
+      setShowInstallAppButton(false);
+      return;
+    }
+
+    // 2. Detect if user is on a mobile or tablet device browser (NOT desktop computer)
+    const isMobileOrTabletUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Tablet|Mobile/i.test(ua);
+    const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    const isMobileOrTabletScreen = window.innerWidth < 1024 || (navigator.maxTouchPoints > 0 && window.innerWidth < 1200);
+
+    const isMobileOrTablet = (isMobileOrTabletUA || isIPadOS) && isMobileOrTabletScreen;
+
+    setShowInstallAppButton(isMobileOrTablet);
+  }, []);
   
   // Auth & Profile States
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -7452,6 +7492,41 @@ export default function Home() {
               <HelpCircle className={`w-6 h-6 ${currentScreen === "contact" ? "text-[#FF6A00]" : "text-slate-500"}`} />
               <span>Contact Us</span>
             </button>
+
+            {/* Install App Button - Visible exclusively on Mobile & Tablet Browsers (Hidden on Desktop & inside Android App) */}
+            {showInstallAppButton && (
+              <a
+                href="https://play.google.com/store/apps/details?id=com.bd.jobmaster.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  if (soundEnabled) quizAudio.playClick();
+                }}
+                className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md shadow-emerald-700/20 active:scale-[0.98] transition-all cursor-pointer group mt-2 border border-emerald-500/30"
+                id="drawer-item-install-app"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Download className="w-5 h-5 text-white stroke-[2.5]" />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-black text-sm sm:text-base text-white">Install App</span>
+                      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-400 text-slate-900 leading-none">
+                        App
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-bold text-emerald-100 truncate mt-0.5">
+                      Google Play Store থেকে ইনস্টল করুন
+                    </p>
+                  </div>
+                </div>
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0 group-hover:translate-x-0.5 transition-transform">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </div>
+              </a>
+            )}
 
             {/* 8. Logout/LogIn */}
             <button
