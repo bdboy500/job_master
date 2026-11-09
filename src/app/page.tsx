@@ -2915,7 +2915,7 @@ export default function Home() {
         {/* Main Header of the App (Strictly Fixed on Top, Never Scrolls Out of View) */}
         <header className="bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 md:px-12 lg:px-[16.666%] xl:px-[16.666%] 2xl:px-[20%] py-2.5 sm:py-3 flex items-center justify-between shadow-xs z-40 shrink-0 sticky top-0 select-none">
           {/* Left side: Hamburger/Back (Hidden on desktop md:hidden) and brand name */}
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 mr-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 lg:flex-initial mr-2">
             <button 
               onClick={() => {
                 setDrawerOpen(false);
@@ -3132,7 +3132,7 @@ export default function Home() {
           </div>
 
           {/* Center: Apple UI Navigation Menu for Desktop */}
-          <nav className="hidden xl:flex bg-slate-100/90 border border-slate-200/70 p-1 rounded-xl items-center gap-1 shadow-inner">
+          <nav className="hidden lg:flex bg-slate-100/90 border border-slate-200/70 p-1 rounded-xl items-center gap-1 shadow-inner lg:mx-auto lg:mr-10 xl:mr-16 2xl:mr-24">
             <button
               onClick={() => { setCurrentScreen("home"); if (soundEnabled) quizAudio.playClick(); }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
@@ -3179,7 +3179,7 @@ export default function Home() {
           </nav>
 
           {/* Right side: Share, Search, Notification, and Settings icons */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 lg:ml-6 xl:ml-10">
             {/* Quick Share Link Button */}
             <button 
               onClick={() => {
@@ -3674,52 +3674,7 @@ export default function Home() {
                 })()}
               </div>
 
-              {/* Preparation Hub Section */}
-              <div className="space-y-2 pt-2 sm:pt-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
-                    Preparation Hub
-                  </h3>
-                  <button 
-                    onClick={() => {
-                      setPreviousScreen("home");
-                      setCurrentScreen("prep-all-subjects");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
-                  >
-                    সকল বিষয় দেখুন
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  {allPrepSubjectsData.slice(0, appSettings.prepHubHomeLimit || 4).map((subject, idx) => {
-                    const SubIcon = subject.icon || BookOpen;
-                    return (
-                      <div 
-                        key={subject.id || idx}
-                        onClick={() => {
-                          setSelectedPrepSubject(subject.name);
-                          setPrepSubjectOrigin("home");
-                          setPreviousScreen("home");
-                          setCurrentScreen("prep-sub");
-                          if (soundEnabled) quizAudio.playClick();
-                        }}
-                        className="bg-white border border-slate-100 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
-                      >
-                        <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
-                          <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
-                        </div>
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
-                          {subject.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Pro Section (Requirement 6) */}
+              {/* Pro Feature Section */}
               {appSettings.proSectionActive !== false && (
                 <div className="space-y-2 pt-2 sm:pt-3">
                   <div className="flex items-center justify-between">
@@ -3768,6 +3723,51 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {/* Preparation Hub Section */}
+              <div className="space-y-2 pt-2 sm:pt-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
+                    Preparation Hub
+                  </h3>
+                  <button 
+                    onClick={() => {
+                      setPreviousScreen("home");
+                      setCurrentScreen("prep-all-subjects");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
+                  >
+                    সকল বিষয় দেখুন
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {allPrepSubjectsData.slice(0, appSettings.prepHubHomeLimit || 4).map((subject, idx) => {
+                    const SubIcon = subject.icon || BookOpen;
+                    return (
+                      <div 
+                        key={subject.id || idx}
+                        onClick={() => {
+                          setSelectedPrepSubject(subject.name);
+                          setPrepSubjectOrigin("home");
+                          setPreviousScreen("home");
+                          setCurrentScreen("prep-sub");
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="bg-white border border-slate-100 rounded-2xl pl-1.5 pr-2 min-[360px]:pl-2 min-[360px]:pr-2.5 sm:pl-2.5 sm:pr-3.5 py-3 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-1.5 min-[360px]:gap-1.5 sm:gap-2 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0"
+                      >
+                        <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0`}>
+                          <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        </div>
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight truncate min-w-0">
+                          {subject.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
             </div>
           )}
