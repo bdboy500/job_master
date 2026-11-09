@@ -3058,7 +3058,7 @@ export default function Home() {
                 </span>
                 <span className="text-[10px] sm:text-xs font-bold tracking-[0.05em] text-[#94A3B8] uppercase mt-0.5 truncate">
                   {currentScreen === "course-detail" && selectedCourseDetail 
-                    ? `${selectedCourseDetail.category} Course Details` 
+                    ? `${selectedCourseDetail.name} Course Details` 
                     : currentScreen === "prep-all-subjects" 
                     ? "সকল বিষয় (ALL SUBJECTS)" 
                     : currentScreen === "prep-sub" 
@@ -3199,10 +3199,11 @@ export default function Home() {
                   text: shareText
                 });
               }}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-[#FF6A00] active:scale-95 transition-all cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200/80 bg-white hover:bg-orange-50 text-slate-700 hover:text-[#FF6A00] active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-2xs"
               title="লিংক শেয়ার করুন"
             >
-              <Share2 className="w-5 h-5 stroke-[2.2px]" />
+              <Share2 className="w-4 h-4 stroke-[2.2px]" />
+              <span>Share</span>
             </button>
 
             <button 
@@ -3377,10 +3378,11 @@ export default function Home() {
                                               text: `${currentLive.title} - JobMaster লাইভ পরীক্ষায় অংশ নিন!`
                                             });
                                           }}
-                                          className="p-1 hover:bg-white/20 text-white rounded-lg transition-all active:scale-90 cursor-pointer"
+                                          className="px-2 py-0.5 bg-white/20 hover:bg-white/30 border border-white/40 text-white rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
                                           title="পরীক্ষা লিংক শেয়ার করুন"
                                         >
-                                          <Share2 className="w-3.5 h-3.5" />
+                                          <Share2 className="w-3 h-3" />
+                                          <span>Share</span>
                                         </button>
                                         <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
                                           <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-live-text"></span>
@@ -3542,9 +3544,10 @@ export default function Home() {
                         });
                       }}
                       title="কুইজ লিংক শেয়ার করুন"
-                      className="bg-white/20 hover:bg-white/30 text-white p-2.5 rounded-2xl shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center border border-white/30"
+                      className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-2xl shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/30 text-xs font-black"
                     >
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
                     </button>
 
                     <button 
@@ -3568,56 +3571,62 @@ export default function Home() {
                   }).length;
 
                   return (
-                    <div 
-                      onClick={() => {
-                        if (soundEnabled) quizAudio.playClick();
-                        setPreviousScreen("home");
-                        setCurrentScreen("daily-quick-test");
-                      }}
-                      className="w-full bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group text-left"
-                    >
-                      {/* Left side: Icon + Text */}
-                      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg sm:text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          ⚡
-                        </div>
-                        <div className="space-y-0.5 truncate text-left min-w-0">
-                          <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
-                            Daily Quick Test
-                          </h4>
-                          <p className="text-[11px] font-bold text-slate-400 truncate">
-                            শর্ট কুইজ টেস্ট
-                          </p>
-                        </div>
-                      </div>
+                    <div className="relative p-[2.5px] rounded-2xl sm:rounded-3xl overflow-hidden group shadow-2xs hover:shadow-md transition-shadow">
+                      {/* Clockwise rotating animated glowing border */}
+                      <div className="absolute -inset-[150%] bg-[conic-gradient(from_0deg_at_50%_50%,#f59e0b_0deg,#ea580c_90deg,#e11d48_180deg,#facc15_270deg,#f59e0b_360deg)] animate-border-clockwise opacity-90 group-hover:opacity-100 pointer-events-none" />
 
-                      {/* Right side: Share/Copy Button + Badge + Arrow */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        {/* Copy / Share Link Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShareLink({
-                              view: "daily-quick-test",
-                              title: "JobMaster Daily Quick Test",
-                              text: "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
-                            });
-                          }}
-                          title="Daily Quick Test লিংক কপি / শেয়ার করুন"
-                          className="p-2 sm:p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center justify-center"
-                        >
-                          <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
-                        </button>
+                      <div 
+                        onClick={() => {
+                          if (soundEnabled) quizAudio.playClick();
+                          setPreviousScreen("home");
+                          setCurrentScreen("daily-quick-test");
+                        }}
+                        className="relative w-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-3.5 sm:p-4.5 flex items-center justify-between gap-3 active:scale-[0.99] cursor-pointer text-left"
+                      >
+                        {/* Left side: Icon + Text */}
+                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg sm:text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            ⚡
+                          </div>
+                          <div className="space-y-0.5 truncate text-left min-w-0">
+                            <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                              Daily Quick Test
+                            </h4>
+                            <p className="text-[11px] font-bold text-slate-400 truncate">
+                              শর্ট কুইজ টেস্ট
+                            </p>
+                          </div>
+                        </div>
 
-                        {dailyCount > 0 && (
-                          <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                            <span>Live Now</span>
-                          </span>
-                        )}
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
-                          <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                        {/* Right side: Share/Copy Button + Badge + Arrow */}
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                          {/* Copy / Share Link Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShareLink({
+                                view: "daily-quick-test",
+                                title: "JobMaster Daily Quick Test",
+                                text: "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
+                              });
+                            }}
+                            title="Daily Quick Test লিংক কপি / শেয়ার করুন"
+                            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center gap-1.5 text-xs font-black shadow-2xs"
+                          >
+                            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
+                            <span>Share</span>
+                          </button>
+
+                          {dailyCount > 0 && (
+                            <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                              <span>Live Now</span>
+                            </span>
+                          )}
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
+                            <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4185,10 +4194,11 @@ export default function Home() {
                                   text: `${currentLive.title} - JobMaster লাইভ পরীক্ষায় অংশ নিন!`
                                 });
                               }}
-                              className="p-1 hover:bg-white/20 text-white rounded-lg transition-all active:scale-90 cursor-pointer"
+                              className="px-2 py-0.5 bg-white/20 hover:bg-white/30 border border-white/40 text-white rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
                               title="পরীক্ষা লিংক শেয়ার করুন"
                             >
-                              <Share2 className="w-3.5 h-3.5" />
+                              <Share2 className="w-3 h-3" />
+                              <span>Share</span>
                             </button>
                             <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs flex items-center gap-1 shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-live-text"></span>
@@ -4260,7 +4270,7 @@ export default function Home() {
                       });
                     }}
                     title="লিংক কপি / শেয়ার করুন"
-                    className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-xs"
+                    className="bg-white/20 hover:bg-white/30 border border-white/40 text-white px-3 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-xs"
                   >
                     <Share2 className="w-3.5 h-3.5" />
                     <span>Share</span>
@@ -6240,10 +6250,11 @@ export default function Home() {
                         text: "JobMaster এ 45th BCS International Affairs মক টেস্ট দিন!"
                       });
                     }}
-                    className="p-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-all active:scale-90 cursor-pointer"
+                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 border border-white/40 text-white rounded-xl transition-all active:scale-90 cursor-pointer flex items-center gap-1.5 text-xs font-black"
                     title="টেস্ট লিংক শেয়ার করুন"
                   >
-                    <Share2 className="w-4 h-4" />
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share</span>
                   </button>
                   <button 
                     onClick={() => startQuizFlow("General Quiz Game", "45th BCS International Affairs", isUsingFallback ? QUIZ_QUESTIONS : questions)}
@@ -6284,10 +6295,11 @@ export default function Home() {
                             text: "JobMaster Daily GK Challenge এ অংশ নিন!"
                           });
                         }}
-                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-orange-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        className="px-2.5 py-1 bg-slate-50 hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 rounded-lg active:scale-90 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-black"
                         title="শেয়ার করুন"
                       >
-                        <Share2 className="w-4 h-4" />
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Share</span>
                       </button>
                       <button 
                         onClick={() => startQuizFlow("General Quiz Game", "Daily Challenge", QUIZ_QUESTIONS)}
@@ -6321,10 +6333,11 @@ export default function Home() {
                             text: "JobMaster গণিত প্র্যাকটিস টেস্টে অংশ নিন!"
                           });
                         }}
-                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-blue-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        className="px-2.5 py-1 bg-slate-50 hover:bg-blue-50 border border-slate-200 text-slate-600 hover:text-blue-600 rounded-lg active:scale-90 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-black"
                         title="শেয়ার করুন"
                       >
-                        <Share2 className="w-4 h-4" />
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Share</span>
                       </button>
                       <button 
                         onClick={() => startQuizFlow("Mathematics practice #12", "Equations & Geometry", MATH_QUESTIONS)}
@@ -6358,10 +6371,11 @@ export default function Home() {
                             text: "JobMaster বাংলা ও ইংরেজি লিটারেচার মক টেস্টে অংশ নিন!"
                           });
                         }}
-                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-purple-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        className="px-2.5 py-1 bg-slate-50 hover:bg-purple-50 border border-slate-200 text-slate-600 hover:text-purple-600 rounded-lg active:scale-90 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-black"
                         title="শেয়ার করুন"
                       >
-                        <Share2 className="w-4 h-4" />
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Share</span>
                       </button>
                       <button 
                         onClick={() => startQuizFlow("Bangla & English Mastery", "Grammar & Authors", [...BANGLA_QUESTIONS, ...ENGLISH_QUESTIONS])}
@@ -6395,10 +6409,11 @@ export default function Home() {
                             text: "JobMaster সাধারণ বিজ্ঞান মক টেস্টে অংশ নিন!"
                           });
                         }}
-                        className="p-2 hover:bg-slate-100 text-slate-500 hover:text-green-600 rounded-lg active:scale-90 transition-all cursor-pointer"
+                        className="px-2.5 py-1 bg-slate-50 hover:bg-green-50 border border-slate-200 text-slate-600 hover:text-green-600 rounded-lg active:scale-90 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-black"
                         title="শেয়ার করুন"
                       >
-                        <Share2 className="w-4 h-4" />
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Share</span>
                       </button>
                       <button 
                         onClick={() => startQuizFlow("General Science Mock", "Anatomy & Climate", SCIENCE_QUESTIONS)}
@@ -6820,10 +6835,11 @@ export default function Home() {
                                 text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
                               });
                             }}
-                            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer"
+                            className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
                             title="প্যাকেজ লিংক শেয়ার করুন"
                           >
-                            <Share2 className="w-3.5 h-3.5" />
+                            <Share2 className="w-3 h-3" />
+                            <span>Share</span>
                           </button>
                           <span>{pkg.price}</span>
                           <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
@@ -6887,10 +6903,11 @@ export default function Home() {
                                   text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
                                 });
                               }}
-                              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer"
+                              className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
                               title="প্যাকেজ লিংক শেয়ার করুন"
                             >
-                              <Share2 className="w-3.5 h-3.5" />
+                              <Share2 className="w-3 h-3" />
+                              <span>Share</span>
                             </button>
                             <span>{pkg.price}</span>
                             <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
@@ -8703,10 +8720,11 @@ export default function Home() {
                       text: `JobMaster এর ${selectedPurchasePkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
                     });
                   }}
-                  className="p-1.5 rounded-full bg-slate-100 hover:bg-orange-50 hover:text-[#007AFF] text-slate-500 transition-all active:scale-95 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 hover:text-[#007AFF] text-slate-600 transition-all active:scale-95 cursor-pointer flex items-center gap-1 text-[11px] font-black"
                   title="শেয়ার করুন"
                 >
-                  <Share2 className="w-4 h-4" />
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share</span>
                 </button>
                 <button 
                   onClick={() => setSelectedPurchasePkg(null)}
@@ -9445,10 +9463,11 @@ export default function Home() {
                         text: `${selectedLiveExamModal.title} - JobMaster লাইভ পরীক্ষায় অংশ নিন!`
                       });
                     }}
-                    className="p-1.5 text-slate-500 hover:text-[#FF6A00] hover:bg-orange-50 rounded-full transition-all cursor-pointer"
+                    className="px-2.5 py-1 text-slate-600 hover:text-[#FF6A00] bg-slate-100 hover:bg-orange-50 border border-slate-200 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[11px] font-black"
                     title="পরীক্ষা লিংক শেয়ার করুন"
                   >
-                    <Share2 className="w-4 h-4" />
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share</span>
                   </button>
                   <button 
                     onClick={() => setSelectedLiveExamModal(null)}

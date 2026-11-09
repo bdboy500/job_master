@@ -208,3 +208,16 @@ h1, h2, h3, h4, h5, h6 {
   pointer-events: none;
 }
 
+@keyframes clockwiseSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-border-clockwise {
+  animation: clockwiseSpin 3.5s linear infinite;
+}
+

@@ -561,6 +561,7 @@ export default function AdminPage() {
   const [proFormBg, setProFormBg] = useState<string>("bg-purple-50");
   const [proFormText, setProFormText] = useState<string>("text-purple-600");
   const [proFormActive, setProFormActive] = useState<boolean>(true);
+  const [proFormSubSubjects, setProFormSubSubjects] = useState<SubCategoryItem[]>([]);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -663,6 +664,26 @@ export default function AdminPage() {
     if (course.name) {
       SUB_SUBJECTS_MAP[course.name] = subs;
       SUB_SUBJECTS_MAP[course.name.toLowerCase()] = subs;
+    }
+  });
+
+  proSectionList.forEach(pro => {
+    const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
+    const cleanProSubs = sanitizeSubSubjects([pro])[0]?.subSubjects || [];
+    cleanProSubs.forEach(sub => {
+      subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
+      (sub.subCategories2 || []).forEach(sub2 => {
+        subs.push({ id: sub2.name, name: `└─ ${sub2.name}` });
+      });
+    });
+
+    if (pro.id) {
+      SUB_SUBJECTS_MAP[pro.id] = subs;
+      SUB_SUBJECTS_MAP[pro.id.toLowerCase()] = subs;
+    }
+    if (pro.name) {
+      SUB_SUBJECTS_MAP[pro.name] = subs;
+      SUB_SUBJECTS_MAP[pro.name.toLowerCase()] = subs;
     }
   });
 
@@ -1303,7 +1324,6 @@ export default function AdminPage() {
     setCourseFormName(course.name);
     setCourseFormTitle(course.title);
     setCourseFormDesc(course.desc);
-    setCourseFormCategory(course.category || "BCS");
     setCourseFormIcon(course.icon || "BookOpen");
     setCourseFormBg(course.bg || "bg-[#FFF1E6]");
     setCourseFormIconColor(course.iconColor || "text-orange-600");
@@ -1317,7 +1337,6 @@ export default function AdminPage() {
     setCourseFormName("");
     setCourseFormTitle("");
     setCourseFormDesc("");
-    setCourseFormCategory("BCS");
     setCourseFormIcon("BookOpen");
     setCourseFormBg("bg-[#FFF1E6]");
     setCourseFormIconColor("text-orange-600");
@@ -1337,7 +1356,7 @@ export default function AdminPage() {
       name: courseFormName.trim(),
       title: courseFormTitle.trim(),
       desc: courseFormDesc.trim(),
-      category: courseFormCategory,
+      category: "",
       icon: courseFormIcon,
       bg: courseFormBg,
       iconColor: courseFormIconColor,
@@ -1488,7 +1507,8 @@ export default function AdminPage() {
       icon: proFormIcon,
       bg: proFormBg,
       text: proFormText,
-      active: proFormActive
+      active: proFormActive,
+      subSubjects: proFormSubSubjects
     };
 
     let updated: ProSectionItem[] = [...proSectionList];
@@ -1517,6 +1537,7 @@ export default function AdminPage() {
     setProFormBg("bg-purple-50");
     setProFormText("text-purple-600");
     setProFormActive(true);
+    setProFormSubSubjects([]);
   };
 
   const handleEditPro = (item: ProSectionItem) => {
@@ -1529,6 +1550,7 @@ export default function AdminPage() {
     setProFormBg(item.bg || "bg-purple-50");
     setProFormText(item.text || "text-purple-600");
     setProFormActive(item.active !== false);
+    setProFormSubSubjects(item.subSubjects ? JSON.parse(JSON.stringify(item.subSubjects)) : []);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -6168,45 +6190,25 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       />
                     </div>
 
-                    {/* Category & Icon */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          ক্যাটাগরি (Category) *
-                        </label>
-                        <select
-                          value={courseFormCategory}
-                          onChange={(e) => setCourseFormCategory(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
-                        >
-                          <option value="BCS">BCS</option>
-                          <option value="Primary">Primary</option>
-                          <option value="Bank">Bank</option>
-                          <option value="All Job">All Job</option>
-                          <option value="NTRCA">NTRCA / শিক্ষক নিবন্ধন</option>
-                          <option value="Special">Special / অন্যান্য</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          আইকন (Icon) *
-                        </label>
-                        <select
-                          value={courseFormIcon}
-                          onChange={(e) => setCourseFormIcon(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
-                        >
-                          <option value="BookOpen">📖 BookOpen</option>
-                          <option value="Compass">🧭 Compass</option>
-                          <option value="Briefcase">💼 Briefcase</option>
-                          <option value="GraduationCap">🎓 GraduationCap</option>
-                          <option value="Award">🏆 Award</option>
-                          <option value="Building2">🏢 Building</option>
-                          <option value="Users">👥 Users</option>
-                          <option value="CheckCircle">✅ CheckCircle</option>
-                        </select>
-                      </div>
+                    {/* Icon */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        আইকন (Icon) *
+                      </label>
+                      <select
+                        value={courseFormIcon}
+                        onChange={(e) => setCourseFormIcon(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                      >
+                        <option value="BookOpen">📖 BookOpen</option>
+                        <option value="Compass">🧭 Compass</option>
+                        <option value="Briefcase">💼 Briefcase</option>
+                        <option value="GraduationCap">🎓 GraduationCap</option>
+                        <option value="Award">🏆 Award</option>
+                        <option value="Building2">🏢 Building</option>
+                        <option value="Users">👥 Users</option>
+                        <option value="CheckCircle">✅ CheckCircle</option>
+                      </select>
                     </div>
 
                     {/* Color Presets */}
@@ -6314,9 +6316,6 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-black text-xs text-slate-900 truncate">
                                   {course.name}
-                                </span>
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-orange-100 text-[#FF6A00]">
-                                  {course.category || "BCS"}
                                 </span>
                               </div>
                               <p className="text-[11px] font-medium text-slate-500 truncate">
@@ -6929,6 +6928,175 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       </button>
                     </div>
 
+                    {/* MULTI-LEVEL SUB-CATEGORY EDITOR (Level 2 & Level 3) for Pro Section */}
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-purple-600" />
+                            <span>সাব-ক্যাটাগরি ও সাব-টপিকসমূহ (Level 2 & Level 3)</span>
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-bold">
+                            লেভেল ২: সাব-ক্যাটাগরি, লেভেল ৩: সেকেন্ড সাব-সাবজেক্ট (টপিক)
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSub: SubCategoryItem = {
+                              id: `pro_sub_${Date.now()}`,
+                              name: "নতুন সাব-ক্যাটাগরি",
+                              sub: "সংক্ষিপ্ত তথ্য",
+                              serial: proFormSubSubjects.length + 1,
+                              subCategories2: []
+                            };
+                            setProFormSubSubjects([...proFormSubSubjects, newSub]);
+                          }}
+                          className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-extrabold text-[11px] rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3px]" />
+                          <span>+ সাব-ক্যাটাগরি</span>
+                        </button>
+                      </div>
+
+                      {/* List of Level 2 Sub-Categories */}
+                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                        {proFormSubSubjects.length === 0 ? (
+                          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs">
+                            কোনো সাব-ক্যাটাগরি যুক্ত হয়নি। '+ সাব-ক্যাটাগরি' বাটনে ক্লিক করে যোগ করতে পারেন।
+                          </div>
+                        ) : (
+                          proFormSubSubjects.map((subItem, sIdx) => (
+                            <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
+                              {/* Level 2 Sub-Category Header & Controls */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                  Level 2 #{sIdx + 1}
+                                </span>
+                                <input 
+                                  type="text"
+                                  placeholder="সাব-ক্যাটাগরির নাম (e.g. বিগত বিসিএস প্রিলি)"
+                                  value={subItem.name}
+                                  onChange={(e) => {
+                                    const updated = [...proFormSubSubjects];
+                                    updated[sIdx].name = e.target.value;
+                                    setProFormSubSubjects(updated);
+                                  }}
+                                  className="flex-1 bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = proFormSubSubjects.filter((_, i) => i !== sIdx);
+                                    setProFormSubSubjects(updated);
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
+                                  title="মুছে ফেলুন"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {/* Level 2 Sub-text */}
+                              <input 
+                                type="text"
+                                placeholder="বিবরণ / সাব-টাইটেল (e.g. বিষয়ভিত্তিক সমাধান)"
+                                value={subItem.sub || ""}
+                                onChange={(e) => {
+                                  const updated = [...proFormSubSubjects];
+                                  updated[sIdx].sub = e.target.value;
+                                  setProFormSubSubjects(updated);
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs text-slate-600"
+                              />
+
+                              {/* Level 3 Sub-Categories 2 (Second Sub-Category / Topics) Manager */}
+                              <div className="bg-white border border-slate-200/60 rounded-xl p-2.5 space-y-2">
+                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                  <span>🏷️ সেকেন্ড সাব-সাবজেক্ট / টপিকসমূহ (Level 3 Topics):</span>
+                                  <span className="text-[10px] text-purple-600 font-bold">
+                                    {(subItem.subCategories2 || []).length}টি টপিক
+                                  </span>
+                                </div>
+
+                                {/* Tags list for Level 3 */}
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(subItem.subCategories2 || []).map((sub2, sub2Idx) => (
+                                    <span 
+                                      key={sub2.id || sub2Idx}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-xs font-bold"
+                                    >
+                                      <span>{sub2.name}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = JSON.parse(JSON.stringify(proFormSubSubjects));
+                                          if (updated[sIdx]?.subCategories2) {
+                                            updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                            setProFormSubSubjects(updated);
+                                          }
+                                        }}
+                                        className="hover:text-rose-600 text-purple-400 p-0.5 cursor-pointer"
+                                      >
+                                        <X className="w-3 h-3 stroke-[3px]" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+
+                                {/* Add Level 3 item form */}
+                                <div className="flex items-center gap-2 pt-1">
+                                  <input 
+                                    type="text"
+                                    id={`input_pro_sub2_${sIdx}`}
+                                    placeholder="নতুন সেকেন্ড সাব-সাবজেক্ট যোগ করুন (যেমন: ধ্বনি ও বর্ণ)"
+                                    className="flex-1 bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-lg px-2.5 py-1 text-xs text-slate-800"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        const input = e.currentTarget;
+                                        if (input.value.trim()) {
+                                          const updated = JSON.parse(JSON.stringify(proFormSubSubjects));
+                                          if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                          updated[sIdx].subCategories2!.push({
+                                            id: `sub2_${Date.now()}_${Math.random()}`,
+                                            name: input.value.trim(),
+                                            serial: updated[sIdx].subCategories2!.length + 1
+                                          });
+                                          setProFormSubSubjects(updated);
+                                          input.value = "";
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const input = document.getElementById(`input_pro_sub2_${sIdx}`) as HTMLInputElement;
+                                      if (input && input.value.trim()) {
+                                        const updated = JSON.parse(JSON.stringify(proFormSubSubjects));
+                                        if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                        updated[sIdx].subCategories2!.push({
+                                          id: `sub2_${Date.now()}_${Math.random()}`,
+                                          name: input.value.trim(),
+                                          serial: updated[sIdx].subCategories2!.length + 1
+                                        });
+                                        setProFormSubSubjects(updated);
+                                        input.value = "";
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                                  >
+                                    যোগ করুন
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs py-3 rounded-2xl transition-all cursor-pointer shadow-md shadow-purple-500/20 flex items-center justify-center gap-2"
@@ -6954,52 +7122,77 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                     {proSectionList.map((item, idx) => (
                       <div
                         key={item.id}
-                        className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3 hover:border-purple-300 transition-all"
+                        className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col gap-2 hover:border-purple-300 transition-all"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60 shrink-0">
-                            <button
-                              onClick={() => handleMoveProSerial(idx, "up")}
-                              disabled={idx === 0}
-                              className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg cursor-pointer"
-                            >
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-[10px] font-black text-slate-700">#{item.serial || idx + 1}</span>
-                            <button
-                              onClick={() => handleMoveProSerial(idx, "down")}
-                              disabled={idx === proSectionList.length - 1}
-                              className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg cursor-pointer"
-                            >
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </button>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60 shrink-0">
+                              <button
+                                onClick={() => handleMoveProSerial(idx, "up")}
+                                disabled={idx === 0}
+                                className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg cursor-pointer"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="text-[10px] font-black text-slate-700">#{item.serial || idx + 1}</span>
+                              <button
+                                onClick={() => handleMoveProSerial(idx, "down")}
+                                disabled={idx === proSectionList.length - 1}
+                                className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg cursor-pointer"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className={`w-9 h-9 ${item.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${item.text || "text-purple-600"} shrink-0`}>
+                              {renderPrepIcon(item.icon, "w-4 h-4 stroke-[2.2px]")}
+                            </div>
+
+                            <div className="flex flex-col min-w-0 text-left">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-xs text-slate-900 truncate">{item.name}</span>
+                                {(item.subSubjects || []).length > 0 && (
+                                  <span className="text-[10px] font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200">
+                                    {(item.subSubjects || []).length} টি সাব-সাবজেক্ট
+                                  </span>
+                                )}
+                              </div>
+                              {item.sub && <span className="text-[10px] font-bold text-slate-400 truncate">{item.sub}</span>}
+                            </div>
                           </div>
 
-                          <div className={`w-9 h-9 ${item.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${item.text || "text-purple-600"} shrink-0`}>
-                            {renderPrepIcon(item.icon, "w-4 h-4 stroke-[2.2px]")}
-                          </div>
-
-                          <div className="flex flex-col min-w-0 text-left">
-                            <span className="font-extrabold text-xs text-slate-900 truncate">{item.name}</span>
-                            {item.sub && <span className="text-[10px] font-bold text-slate-400 truncate">{item.sub}</span>}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => handleEditPro(item)}
+                              className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>এডিট</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeletePro(item.id, item.name)}
+                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={() => handleEditPro(item)}
-                            className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            <span>এডিট</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeletePro(item.id, item.name)}
-                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {/* Preview sub-subjects and second sub-subjects if present */}
+                        {(item.subSubjects || []).length > 0 && (
+                          <div className="pt-2 border-t border-slate-200/60 flex flex-wrap gap-1.5 pl-1">
+                            {item.subSubjects!.map((s) => (
+                              <div key={s.id || s.name} className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-[10px] font-bold text-slate-700">
+                                <span>{s.name}</span>
+                                {(s.subCategories2 || []).length > 0 && (
+                                  <span className="text-[9px] bg-purple-50 text-purple-700 px-1 rounded font-black">
+                                    +{s.subCategories2!.length}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

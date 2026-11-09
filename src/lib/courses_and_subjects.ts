@@ -293,6 +293,7 @@ export interface ProSectionItem {
   text: string;
   serial: number;
   active?: boolean;
+  subSubjects?: SubCategoryItem[];
 }
 
 export const DEFAULT_PRO_SECTION: ProSectionItem[] = [
@@ -348,7 +349,7 @@ const HARDCODED_SUB_NAMES = [
   "মডেল টেস্ট", "ফুল সিলেবাস", "সিলেবাস", "প্রিলিমিনারি", "স্পেশাল"
 ];
 
-export function sanitizeSubSubjects<T extends CourseItem | PrepSubjectItem>(items: T[]): T[] {
+export function sanitizeSubSubjects<T extends { subSubjects?: SubCategoryItem[] }>(items: T[]): T[] {
   return items.map(item => {
     if (item.subSubjects && Array.isArray(item.subSubjects)) {
       const cleanSub = item.subSubjects.filter((s: any) => s && s.name && String(s.name).trim() !== "");

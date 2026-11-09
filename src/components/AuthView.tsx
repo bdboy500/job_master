@@ -898,24 +898,6 @@ export default function AuthView({
       {/* SIGN UP FORM */}
       {mode === "signup" && (
         <form onSubmit={handleSignUp} className="space-y-3.5">
-          {/* Auto Generated Student ID Info Banner */}
-          <div className="p-3 bg-amber-50/90 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 bg-amber-100 text-[#FF6A00] rounded-xl shrink-0">
-                <IdCard className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-extrabold text-slate-700 text-[11px] leading-tight">Student ID (অটো জেনারেটেড)</p>
-                <p className="font-mono font-black text-slate-900 text-xs tracking-wider truncate">
-                  {studentId || "JM-XXXXXX"}
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-wider bg-white text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full shrink-0 shadow-2xs">
-              Auto Server ID
-            </span>
-          </div>
-
           <div className="space-y-1.5">
             <label className="text-xs font-black text-slate-700 uppercase tracking-wider block pl-1">
               Full Name *
