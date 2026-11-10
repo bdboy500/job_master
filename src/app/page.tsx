@@ -3556,7 +3556,7 @@ export default function Home() {
                         <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-8.5 sm:h-8.5 ${course.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0 self-center`}>
                           <CourseIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#334155] tracking-tight line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1 text-left">
+                        <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-semibold text-[#334155] tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1 text-left">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -3575,7 +3575,7 @@ export default function Home() {
                     <div className="w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-8.5 sm:h-8.5 bg-[#FF6A00]/10 rounded-lg min-[360px]:rounded-xl flex items-center justify-center text-[#FF6A00] shrink-0 self-center">
                       <Briefcase className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5px]" />
                     </div>
-                    <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#FF6A00] tracking-tight line-clamp-2 break-words leading-tight sm:leading-snug min-w-0">সকল কোর্স দেখুন</span>
+                    <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-semibold text-[#FF6A00] tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0">সকল কোর্স দেখুন</span>
                   </div>
                 </div>
               </div>
@@ -3731,11 +3731,11 @@ export default function Home() {
                               <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                             </div>
                             <div className="flex flex-col min-w-0 text-left flex-1 justify-center">
-                              <span className="text-[12.5px] min-[360px]:text-[13px] min-[380px]:text-[13.5px] sm:text-base font-extrabold text-slate-800 tracking-tight line-clamp-2 break-words leading-tight sm:leading-snug min-w-0">
+                              <span className="text-[12.5px] min-[360px]:text-[13px] min-[380px]:text-[13.5px] sm:text-base font-semibold text-slate-800 tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0">
                                 {subject.name}
                               </span>
                               {subject.sub && (
-                                <span className="text-[10px] min-[360px]:text-[10.5px] sm:text-xs font-bold text-slate-400 line-clamp-1 break-words mt-0.5">
+                                <span className="text-[10px] min-[360px]:text-[10.5px] sm:text-xs font-medium text-slate-400 line-clamp-1 break-words mt-0.5 tracking-[0.01em]">
                                   {subject.sub}
                                 </span>
                               )}
@@ -3785,7 +3785,7 @@ export default function Home() {
                         <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0 self-center`}>
                           <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[12.5px] min-[360px]:text-[13px] min-[380px]:text-[13.5px] sm:text-base font-extrabold text-[#334155] tracking-tight line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1 text-left">
+                        <span className="text-[12.5px] min-[360px]:text-[13px] min-[380px]:text-[13.5px] sm:text-base font-semibold text-[#334155] tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1 text-left">
                           {subject.name}
                         </span>
                       </div>
@@ -4501,7 +4501,7 @@ export default function Home() {
                         <div className={`w-7 h-7 min-[360px]:w-7.5 min-[360px]:h-7.5 sm:w-8.5 sm:h-8.5 ${course.bg} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${course.iconColor} shrink-0 self-center`}>
                           <CourseIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                         </div>
-                        <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-extrabold text-[#334155] tracking-tight line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1">
+                        <span className="text-[12px] min-[360px]:text-[12.5px] min-[480px]:text-[13px] sm:text-[13.5px] lg:text-[14px] font-semibold text-[#334155] tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1">
                           {course.name || course.title}
                         </span>
                       </div>
@@ -4548,7 +4548,7 @@ export default function Home() {
                         <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-extrabold text-[#334155] tracking-tight block line-clamp-2 break-words leading-tight sm:leading-snug group-hover:text-[#FF6A00] transition-colors min-w-0">
+                        <span className="text-[13px] min-[360px]:text-[13.5px] min-[380px]:text-sm sm:text-base font-semibold text-[#334155] tracking-[0.01em] block line-clamp-2 break-words leading-tight sm:leading-snug group-hover:text-[#FF6A00] transition-colors min-w-0">
                           {subject.name}
                         </span>
                       </div>
