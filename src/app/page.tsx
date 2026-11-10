@@ -420,6 +420,7 @@ export default function Home() {
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
+  const [isProSectionActive, setIsProSectionActive] = useState<boolean>(false);
   
   // Drawer & Overlay States
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
@@ -2312,6 +2313,27 @@ export default function Home() {
     }));
   }, [proSectionList, ICON_MAP]);
 
+  const isCurrentSubjectProFeature = useMemo(() => {
+    if (isProSectionActive) return true;
+    if (!selectedPrepSubject) return false;
+    const target = selectedPrepSubject.trim().toLowerCase();
+    return (
+      (allProSectionData || []).some((p: any) => 
+        p.name?.toLowerCase() === target || 
+        p.id?.toLowerCase() === target ||
+        (p.bnName && p.bnName.toLowerCase() === target)
+      ) ||
+      (proSectionList || []).some((p: any) => 
+        p.name?.toLowerCase() === target || 
+        p.id?.toLowerCase() === target
+      ) ||
+      (DEFAULT_PRO_SECTION || []).some((p: any) => 
+        p.name?.toLowerCase() === target || 
+        p.id?.toLowerCase() === target
+      )
+    );
+  }, [isProSectionActive, selectedPrepSubject, allProSectionData, proSectionList]);
+
   const allCoursesData = useMemo(() => {
     if (coursesList && coursesList.length > 0) {
       return coursesList.map(c => ({
@@ -3697,6 +3719,7 @@ export default function Home() {
                             key={subject.id || idx}
                             onClick={() => {
                               if (soundEnabled) quizAudio.playClick();
+                              setIsProSectionActive(true);
                               setSelectedPrepSubject(subject.name);
                               setPrepSubjectOrigin("home");
                               setPreviousScreen("home");
@@ -3732,6 +3755,7 @@ export default function Home() {
                   </h3>
                   <button 
                     onClick={() => {
+                      setIsProSectionActive(false);
                       setPreviousScreen("home");
                       setCurrentScreen("prep-all-subjects");
                       if (soundEnabled) quizAudio.playClick();
@@ -3749,6 +3773,7 @@ export default function Home() {
                       <div 
                         key={subject.id || idx}
                         onClick={() => {
+                          setIsProSectionActive(false);
                           setSelectedPrepSubject(subject.name);
                           setPrepSubjectOrigin("home");
                           setPreviousScreen("home");
@@ -4555,6 +4580,12 @@ export default function Home() {
                       s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
                       (s.bnName && s.bnName === selectedPrepSubject) || 
                       s.id === selectedPrepSubject
+                    ) || (proSectionList || []).find((s: any) => 
+                      s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                      s.id === selectedPrepSubject
+                    ) || (DEFAULT_PRO_SECTION || []).find((s: any) => 
+                      s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
+                      s.id === selectedPrepSubject
                     );
 
                     if (dbMatch && dbMatch.subSubjects && dbMatch.subSubjects.length > 0) {
@@ -4795,8 +4826,8 @@ export default function Home() {
               </div>
               )}
 
-              {/* Exam Sections for Main Subject (Daily Quick Test, Weekly Model Test, Subject Wise Test) */}
-              {!activeExamSection && (
+              {/* Exam Sections for Main Subject (Daily Quick Test, Weekly Model Test, Subject Wise Test) - Hidden for Pro Feature */}
+              {!activeExamSection && !isCurrentSubjectProFeature && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between px-1">
                     <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -5106,6 +5137,7 @@ export default function Home() {
                   (s.bnName && s.bnName.toLowerCase() === selectedPrepSubject.toLowerCase()) || 
                   s.id === selectedPrepSubject
                 );
+                if (isCurrentSubjectProFeature) return null;
                 const shouldShowQT = currentObj ? (currentObj.showQuickTools !== false) : true;
                 if (!shouldShowQT) return null;
 
@@ -5207,8 +5239,8 @@ export default function Home() {
                 </div>
               )}
 
-              {/* CASE 1: No Section Selected -> Show Section Cards Grid */}
-              {!selectedPrepExamTypeFilter && (
+              {/* CASE 1: No Section Selected -> Show Section Cards Grid (Hidden for Pro Feature) */}
+              {!selectedPrepExamTypeFilter && !isCurrentSubjectProFeature && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">
                     <h4 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
@@ -5380,46 +5412,50 @@ export default function Home() {
                 </div>
               )}
 
-              {/* CASE 2: Inside Selected Exam Section -> Show Navigation Header & Section Question Papers */}
-              {selectedPrepExamTypeFilter && (
+              {/* CASE 2: Inside Selected Exam Section or Pro Feature -> Show Question Papers */}
+              {(selectedPrepExamTypeFilter || isCurrentSubjectProFeature) && (
                 <div className="space-y-4 pt-1">
-                  {/* Top Bar inside Section */}
-                  <div className="flex items-center justify-between bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs">
-                    <button
-                      onClick={() => {
-                        setSelectedPrepExamTypeFilter(null);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className="flex items-center gap-1.5 text-xs font-black text-[#FF6A00] bg-orange-50 hover:bg-orange-100 px-3.5 py-2 rounded-xl border border-orange-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <ArrowLeft className="w-4 h-4 stroke-[2.5px]" />
-                      <span>অন্যান্য সেকশন</span>
-                    </button>
-                    <div className="flex items-center gap-1.5 pr-1">
-                      <span className="text-xs sm:text-sm font-black text-slate-900">
-                        {selectedPrepExamTypeFilter === "daily" 
-                          ? "⚡ Daily Quick Test" 
-                          : selectedPrepExamTypeFilter === "weekly" 
-                            ? "\uD83D\uDCC5 Weekly Model Test" 
-                            : "\uD83D\uDCDA Subject Wise Test"}
-                      </span>
+                  {/* Top Bar inside Section (Only for Preparation Hub exam types) */}
+                  {selectedPrepExamTypeFilter && !isCurrentSubjectProFeature && (
+                    <div className="flex items-center justify-between bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs">
+                      <button
+                        onClick={() => {
+                          setSelectedPrepExamTypeFilter(null);
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-black text-[#FF6A00] bg-orange-50 hover:bg-orange-100 px-3.5 py-2 rounded-xl border border-orange-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                      >
+                        <ArrowLeft className="w-4 h-4 stroke-[2.5px]" />
+                        <span>অন্যান্য সেকশন</span>
+                      </button>
+                      <div className="flex items-center gap-1.5 pr-1">
+                        <span className="text-xs sm:text-sm font-black text-slate-900">
+                          {selectedPrepExamTypeFilter === "daily" 
+                            ? "⚡ Daily Quick Test" 
+                            : selectedPrepExamTypeFilter === "weekly" 
+                              ? "📅 Weekly Model Test" 
+                              : "📚 Subject Wise Test"}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Selected Exam Type Section Papers List */}
+                  {/* Papers List */}
                   <div className="space-y-3 pt-1">
                     <div className="flex items-center justify-between">
                       <h4 className="text-base sm:text-lg font-bold text-slate-800 text-left">
                         {selectedLevel3Topic 
                           ? `"${selectedLevel3Topic}" - প্রশ্নপত্র` 
-                          : selectedPrepExamTypeFilter === "daily" 
-                            ? "⚡ Daily Quick Test - প্রশ্নপত্র"
-                            : selectedPrepExamTypeFilter === "weekly"
-                              ? "\uD83D\uDCC5 Weekly Model Test - প্রশ্নপত্র"
-                              : "\uD83D\uDCDA Subject Wise Test - প্রশ্নপত্র"}
+                          : isCurrentSubjectProFeature
+                            ? `"${selectedPrepSubSubject.name}" - প্রশ্নপত্র ও পরীক্ষা`
+                            : selectedPrepExamTypeFilter === "daily" 
+                              ? "⚡ Daily Quick Test - প্রশ্নপত্র"
+                              : selectedPrepExamTypeFilter === "weekly"
+                                ? "📅 Weekly Model Test - প্রশ্নপত্র"
+                                : "📚 Subject Wise Test - প্রশ্নপত্র"}
                       </h4>
                       <span className="text-xs font-black text-[#FF6A00] bg-orange-50 border border-orange-200/80 px-3 py-1 rounded-full">
-                        {selectedPrepExamTypeFilter === "daily" ? "Daily" : selectedPrepExamTypeFilter === "weekly" ? "Weekly" : "Subject"}
+                        {isCurrentSubjectProFeature ? "Pro" : (selectedPrepExamTypeFilter === "daily" ? "Daily" : selectedPrepExamTypeFilter === "weekly" ? "Weekly" : "Subject")}
                       </span>
                     </div>
 
@@ -5438,19 +5474,57 @@ export default function Home() {
 
                       let subPapers = examPapers.filter(paper => {
                         const pCat = (paper.categoryType || "").toLowerCase();
-                        if (pCat && pCat !== "prep_hub") return false;
-
                         const pCourse = (paper.course || "").toLowerCase();
-                        if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
-
                         const pSubject = (paper.subject || "").toLowerCase();
                         const pSubSubject = (paper.subSubject || "").toLowerCase();
+                        const selectedNorm = selectedPrepSubject.toLowerCase();
+                        const targetSub = selectedPrepSubSubject.name.toLowerCase();
+                        const targetSubId = (selectedPrepSubSubject.id || "").toLowerCase();
+
+                        // Match specifically for Pro Feature
+                        if (isCurrentSubjectProFeature) {
+                          const courseMatch = 
+                            pCourse === selectedNorm ||
+                            pSubject === selectedNorm ||
+                            pCat === "pro_feature" ||
+                            (selectedNorm.includes("প্রশ্ন ব্যাংক") && (pCourse.includes("question") || pCourse.includes("bank"))) ||
+                            (selectedNorm.includes("জব") && (pCourse.includes("job") || pCourse.includes("solution"))) ||
+                            (pCourse && selectedNorm.includes(pCourse)) ||
+                            (selectedNorm && pCourse.includes(selectedNorm));
+
+                          if (!courseMatch && pCat !== "pro_feature") return false;
+
+                          const isSubMatch = 
+                            pSubSubject === targetSub ||
+                            (targetSubId && pSubSubject === targetSubId) ||
+                            pSubject === targetSub ||
+                            (pSubSubject && pSubSubject.includes(targetSub)) ||
+                            (targetSub && pSubSubject.includes(targetSub)) ||
+                            (targetSub && targetSub.includes(pSubSubject));
+
+                          if (!isSubMatch && pSubSubject) return false;
+
+                          if (selectedLevel3Topic) {
+                            const normTopic = selectedLevel3Topic.toLowerCase();
+                            const pTopic = (paper.topic || "").toLowerCase();
+                            const pTitle = (paper.title || "").toLowerCase();
+                            if (!pTopic.includes(normTopic) && !pTitle.includes(normTopic) && !pSubSubject.includes(normTopic)) {
+                              return false;
+                            }
+                          }
+
+                          return true;
+                        }
+
+                        // Match for Preparation Hub
+                        if (pCat && pCat !== "prep_hub") return false;
+
+                        if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
 
                         // Exclude general all_courses or all subjects tests unless specific
                         if (pCourse === "all_courses" || (pCourse === "all" && pSubSubject === "all" && pSubject === "all")) return false;
 
                         // Match Course / Parent Subject
-                        const selectedNorm = selectedPrepSubject.toLowerCase();
                         const dbMatchId = (dbMatch?.id || "").toLowerCase();
                         const dbMatchName = (dbMatch?.name || "").toLowerCase();
                         const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
@@ -5493,8 +5567,6 @@ export default function Home() {
                         if (!courseMatch) return false;
 
                         // Match SubSubject
-                        const targetSub = selectedPrepSubSubject.name.toLowerCase();
-                        const targetSubId = (selectedPrepSubSubject.id || "").toLowerCase();
                         const isSubMatch = 
                           pSubSubject === targetSub ||
                           (targetSubId && pSubSubject === targetSubId) ||
@@ -5511,29 +5583,31 @@ export default function Home() {
                         return isSubMatch;
                       });
 
-                      // Filter by Exam Type (Daily Quick Test / Weekly Model Test / Subject Wise Test)
-                      subPapers = subPapers.filter(paper => {
-                        if (selectedPrepExamTypeFilter === "daily") {
-                          return (
-                            paper.examType === "daily" ||
-                            (paper.title && (paper.title.toLowerCase().includes("daily") || paper.title.toLowerCase().includes("ডেইলি")))
-                          );
-                        }
-                        if (selectedPrepExamTypeFilter === "weekly") {
-                          return (
-                            paper.examType === "weekly" ||
-                            (paper.title && (paper.title.toLowerCase().includes("weekly") || paper.title.toLowerCase().includes("সাপ্তাহিক")))
-                          );
-                        }
-                        if (selectedPrepExamTypeFilter === "subject") {
-                          return (
-                            paper.examType === "subject" ||
-                            !paper.examType ||
-                            (paper.title && (paper.title.toLowerCase().includes("subject") || paper.title.toLowerCase().includes("বিষয়ভিত্তিক")))
-                          );
-                        }
-                        return true;
-                      });
+                      // Filter by Exam Type (Only for Preparation Hub, bypassed for Pro Feature)
+                      if (!isCurrentSubjectProFeature) {
+                        subPapers = subPapers.filter(paper => {
+                          if (selectedPrepExamTypeFilter === "daily") {
+                            return (
+                              paper.examType === "daily" ||
+                              (paper.title && (paper.title.toLowerCase().includes("daily") || paper.title.toLowerCase().includes("ডেইলি")))
+                            );
+                          }
+                          if (selectedPrepExamTypeFilter === "weekly") {
+                            return (
+                              paper.examType === "weekly" ||
+                              (paper.title && (paper.title.toLowerCase().includes("weekly") || paper.title.toLowerCase().includes("সাপ্তাহিক")))
+                            );
+                          }
+                          if (selectedPrepExamTypeFilter === "subject") {
+                            return (
+                              paper.examType === "subject" ||
+                              !paper.examType ||
+                              (paper.title && (paper.title.toLowerCase().includes("subject") || paper.title.toLowerCase().includes("বিষয়ভিত্তিক")))
+                            );
+                          }
+                          return true;
+                        });
+                      }
 
                       if (selectedLevel3Topic) {
                         const normTopic = selectedLevel3Topic.toLowerCase();
@@ -5549,23 +5623,29 @@ export default function Home() {
                         return (
                           <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
                             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                              {selectedPrepExamTypeFilter === "daily" ? "⚡" : selectedPrepExamTypeFilter === "weekly" ? "\uD83D\uDCC5" : "\uD83D\uDCDA"}
+                              {isCurrentSubjectProFeature ? "💼" : (selectedPrepExamTypeFilter === "daily" ? "⚡" : selectedPrepExamTypeFilter === "weekly" ? "📅" : "📚")}
                             </div>
                             <h3 className="text-sm sm:text-base font-black text-slate-800">
-                              বর্তমানে কোনো পরীক্ষা লাইভ বা আসন্ন নেই
+                              বর্তমানে কোনো পরীক্ষা বা প্রশ্নপত্র নেই
                             </h3>
                             <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
-                              এই সাব-সাবজেক্টের ({selectedPrepSubSubject.name}) জন্য এখনো কোনো {selectedPrepExamTypeFilter === "daily" ? "ডেইলি কুইক" : selectedPrepExamTypeFilter === "weekly" ? "সাপ্তাহিক মডেল" : "বিষয়ভিত্তিক"} পরীক্ষা প্রকাশিত হয়নি। এডমিন প্যানেল থেকে প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।
+                              {selectedLevel3Topic 
+                                ? `"${selectedLevel3Topic}" টপিকের জন্য এখনো কোনো প্রশ্নপত্র প্রকাশিত হয়নি। এডমিন প্যানেল থেকে প্রশ্নপত্র যুক্ত করা হলে তা এখানে দেখাবে।` 
+                                : isCurrentSubjectProFeature
+                                  ? `এই সাব-ক্যাটাগরির ("${selectedPrepSubSubject.name}") জন্য এখনো কোনো প্রশ্নপত্র প্রকাশিত হয়নি। এডমিন প্যানেল থেকে প্রশ্নপত্র যুক্ত করা হলে তা এখানে দেখাবে।`
+                                  : `এই সাব-সাবজেক্টের (${selectedPrepSubSubject.name}) জন্য এখনো কোনো ${selectedPrepExamTypeFilter === "daily" ? "ডেইলি কুইক" : selectedPrepExamTypeFilter === "weekly" ? "সাপ্তাহিক মডেল" : "বিষয়ভিত্তিক"} পরীক্ষা প্রকাশিত হয়নি। এডমিন প্যানেল থেকে প্রশ্নপত্র প্রকাশিত হলে তা এখানে দেখাবে।`}
                             </p>
-                            <button
-                              onClick={() => {
-                                setSelectedPrepExamTypeFilter(null);
-                                if (soundEnabled) quizAudio.playClick();
-                              }}
-                              className="px-4 py-2 bg-[#FF6A00] text-white text-xs font-black rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm shadow-orange-500/20 inline-block mt-1"
-                            >
-                              অন্যান্য সেকশন দেখুন
-                            </button>
+                            {!isCurrentSubjectProFeature && (
+                              <button
+                                onClick={() => {
+                                  setSelectedPrepExamTypeFilter(null);
+                                  if (soundEnabled) quizAudio.playClick();
+                                }}
+                                className="px-4 py-2 bg-[#FF6A00] text-white text-xs font-black rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm shadow-orange-500/20 inline-block mt-1"
+                              >
+                                অন্যান্য সেকশন দেখুন
+                              </button>
+                            )}
                           </div>
                         );
                       }
@@ -5668,8 +5748,9 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Sub-Subject Quick Tools (Requirement 2: Below published question papers) */}
+              {/* Sub-Subject Quick Tools (Requirement 2: Below published question papers) - Hidden for Pro Feature */}
               {(() => {
+                if (isCurrentSubjectProFeature) return null;
                 const currentObj: any = allPrepSubjectsData.find((s: any) => 
                   s.name.toLowerCase() === selectedPrepSubject.toLowerCase() || 
                   (s.bnName && s.bnName.toLowerCase() === selectedPrepSubject.toLowerCase()) || 
