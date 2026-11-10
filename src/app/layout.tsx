@@ -1,21 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Anek_Bangla, Inter } from "next/font/google";
+import { Hind_Siliguri, Poppins, Anek_Bangla } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "../components/ClientProviders";
 
-const anekBangla = Anek_Bangla({
+const hindSiliguri = Hind_Siliguri({
   subsets: ["bengali", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-hind-siliguri",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-poppins",
+});
+
+const anekBangla = Anek_Bangla({
+  subsets: ["bengali"],
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
   variable: "--font-anek-bangla",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -185,13 +192,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className={`${anekBangla.variable} ${inter.variable}`}>
+    <html lang="bn" className={`${hindSiliguri.variable} ${poppins.variable} ${anekBangla.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Hind+Siliguri:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap"
         />
       </head>
       <body className="antialiased min-h-full h-full">
