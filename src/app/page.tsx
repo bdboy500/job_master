@@ -3585,16 +3585,16 @@ export default function Home() {
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
                   {/* LEFT SIDE: Title and Subtitle */}
                   <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight leading-tight text-white">
+                    <h3 className="text-[13px] min-[360px]:text-sm sm:text-base md:text-lg font-black tracking-tight leading-tight text-white">
                       Live Quiz Game
                     </h3>
-                    <p className="text-white/95 text-sm sm:text-xs font-extrabold tracking-wide truncate max-w-full">
+                    <p className="text-white/90 text-[10px] min-[360px]:text-[11px] sm:text-xs font-bold tracking-normal truncate max-w-full">
                       কুইজ খেলে Gift জিতুন
                     </p>
                   </div>
 
                   {/* RIGHT SIDE: Share & Start Quiz CTA buttons */}
-                  <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <button 
                       type="button"
                       onClick={(e) => {
@@ -3606,17 +3606,17 @@ export default function Home() {
                         });
                       }}
                       title="কুইজ লিংক শেয়ার করুন"
-                      className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-2xl shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/30 text-xs font-black"
+                      className="bg-white/20 hover:bg-white/30 text-white px-2 py-1 min-[360px]:px-2.5 min-[360px]:py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1 border border-white/30 text-[10px] min-[360px]:text-[11px] sm:text-xs font-extrabold"
                     >
-                      <Share2 className="w-3.5 h-3.5" />
+                      <Share2 className="w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5" />
                       <span>Share</span>
                     </button>
 
                     <button 
                       onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
-                      className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-sm sm:text-xs px-4 sm:px-5 py-2.5 rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-white/80"
+                      className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs min-[360px]:text-xs sm:text-sm px-3 sm:px-4.5 py-1.5 min-[360px]:py-2 sm:py-2.5 rounded-xl sm:rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 border border-white/80"
                     >
-                      <Zap className="w-4 h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
+                      <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
                       <span className="font-black">Start Quiz</span>
                     </button>
                   </div>

@@ -614,7 +614,6 @@ export default function AdminPage() {
 
   // Dynamic Courses & Exam Types list
   const COURSES = [
-    { id: "all_courses", name: "\uD83C\uDF10 সকল কোর্স (All Courses - সব কোর্সে দেখাবে)" },
     ...coursesList.map(c => ({
       id: c.id,
       name: `${c.name} (${c.title})`
@@ -622,9 +621,7 @@ export default function AdminPage() {
   ];
 
   // Dynamic Sub Subjects Map from dynamic Preparation Subjects and Courses
-  const SUB_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {
-    all_courses: [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
-  };
+  const SUB_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {};
 
   prepSubjectsList.forEach(subject => {
     const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
@@ -5039,7 +5036,6 @@ export default function AdminPage() {
                         <option value="all">সকল কোর্স ও বিষয়</option>
                         {filterPaperCategory !== "prep_hub" && filterPaperCategory !== "pro_feature" && (
                           <optgroup label="── আওয়ার কোর্স ──">
-                            <option value="all_courses">🌐 সকল কোর্স (All Courses)</option>
                             {coursesList.map(c => (
                               <option key={c.id} value={c.id}>{c.name} ({c.title})</option>
                             ))}
@@ -5162,13 +5158,9 @@ export default function AdminPage() {
 
                     // Course Filter
                     if (filterPaperCourse !== "all") {
-                      if (filterPaperCourse === "all_courses") {
-                        if (paper.course && paper.course !== "all_courses") return false;
-                      } else {
-                        const matches = paper.course === filterPaperCourse ||
-                          paper.course?.toLowerCase() === filterPaperCourse.toLowerCase();
-                        if (!matches) return false;
-                      }
+                      const matches = paper.course === filterPaperCourse ||
+                        paper.course?.toLowerCase() === filterPaperCourse.toLowerCase();
+                      if (!matches) return false;
                     }
 
                     // Sub-Subject Filter
