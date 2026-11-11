@@ -127,7 +127,14 @@ interface TakenTest {
   percentage: number;
 }
 
+// Bengali number converter helper
+function toBnDigits(num: number | string): string {
+  return String(num).replace(/\d/g, digit => "০১২৩৪৫৬৭৮৯"[+digit]);
+}
+
 // Live Exam Remaining Time Formatter
+// রুলস: দিন থাকলে সাথে ঘণ্টা শো করবে। ঘণ্টা থাকলে ০ দিন দেখাবে না, ঘণ্টা ও মিনিট দেখাবে।
+// আর শুধু মিনিট থাকলে শুধু মিনিট দেখাবে, দিন এবং ঘণ্টা বা ০ দিন ০ ঘণ্টা দেখাবে না।
 function formatLiveRemaining(endDateTime?: string, startDateTime?: string, createdAt?: string): string {
   const nowMs = Date.now();
   let endMs: number = 0;
@@ -155,26 +162,66 @@ function formatLiveRemaining(endDateTime?: string, startDateTime?: string, creat
     return "সময় শেষ";
   }
 
-  if (totalSecs < 86400) {
-    const hours = Math.floor(totalSecs / 3600);
-    const mins = Math.floor((totalSecs % 3600) / 60);
-    const secs = totalSecs % 60;
-    if (hours > 0) {
-      return `সময় বাকী: ${hours} ঘণ্টা ${mins} মিনিট ${secs} সেকেন্ড`;
-    } else {
-      return `সময় বাকী: ${mins} মিনিট ${secs} সেকেন্ড`;
-    }
-  } else {
-    const days = Math.floor(totalSecs / 86400);
-    const remSecs = totalSecs % 86400;
-    const hours = Math.floor(remSecs / 3600);
-    const mins = Math.floor((remSecs % 3600) / 60);
-    return `সময় বাকী: ${days} দিন ${hours} ঘণ্টা ${mins} মিনিট`;
+  const days = Math.floor(totalSecs / 86400);
+  const remDaySecs = totalSecs % 86400;
+  const hours = Math.floor(remDaySecs / 3600);
+  const mins = Math.floor((remDaySecs % 3600) / 60);
+  const secs = remDaySecs % 60;
+
+  // ১. দিন থাকলে সাথে ঘণ্টা শো করবে
+  if (days > 0) {
+    return `সময় বাকী: ${toBnDigits(days)} দিন ${toBnDigits(hours)} ঘণ্টা`;
   }
+
+  // ২. দিন না থাকলে কিন্তু ঘণ্টা থাকলে (০ দিন দেখাবে না), ঘণ্টা আর মিনিট দেখাবে
+  if (hours > 0) {
+    return `সময় বাকী: ${toBnDigits(hours)} ঘণ্টা ${toBnDigits(mins)} মিনিট`;
+  }
+
+  // ৩. দিন ও ঘণ্টা না থাকলে (শুধু মিনিট থাকলে শুধু মিনিট দেখাবে, দিন এবং ঘণ্টা বা ০ দিন ০ ঘণ্টা দেখাবে না)
+  if (mins > 0) {
+    return `সময় বাকী: ${toBnDigits(mins)} মিনিট`;
+  }
+
+  // ৪. শুধু সেকেন্ড অবশিষ্ট থাকলে
+  return `সময় বাকী: ${toBnDigits(secs)} সেকেন্ড`;
 }
 
 function formatLiveElapsed(startDateTime?: string, createdAt?: string, endDateTime?: string): string {
   return formatLiveRemaining(endDateTime, startDateTime, createdAt);
+}
+
+// Live Exam Participant Display Helper
+// প্রথম ঘন্টায় ১০+ জন, প্রতি ঘন্টায় ১০ জন করে ২৪ ঘন্টা পর্যন্ত ১০ জন করে বাড়বে। এরপর প্রতি ১ দিনে ১০ জন করে বাড়বে।
+function getExamParticipantDisplay(startDateTime?: string, createdAt?: string): string {
+  let startMs = 0;
+  if (startDateTime) {
+    const parsed = new Date(startDateTime).getTime();
+    if (!isNaN(parsed)) startMs = parsed;
+  }
+  if (!startMs && createdAt) {
+    const parsed = new Date(createdAt).getTime();
+    if (!isNaN(parsed)) startMs = parsed;
+  }
+  if (!startMs) {
+    startMs = Date.now();
+  }
+
+  const nowMs = Date.now();
+  const elapsedMs = Math.max(0, nowMs - startMs);
+  const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
+
+  let count = 10;
+  if (elapsedHours < 24) {
+    // ১ম ঘন্টায় (elapsedHours = 0) ১০+, এরপর প্রতি ঘন্টায় ১০ জন করে ২৪ ঘন্টা পর্যন্ত
+    count = (elapsedHours + 1) * 10;
+  } else {
+    // ২৪ ঘন্টা পর্যন্ত ২৪০+ জন, এরপর প্রতি ১ দিনে ১০ জন করে বাড়বে
+    const additionalDays = Math.floor((elapsedHours - 24) / 24) + 1;
+    count = 240 + (additionalDays * 10);
+  }
+
+  return `পরীক্ষা দিয়েছেঃ ${toBnDigits(count)}+ জন`;
 }
 
 // Extra mock question databases for other test subjects
@@ -3390,7 +3437,7 @@ export default function Home() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                     </span>
-                    <h3 className="font-extrabold text-base text-[#1E293B] tracking-tight">
+                    <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
                       Live Exam (লাইভ পরীক্ষা)
                     </h3>
                   </div>
@@ -3524,8 +3571,8 @@ export default function Home() {
                                         </div>
 
                                         {/* Participant Count */}
-                                        <div className="text-slate-400 text-[11px] font-bold tracking-tight">
-                                          {participantCount} Already participated
+                                        <div className="text-slate-500 text-[11px] font-bold tracking-tight">
+                                          {getExamParticipantDisplay(currentLive.startDateTime, currentLive.createdAt)}
                                         </div>
                                       </div>
                                     </div>
@@ -4341,8 +4388,8 @@ export default function Home() {
                               <span>{formatLiveElapsed(currentLive.startDateTime, currentLive.createdAt, currentLive.endDateTime)}</span>
                             </div>
 
-                            <div className="text-slate-400 text-[11px] font-bold tracking-tight">
-                              {participantCount} Already participated
+                            <div className="text-slate-500 text-[11px] font-bold tracking-tight">
+                              {getExamParticipantDisplay(currentLive.startDateTime, currentLive.createdAt)}
                             </div>
                           </div>
                         </div>
@@ -8995,9 +9042,12 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Live Running Timer Box */}
+              {/* Live Running Timer Box & Participants */}
               <div className="p-3 bg-rose-50/80 border border-rose-100 rounded-2xl flex items-center justify-between text-xs font-bold text-rose-700">
-                <span>লাইভ সময়সীমা</span>
+                <span className="flex items-center gap-1.5 font-extrabold text-slate-700">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                  <span>{getExamParticipantDisplay(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt)}</span>
+                </span>
                 <span className="font-black text-rose-600 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
                   {formatLiveElapsed(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt, selectedLiveExamModal.endDateTime)}

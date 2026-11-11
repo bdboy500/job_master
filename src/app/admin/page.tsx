@@ -624,8 +624,8 @@ export default function AdminPage() {
   const SUB_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {};
 
   prepSubjectsList.forEach(subject => {
-    const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
     const cleanPrepSubs = sanitizeSubSubjects([subject])[0]?.subSubjects || [];
+    const subs: { id: string; name: string }[] = [];
     cleanPrepSubs.forEach(sub => {
       subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
       (sub.subCategories2 || []).forEach(sub2 => {
@@ -645,8 +645,8 @@ export default function AdminPage() {
   });
 
   coursesList.forEach(course => {
-    const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
     const cleanCourseSubs = sanitizeSubSubjects([course])[0]?.subSubjects || [];
+    const subs: { id: string; name: string }[] = [];
     cleanCourseSubs.forEach(sub => {
       subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
       (sub.subCategories2 || []).forEach(sub2 => {
@@ -665,8 +665,8 @@ export default function AdminPage() {
   });
 
   proSectionList.forEach(pro => {
-    const subs: { id: string; name: string }[] = [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }];
     const cleanProSubs = sanitizeSubSubjects([pro])[0]?.subSubjects || [];
+    const subs: { id: string; name: string }[] = [];
     cleanProSubs.forEach(sub => {
       subs.push({ id: sub.name, name: `${sub.name}${sub.sub ? ` (${sub.sub})` : ""}` });
       (sub.subCategories2 || []).forEach(sub2 => {
@@ -709,8 +709,10 @@ export default function AdminPage() {
     setEditingPaperId(null);
     setPaperTitle("");
     setPaperTopic("");
-    setPaperSubSubject("all");
-    setPaperPrepSubSubject("all");
+    const bcsSubs = SUB_SUBJECTS_MAP["bcs"] || [];
+    setPaperSubSubject(bcsSubs.length > 0 ? bcsSubs[0].id : "");
+    const prepSubs = SUB_SUBJECTS_MAP["Bangla"] || SUB_SUBJECTS_MAP["bangla"] || [];
+    setPaperPrepSubSubject(prepSubs.length > 0 ? prepSubs[0].id : "");
     setPaperQuestions([]);
     setPaperSearchQuery("");
     setPaperSearchSubjects(paperCategoryType === "prep_hub" ? [] : ["All"]);
@@ -724,9 +726,15 @@ export default function AdminPage() {
   const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub" | "pro_feature">("our_course");
   const [paperTitle, setPaperTitle] = useState("");
   const [paperCourse, setPaperCourse] = useState("bcs");
-  const [paperSubSubject, setPaperSubSubject] = useState("all");
+  const [paperSubSubject, setPaperSubSubject] = useState<string>(() => {
+    const list = SUB_SUBJECTS_MAP["bcs"] || [];
+    return list.length > 0 ? list[0].id : "";
+  });
   const [paperPrepSubjectId, setPaperPrepSubjectId] = useState<string>("Bangla");
-  const [paperPrepSubSubject, setPaperPrepSubSubject] = useState<string>("all");
+  const [paperPrepSubSubject, setPaperPrepSubSubject] = useState<string>(() => {
+    const list = SUB_SUBJECTS_MAP["Bangla"] || SUB_SUBJECTS_MAP["bangla"] || [];
+    return list.length > 0 ? list[0].id : "";
+  });
   const [paperProModule, setPaperProModule] = useState<string>("question_bank");
   const [paperProSubSubject, setPaperProSubSubject] = useState<string>("none");
   const [paperExamType, setPaperExamType] = useState<string>("model_test");
@@ -1699,6 +1707,15 @@ export default function AdminPage() {
       targetSubSubject = paperProSubSubject;
     }
 
+    // Validation: সাবজেক্ট এর ভেতর যদি সাব সাবজেক্ট থাকে তাহলে ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি সিলেক্ট করা বাধ্যতামূলক
+    const availableSubs = SUB_SUBJECTS_MAP[targetCourse] || SUB_SUBJECTS_MAP[targetCourse.toLowerCase()] || [];
+    if (availableSubs.length > 0) {
+      if (!targetSubSubject || targetSubSubject === "none" || targetSubSubject === "all" || targetSubSubject.trim() === "") {
+        triggerNotification("error", "এই বিষয়ের সাব-সাবজেক্ট রয়েছে। দয়া করে ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি সিলেক্ট করুন (বাধ্যতামূলক)।");
+        return;
+      }
+    }
+
     const newPaper: ExamPaper = {
       id: editingPaperId || `exam-${Date.now()}`,
       title: paperTitle.trim(),
@@ -1741,11 +1758,13 @@ export default function AdminPage() {
     } else if (paper.categoryType === "prep_hub") {
       setPaperCategoryType("prep_hub");
       setPaperPrepSubjectId(paper.course);
-      setPaperPrepSubSubject(paper.subSubject || "all");
+      const list = SUB_SUBJECTS_MAP[paper.course] || [];
+      setPaperPrepSubSubject(paper.subSubject || (list.length > 0 ? list[0].id : ""));
     } else {
       setPaperCategoryType("our_course");
       setPaperCourse(paper.course);
-      setPaperSubSubject(paper.subSubject || "all");
+      const list = SUB_SUBJECTS_MAP[paper.course] || [];
+      setPaperSubSubject(paper.subSubject || (list.length > 0 ? list[0].id : ""));
     }
 
     setPaperExamType(paper.examType);
@@ -4301,7 +4320,8 @@ export default function AdminPage() {
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperPrepSubjectId(val);
-                              setPaperPrepSubSubject("none");
+                              const list = SUB_SUBJECTS_MAP[val] || SUB_SUBJECTS_MAP[val.toLowerCase()] || [];
+                              setPaperPrepSubSubject(list.length > 0 ? list[0].id : "");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
@@ -4319,16 +4339,20 @@ export default function AdminPage() {
                             value={paperPrepSubSubject}
                             onChange={(e) => setPaperPrepSubSubject(e.target.value)}
                             className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                            required
                           >
-                            {(
-                              SUB_SUBJECTS_MAP[paperPrepSubjectId] || 
-                              SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || 
-                              (prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId) ? 
-                                SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId)!.name] : null) || 
-                              [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
-                            ).map(s => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
+                            {(() => {
+                              const list = SUB_SUBJECTS_MAP[paperPrepSubjectId] || 
+                                           SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || 
+                                           (prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId) ? 
+                                             SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId)!.name] : null) || [];
+                              if (list.length === 0) {
+                                return <option value="">কোনো সাব-সাবজেক্ট নেই</option>;
+                              }
+                              return list.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ));
+                            })()}
                           </select>
                         </div>
                       </div>
@@ -4381,7 +4405,8 @@ export default function AdminPage() {
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperCourse(val);
-                              setPaperSubSubject("none");
+                              const list = SUB_SUBJECTS_MAP[val] || SUB_SUBJECTS_MAP[val.toLowerCase()] || [];
+                              setPaperSubSubject(list.length > 0 ? list[0].id : "");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
@@ -4399,14 +4424,18 @@ export default function AdminPage() {
                             value={paperSubSubject}
                             onChange={(e) => setPaperSubSubject(e.target.value)}
                             className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                            required
                           >
-                            {(
-                              SUB_SUBJECTS_MAP[paperCourse] || 
-                              SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || 
-                              [{ id: "none", name: "None (কোনো সাব-সাবজেক্ট নেই)" }]
-                            ).map(s => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
+                            {(() => {
+                              const list = SUB_SUBJECTS_MAP[paperCourse] || 
+                                           SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || [];
+                              if (list.length === 0) {
+                                return <option value="">কোনো সাব-সাবজেক্ট নেই</option>;
+                              }
+                              return list.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ));
+                            })()}
                           </select>
                         </div>
                       </div>
