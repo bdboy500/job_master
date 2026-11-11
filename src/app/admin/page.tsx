@@ -685,9 +685,8 @@ export default function AdminPage() {
   });
 
   const EXAM_TYPES = [
-    { id: "weekly", name: "সাপ্তাহিক মডেল টেস্ট (Weekly Model Test)" },
-    { id: "daily", name: "ডেইলি কুইক টেস্ট (Daily Quick Test)" },
-    { id: "subject", name: "বিষয়ভিত্তিক পরীক্ষা (Subject Wise Test)" }
+    { id: "model_test", name: "মডেল টেস্ট / রুটিন পরীক্ষা (Routine / Model Test)" },
+    { id: "daily", name: "ডেইলি কুইক টেস্ট (Daily Quick Test)" }
   ];
 
   // ==========================================
@@ -730,7 +729,7 @@ export default function AdminPage() {
   const [paperPrepSubSubject, setPaperPrepSubSubject] = useState<string>("all");
   const [paperProModule, setPaperProModule] = useState<string>("question_bank");
   const [paperProSubSubject, setPaperProSubSubject] = useState<string>("none");
-  const [paperExamType, setPaperExamType] = useState<"weekly" | "daily" | "subject" | "special">("weekly");
+  const [paperExamType, setPaperExamType] = useState<string>("model_test");
   const [paperSubject, setPaperSubject] = useState("All Subjects");
   const [paperTopic, setPaperTopic] = useState("");
   const [paperStartDateTime, setPaperStartDateTime] = useState<string>(() => getNowLocalDateTimeStr());
@@ -5101,10 +5100,8 @@ export default function AdminPage() {
                         className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
                       >
                         <option value="all">সকল ধরন</option>
-                        <option value="weekly">🗓️ সাপ্তাহিক মডেল টেস্ট (Weekly)</option>
+                        <option value="model_test">📋 মডেল টেস্ট / রুটিন পরীক্ষা (Model Test)</option>
                         <option value="daily">⚡ ডেইলি কুইক টেস্ট (Daily)</option>
-                        <option value="subject">📖 বিষয়ভিত্তিক পরীক্ষা (Subject-wise)</option>
-                        <option value="special">⭐ স্পেশাল মডেল টেস্ট (Special)</option>
                       </select>
                     </div>
 

@@ -7,7 +7,7 @@ export interface ExamPaper {
   course: string; // "all_courses", "bcs", "bank", "primary", "ntrca", "psc", "all_job", "bangla", "english", "mathematics", "science", etc.
   subSubject?: string; // "all", "Bangla 1st Paper", "Bangla 2nd Paper", "Physics", "Arithmetic (পাটিগণিত)", etc.
   categoryType?: "our_course" | "prep_hub" | "pro_feature";
-  examType: "weekly" | "daily" | "subject" | "special";
+  examType: "model_test" | "daily" | "weekly" | "subject" | "special" | string;
   subject?: string;
   questionCount: number;
   timePerQuestionSeconds: number; // default 36s
