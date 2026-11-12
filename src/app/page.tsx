@@ -4664,16 +4664,12 @@ export default function Home() {
           {/* PREPARATION HUB SUB-SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub" && (
-            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
               
               {/* Sub-subjects grid (Only shown when no exam section is active) */}
               {!activeExamSection && (
-                <div className="space-y-3 pt-2">
-                  <h4 className="text-base sm:text-lg font-bold text-slate-800 text-center w-full py-1">
-                    বিষয় সিলেক্ট করুন
-                  </h4>
-
-                  <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-2.5 pt-0.5">
+                  <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                     {(() => {
                     let subSubjectsList: { name: string; sub: string; questions: Question[]; subCategories2?: any[] }[] = [];
 
@@ -4782,53 +4778,29 @@ export default function Home() {
                       });
 
                       return (
-                        <div className="space-y-4 pt-1">
-                          {matchingPapers.length > 0 ? (
-                            <div className="space-y-3">
-                              <p className="text-xs font-extrabold text-slate-500">
-                                {selectedPrepSubject} এর প্রশ্নপত্রসমূহ:
-                              </p>
-                              {matchingPapers.map((paper) => (
-                                <div
-                                  key={paper.id}
-                                  onClick={() => {
-                                    setSelectedLiveExamModal(paper);
-                                    if (soundEnabled) quizAudio.playClick();
-                                  }}
-                                  className="bg-white border border-slate-100 hover:border-[#FF6A00]/40 rounded-2xl p-4 flex items-center justify-between shadow-xs cursor-pointer transition-all active:scale-[0.98]"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
-                                      {"\uD83D\uDCDD"}
-                                    </div>
-                                    <div className="text-left">
-                                      <h5 className="text-xs sm:text-sm font-extrabold text-slate-800">
-                                        {paper.title}
-                                      </h5>
-                                      <p className="text-[10px] text-slate-400 font-bold">
-                                        {paper.questionCount || 20}টি প্রশ্ন • {paper.topic || "সাধারণ কুইজ"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center space-y-2 shadow-2xs">
-                              <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto">
-                                <BookOpen className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h5 className="text-sm font-extrabold text-slate-800">
-                                  কোনো সাবজেক্ট/পরীক্ষা যুক্ত করা হয়নি
-                                </h5>
-                                <p className="text-xs text-slate-400 mt-1">
-                                  এডমিন প্যানেল থেকে পরীক্ষা যুক্ত করা হলে তা এখানে দেখাবে।
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                        <div className="pt-0">
+                          <CourseExamRoutineView
+                            courseName={selectedPrepSubject}
+                            courseTitle={selectedPrepSubject}
+                            papers={matchingPapers}
+                            onStartExam={(paper) => {
+                              setSelectedLiveExamModal(paper);
+                            }}
+                            onSharePaper={(paper) => {
+                              handleShareLink({
+                                view: "live-exam",
+                                id: paper.id,
+                                title: paper.title,
+                                text: `${paper.title} - JobMaster পরীক্ষা`
+                              });
+                            }}
+                            onViewLeaderboard={() => {
+                              setCurrentScreen("rankings");
+                            }}
+                            soundEnabled={soundEnabled}
+                            quizAudio={quizAudio}
+                            formatBengaliExamDate={formatBengaliExamDate}
+                          />
                         </div>
                       );
                     }
@@ -5294,7 +5266,7 @@ export default function Home() {
           {/* PREPARATION HUB SUB-SUBJECT DETAIL SCREEN (Requirement 2, 3, 4) */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub-detail" && selectedPrepSubSubject && (
-            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
               
               {/* Level 3 Topics / Sub-categories Bar */}
               {selectedPrepSubSubject.subCategories2 && selectedPrepSubSubject.subCategories2.length > 0 && (
@@ -5412,34 +5384,12 @@ export default function Home() {
           {/* COURSE DETAIL SCREEN                                      */}
           {/* ========================================================= */}
           {currentScreen === "course-detail" && selectedCourseDetail && (
-            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
+            <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
               
-              {/* Course Title Header - Only shown when selecting among sub-subjects */}
-              {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 && (
-                <div className="pt-0.5 pb-1">
-                  <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
-                    {selectedCourseDetail.name} ({selectedCourseDetail.title})
-                  </h3>
-                  <p className="text-xs font-extrabold text-slate-400">
-                    নিচের যেকোনো বিষয় সিলেক্ট করে রুটিন ও পরীক্ষার প্রশ্নপত্র দেখুন
-                  </p>
-                </div>
-              )}
-
                   {/* Other Courses & Sub-Subjects Section */}
                   {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 && (
-                    <div className="space-y-3 pt-3">
-                      <div className="flex items-center justify-between px-1">
-                        <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                          <span>{"\uD83C\uDF93"}</span>
-                          <span>অন্যান্য কোর্স</span>
-                        </h4>
-                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-[#FF6A00] border border-orange-200">
-                          {selectedCourseDetail.subSubjects.length}টি কোর্স
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-2.5 pt-0.5">
+                      <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                         {selectedCourseDetail.subSubjects.map((subItem: any, sIdx: number) => {
                           const sub2List = subItem.subCategories2 || [];
                           

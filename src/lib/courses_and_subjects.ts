@@ -768,31 +768,50 @@ export async function saveProSectionToDb(items: ProSectionItem[]): Promise<ProSe
   try {
     const supabase = getSupabase();
     if (supabase) {
-      const payload = sorted.map(item => ({
-        id: item.id,
-        name: item.name,
-        sub: item.sub || "",
-        icon: item.icon || "Briefcase",
-        bg: item.bg || "bg-[#FFF1E6]",
-        text: item.text || "text-orange-600",
-        serial: Number(item.serial) || 1,
-        active: item.active !== false
-      }));
-
-      try {
-        const currentIds = sorted.map(i => i.id);
-        if (currentIds.length > 0) {
-          const formattedIds = currentIds.map(id => id).join(",");
-          await supabase.from("app_pro_section").delete().not("id", "in", `(${formattedIds})`);
-        }
-      } catch (delErr) {}
-
-      await supabase.from("app_pro_section").upsert(payload, { onConflict: "id" });
+      // 1. app_config holds complete JSON including subSubjects intact
       await supabase.from("app_config").upsert({
         key: "pro_section",
         value: sorted,
         updated_at: new Date().toISOString()
       }, { onConflict: "key" });
+
+      // 2. app_pro_section table
+      try {
+        const payload = sorted.map(item => ({
+          id: item.id,
+          name: item.name,
+          sub: item.sub || "",
+          icon: item.icon || "Briefcase",
+          bg: item.bg || "bg-[#FFF1E6]",
+          text: item.text || "text-orange-600",
+          serial: Number(item.serial) || 1,
+          active: item.active !== false,
+          sub_subjects: item.subSubjects || [],
+          subSubjects: item.subSubjects || []
+        }));
+
+        try {
+          const currentIds = sorted.map(i => i.id);
+          if (currentIds.length > 0) {
+            const formattedIds = currentIds.map(id => id).join(",");
+            await supabase.from("app_pro_section").delete().not("id", "in", `(${formattedIds})`);
+          }
+        } catch (delErr) {}
+
+        await supabase.from("app_pro_section").upsert(payload, { onConflict: "id" });
+      } catch (eTable) {
+        const fallback = sorted.map(item => ({
+          id: item.id,
+          name: item.name,
+          sub: item.sub || "",
+          icon: item.icon || "Briefcase",
+          bg: item.bg || "bg-[#FFF1E6]",
+          text: item.text || "text-orange-600",
+          serial: Number(item.serial) || 1,
+          active: item.active !== false
+        }));
+        await supabase.from("app_pro_section").upsert(fallback, { onConflict: "id" });
+      }
     }
   } catch (e) {}
 

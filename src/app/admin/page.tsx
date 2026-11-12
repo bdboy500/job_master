@@ -1708,11 +1708,23 @@ export default function AdminPage() {
     }
 
     // Validation: সাবজেক্ট এর ভেতর যদি সাব সাবজেক্ট থাকে তাহলে ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি সিলেক্ট করা বাধ্যতামূলক
-    const availableSubs = SUB_SUBJECTS_MAP[targetCourse] || SUB_SUBJECTS_MAP[targetCourse.toLowerCase()] || [];
+    const availableSubs = SUB_SUBJECTS_MAP[targetCourse] || 
+                          SUB_SUBJECTS_MAP[targetCourse.toLowerCase()] || 
+                          (prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse) ? 
+                            SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse)!.name] : null) || 
+                          (coursesList.find(c => c.id === targetCourse || c.name === targetCourse) ? 
+                            SUB_SUBJECTS_MAP[coursesList.find(c => c.id === targetCourse || c.name === targetCourse)!.name] : null) || 
+                          (proSectionList.find(p => p.id === targetCourse || p.name === targetCourse) ? 
+                            SUB_SUBJECTS_MAP[proSectionList.find(p => p.id === targetCourse || p.name === targetCourse)!.name] : null) || [];
+
     if (availableSubs.length > 0) {
       if (!targetSubSubject || targetSubSubject === "none" || targetSubSubject === "all" || targetSubSubject.trim() === "") {
         triggerNotification("error", "এই বিষয়ের সাব-সাবজেক্ট রয়েছে। দয়া করে ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি সিলেক্ট করুন (বাধ্যতামূলক)।");
         return;
+      }
+    } else {
+      if (!targetSubSubject || targetSubSubject === "none") {
+        targetSubSubject = "";
       }
     }
 
@@ -4320,7 +4332,10 @@ export default function AdminPage() {
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperPrepSubjectId(val);
-                              const list = SUB_SUBJECTS_MAP[val] || SUB_SUBJECTS_MAP[val.toLowerCase()] || [];
+                              const list = SUB_SUBJECTS_MAP[val] || 
+                                           SUB_SUBJECTS_MAP[val.toLowerCase()] || 
+                                           (prepSubjectsList.find(s => s.id === val || s.name === val) ? 
+                                             SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === val || s.name === val)!.name] : null) || [];
                               setPaperPrepSubSubject(list.length > 0 ? list[0].id : "");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
@@ -4331,30 +4346,42 @@ export default function AdminPage() {
                           </select>
                         </div>
 
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                            ৩.১ সাব-সাবজেক্ট / পেপার (Sub-Subject / Paper) *
-                          </label>
-                          <select
-                            value={paperPrepSubSubject}
-                            onChange={(e) => setPaperPrepSubSubject(e.target.value)}
-                            className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                            required
-                          >
-                            {(() => {
-                              const list = SUB_SUBJECTS_MAP[paperPrepSubjectId] || 
-                                           SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || 
-                                           (prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId) ? 
-                                             SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId)!.name] : null) || [];
-                              if (list.length === 0) {
-                                return <option value="">কোনো সাব-সাবজেক্ট নেই</option>;
-                              }
-                              return list.map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ));
-                            })()}
-                          </select>
-                        </div>
+                        {(() => {
+                          const list = SUB_SUBJECTS_MAP[paperPrepSubjectId] || 
+                                       SUB_SUBJECTS_MAP[paperPrepSubjectId.toLowerCase()] || 
+                                       (prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId) ? 
+                                         SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === paperPrepSubjectId || s.name === paperPrepSubjectId)!.name] : null) || [];
+                          const hasSubs = list.length > 0;
+
+                          return (
+                            <div className="space-y-1.5">
+                              <label className={`text-[11px] font-extrabold uppercase block pl-1 ${
+                                hasSubs ? "text-[#FF6A00]" : "text-slate-400"
+                              }`}>
+                                ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) {hasSubs ? "*" : "(প্রযোজ্য নয়)"}
+                              </label>
+                              <select
+                                value={hasSubs ? paperPrepSubSubject : ""}
+                                disabled={!hasSubs}
+                                onChange={(e) => setPaperPrepSubSubject(e.target.value)}
+                                className={`w-full rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all ${
+                                  hasSubs
+                                    ? "bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 text-slate-800 cursor-pointer"
+                                    : "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                                }`}
+                                required={hasSubs}
+                              >
+                                {hasSubs ? (
+                                  list.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))
+                                ) : (
+                                  <option value="">কোনো সাব-সাবজেক্ট নেই (সরাসরি যুক্ত হবে)</option>
+                                )}
+                              </select>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : paperCategoryType === "pro_feature" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
@@ -4365,8 +4392,13 @@ export default function AdminPage() {
                           <select
                             value={paperProModule}
                             onChange={(e) => {
-                              setPaperProModule(e.target.value);
-                              setPaperProSubSubject("none");
+                              const val = e.target.value;
+                              setPaperProModule(val);
+                              const list = SUB_SUBJECTS_MAP[val] || 
+                                           SUB_SUBJECTS_MAP[val.toLowerCase()] || 
+                                           (proSectionList.find(p => p.id === val || p.name === val) ? 
+                                             SUB_SUBJECTS_MAP[proSectionList.find(p => p.id === val || p.name === val)!.name] : null) || [];
+                              setPaperProSubSubject(list.length > 0 ? list[0].id : "");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
@@ -4378,21 +4410,42 @@ export default function AdminPage() {
                           </select>
                         </div>
 
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                            ৩.১ টপিক / সাব-ক্যাটাগরি (Sub-Topic)
-                          </label>
-                          <select
-                            value={paperProSubSubject}
-                            onChange={(e) => setPaperProSubSubject(e.target.value)}
-                            className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                          >
-                            <option value="none">None (সকল বিষয় / জেনারেল)</option>
-                            {SUBJECTS.map(s => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                        </div>
+                        {(() => {
+                          const list = SUB_SUBJECTS_MAP[paperProModule] || 
+                                       SUB_SUBJECTS_MAP[paperProModule.toLowerCase()] || 
+                                       (proSectionList.find(p => p.id === paperProModule || p.name === paperProModule) ? 
+                                         SUB_SUBJECTS_MAP[proSectionList.find(p => p.id === paperProModule || p.name === paperProModule)!.name] : null) || [];
+                          const hasSubs = list.length > 0;
+
+                          return (
+                            <div className="space-y-1.5">
+                              <label className={`text-[11px] font-extrabold uppercase block pl-1 ${
+                                hasSubs ? "text-[#FF6A00]" : "text-slate-400"
+                              }`}>
+                                ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) {hasSubs ? "*" : "(প্রযোজ্য নয়)"}
+                              </label>
+                              <select
+                                value={hasSubs ? paperProSubSubject : ""}
+                                disabled={!hasSubs}
+                                onChange={(e) => setPaperProSubSubject(e.target.value)}
+                                className={`w-full rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all ${
+                                  hasSubs
+                                    ? "bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 text-slate-800 cursor-pointer"
+                                    : "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                                }`}
+                                required={hasSubs}
+                              >
+                                {hasSubs ? (
+                                  list.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))
+                                ) : (
+                                  <option value="">কোনো সাব-সাবজেক্ট নেই (সরাসরি যুক্ত হবে)</option>
+                                )}
+                              </select>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
@@ -4405,39 +4458,56 @@ export default function AdminPage() {
                             onChange={(e) => {
                               const val = e.target.value;
                               setPaperCourse(val);
-                              const list = SUB_SUBJECTS_MAP[val] || SUB_SUBJECTS_MAP[val.toLowerCase()] || [];
+                              const list = SUB_SUBJECTS_MAP[val] || 
+                                           SUB_SUBJECTS_MAP[val.toLowerCase()] || 
+                                           (coursesList.find(c => c.id === val || c.name === val) ? 
+                                             SUB_SUBJECTS_MAP[coursesList.find(c => c.id === val || c.name === val)!.name] : null) || [];
                               setPaperSubSubject(list.length > 0 ? list[0].id : "");
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
-                            {COURSES.map(c => (
+                            {coursesList.map(c => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                           </select>
                         </div>
 
-                        <div className="space-y-1.5 animate-fade-in">
-                          <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
-                            ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) *
-                          </label>
-                          <select
-                            value={paperSubSubject}
-                            onChange={(e) => setPaperSubSubject(e.target.value)}
-                            className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                            required
-                          >
-                            {(() => {
-                              const list = SUB_SUBJECTS_MAP[paperCourse] || 
-                                           SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || [];
-                              if (list.length === 0) {
-                                return <option value="">কোনো সাব-সাবজেক্ট নেই</option>;
-                              }
-                              return list.map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ));
-                            })()}
-                          </select>
-                        </div>
+                        {(() => {
+                          const list = SUB_SUBJECTS_MAP[paperCourse] || 
+                                       SUB_SUBJECTS_MAP[paperCourse.toLowerCase()] || 
+                                       (coursesList.find(c => c.id === paperCourse || c.name === paperCourse) ? 
+                                         SUB_SUBJECTS_MAP[coursesList.find(c => c.id === paperCourse || c.name === paperCourse)!.name] : null) || [];
+                          const hasSubs = list.length > 0;
+
+                          return (
+                            <div className="space-y-1.5 animate-fade-in">
+                              <label className={`text-[11px] font-extrabold uppercase block pl-1 ${
+                                hasSubs ? "text-[#FF6A00]" : "text-slate-400"
+                              }`}>
+                                ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি (Sub-Subject / Paper) {hasSubs ? "*" : "(প্রযোজ্য নয়)"}
+                              </label>
+                              <select
+                                value={hasSubs ? paperSubSubject : ""}
+                                disabled={!hasSubs}
+                                onChange={(e) => setPaperSubSubject(e.target.value)}
+                                className={`w-full rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all ${
+                                  hasSubs
+                                    ? "bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 text-slate-800 cursor-pointer"
+                                    : "bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                                }`}
+                                required={hasSubs}
+                              >
+                                {hasSubs ? (
+                                  list.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))
+                                ) : (
+                                  <option value="">কোনো সাব-সাবজেক্ট নেই (সরাসরি যুক্ত হবে)</option>
+                                )}
+                              </select>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
