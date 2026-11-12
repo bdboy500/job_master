@@ -3151,7 +3151,7 @@ export default function Home() {
                     </>
                   ) : currentScreen === "prep-all-subjects" ? (
                     <>
-                      Preparation <span className="text-[#FF6A00]">Hub</span>
+                      {isProSectionActive ? "Pro" : "Preparation"} <span className="text-[#FF6A00]">{isProSectionActive ? "Features" : "Hub"}</span>
                     </>
                   ) : currentScreen === "prep-sub" ? (
                     <>
@@ -3215,7 +3215,7 @@ export default function Home() {
                   {currentScreen === "course-detail" && selectedCourseDetail 
                     ? `${selectedCourseDetail.name} Course Details` 
                     : currentScreen === "prep-all-subjects" 
-                    ? "সকল বিষয় (ALL SUBJECTS)" 
+                    ? (isProSectionActive ? "সকল প্রো ফিচার (ALL PRO FEATURES)" : "সকল বিষয় (ALL SUBJECTS)") 
                     : currentScreen === "prep-sub" 
                     ? `SELECT ${selectedPrepSubject} SUBJECT` 
                     : currentScreen === "prep-sub-detail" && selectedPrepSubSubject 
@@ -3796,9 +3796,17 @@ export default function Home() {
                     <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
                       Pro Feature
                     </h3>
-                    <span className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 px-3 py-1 rounded-full uppercase border border-orange-200/60">
-                      Pro Features
-                    </span>
+                    <button 
+                      onClick={() => {
+                        setIsProSectionActive(true);
+                        setPreviousScreen("home");
+                        setCurrentScreen("prep-all-subjects");
+                        if (soundEnabled) quizAudio.playClick();
+                      }}
+                      className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
+                    >
+                      সকল ফিচার দেখুন
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch">
@@ -4613,17 +4621,17 @@ export default function Home() {
               
               <div className="pt-1 pb-1">
                 <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
-                  বিষয়সমূহ সিলেক্ট করুন (Select Subject)
+                  {isProSectionActive ? "প্রো ফিচারসমূহ (Pro Features)" : "বিষয়সমূহ সিলেক্ট করুন (Select Subject)"}
                 </h3>
                 <p className="text-xs font-extrabold text-slate-400">
-                  নিচের যেকোনো বিষয় সিলেক্ট করে কুইজ ও প্রশ্নপত্র প্র্যাকটিস করুন
+                  {isProSectionActive ? "নিচের যেকোনো প্রো ফিচার সিলেক্ট করে কুইজ ও প্রশ্নপত্র প্র্যাকটিস করুন" : "নিচের যেকোনো বিষয় সিলেক্ট করে কুইজ ও প্রশ্নপত্র প্র্যাকটিস করুন"}
                 </p>
               </div>
 
-              {/* Subjects Grid - Apple UI Cards */}
+              {/* Subjects / Pro Features Grid - Apple UI Cards */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch">
-                {allPrepSubjectsData
-                .filter(s => s.name.toLowerCase().includes(prepSubjectSearchQuery.toLowerCase()) || (s.bnName && s.bnName.includes(prepSubjectSearchQuery)))
+                {(isProSectionActive ? allProSectionData : allPrepSubjectsData)
+                .filter((s: any) => s.name.toLowerCase().includes(prepSubjectSearchQuery.toLowerCase()) || (s.bnName && s.bnName.includes(prepSubjectSearchQuery)))
                 .map((subject, idx) => {
                   const SubIcon = subject.icon || BookOpen;
                   return (
@@ -5406,17 +5414,17 @@ export default function Home() {
           {currentScreen === "course-detail" && selectedCourseDetail && (
             <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-10 text-left">
               
-              {/* Course Title Header */}
-              <div className="pt-0.5 pb-1">
-                <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
-                  {selectedCourseDetail.name} ({selectedCourseDetail.title})
-                </h3>
-                <p className="text-xs font-extrabold text-slate-400">
-                  {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 
-                    ? "নিচের যেকোনো বিষয় সিলেক্ট করে রুটিন ও পরীক্ষার প্রশ্নপত্র দেখুন" 
-                    : "সম্পূর্ণ কোর্সের পরীক্ষার রুটিন, আর্কাইভ ও ফলাফল"}
-                </p>
-              </div>
+              {/* Course Title Header - Only shown when selecting among sub-subjects */}
+              {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 && (
+                <div className="pt-0.5 pb-1">
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 tracking-tight">
+                    {selectedCourseDetail.name} ({selectedCourseDetail.title})
+                  </h3>
+                  <p className="text-xs font-extrabold text-slate-400">
+                    নিচের যেকোনো বিষয় সিলেক্ট করে রুটিন ও পরীক্ষার প্রশ্নপত্র দেখুন
+                  </p>
+                </div>
+              )}
 
                   {/* Other Courses & Sub-Subjects Section */}
                   {selectedCourseDetail.subSubjects && selectedCourseDetail.subSubjects.length > 0 && (

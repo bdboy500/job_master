@@ -93,7 +93,7 @@ export default function CourseExamRoutineView({
     <div className="space-y-4">
       {/* Sticky Tab Bar (App-bar locked when scrolling) */}
       <div className="sticky top-[56px] sm:top-[62px] z-20 bg-slate-50/95 backdrop-blur-md py-2 px-0.5 border-b border-slate-200/80 -mx-1.5 sm:-mx-2.5 px-2 sm:px-3">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center justify-center gap-2 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => {

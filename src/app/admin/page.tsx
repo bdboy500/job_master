@@ -7652,7 +7652,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Our Course Section Settings */}
                   <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
                     <div className="flex items-center justify-between">
@@ -7734,6 +7734,48 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
 
                     <p className="text-[11px] font-bold text-slate-400 bg-white p-2.5 rounded-xl border border-slate-100">
                       {"\uD83D\uDCA1"} তথ্য: বর্তমানে হোমে {appSettings.prepHubHomeLimit || 4} টি সাবজেক্ট কার্ড প্রদর্শিত হবে।
+                    </p>
+                  </div>
+
+                  {/* Pro Feature Section Settings */}
+                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-[#FF6A00]" />
+                        <span>৩. প্রো ফিচার (Pro Feature)</span>
+                      </h4>
+                      <span className="text-xs font-black bg-orange-100 text-[#FF6A00] px-2.5 py-1 rounded-full">
+                        {appSettings.proSectionHomeLimit || 4} টি ফিচার
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                      ইউজার হোম স্ক্রিনের &quot;Pro Feature&quot; গ্রিডে কয়টি ফিচার কার্ড শো করবে সিলেক্ট করুন (১ - ১২ টি):
+                    </p>
+
+                    <div className="grid grid-cols-6 gap-2 pt-1">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => {
+                            const newSettings = { ...appSettings, proSectionHomeLimit: num };
+                            setAppSettings(newSettings);
+                            saveAppSettingsToDb(newSettings);
+                          }}
+                          className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            (appSettings.proSectionHomeLimit || 4) === num
+                              ? "bg-[#FF6A00] text-white shadow-sm shadow-orange-500/20 scale-105"
+                              : "bg-white text-slate-700 border border-slate-200 hover:bg-orange-50 hover:border-orange-300"
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] font-bold text-slate-400 bg-white p-2.5 rounded-xl border border-slate-100">
+                      {"\uD83D\uDCA1"} তথ্য: বর্তমানে হোমে {appSettings.proSectionHomeLimit || 4} টি প্রো ফিচার কার্ড প্রদর্শিত হবে।
                     </p>
                   </div>
                 </div>
