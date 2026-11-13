@@ -1332,6 +1332,7 @@ export default function AdminPage() {
     setCourseFormBg(course.bg || "bg-[#FFF1E6]");
     setCourseFormIconColor(course.iconColor || "text-orange-600");
     setCourseFormSubSubjects(course.subSubjects ? JSON.parse(JSON.stringify(course.subSubjects)) : []);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleCancelCourseEdit = () => {
@@ -1354,6 +1355,14 @@ export default function AdminPage() {
       return;
     }
     const cId = courseFormId.trim() || courseFormName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    const normalizedSubs = (courseFormSubSubjects || [])
+      .filter(s => s && s.name && s.name.trim() !== "")
+      .map((s, idx) => ({
+        ...s,
+        name: s.name.trim(),
+        sub: (s.sub || "").trim(),
+        serial: idx + 1
+      }));
 
     const newCourse: CourseItem = {
       id: cId,
@@ -1365,7 +1374,7 @@ export default function AdminPage() {
       bg: courseFormBg,
       iconColor: courseFormIconColor,
       serial: Number(courseFormSerial) || 1,
-      subSubjects: courseFormSubSubjects
+      subSubjects: normalizedSubs
     };
 
     let updatedList = [...coursesList];
@@ -1419,6 +1428,7 @@ export default function AdminPage() {
     setPrepFormText(prep.text || "text-orange-600");
     setPrepFormShowQuickTools(prep.showQuickTools !== false);
     setPrepFormSubSubjects(prep.subSubjects ? JSON.parse(JSON.stringify(prep.subSubjects)) : []);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleCancelPrepEdit = () => {
@@ -1443,6 +1453,14 @@ export default function AdminPage() {
       return;
     }
     const pId = prepFormId.trim() || `prep_${nameVal.toLowerCase().replace(/\s+/g, "_")}`;
+    const normalizedPrepSubs = (prepFormSubSubjects || [])
+      .filter(s => s && s.name && s.name.trim() !== "")
+      .map((s, idx) => ({
+        ...s,
+        name: s.name.trim(),
+        sub: (s.sub || "").trim(),
+        serial: idx + 1
+      }));
 
     const newPrep: PrepSubjectItem = {
       id: pId,
@@ -1454,7 +1472,7 @@ export default function AdminPage() {
       text: prepFormText,
       showQuickTools: prepFormShowQuickTools,
       serial: Number(prepFormSerial) || 1,
-      subSubjects: prepFormSubSubjects
+      subSubjects: normalizedPrepSubs
     };
 
     let updatedList = [...prepSubjectsList];
@@ -1503,6 +1521,15 @@ export default function AdminPage() {
       return;
     }
 
+    const normalizedProSubs = (proFormSubSubjects || [])
+      .filter(s => s && s.name && s.name.trim() !== "")
+      .map((s, idx) => ({
+        ...s,
+        name: s.name.trim(),
+        sub: (s.sub || "").trim(),
+        serial: idx + 1
+      }));
+
     const newItem: ProSectionItem = {
       id: editingProId || proFormId.trim() || `pro_${Date.now()}`,
       serial: Number(proFormSerial) || (proSectionList.length + 1),
@@ -1512,7 +1539,7 @@ export default function AdminPage() {
       bg: proFormBg,
       text: proFormText,
       active: proFormActive,
-      subSubjects: proFormSubSubjects
+      subSubjects: normalizedProSubs
     };
 
     let updated: ProSectionItem[] = [...proSectionList];
@@ -1578,6 +1605,72 @@ export default function AdminPage() {
     setProSectionList(newList);
     await saveProSectionToDb(newList);
     triggerNotification("success", "প্রো সেকশন সিরিয়াল আপডেট করা হয়েছে!");
+  };
+
+  const handleMoveCourseSubSubjectInList = async (courseIndex: number, subIndex: number, direction: "up" | "down") => {
+    const course = coursesList[courseIndex];
+    if (!course || !course.subSubjects) return;
+    const targetSubIdx = direction === "up" ? subIndex - 1 : subIndex + 1;
+    if (targetSubIdx < 0 || targetSubIdx >= course.subSubjects.length) return;
+    const updatedSubs = [...course.subSubjects];
+    const temp = updatedSubs[subIndex];
+    updatedSubs[subIndex] = updatedSubs[targetSubIdx];
+    updatedSubs[targetSubIdx] = temp;
+    updatedSubs.forEach((s, i) => { s.serial = i + 1; });
+
+    const newList = coursesList.map((c, idx) =>
+      idx === courseIndex ? { ...c, subSubjects: updatedSubs } : c
+    );
+    setCoursesList(newList);
+    if (editingCourseId === course.id) {
+      setCourseFormSubSubjects(JSON.parse(JSON.stringify(updatedSubs)));
+    }
+    await saveCoursesToDb(newList);
+    triggerNotification("success", "সাব-সাবজেক্টের সিরিয়াল আপডেট করা হয়েছে!");
+  };
+
+  const handleMovePrepSubSubjectInList = async (prepIndex: number, subIndex: number, direction: "up" | "down") => {
+    const prep = prepSubjectsList[prepIndex];
+    if (!prep || !prep.subSubjects) return;
+    const targetSubIdx = direction === "up" ? subIndex - 1 : subIndex + 1;
+    if (targetSubIdx < 0 || targetSubIdx >= prep.subSubjects.length) return;
+    const updatedSubs = [...prep.subSubjects];
+    const temp = updatedSubs[subIndex];
+    updatedSubs[subIndex] = updatedSubs[targetSubIdx];
+    updatedSubs[targetSubIdx] = temp;
+    updatedSubs.forEach((s, i) => { s.serial = i + 1; });
+
+    const newList = prepSubjectsList.map((p, idx) =>
+      idx === prepIndex ? { ...p, subSubjects: updatedSubs } : p
+    );
+    setPrepSubjectsList(newList);
+    if (editingPrepId === prep.id) {
+      setPrepFormSubSubjects(JSON.parse(JSON.stringify(updatedSubs)));
+    }
+    await savePrepSubjectsToDb(newList);
+    triggerNotification("success", "সাব-সাবজেক্টের সিরিয়াল আপডেট করা হয়েছে!");
+  };
+
+  const handleMoveProSubSubjectInList = async (proIndex: number, subIndex: number, direction: "up" | "down") => {
+    const proItem = proSectionList[proIndex];
+    if (!proItem || !proItem.subSubjects) return;
+    const targetSubIdx = direction === "up" ? subIndex - 1 : subIndex + 1;
+    if (targetSubIdx < 0 || targetSubIdx >= proItem.subSubjects.length) return;
+    const updatedSubs = [...proItem.subSubjects];
+    const temp = updatedSubs[subIndex];
+    updatedSubs[subIndex] = updatedSubs[targetSubIdx];
+    updatedSubs[targetSubIdx] = temp;
+    updatedSubs.forEach((s, i) => { s.serial = i + 1; });
+
+    const newList = proSectionList.map((p, idx) =>
+      idx === proIndex ? { ...p, subSubjects: updatedSubs } : p
+    );
+    setProSectionList(newList);
+    if (editingProId === proItem.id) {
+      setProFormSubSubjects(JSON.parse(JSON.stringify(updatedSubs)));
+    }
+    await saveProSectionToDb(newList);
+    triggerNotification("success", "সাব-সাবজেক্টের সিরিয়াল আপডেট করা হয়েছে!");
   };
 
   // Exam Paper Builder handlers
@@ -6398,6 +6491,215 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       </div>
                     </div>
 
+                    {/* SUB-SUBJECTS EDITOR (Level 2 & Level 3) FOR OUR COURSES */}
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-[#FF6A00]" />
+                            <span>সাব-সাবজেক্ট ও অধ্যায়সমূহ (Sub-Subjects)</span>
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-bold">
+                            এখান থেকে সাব-সাবজেক্ট যোগ, এডিট, ডিলিট ও উপরে-নিচে সাজাতে পারবেন
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSub: SubCategoryItem = {
+                              id: `course_sub_${Date.now()}`,
+                              name: "নতুন সাব-সাবজেক্ট",
+                              sub: "সংক্ষিপ্ত বিবরণ",
+                              serial: courseFormSubSubjects.length + 1,
+                              subCategories2: []
+                            };
+                            setCourseFormSubSubjects([...courseFormSubSubjects, newSub]);
+                          }}
+                          className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-extrabold text-[11px] rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0 border border-orange-200/80"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3px]" />
+                          <span>সাব-সাবজেক্ট</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                        {courseFormSubSubjects.length === 0 ? (
+                          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs font-semibold">
+                            কোনো সাব-সাবজেক্ট যুক্ত করা হয়নি। প্রয়োজন হলে উপরের &apos;+ সাব-সাবজেক্ট&apos; বাটনে ক্লিক করুন।
+                          </div>
+                        ) : (
+                          courseFormSubSubjects.map((subItem, sIdx) => (
+                            <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 space-y-2.5">
+                              {/* Header: Up/Down Serial Move + Index + Name + Delete */}
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex flex-col gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === 0}
+                                    onClick={() => {
+                                      if (sIdx === 0) return;
+                                      const updated = [...courseFormSubSubjects];
+                                      const temp = updated[sIdx];
+                                      updated[sIdx] = updated[sIdx - 1];
+                                      updated[sIdx - 1] = temp;
+                                      updated.forEach((s, i) => { s.serial = i + 1; });
+                                      setCourseFormSubSubjects(updated);
+                                    }}
+                                    className="p-0.5 hover:bg-orange-50 text-slate-600 hover:text-[#FF6A00] disabled:opacity-25 rounded cursor-pointer"
+                                    title="উপরে তুলুন"
+                                  >
+                                    <ArrowUp className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === courseFormSubSubjects.length - 1}
+                                    onClick={() => {
+                                      if (sIdx === courseFormSubSubjects.length - 1) return;
+                                      const updated = [...courseFormSubSubjects];
+                                      const temp = updated[sIdx];
+                                      updated[sIdx] = updated[sIdx + 1];
+                                      updated[sIdx + 1] = temp;
+                                      updated.forEach((s, i) => { s.serial = i + 1; });
+                                      setCourseFormSubSubjects(updated);
+                                    }}
+                                    className="p-0.5 hover:bg-orange-50 text-slate-600 hover:text-[#FF6A00] disabled:opacity-25 rounded cursor-pointer"
+                                    title="নিচে নামান"
+                                  >
+                                    <ArrowDown className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                </div>
+
+                                <span className="text-[10px] font-mono font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                  #{sIdx + 1}
+                                </span>
+
+                                <input
+                                  type="text"
+                                  placeholder="সাব-সাবজেক্টের নাম"
+                                  value={subItem.name}
+                                  onChange={(e) => {
+                                    const updated = [...courseFormSubSubjects];
+                                    updated[sIdx] = { ...updated[sIdx], name: e.target.value };
+                                    setCourseFormSubSubjects(updated);
+                                  }}
+                                  className="flex-1 min-w-0 bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = courseFormSubSubjects
+                                      .filter((_, i) => i !== sIdx)
+                                      .map((s, i) => ({ ...s, serial: i + 1 }));
+                                    setCourseFormSubSubjects(updated);
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
+                                  title="সাব-সাবজেক্ট ডিলিট করুন"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {/* Subtitle */}
+                              <input
+                                type="text"
+                                placeholder="ছোট বিবরণ / সাব-টাইটেল (যেমন: অধ্যায় ও মডেল টেস্ট)"
+                                value={subItem.sub || ""}
+                                onChange={(e) => {
+                                  const updated = [...courseFormSubSubjects];
+                                  updated[sIdx] = { ...updated[sIdx], sub: e.target.value };
+                                  setCourseFormSubSubjects(updated);
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:outline-none"
+                              />
+
+                              {/* Level 3 Topics inside Course Sub-Subject */}
+                              <div className="bg-white border border-slate-200/60 rounded-xl p-2 space-y-2">
+                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                                  <span>🏷️ লেভেল ৩ টপিকসমূহ (ঐচ্ছিক):</span>
+                                  <span className="text-[#FF6A00] font-bold">
+                                    {(subItem.subCategories2 || []).length}টি টপিক
+                                  </span>
+                                </div>
+
+                                {(subItem.subCategories2 || []).length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {(subItem.subCategories2 || []).map((sub2, sub2Idx) => (
+                                      <span
+                                        key={sub2.id || sub2Idx}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 border border-orange-200 text-orange-900 rounded-lg text-[11px] font-bold"
+                                      >
+                                        <span>{sub2.name}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
+                                            if (updated[sIdx]?.subCategories2) {
+                                              updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                              setCourseFormSubSubjects(updated);
+                                            }
+                                          }}
+                                          className="hover:text-rose-600 text-orange-400 p-0.5 cursor-pointer"
+                                        >
+                                          <X className="w-3 h-3 stroke-[3px]" />
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="text"
+                                    id={`input_course_sub2_${sIdx}`}
+                                    placeholder="নতুন টপিক লিখুন..."
+                                    className="flex-1 min-w-0 bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const input = e.currentTarget;
+                                        if (input.value.trim()) {
+                                          const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
+                                          if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                          updated[sIdx].subCategories2!.push({
+                                            id: `sub2_${Date.now()}_${Math.random()}`,
+                                            name: input.value.trim(),
+                                            serial: updated[sIdx].subCategories2!.length + 1
+                                          });
+                                          setCourseFormSubSubjects(updated);
+                                          input.value = "";
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const input = document.getElementById(`input_course_sub2_${sIdx}`) as HTMLInputElement;
+                                      if (input && input.value.trim()) {
+                                        const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
+                                        if (!updated[sIdx].subCategories2) updated[sIdx].subCategories2 = [];
+                                        updated[sIdx].subCategories2!.push({
+                                          id: `sub2_${Date.now()}_${Math.random()}`,
+                                          name: input.value.trim(),
+                                          serial: updated[sIdx].subCategories2!.length + 1
+                                        });
+                                        setCourseFormSubSubjects(updated);
+                                        input.value = "";
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-[#FF6A00] hover:bg-orange-600 text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer shrink-0"
+                                  >
+                                    + যোগ
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
                       className="w-full bg-[#FF6A00] hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl text-xs sm:text-sm shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
@@ -6433,62 +6735,113 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       coursesList.map((course, idx) => (
                         <div
                           key={course.id || idx}
-                          className="bg-slate-50/70 border border-slate-100 hover:border-orange-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 transition-all"
+                          className={`bg-slate-50/70 border ${
+                            editingCourseId === course.id ? "border-[#FF6A00] ring-2 ring-[#FF6A00]/10" : "border-slate-100"
+                          } hover:border-orange-200 rounded-2xl p-3.5 space-y-2.5 transition-all`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            {/* Serial Move Controls */}
-                            <div className="flex flex-col gap-0.5 shrink-0">
-                              <button
-                                disabled={idx === 0}
-                                onClick={() => handleMoveCourseSerial(idx, "up")}
-                                className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
-                                title="উপরে সরান"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
-                              </button>
-                              <button
-                                disabled={idx === coursesList.length - 1}
-                                onClick={() => handleMoveCourseSerial(idx, "down")}
-                                className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
-                                title="নিচে সরান"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 stroke-[2.5px]" />
-                              </button>
-                            </div>
-
-                            {/* Course Icon & Details */}
-                            <div className={`w-10 h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
-                              {renderPrepIcon(course.icon, "w-5 h-5 stroke-[2.2px]")}
-                            </div>
-
-                            <div className="space-y-0.5 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-black text-xs text-slate-900 truncate">
-                                  {course.name}
-                                </span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {/* Serial Move Controls */}
+                              <div className="flex flex-col gap-0.5 shrink-0">
+                                <button
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveCourseSerial(idx, "up")}
+                                  className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                  title="উপরে সরান"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
+                                </button>
+                                <button
+                                  disabled={idx === coursesList.length - 1}
+                                  onClick={() => handleMoveCourseSerial(idx, "down")}
+                                  className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                  title="নিচে সরান"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 stroke-[2.5px]" />
+                                </button>
                               </div>
-                              <p className="text-[11px] font-medium text-slate-500 truncate">
-                                {course.title}
-                              </p>
+
+                              {/* Course Icon & Details */}
+                              <div className={`w-10 h-10 ${course.bg || "bg-orange-50"} rounded-xl flex items-center justify-center ${course.iconColor || "text-orange-600"} shrink-0`}>
+                                {renderPrepIcon(course.icon, "w-5 h-5 stroke-[2.2px]")}
+                              </div>
+
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-black text-xs text-slate-900 truncate">
+                                    {course.name}
+                                  </span>
+                                  {(course.subSubjects || []).length > 0 && (
+                                    <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200/80">
+                                      {(course.subSubjects || []).length} টি সাব-সাবজেক্ট
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] font-medium text-slate-500 truncate">
+                                  {course.title}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleEditCourse(course)}
+                                className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>এডিট</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCourse(course.id, course.name)}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              onClick={() => handleEditCourse(course)}
-                              className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              <span>এডিট</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCourse(course.id, course.name)}
-                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {/* Sub-subjects reorderable pills directly inside Course Card */}
+                          {(course.subSubjects || []).length > 0 && (
+                            <div className="pt-2 border-t border-slate-200/60 space-y-1.5 pl-1">
+                              <span className="text-[10px] font-extrabold text-slate-400 block">
+                                সাব-সাবজেক্ট অর্ডার (উপরে/নিচে সাজান):
+                              </span>
+                              <div className="flex flex-col gap-1.5">
+                                {course.subSubjects!.map((subItem, sIdx) => (
+                                  <div
+                                    key={subItem.id || sIdx}
+                                    className="flex items-center justify-between gap-2 bg-white border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-700"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-[10px] font-mono text-slate-400 shrink-0">#{sIdx + 1}</span>
+                                      <span className="truncate">{subItem.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        disabled={sIdx === 0}
+                                        onClick={() => handleMoveCourseSubSubjectInList(idx, sIdx, "up")}
+                                        className="p-1 hover:bg-orange-50 text-slate-600 hover:text-[#FF6A00] disabled:opacity-25 rounded-lg cursor-pointer"
+                                        title="উপরে তুলুন"
+                                      >
+                                        <ArrowUp className="w-3 h-3 stroke-[2.5px]" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={sIdx === course.subSubjects!.length - 1}
+                                        onClick={() => handleMoveCourseSubSubjectInList(idx, sIdx, "down")}
+                                        className="p-1 hover:bg-orange-50 text-slate-600 hover:text-[#FF6A00] disabled:opacity-25 rounded-lg cursor-pointer"
+                                        title="নিচে নামান"
+                                      >
+                                        <ArrowDown className="w-3 h-3 stroke-[2.5px]" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -6721,7 +7074,43 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                           prepFormSubSubjects.map((subItem, sIdx) => (
                             <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
                               {/* Level 2 Sub-Category Header & Controls */}
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex flex-col gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === 0}
+                                    onClick={() => {
+                                      if (sIdx === 0) return;
+                                      const updated = [...prepFormSubSubjects];
+                                      const temp = updated[sIdx];
+                                      updated[sIdx] = updated[sIdx - 1];
+                                      updated[sIdx - 1] = temp;
+                                      updated.forEach((s, i) => { s.serial = i + 1; });
+                                      setPrepFormSubSubjects(updated);
+                                    }}
+                                    className="p-0.5 hover:bg-purple-50 text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded cursor-pointer"
+                                    title="উপরে তুলুন"
+                                  >
+                                    <ArrowUp className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === prepFormSubSubjects.length - 1}
+                                    onClick={() => {
+                                      if (sIdx === prepFormSubSubjects.length - 1) return;
+                                      const updated = [...prepFormSubSubjects];
+                                      const temp = updated[sIdx];
+                                      updated[sIdx] = updated[sIdx + 1];
+                                      updated[sIdx + 1] = temp;
+                                      updated.forEach((s, i) => { s.serial = i + 1; });
+                                      setPrepFormSubSubjects(updated);
+                                    }}
+                                    className="p-0.5 hover:bg-purple-50 text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded cursor-pointer"
+                                    title="নিচে নামান"
+                                  >
+                                    <ArrowDown className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                </div>
                                 <span className="text-[10px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
                                   Level 2 #{sIdx + 1}
                                 </span>
@@ -6734,7 +7123,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                     updated[sIdx].name = e.target.value;
                                     setPrepFormSubSubjects(updated);
                                   }}
-                                  className="flex-1 bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
+                                  className="flex-1 min-w-0 bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
                                 />
                                 <button
                                   type="button"
@@ -6886,71 +7275,110 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                             key={prep.id}
                             className={`bg-white border ${
                               editingPrepId === prep.id ? "border-purple-600 ring-2 ring-purple-600/10" : "border-slate-100"
-                            } rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-3`}
+                            } rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all space-y-2.5`}
                           >
-                            <div className="flex items-center gap-3">
-                              {/* Serial re-ordering controls */}
-                              <div className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 border border-slate-100 rounded-xl p-1 shrink-0">
-                                <button
-                                  onClick={() => handleMovePrepSerial(idx, "up")}
-                                  disabled={idx === 0}
-                                  className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
-                                  title="উপরে সরান"
-                                >
-                                  <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
-                                </button>
-                                <span className="text-[10px] font-mono font-black text-slate-700">
-                                  #{prep.serial || idx + 1}
-                                </span>
-                                <button
-                                  onClick={() => handleMovePrepSerial(idx, "down")}
-                                  disabled={idx === prepSubjectsList.length - 1}
-                                  className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
-                                  title="নিচে সরান"
-                                >
-                                  <ArrowDown className="w-3.5 h-3.5 stroke-[2.5px]" />
-                                </button>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                {/* Serial re-ordering controls */}
+                                <div className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 border border-slate-100 rounded-xl p-1 shrink-0">
+                                  <button
+                                    onClick={() => handleMovePrepSerial(idx, "up")}
+                                    disabled={idx === 0}
+                                    className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                    title="উপরে সরান"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5 stroke-[2.5px]" />
+                                  </button>
+                                  <span className="text-[10px] font-mono font-black text-slate-700">
+                                    #{prep.serial || idx + 1}
+                                  </span>
+                                  <button
+                                    onClick={() => handleMovePrepSerial(idx, "down")}
+                                    disabled={idx === prepSubjectsList.length - 1}
+                                    className="p-1 hover:bg-white text-slate-600 disabled:opacity-30 rounded-lg transition-all cursor-pointer"
+                                    title="নিচে সরান"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5 stroke-[2.5px]" />
+                                  </button>
+                                </div>
+
+                                {/* Subject Icon & Title */}
+                                <div className={`w-10 h-10 ${prep.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${prep.text || "text-purple-600"} shrink-0 font-extrabold`}>
+                                  {renderPrepIcon(prep.icon, "w-5 h-5 stroke-[2.2px]")}
+                                </div>
+
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-extrabold text-xs text-slate-900">
+                                      {prep.bnName && prep.bnName !== prep.name ? `${prep.bnName} (${prep.name})` : (prep.name || prep.bnName)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                                    <span>Level 2: {(prep.subSubjects || []).length}টি</span>
+                                    <span>•</span>
+                                    <span>Level 3: {totalSub2Count}টি টপিক</span>
+                                    <span>•</span>
+                                    <span className={prep.showQuickTools !== false ? "text-emerald-600 font-extrabold" : "text-rose-500 font-extrabold"}>
+                                      Quick Tools: {prep.showQuickTools !== false ? "Yes" : "No"}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
 
-                              {/* Subject Icon & Title */}
-                              <div className={`w-10 h-10 ${prep.bg || "bg-purple-50"} rounded-xl flex items-center justify-center ${prep.text || "text-purple-600"} shrink-0 font-extrabold`}>
-                                {renderPrepIcon(prep.icon, "w-5 h-5 stroke-[2.2px]")}
-                              </div>
-
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-extrabold text-xs text-slate-900">
-                                    {prep.bnName && prep.bnName !== prep.name ? `${prep.bnName} (${prep.name})` : (prep.name || prep.bnName)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                                  <span>Level 2: {(prep.subSubjects || []).length}টি</span>
-                                  <span>•</span>
-                                  <span>Level 3: {totalSub2Count}টি টপিক</span>
-                                  <span>•</span>
-                                  <span className={prep.showQuickTools !== false ? "text-emerald-600 font-extrabold" : "text-rose-500 font-extrabold"}>
-                                    Quick Tools: {prep.showQuickTools !== false ? "Yes" : "No"}
-                                  </span>
-                                </div>
+                              {/* Actions */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  onClick={() => handleEditPrep(prep)}
+                                  className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>এডিট</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePrep(prep.id, prep.bnName)}
+                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                onClick={() => handleEditPrep(prep)}
-                                className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                <span>এডিট</span>
-                              </button>
-                              <button
-                                onClick={() => handleDeletePrep(prep.id, prep.bnName)}
-                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                            {/* Sub-subjects reorder list */}
+                            {(prep.subSubjects || []).length > 0 && (
+                              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                                {prep.subSubjects!.map((subItem, sIdx) => (
+                                  <div
+                                    key={subItem.id || sIdx}
+                                    className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200/70 px-2.5 py-1 rounded-xl text-[11px] font-bold text-slate-700"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-[10px] font-mono text-slate-400 shrink-0">#{sIdx + 1}</span>
+                                      <span className="truncate">{subItem.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        disabled={sIdx === 0}
+                                        onClick={() => handleMovePrepSubSubjectInList(idx, sIdx, "up")}
+                                        className="p-1 hover:bg-white text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded-lg cursor-pointer"
+                                        title="উপরে তুলুন"
+                                      >
+                                        <ArrowUp className="w-3 h-3 stroke-[2.5px]" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={sIdx === prep.subSubjects!.length - 1}
+                                        onClick={() => handleMovePrepSubSubjectInList(idx, sIdx, "down")}
+                                        className="p-1 hover:bg-white text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded-lg cursor-pointer"
+                                        title="নিচে নামান"
+                                      >
+                                        <ArrowDown className="w-3 h-3 stroke-[2.5px]" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })
@@ -7118,7 +7546,43 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                           proFormSubSubjects.map((subItem, sIdx) => (
                             <div key={subItem.id || sIdx} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
                               {/* Level 2 Sub-Category Header & Controls */}
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex flex-col gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === 0}
+                                    onClick={() => {
+                                      if (sIdx === 0) return;
+                                      const updated = [...proFormSubSubjects];
+                                      const temp = updated[sIdx];
+                                      updated[sIdx] = updated[sIdx - 1];
+                                      updated[sIdx - 1] = temp;
+                                      updated.forEach((s, i) => { s.serial = i + 1; });
+                                      setProFormSubSubjects(updated);
+                                    }}
+                                    className="p-0.5 hover:bg-purple-50 text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded cursor-pointer"
+                                    title="উপরে তুলুন"
+                                  >
+                                    <ArrowUp className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === proFormSubSubjects.length - 1}
+                                    onClick={() => {
+                                      if (sIdx === proFormSubSubjects.length - 1) return;
+                                      const updated = [...proFormSubSubjects];
+                                      const temp = updated[sIdx];
+                                      updated[sIdx] = updated[sIdx + 1];
+                                      updated[sIdx + 1] = temp;
+                                      updated.forEach((s, i) => { s.serial = i + 1; });
+                                      setProFormSubSubjects(updated);
+                                    }}
+                                    className="p-0.5 hover:bg-purple-50 text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded cursor-pointer"
+                                    title="নিচে নামান"
+                                  >
+                                    <ArrowDown className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                </div>
                                 <span className="text-[10px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
                                   Level 2 #{sIdx + 1}
                                 </span>
@@ -7131,7 +7595,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                     updated[sIdx].name = e.target.value;
                                     setProFormSubSubjects(updated);
                                   }}
-                                  className="flex-1 bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
+                                  className="flex-1 min-w-0 bg-white border border-slate-200 focus:border-purple-500 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800"
                                 />
                                 <button
                                   type="button"
@@ -7327,17 +7791,43 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                           </div>
                         </div>
 
-                        {/* Preview sub-subjects and second sub-subjects if present */}
+                        {/* Reorderable sub-subjects directly inside Pro Section Card */}
                         {(item.subSubjects || []).length > 0 && (
-                          <div className="pt-2 border-t border-slate-200/60 flex flex-wrap gap-1.5 pl-1">
-                            {item.subSubjects!.map((s) => (
-                              <div key={s.id || s.name} className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-[10px] font-bold text-slate-700">
-                                <span>{s.name}</span>
-                                {(s.subCategories2 || []).length > 0 && (
-                                  <span className="text-[9px] bg-purple-50 text-purple-700 px-1 rounded font-black">
-                                    +{s.subCategories2!.length}
-                                  </span>
-                                )}
+                          <div className="pt-2 border-t border-slate-200/60 space-y-1.5 pl-1">
+                            {item.subSubjects!.map((s, sIdx) => (
+                              <div
+                                key={s.id || sIdx}
+                                className="flex items-center justify-between gap-2 bg-white border border-slate-200 px-2.5 py-1 rounded-xl text-[11px] font-bold text-slate-700"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-[10px] font-mono text-slate-400 shrink-0">#{sIdx + 1}</span>
+                                  <span className="truncate">{s.name}</span>
+                                  {(s.subCategories2 || []).length > 0 && (
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 px-1.5 rounded font-black shrink-0">
+                                      +{s.subCategories2!.length}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === 0}
+                                    onClick={() => handleMoveProSubSubjectInList(idx, sIdx, "up")}
+                                    className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded-lg cursor-pointer"
+                                    title="উপরে তুলুন"
+                                  >
+                                    <ArrowUp className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={sIdx === item.subSubjects!.length - 1}
+                                    onClick={() => handleMoveProSubSubjectInList(idx, sIdx, "down")}
+                                    className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 disabled:opacity-25 rounded-lg cursor-pointer"
+                                    title="নিচে নামান"
+                                  >
+                                    <ArrowDown className="w-3 h-3 stroke-[2.5px]" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>

@@ -72,6 +72,36 @@ export async function GET() {
     try {
       const supabase = getSupabase();
       if (supabase) {
+        // Priority A: app_config preserves complete JSON including subSubjects & order
+        const { data: configData } = await supabase
+          .from("app_config")
+          .select("value")
+          .eq("key", "app_courses")
+          .maybeSingle();
+
+        if (configData && configData.value && Array.isArray(configData.value) && configData.value.length > 0) {
+          const configMapped: CourseItem[] = configData.value.map((item: any) => ({
+            id: String(item.id),
+            name: String(item.name || ""),
+            title: String(item.title || ""),
+            desc: String(item.desc || ""),
+            category: String(item.category || "Other"),
+            icon: String(item.icon || "BookOpen"),
+            bg: String(item.bg || "bg-[#FFF1E6]"),
+            iconColor: String(item.iconColor || item.icon_color || "text-orange-600"),
+            serial: Number(item.serial) || 1,
+            subSubjects: Array.isArray(item.subSubjects) ? item.subSubjects : (Array.isArray(item.sub_subjects) ? item.sub_subjects : []),
+            active: item.active !== false
+          }));
+          configMapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+
+          memoryCoursesCache = configMapped;
+          saveToKvStore(configMapped);
+          saveToDiskFile(TMP_CACHE_FILE, configMapped);
+          return NextResponse.json({ courses: configMapped, source: "supabase_app_config" });
+        }
+
+        // Priority B: app_courses table
         const { data, error } = await supabase
           .from("app_courses")
           .select("id, name, title, desc, category, icon, bg, iconColor, icon_color, serial, subSubjects, sub_subjects, active")
