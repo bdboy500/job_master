@@ -139,14 +139,14 @@ export default function CourseExamRoutineView({
               setActiveTab("routine");
               playClick();
             }}
-            className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === "routine"
                 ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
                 : "bg-white text-slate-700 border border-slate-200/90 hover:bg-orange-50 hover:text-[#FF6A00]"
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>রুটিন</span>
+            <span>পরীক্ষার রুটিন</span>
             {livePapers.length > 0 && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             )}
@@ -158,7 +158,7 @@ export default function CourseExamRoutineView({
               setActiveTab("archive");
               playClick();
             }}
-            className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === "archive"
                 ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
                 : "bg-white text-slate-700 border border-slate-200/90 hover:bg-orange-50 hover:text-[#FF6A00]"
@@ -174,7 +174,7 @@ export default function CourseExamRoutineView({
               setActiveTab("results");
               playClick();
             }}
-            className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === "results"
                 ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
                 : "bg-white text-slate-700 border border-slate-200/90 hover:bg-orange-50 hover:text-[#FF6A00]"

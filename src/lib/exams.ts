@@ -337,7 +337,18 @@ export function parseRawExamPaper(item: any): ExamPaper {
   let endDT: string | undefined = item.endDateTime || item.end_date_time || item.endDate;
   let createdAt: string | undefined = item.createdAt || item.created_at;
   let updatedAt: string | undefined = item.updatedAt || item.updated_at;
-  let subSubjectVal: string | undefined = item.subSubject || item.sub_subject;
+  const cleanSubVal = (val?: string): string => {
+    if (!val) return "";
+    const low = val.trim().toLowerCase();
+    if (low === "all subjects" || low === "all" || low === "none" || low === "all_courses") {
+      return "";
+    }
+    return val.trim();
+  };
+
+  let rawSubSubject: string | undefined =
+    item.subSubject !== undefined ? item.subSubject : item.sub_subject;
+  let hasExplicitSubSubject = rawSubSubject !== undefined && rawSubSubject !== null;
   let categoryTypeVal: string | undefined = item.categoryType || item.category_type;
   let rawExamDate = item.examDate || item.exam_date || "Today";
   
@@ -358,7 +369,10 @@ export function parseRawExamPaper(item: any): ExamPaper {
         questionsArr = parsed;
       } else if (parsed && typeof parsed === "object") {
         questionsArr = parsed.questions || [];
-        if (parsed.subSubject) subSubjectVal = parsed.subSubject;
+        if (parsed.subSubject !== undefined && parsed.subSubject !== null) {
+          rawSubSubject = parsed.subSubject;
+          hasExplicitSubSubject = true;
+        }
         if (parsed.categoryType) categoryTypeVal = parsed.categoryType;
         startDT = parsed.startDateTime || startDT;
         endDT = parsed.endDateTime || endDT;
@@ -372,7 +386,10 @@ export function parseRawExamPaper(item: any): ExamPaper {
     questionsArr = item.questions;
   } else if (item.questions && typeof item.questions === "object") {
     questionsArr = item.questions.questions || [];
-    if (item.questions.subSubject) subSubjectVal = item.questions.subSubject;
+    if (item.questions.subSubject !== undefined && item.questions.subSubject !== null) {
+      rawSubSubject = item.questions.subSubject;
+      hasExplicitSubSubject = true;
+    }
     if (item.questions.categoryType) categoryTypeVal = item.questions.categoryType;
     startDT = item.questions.startDateTime || startDT;
     endDT = item.questions.endDateTime || endDT;
@@ -380,14 +397,19 @@ export function parseRawExamPaper(item: any): ExamPaper {
     updatedAt = item.questions.updatedAt || updatedAt;
   }
 
+  const resolvedSubSubject = hasExplicitSubSubject
+    ? cleanSubVal(String(rawSubSubject))
+    : cleanSubVal(item.subject);
+  const cleanedSubject = cleanSubVal(item.subject);
+
   const paperObj: ExamPaper = {
     id: item.id,
     title: item.title,
     course: item.course,
-    subSubject: subSubjectVal || item.subject,
+    subSubject: resolvedSubSubject,
     categoryType: (categoryTypeVal as any) || "our_course",
     examType: item.examType || item.exam_type || "weekly",
-    subject: item.subject,
+    subject: cleanedSubject || resolvedSubSubject || "",
     questionCount: item.questionCount || item.question_count || (Array.isArray(questionsArr) && questionsArr.length > 0 ? questionsArr.length : 10),
     timePerQuestionSeconds: item.timePerQuestionSeconds || item.time_per_question || 36,
     totalDurationSeconds: item.totalDurationSeconds || item.total_duration || 360,
@@ -464,6 +486,20 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
     updatedAt: new Date().toISOString()
   };
 
+  const cleanVal = (v?: string) => {
+    const t = (v || "").trim();
+    const low = t.toLowerCase();
+    if (!t || low === "none" || low === "all" || low === "all subjects" || low === "all_courses") return "";
+    return t;
+  };
+  const normalizedSub = cleanVal(paperWithTimestamps.subSubject);
+  const normalizedSubject = normalizedSub || cleanVal(paperWithTimestamps.subject) || cleanVal(paperWithTimestamps.course);
+  const normalizedPaper: ExamPaper = {
+    ...paperWithTimestamps,
+    subSubject: normalizedSub,
+    subject: normalizedSubject,
+  };
+
   let currentPapers: ExamPaper[] = [];
   if (typeof window !== "undefined") {
     const cached = localStorage.getItem("job_master_exam_papers");
@@ -473,9 +509,9 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
   }
   
   // Remove existing paper with same ID if exists
-  const filtered = currentPapers.filter(p => p.id !== paperWithTimestamps.id);
+  const filtered = currentPapers.filter(p => p.id !== normalizedPaper.id);
   // Put updated or newly created paper at the VERY TOP
-  const updatedPapers = [paperWithTimestamps, ...filtered];
+  const updatedPapers = [normalizedPaper, ...filtered];
 
   if (typeof window !== "undefined") {
     localStorage.setItem("job_master_exam_papers", JSON.stringify(updatedPapers));
@@ -486,36 +522,36 @@ export async function saveExamPaperToDb(paper: ExamPaper): Promise<boolean> {
     const supabase = getSupabase();
     if (supabase) {
       const questionsData = JSON.stringify({
-        questions: paperWithTimestamps.questions || [],
-        subSubject: paperWithTimestamps.subSubject,
-        categoryType: paperWithTimestamps.categoryType,
-        startDateTime: paperWithTimestamps.startDateTime,
-        endDateTime: paperWithTimestamps.endDateTime,
-        createdAt: paperWithTimestamps.createdAt,
-        updatedAt: paperWithTimestamps.updatedAt
+        questions: normalizedPaper.questions || [],
+        subSubject: normalizedSub,
+        categoryType: normalizedPaper.categoryType,
+        startDateTime: normalizedPaper.startDateTime,
+        endDateTime: normalizedPaper.endDateTime,
+        createdAt: normalizedPaper.createdAt,
+        updatedAt: normalizedPaper.updatedAt
       });
 
       // Encode start & end date-time tag in exam_date string for lightweight queries
-      const cleanExamDate = (paperWithTimestamps.examDate || "Today").replace(/\[.*\]/, "").trim();
-      const taggedExamDate = paperWithTimestamps.startDateTime && paperWithTimestamps.endDateTime
-        ? `${cleanExamDate} [${paperWithTimestamps.startDateTime}__${paperWithTimestamps.endDateTime}]`
+      const cleanExamDate = (normalizedPaper.examDate || "Today").replace(/\[.*\]/, "").trim();
+      const taggedExamDate = normalizedPaper.startDateTime && normalizedPaper.endDateTime
+        ? `${cleanExamDate} [${normalizedPaper.startDateTime}__${normalizedPaper.endDateTime}]`
         : cleanExamDate;
 
       const payload: any = {
-        id: paperWithTimestamps.id,
-        title: paperWithTimestamps.title,
-        course: paperWithTimestamps.course,
-        exam_type: paperWithTimestamps.examType,
-        subject: paperWithTimestamps.subSubject || paperWithTimestamps.subject || "All Subjects",
-        sub_subject: paperWithTimestamps.subSubject,
-        category_type: paperWithTimestamps.categoryType,
-        question_count: paperWithTimestamps.questionCount,
-        time_per_question: paperWithTimestamps.timePerQuestionSeconds,
-        total_duration: paperWithTimestamps.totalDurationSeconds,
-        total_marks: paperWithTimestamps.totalMarks,
-        topic: paperWithTimestamps.topic,
+        id: normalizedPaper.id,
+        title: normalizedPaper.title,
+        course: normalizedPaper.course,
+        exam_type: normalizedPaper.examType,
+        subject: normalizedSubject,
+        sub_subject: normalizedSub,
+        category_type: normalizedPaper.categoryType,
+        question_count: normalizedPaper.questionCount,
+        time_per_question: normalizedPaper.timePerQuestionSeconds,
+        total_duration: normalizedPaper.totalDurationSeconds,
+        total_marks: normalizedPaper.totalMarks,
+        topic: normalizedPaper.topic,
         exam_date: taggedExamDate,
-        status: paperWithTimestamps.status,
+        status: normalizedPaper.status,
         questions: questionsData
       };
 

@@ -736,9 +736,9 @@ export default function AdminPage() {
     return list.length > 0 ? list[0].id : "";
   });
   const [paperProModule, setPaperProModule] = useState<string>("question_bank");
-  const [paperProSubSubject, setPaperProSubSubject] = useState<string>("none");
+  const [paperProSubSubject, setPaperProSubSubject] = useState<string>("");
   const [paperExamType, setPaperExamType] = useState<string>("model_test");
-  const [paperSubject, setPaperSubject] = useState("All Subjects");
+  const [paperSubject, setPaperSubject] = useState("");
   const [paperTopic, setPaperTopic] = useState("");
   const [paperStartDateTime, setPaperStartDateTime] = useState<string>(() => getNowLocalDateTimeStr());
   const [paperEndDateTime, setPaperEndDateTime] = useState<string>(() => getTodayEndDateTimeStr());
@@ -1718,24 +1718,42 @@ export default function AdminPage() {
                             SUB_SUBJECTS_MAP[proSectionList.find(p => p.id === targetCourse || p.name === targetCourse)!.name] : null) || [];
 
     if (availableSubs.length > 0) {
-      if (!targetSubSubject || targetSubSubject === "none" || targetSubSubject === "all" || targetSubSubject.trim() === "") {
+      if (!targetSubSubject || targetSubSubject === "none" || targetSubSubject === "all" || targetSubSubject === "All Subjects" || targetSubSubject.trim() === "") {
         triggerNotification("error", "এই বিষয়ের সাব-সাবজেক্ট রয়েছে। দয়া করে ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি সিলেক্ট করুন (বাধ্যতামূলক)।");
         return;
       }
     } else {
-      if (!targetSubSubject || targetSubSubject === "none") {
-        targetSubSubject = "";
-      }
+      targetSubSubject = "";
     }
+
+    const cleanSubSubject =
+      targetSubSubject && targetSubSubject !== "all" && targetSubSubject !== "none" && targetSubSubject !== "All Subjects"
+        ? targetSubSubject.trim()
+        : "";
+
+    const resolvedParentName = (() => {
+      if (paperCategoryType === "prep_hub") {
+        const matched = prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse || s.bnName === targetCourse);
+        return matched ? (matched.bnName || matched.name) : targetCourse;
+      }
+      if (paperCategoryType === "pro_feature") {
+        if (targetCourse === "question_bank") return "প্রশ্ন ব্যাংক";
+        if (targetCourse === "job_solution") return "জব সল্যুশন";
+        const matched = proSectionList.find(p => p.id === targetCourse || p.name === targetCourse);
+        return matched ? matched.name : targetCourse;
+      }
+      const matched = coursesList.find(c => c.id === targetCourse || c.name === targetCourse || c.title === targetCourse);
+      return matched ? (matched.name || matched.title) : targetCourse;
+    })();
 
     const newPaper: ExamPaper = {
       id: editingPaperId || `exam-${Date.now()}`,
       title: paperTitle.trim(),
       course: targetCourse,
-      subSubject: targetSubSubject,
+      subSubject: cleanSubSubject,
       categoryType: paperCategoryType,
       examType: paperExamType,
-      subject: targetSubSubject !== "all" && targetSubSubject !== "none" ? targetSubSubject : paperSubject,
+      subject: cleanSubSubject || resolvedParentName || (paperSubject !== "All Subjects" ? paperSubject : ""),
       questionCount: normalizedPaperQuestions.length,
       timePerQuestionSeconds: 36,
       totalDurationSeconds: totalSeconds,
@@ -1762,25 +1780,30 @@ export default function AdminPage() {
   const handleEditExamPaper = async (paper: ExamPaper) => {
     setEditingPaperId(paper.id);
     setPaperTitle(paper.title);
-    
+    const cleanedEditSub =
+      paper.subSubject && paper.subSubject !== "none" && paper.subSubject !== "all" && paper.subSubject !== "All Subjects"
+        ? paper.subSubject
+        : "";
+
     if (paper.categoryType === "pro_feature") {
       setPaperCategoryType("pro_feature");
       setPaperProModule(paper.course || "question_bank");
-      setPaperProSubSubject(paper.subSubject || "none");
+      const list = SUB_SUBJECTS_MAP[paper.course] || [];
+      setPaperProSubSubject(cleanedEditSub || (list.length > 0 ? list[0].id : ""));
     } else if (paper.categoryType === "prep_hub") {
       setPaperCategoryType("prep_hub");
       setPaperPrepSubjectId(paper.course);
       const list = SUB_SUBJECTS_MAP[paper.course] || [];
-      setPaperPrepSubSubject(paper.subSubject || (list.length > 0 ? list[0].id : ""));
+      setPaperPrepSubSubject(cleanedEditSub || (list.length > 0 ? list[0].id : ""));
     } else {
       setPaperCategoryType("our_course");
       setPaperCourse(paper.course);
       const list = SUB_SUBJECTS_MAP[paper.course] || [];
-      setPaperSubSubject(paper.subSubject || (list.length > 0 ? list[0].id : ""));
+      setPaperSubSubject(cleanedEditSub || (list.length > 0 ? list[0].id : ""));
     }
 
     setPaperExamType(paper.examType);
-    setPaperSubject(paper.subject || "All Subjects");
+    setPaperSubject(paper.subject && paper.subject !== "All Subjects" ? paper.subject : "");
     setPaperTopic(paper.topic);
     
     // Parse preserved exam paper dates properly
@@ -5286,7 +5309,16 @@ export default function AdminPage() {
                       const topicMatch = (paper.topic || "").toLowerCase().includes(q);
                       const subjectMatch = (paper.subject || "").toLowerCase().includes(q);
                       const subSubjectMatch = (paper.subSubject || "").toLowerCase().includes(q);
-                      const courseMatch = (COURSES.find(c => c.id === paper.course)?.name || paper.course || "").toLowerCase().includes(q);
+                      const resolvedName = (
+                        coursesList.find(c => c.id === paper.course || c.name === paper.course)?.name ||
+                        prepSubjectsList.find(p => p.id === paper.course || p.name === paper.course)?.bnName ||
+                        prepSubjectsList.find(p => p.id === paper.course || p.name === paper.course)?.name ||
+                        proSectionList.find(pro => pro.id === paper.course || pro.name === paper.course)?.name ||
+                        (paper.course === "question_bank" ? "প্রশ্ন ব্যাংক" : paper.course === "job_solution" ? "জব সল্যুশন" : "") ||
+                        paper.course ||
+                        ""
+                      ).toLowerCase();
+                      const courseMatch = resolvedName.includes(q) || (paper.course || "").toLowerCase().includes(q);
                       if (!titleMatch && !topicMatch && !subjectMatch && !subSubjectMatch && !courseMatch) return false;
                     }
 
@@ -5316,6 +5348,35 @@ export default function AdminPage() {
                           ? "Archive"
                           : getExamStatus(paper);
 
+                        const resolvedParentLabel =
+                          paper.categoryType === "pro_feature"
+                            ? (
+                                paper.course === "question_bank"
+                                  ? "প্রশ্ন ব্যাংক"
+                                  : paper.course === "job_solution"
+                                  ? "জব সল্যুশন"
+                                  : proSectionList.find(pro => pro.id === paper.course || pro.name === paper.course)?.name || paper.course
+                              )
+                            : paper.categoryType === "prep_hub"
+                            ? (
+                                prepSubjectsList.find(p => p.id === paper.course || p.name === paper.course)?.bnName ||
+                                prepSubjectsList.find(p => p.id === paper.course || p.name === paper.course)?.name ||
+                                paper.course
+                              )
+                            : (
+                                coursesList.find(c => c.id === paper.course || c.name === paper.course)?.name ||
+                                coursesList.find(c => c.id === paper.course || c.name === paper.course)?.title ||
+                                paper.course
+                              );
+
+                        const hasRealSubSubject = Boolean(
+                          paper.subSubject &&
+                          paper.subSubject !== "all" &&
+                          paper.subSubject !== "none" &&
+                          paper.subSubject !== "All Subjects" &&
+                          paper.subSubject.toLowerCase() !== (resolvedParentLabel || "").toLowerCase()
+                        );
+
                         return (
                           <div 
                             key={paper.id}
@@ -5323,7 +5384,7 @@ export default function AdminPage() {
                             className="p-4 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-orange-200 transition-all cursor-pointer group"
                           >
                             <div className="space-y-1 text-left">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1 ${
                                   computedStatus === "Live" 
                                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold animate-pulse" 
@@ -5335,9 +5396,9 @@ export default function AdminPage() {
                                   {computedStatus}
                                 </span>
                                 <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
-                                  {paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {(COURSES.find(c => c.id === paper.course)?.name || paper.course).toUpperCase()} • {paper.examType.toUpperCase()}
+                                  {paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {resolvedParentLabel} • {paper.examType.toUpperCase()}
                                 </span>
-                                {paper.subSubject && paper.subSubject !== "all" && paper.subSubject !== "none" && (
+                                {hasRealSubSubject && (
                                   <span className="text-[9px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded">
                                     {paper.subSubject}
                                   </span>

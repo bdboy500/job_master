@@ -2430,35 +2430,108 @@ export default function Home() {
     }
   }, []);
 
-  // Helper to get course or subject display name (e.g. বিসিএস, অফিস সহায়ক)
+  // Helper to get course or subject display name (sub-subject name ONLY if sub-subject exists, otherwise parent subject/course name)
   const getPaperSubjectDisplayName = useCallback((paper: ExamPaper | null | undefined): string => {
     if (!paper) return "জব প্রিপারেশন";
-    const pCourse = (paper.course || "").toLowerCase();
-    const matchedCourse = coursesList.find(c => c.id.toLowerCase() === pCourse || c.name.toLowerCase() === pCourse || (c.title && c.title.toLowerCase() === pCourse));
-    if (matchedCourse) {
-      if (paper.subSubject && paper.subSubject !== "none" && paper.subSubject !== "all") {
-        return `${matchedCourse.name} • ${paper.subSubject}`;
+    const pCourse = (paper.course || "").trim().toLowerCase();
+    const pCat = (paper.categoryType || "").trim().toLowerCase();
+
+    const matchedCourse = allCoursesData.find(
+      c =>
+        (c.id && c.id.toLowerCase() === pCourse) ||
+        (c.name && c.name.toLowerCase() === pCourse) ||
+        (c.title && c.title.toLowerCase() === pCourse)
+    );
+    const matchedPrep = allPrepSubjectsData.find(
+      (p: any) =>
+        (p.id && p.id.toLowerCase() === pCourse) ||
+        (p.name && p.name.toLowerCase() === pCourse) ||
+        (p.bnName && p.bnName.toLowerCase() === pCourse)
+    );
+    const matchedPro =
+      (allProSectionData || []).find(
+        (p: any) =>
+          (p.id && p.id.toLowerCase() === pCourse) ||
+          (p.name && p.name.toLowerCase() === pCourse) ||
+          (pCourse === "question_bank" && p.id === "pro-question-bank") ||
+          (pCourse === "job_solution" && p.id === "pro-job-solution")
+      ) ||
+      (DEFAULT_PRO_SECTION || []).find(
+        (p: any) =>
+          (p.id && p.id.toLowerCase() === pCourse) ||
+          (p.name && p.name.toLowerCase() === pCourse) ||
+          (pCourse === "question_bank" && p.id === "pro-question-bank") ||
+          (pCourse === "job_solution" && p.id === "pro-job-solution")
+      );
+
+    let parentName = "";
+    if (pCat === "pro_feature") {
+      parentName =
+        matchedPro?.name ||
+        (pCourse === "question_bank" ? "প্রশ্ন ব্যাংক" : pCourse === "job_solution" ? "জব সল্যুশন" : "");
+    } else if (pCat === "prep_hub") {
+      parentName = (matchedPrep as any)?.bnName || matchedPrep?.name || "";
+    } else {
+      parentName =
+        matchedCourse?.name ||
+        matchedCourse?.title ||
+        (matchedPrep as any)?.bnName ||
+        matchedPrep?.name ||
+        matchedPro?.name ||
+        "";
+    }
+
+    const rawSub = (paper.subSubject || "").trim();
+    const rawSubLow = rawSub.toLowerCase();
+    const isGenericSub =
+      !rawSub ||
+      rawSubLow === "none" ||
+      rawSubLow === "all" ||
+      rawSubLow === "all subjects" ||
+      rawSubLow === "all_courses" ||
+      (parentName && rawSubLow === parentName.toLowerCase()) ||
+      (pCourse && rawSubLow === pCourse);
+
+    if (!isGenericSub) {
+      const candidateParents = [matchedCourse, matchedPrep, matchedPro].filter(Boolean);
+      for (const parent of candidateParents as any[]) {
+        const subs = parent?.subSubjects || [];
+        for (const sub of subs) {
+          if (
+            (sub.id && sub.id.toLowerCase() === rawSubLow) ||
+            (sub.name && sub.name.toLowerCase() === rawSubLow)
+          ) {
+            return sub.name;
+          }
+          for (const sub2 of sub.subCategories2 || []) {
+            if (
+              (sub2.id && sub2.id.toLowerCase() === rawSubLow) ||
+              (sub2.name && sub2.name.toLowerCase() === rawSubLow)
+            ) {
+              return sub2.name;
+            }
+          }
+        }
       }
-      return matchedCourse.name;
+      return rawSub;
     }
-    const matchedPrep = prepSubjectsList.find(p => p.id.toLowerCase() === pCourse || p.name.toLowerCase() === pCourse || (p.bnName && p.bnName.toLowerCase() === pCourse));
-    if (matchedPrep) {
-      if (paper.subSubject && paper.subSubject !== "none" && paper.subSubject !== "all") {
-        return `${matchedPrep.bnName || matchedPrep.name} • ${paper.subSubject}`;
-      }
-      return matchedPrep.bnName || matchedPrep.name;
+
+    if (parentName) {
+      return parentName;
     }
-    if (paper.subSubject && paper.subSubject !== "none" && paper.subSubject !== "all") {
-      return paper.subSubject;
-    }
-    if (paper.subject && paper.subject !== "all" && paper.subject !== "All Subjects") {
+    if (
+      paper.subject &&
+      paper.subject.toLowerCase() !== "all" &&
+      paper.subject.toLowerCase() !== "all subjects" &&
+      paper.subject.toLowerCase() !== "none"
+    ) {
       return paper.subject;
     }
     if (paper.course && paper.course !== "all_courses" && paper.course !== "all") {
       return paper.course;
     }
     return "জব প্রিপারেশন";
-  }, [coursesList, prepSubjectsList]);
+  }, [allCoursesData, allPrepSubjectsData, allProSectionData]);
 
   // Universal Deep Link & Dynamic Routing Engine (JobMaster Routing Core)
   const initialDeepLinkHandledRef = useRef<boolean>(false);
@@ -3637,6 +3710,7 @@ export default function Home() {
                       <div 
                         key={course.id}
                         onClick={() => {
+                          setIsProSectionActive(false);
                           setSelectedCourseDetail(course);
                           setActiveExamSection(null);
                           setCourseOriginScreen("home");
@@ -3736,26 +3810,30 @@ export default function Home() {
                           setPreviousScreen("home");
                           setCurrentScreen("daily-quick-test");
                         }}
-                        className="relative w-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-3.5 sm:p-4.5 flex items-center justify-between gap-3 active:scale-[0.99] cursor-pointer text-left"
+                        className="relative w-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-3 sm:p-4.5 flex items-center justify-between gap-2 sm:gap-3 active:scale-[0.99] cursor-pointer text-left"
                       >
                         {/* Left side: Icon + Text */}
-                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg sm:text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-base sm:text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                             ⚡
                           </div>
                           <div className="space-y-0.5 truncate text-left min-w-0">
-                            <h4 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
-                              Daily Quick Test
-                            </h4>
-                            <p className="text-[11px] font-bold text-slate-400 truncate">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <h4 className="font-black text-[13px] min-[360px]:text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                                Daily Quick Test
+                              </h4>
+                              {dailyCount > 0 && (
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" title="Live Now" />
+                              )}
+                            </div>
+                            <p className="text-[10.5px] sm:text-[11px] font-bold text-slate-400 truncate">
                               শর্ট কুইজ টেস্ট
                             </p>
                           </div>
                         </div>
 
-                        {/* Right side: Share/Copy Button + Badge + Arrow */}
+                        {/* Right side: Share Button + Take Exam Button */}
                         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                          {/* Copy / Share Link Button */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -3767,21 +3845,25 @@ export default function Home() {
                               });
                             }}
                             title="Daily Quick Test লিংক কপি / শেয়ার করুন"
-                            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center gap-1.5 text-xs font-black shadow-2xs"
+                            className="px-2 sm:px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center gap-1 text-[11px] sm:text-xs font-black shadow-2xs"
                           >
                             <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
                             <span>Share</span>
                           </button>
 
-                          {dailyCount > 0 && (
-                            <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                              <span>Live Now</span>
-                            </span>
-                          )}
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-50 group-hover:bg-amber-50 group-hover:text-amber-600 flex items-center justify-center text-slate-400 transition-colors">
-                            <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (soundEnabled) quizAudio.playClick();
+                              setPreviousScreen("home");
+                              setCurrentScreen("daily-quick-test");
+                            }}
+                            className="px-2.5 sm:px-3.5 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20"
+                          >
+                            <span>পরীক্ষা দিন</span>
+                            <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -3798,6 +3880,7 @@ export default function Home() {
                     </h3>
                     <button 
                       onClick={() => {
+                        setSelectedCourseDetail(null);
                         setIsProSectionActive(true);
                         setPreviousScreen("home");
                         setCurrentScreen("prep-all-subjects");
@@ -3820,6 +3903,7 @@ export default function Home() {
                             key={subject.id || idx}
                             onClick={() => {
                               if (soundEnabled) quizAudio.playClick();
+                              setSelectedCourseDetail(null);
                               setIsProSectionActive(true);
                               setSelectedPrepSubject(subject.name);
                               setPrepSubjectOrigin("home");
@@ -3856,6 +3940,7 @@ export default function Home() {
                   </h3>
                   <button 
                     onClick={() => {
+                      setSelectedCourseDetail(null);
                       setIsProSectionActive(false);
                       setPreviousScreen("home");
                       setCurrentScreen("prep-all-subjects");
@@ -3874,6 +3959,7 @@ export default function Home() {
                       <div 
                         key={subject.id || idx}
                         onClick={() => {
+                          setSelectedCourseDetail(null);
                           setIsProSectionActive(false);
                           setSelectedPrepSubject(subject.name);
                           setPrepSubjectOrigin("home");
@@ -4590,6 +4676,7 @@ export default function Home() {
                       <div 
                         key={course.id}
                         onClick={() => {
+                          setIsProSectionActive(false);
                           setSelectedCourseDetail(course);
                           setActiveExamSection(null);
                           setCourseOriginScreen("courses");
@@ -4638,6 +4725,7 @@ export default function Home() {
                     <div 
                       key={idx}
                       onClick={() => {
+                        setSelectedCourseDetail(null);
                         setSelectedPrepSubject(subject.name);
                         setPreviousScreen("prep-all-subjects");
                         setCurrentScreen("prep-sub");
@@ -4751,30 +4839,61 @@ export default function Home() {
                     }
 
                     if (subSubjectsList.length === 0) {
-                      // Filter exam papers matching this subject directly
+                      const targetLow = selectedPrepSubject.trim().toLowerCase();
+                      const matchedProObj =
+                        (allProSectionData || []).find(
+                          (s: any) =>
+                            s.name?.toLowerCase() === targetLow ||
+                            s.id?.toLowerCase() === targetLow
+                        ) ||
+                        (DEFAULT_PRO_SECTION || []).find(
+                          (s: any) =>
+                            s.name?.toLowerCase() === targetLow ||
+                            s.id?.toLowerCase() === targetLow
+                        );
+                      const matchedPrepObj = allPrepSubjectsData.find(
+                        (s: any) =>
+                          s.name?.toLowerCase() === targetLow ||
+                          (s.bnName && s.bnName.toLowerCase() === targetLow) ||
+                          s.id?.toLowerCase() === targetLow
+                      );
+
+                      const validKeys = new Set<string>(
+                        [
+                          targetLow,
+                          matchedProObj?.id?.toLowerCase(),
+                          matchedProObj?.name?.toLowerCase(),
+                          matchedProObj?.id === "pro-question-bank" ? "question_bank" : "",
+                          matchedProObj?.id === "pro-job-solution" ? "job_solution" : "",
+                          (matchedPrepObj as any)?.id?.toLowerCase(),
+                          matchedPrepObj?.name?.toLowerCase(),
+                          (matchedPrepObj as any)?.bnName?.toLowerCase()
+                        ].filter(Boolean) as string[]
+                      );
+
                       const matchingPapers = examPapers.filter(p => {
-                        const pCat = (p.categoryType || "").toLowerCase();
-                        const pCourse = (p.course || "").toLowerCase();
-                        const pSubject = (p.subSubject || p.subject || "").toLowerCase();
-                        const target = selectedPrepSubject.toLowerCase();
+                        const pCat = (p.categoryType || "").trim().toLowerCase();
+                        const pCourse = (p.course || "").trim().toLowerCase();
+                        if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                        const isProTarget = target.includes("প্রশ্ন ব্যাংক") || target.includes("question bank") || 
-                                            target.includes("জব সলুশন") || target.includes("job solution") ||
-                                            target.includes("প্রো") || target.includes("pro");
-
-                        if (pCat === "pro_feature" || isProTarget) {
-                          return pCat === "pro_feature" && (
-                            pCourse === target || pSubject === target ||
-                            pCourse.includes(target) || target.includes(pCourse) ||
-                            (target.includes("প্রশ্ন ব্যাংক") && (pCourse === "question_bank" || pCourse.includes("question"))) ||
-                            (target.includes("জব") && (pCourse === "job_solution" || pCourse.includes("job")))
-                          );
+                        if (isCurrentSubjectProFeature) {
+                          if (pCat !== "pro_feature") return false;
+                        } else {
+                          if (pCat !== "prep_hub") return false;
                         }
 
-                        return pCat === "prep_hub" && (
-                          pCourse === target || pSubject === target ||
-                          pCourse.includes(target) || target.includes(pCourse)
-                        );
+                        if (!validKeys.has(pCourse)) return false;
+
+                        const rawSub = (p.subSubject || "").trim().toLowerCase();
+                        const hasSpecificSubSubject =
+                          rawSub !== "" &&
+                          rawSub !== "none" &&
+                          rawSub !== "all" &&
+                          rawSub !== "all subjects" &&
+                          !validKeys.has(rawSub);
+                        if (hasSpecificSubSubject) return false;
+
+                        return true;
                       });
 
                       return (
@@ -4806,33 +4925,67 @@ export default function Home() {
                     }
 
                     return subSubjectsList.map((sub, idx) => {
-                      // Calculate count of specific exam papers for badge
+                      // Calculate count of specific exam papers for badge (strict parent & sub-subject match)
+                      const selectedNorm = selectedPrepSubject.trim().toLowerCase();
+                      const matchedProObj =
+                        (allProSectionData || []).find(
+                          (s: any) =>
+                            s.name?.toLowerCase() === selectedNorm ||
+                            s.id?.toLowerCase() === selectedNorm
+                        ) ||
+                        (DEFAULT_PRO_SECTION || []).find(
+                          (s: any) =>
+                            s.name?.toLowerCase() === selectedNorm ||
+                            s.id?.toLowerCase() === selectedNorm
+                        );
+                      const matchedPrepObj = allPrepSubjectsData.find(
+                        (s: any) =>
+                          s.name?.toLowerCase() === selectedNorm ||
+                          (s.bnName && s.bnName.toLowerCase() === selectedNorm) ||
+                          s.id?.toLowerCase() === selectedNorm
+                      );
+                      const validParentKeys = new Set<string>(
+                        [
+                          selectedNorm,
+                          matchedProObj?.id?.toLowerCase(),
+                          matchedProObj?.name?.toLowerCase(),
+                          matchedProObj?.id === "pro-question-bank" ? "question_bank" : "",
+                          matchedProObj?.id === "pro-job-solution" ? "job_solution" : "",
+                          (matchedPrepObj as any)?.id?.toLowerCase(),
+                          matchedPrepObj?.name?.toLowerCase(),
+                          (matchedPrepObj as any)?.bnName?.toLowerCase()
+                        ].filter(Boolean) as string[]
+                      );
+                      const validSubKeys = new Set<string>(
+                        [
+                          (sub.name || "").trim().toLowerCase(),
+                          ...((sub.subCategories2 || []).flatMap((s2: any) => [
+                            (s2.id || "").trim().toLowerCase(),
+                            (s2.name || "").trim().toLowerCase()
+                          ]))
+                        ].filter(Boolean)
+                      );
+
                       const specificPapersCount = examPapers.filter(p => {
-                        const pCourse = (p.course || "").toLowerCase();
-                        const pSub = (p.subSubject || p.subject || "").toLowerCase();
-                        const targetSub = sub.name.toLowerCase();
+                        const pCat = (p.categoryType || "").trim().toLowerCase();
+                        const pCourse = (p.course || "").trim().toLowerCase();
+                        if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                        // Exclude general all_courses and all subjects (Requirement 3)
-                        if (pCourse === "all_courses" || pCourse === "all") return false;
-                        if (pSub === "all subjects" || pSub === "all") return false;
+                        if (isCurrentSubjectProFeature) {
+                          if (pCat !== "pro_feature") return false;
+                        } else {
+                          if (pCat !== "prep_hub") return false;
+                        }
+                        if (!validParentKeys.has(pCourse)) return false;
 
-                        const selectedNorm = selectedPrepSubject.toLowerCase();
-                        const courseMatch =
-                          pCourse === selectedNorm ||
-                          (selectedNorm === "mathematics" && (pCourse === "math" || pCourse === "mathematics")) ||
-                          (selectedNorm === "general knowledge" && (pCourse === "general_knowledge" || pCourse === "gk")) ||
-                          (selectedNorm === "general science" && (pCourse === "general_science" || pCourse === "gen_science")) ||
-                          (selectedNorm === "mental ability" && (pCourse === "mental_ability" || pCourse === "mental")) ||
-                          (selectedNorm === "good governance" && (pCourse === "good_governance" || pCourse === "governance"));
+                        const rawSub = (p.subSubject || "").trim().toLowerCase();
+                        const effectiveSub =
+                          rawSub && rawSub !== "none" && rawSub !== "all" && rawSub !== "all subjects"
+                            ? rawSub
+                            : (p.subject || "").trim().toLowerCase();
+                        if (!effectiveSub || effectiveSub === "all subjects" || effectiveSub === "all" || effectiveSub === "none") return false;
 
-                        if (!courseMatch) return false;
-
-                        return pSub === targetSub || pSub.includes(targetSub) || targetSub.includes(pSub) ||
-                          (pSub.includes("1st") && targetSub.includes("1st")) ||
-                          (pSub.includes("2nd") && targetSub.includes("2nd")) ||
-                          (pSub.includes("পাটিগণিত") && targetSub.includes("পাটিগণিত")) ||
-                          (pSub.includes("বীজগণিত") && targetSub.includes("বীজগণিত")) ||
-                          (pSub.includes("জ্যামিতি") && targetSub.includes("জ্যামিতি"));
+                        return validSubKeys.has(effectiveSub);
                       }).length;
 
                       return (
@@ -4938,37 +5091,36 @@ export default function Home() {
                           if (status !== "Live") return false;
 
                           const pCat = (p.categoryType || "").toLowerCase();
-                          if (pCat && pCat !== "prep_hub") return false;
+                          if (pCat !== "prep_hub") return false;
 
-                          const pCourse = (p.course || "").toLowerCase();
-                          if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
+                          const pCourse = (p.course || "").trim().toLowerCase();
+                          if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                          const pSub = (p.subSubject || p.subject || "").toLowerCase();
+                          const pSub = (p.subSubject || "").trim().toLowerCase();
 
-                          const selectedNorm = selectedPrepSubject.toLowerCase();
+                          const selectedNorm = selectedPrepSubject.trim().toLowerCase();
                           const dbMatch = prepSubjectsList.find(s => 
                             s.name.toLowerCase() === selectedNorm || 
                             (s.bnName && s.bnName.toLowerCase() === selectedNorm) || 
-                            s.id === selectedPrepSubject
+                            s.id.toLowerCase() === selectedNorm
                           );
-                          const dbMatchId = (dbMatch?.id || "").toLowerCase();
-                          const dbMatchName = (dbMatch?.name || "").toLowerCase();
-                          const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
+                          const validKeys = new Set<string>(
+                            [
+                              selectedNorm,
+                              dbMatch?.id?.toLowerCase(),
+                              dbMatch?.name?.toLowerCase(),
+                              dbMatch?.bnName?.toLowerCase()
+                            ].filter(Boolean) as string[]
+                          );
 
-                          const courseMatch = 
-                            pCourse === selectedNorm ||
-                            pCourse === dbMatchId ||
-                            pCourse === dbMatchName ||
-                            pCourse === dbMatchBn ||
-                            (pCat === "prep_hub" && (pCourse === selectedNorm || pCourse === dbMatchId || pCourse === dbMatchName || pCourse === dbMatchBn)) ||
-                            (selectedNorm.includes("math") && (pCourse.includes("math") || pCourse.includes("গণিত"))) ||
-                            (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pCourse.includes("বাংলা"))) ||
-                            (selectedNorm.includes("english") && (pCourse.includes("english") || pCourse.includes("ইংরেজি"))) ||
-                            (!pCourse || pCourse === "all_courses" || pCourse === "all");
+                          if (!validKeys.has(pCourse)) return false;
 
-                          if (!courseMatch) return false;
-
-                          const hasSpecificSubSubject = pSub && pSub !== "none" && pSub !== "all" && pSub !== "" && pSub !== selectedNorm && pSub !== dbMatchId && pSub !== dbMatchName;
+                          const hasSpecificSubSubject =
+                            pSub !== "" &&
+                            pSub !== "none" &&
+                            pSub !== "all" &&
+                            pSub !== "all subjects" &&
+                            !validKeys.has(pSub);
                           if (hasSpecificSubSubject) return false;
 
                           return p.examType === sec.id || (sec.id === "subject" && (!p.examType || p.examType === "subject"));
@@ -5046,37 +5198,36 @@ export default function Home() {
                       if (currentStatus === "Archive") return false;
 
                       const pCat = (p.categoryType || "").toLowerCase();
-                      if (pCat && pCat !== "prep_hub") return false;
+                      if (pCat !== "prep_hub") return false;
 
-                      const pCourse = (p.course || "").toLowerCase();
-                      if (pCourse === "all_courses" && pCat !== "prep_hub") return false;
+                      const pCourse = (p.course || "").trim().toLowerCase();
+                      if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                      const pSub = (p.subSubject || p.subject || "").toLowerCase();
+                      const pSub = (p.subSubject || "").trim().toLowerCase();
 
-                      const selectedNorm = selectedPrepSubject.toLowerCase();
+                      const selectedNorm = selectedPrepSubject.trim().toLowerCase();
                       const dbMatch = prepSubjectsList.find(s => 
                         s.name.toLowerCase() === selectedNorm || 
                         (s.bnName && s.bnName.toLowerCase() === selectedNorm) || 
-                        s.id === selectedPrepSubject
+                        s.id.toLowerCase() === selectedNorm
                       );
-                      const dbMatchId = (dbMatch?.id || "").toLowerCase();
-                      const dbMatchName = (dbMatch?.name || "").toLowerCase();
-                      const dbMatchBn = (dbMatch?.bnName || "").toLowerCase();
+                      const validKeys = new Set<string>(
+                        [
+                          selectedNorm,
+                          dbMatch?.id?.toLowerCase(),
+                          dbMatch?.name?.toLowerCase(),
+                          dbMatch?.bnName?.toLowerCase()
+                        ].filter(Boolean) as string[]
+                      );
 
-                      const courseMatch = 
-                        pCourse === selectedNorm ||
-                        pCourse === dbMatchId ||
-                        pCourse === dbMatchName ||
-                        pCourse === dbMatchBn ||
-                        (pCat === "prep_hub" && (pCourse === selectedNorm || pCourse === dbMatchId || pCourse === dbMatchName || pCourse === dbMatchBn)) ||
-                        (selectedNorm.includes("math") && (pCourse.includes("math") || pCourse.includes("গণিত"))) ||
-                        (selectedNorm.includes("bangla") && (pCourse.includes("bangla") || pCourse.includes("বাংলা"))) ||
-                        (selectedNorm.includes("english") && (pCourse.includes("english") || pCourse.includes("ইংরেজি"))) ||
-                        (!pCourse || pCourse === "all_courses" || pCourse === "all");
+                      if (!validKeys.has(pCourse)) return false;
 
-                      if (!courseMatch) return false;
-
-                      const hasSpecificSubSubject = pSub && pSub !== "none" && pSub !== "all" && pSub !== "" && pSub !== selectedNorm && pSub !== dbMatchId && pSub !== dbMatchName;
+                      const hasSpecificSubSubject =
+                        pSub !== "" &&
+                        pSub !== "none" &&
+                        pSub !== "all" &&
+                        pSub !== "all subjects" &&
+                        !validKeys.has(pSub);
                       if (hasSpecificSubSubject) return false;
 
                       return p.examType === activeExamSection || (activeExamSection === "subject" && (!p.examType || p.examType === "subject"));
@@ -5312,41 +5463,111 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Routine, Archive, and Results Tabs View (Matches Image 11/12 Requirements) */}
+              {/* Routine, Archive, and Results Tabs View (Strictly isolated per subject & sub-subject) */}
               {(() => {
+                const isCourseOrigin = previousScreen === "course-detail" && Boolean(selectedCourseDetail);
+                const selectedNorm = selectedPrepSubject.trim().toLowerCase();
+
+                const matchedProObj =
+                  !isCourseOrigin && isCurrentSubjectProFeature
+                    ? (allProSectionData || []).find(
+                        (s: any) =>
+                          s.name?.toLowerCase() === selectedNorm ||
+                          s.id?.toLowerCase() === selectedNorm
+                      ) ||
+                      (DEFAULT_PRO_SECTION || []).find(
+                        (s: any) =>
+                          s.name?.toLowerCase() === selectedNorm ||
+                          s.id?.toLowerCase() === selectedNorm
+                      )
+                    : null;
+
+                const matchedPrepObj =
+                  !isCourseOrigin && !isCurrentSubjectProFeature
+                    ? allPrepSubjectsData.find(
+                        (s: any) =>
+                          s.name?.toLowerCase() === selectedNorm ||
+                          (s.bnName && s.bnName.toLowerCase() === selectedNorm) ||
+                          s.id?.toLowerCase() === selectedNorm
+                      )
+                    : null;
+
+                const validCourseKeys = new Set<string>(
+                  (isCourseOrigin && selectedCourseDetail
+                    ? [
+                        selectedCourseDetail.id?.toLowerCase(),
+                        selectedCourseDetail.name?.toLowerCase(),
+                        selectedCourseDetail.title?.toLowerCase(),
+                        selectedNorm
+                      ]
+                    : isCurrentSubjectProFeature
+                    ? [
+                        selectedNorm,
+                        matchedProObj?.id?.toLowerCase(),
+                        matchedProObj?.name?.toLowerCase(),
+                        matchedProObj?.id === "pro-question-bank" ? "question_bank" : "",
+                        matchedProObj?.id === "pro-job-solution" ? "job_solution" : ""
+                      ]
+                    : [
+                        selectedNorm,
+                        (matchedPrepObj as any)?.id?.toLowerCase(),
+                        matchedPrepObj?.name?.toLowerCase(),
+                        (matchedPrepObj as any)?.bnName?.toLowerCase()
+                      ]
+                  ).filter(Boolean) as string[]
+                );
+
+                const targetSub = (selectedPrepSubSubject.name || "").trim().toLowerCase();
+                const targetSubId = (selectedPrepSubSubject.id || "").trim().toLowerCase();
+                const validSubKeys = new Set<string>(
+                  [
+                    targetSub,
+                    targetSubId,
+                    ...((selectedPrepSubSubject.subCategories2 || []).flatMap((s2: any) => [
+                      (s2.id || "").trim().toLowerCase(),
+                      (s2.name || "").trim().toLowerCase()
+                    ]))
+                  ].filter(Boolean)
+                );
+
                 const subPapers = examPapers.filter(paper => {
-                  const pCat = (paper.categoryType || "").toLowerCase();
-                  const pCourse = (paper.course || "").toLowerCase();
-                  const pSubject = (paper.subject || "").toLowerCase();
-                  const pSubSubject = (paper.subSubject || "").toLowerCase();
+                  const pCat = (paper.categoryType || "").trim().toLowerCase();
+                  const pCourse = (paper.course || "").trim().toLowerCase();
+                  if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                  const selectedNorm = selectedPrepSubject.toLowerCase();
-                  const courseMatch = !paper.course || pCourse === "all_courses" || pCourse === "all" ||
-                    pCourse === selectedNorm || pSubject === selectedNorm ||
-                    selectedNorm.includes(pCourse) || (pCourse && selectedNorm.includes(pCourse));
+                  if (isCourseOrigin) {
+                    if (pCat === "prep_hub" || pCat === "pro_feature") return false;
+                  } else if (isCurrentSubjectProFeature) {
+                    if (pCat !== "pro_feature") return false;
+                  } else {
+                    if (pCat !== "prep_hub") return false;
+                  }
 
-                  const targetSub = (selectedPrepSubSubject.name || "").toLowerCase();
-                  const targetSubId = (selectedPrepSubSubject.id || "").toLowerCase();
-                  const isSubMatch = 
-                    pSubSubject === targetSub ||
-                    (targetSubId && pSubSubject === targetSubId) ||
-                    pSubject === targetSub ||
-                    (targetSubId && pSubject === targetSubId) ||
-                    (pSubSubject && pSubSubject.includes(targetSub)) ||
-                    (pSubSubject && targetSub.includes(pSubSubject)) ||
-                    (targetSub.includes("1st") && (pSubSubject.includes("1st") || pSubject.includes("1st"))) ||
-                    (targetSub.includes("2nd") && (pSubSubject.includes("2nd") || pSubject.includes("2nd"))) ||
-                    (targetSub.includes("পাটিগণিত") && (pSubSubject.includes("পাটিগণিত") || pSubject.includes("পাটিগণিত") || pSubSubject.includes("arithmetic"))) ||
-                    (targetSub.includes("বীজগণিত") && (pSubSubject.includes("বীজগণিত") || pSubject.includes("বীজগণিত") || pSubSubject.includes("algebra"))) ||
-                    (targetSub.includes("জ্যামিতি") && (pSubSubject.includes("জ্যামিতি") || pSubject.includes("জ্যামিতি") || pSubSubject.includes("geometry")));
+                  if (!validCourseKeys.has(pCourse)) return false;
 
-                  if (!courseMatch && !isSubMatch) return false;
+                  const rawSub = (paper.subSubject || "").trim().toLowerCase();
+                  const rawSubject = (paper.subject || "").trim().toLowerCase();
+                  const cleanSub =
+                    rawSub && rawSub !== "none" && rawSub !== "all" && rawSub !== "all subjects"
+                      ? rawSub
+                      : "";
+                  const effectiveSub =
+                    cleanSub ||
+                    (rawSubject && rawSubject !== "none" && rawSubject !== "all" && rawSubject !== "all subjects"
+                      ? rawSubject
+                      : "");
+
+                  if (!effectiveSub || !validSubKeys.has(effectiveSub)) return false;
 
                   if (selectedLevel3Topic) {
-                    const normTopic = selectedLevel3Topic.toLowerCase();
+                    const normTopic = selectedLevel3Topic.trim().toLowerCase();
                     const pTopic = (paper.topic || "").toLowerCase();
                     const pTitle = (paper.title || "").toLowerCase();
-                    return pTopic.includes(normTopic) || pTitle.includes(normTopic) || pSubSubject.includes(normTopic);
+                    return (
+                      effectiveSub === normTopic ||
+                      pTopic.includes(normTopic) ||
+                      pTitle.includes(normTopic)
+                    );
                   }
 
                   return true;
@@ -5392,27 +5613,12 @@ export default function Home() {
                       <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                         {selectedCourseDetail.subSubjects.map((subItem: any, sIdx: number) => {
                           const sub2List = subItem.subCategories2 || [];
-                          
-                          // Calculate live exams count for this subSubject / subject
-                          const liveCount = examPapers.filter(p => {
-                            const status = getExamStatus(p);
-                            if (status !== "Live") return false;
-                            if (p.course && p.course !== "all_courses" && p.course !== "all" && p.course !== selectedCourseDetail.id) return false;
-                            const pSub = (p.subSubject || p.subject || "").toLowerCase();
-                            const targetSub = (subItem.name || "").toLowerCase();
-                            if (!pSub || !targetSub) return false;
-                            return pSub === targetSub || pSub.includes(targetSub) || targetSub.includes(pSub) ||
-                              (pSub.includes("1st") && targetSub.includes("1st")) ||
-                              (pSub.includes("2nd") && targetSub.includes("2nd")) ||
-                              (pSub.includes("পাটিগণিত") && targetSub.includes("পাটিগণিত")) ||
-                              (pSub.includes("বীজগণিত") && targetSub.includes("বীজগণিত")) ||
-                              (pSub.includes("জ্যামিতি") && targetSub.includes("জ্যামিতি"));
-                          }).length;
 
                           return (
                             <div 
                               key={subItem.id || sIdx}
                               onClick={() => {
+                                setIsProSectionActive(false);
                                 setSelectedPrepSubject(selectedCourseDetail.title || selectedCourseDetail.name || "Course");
                                 setSelectedPrepSubSubject(subItem);
                                 setSelectedLevel3Topic(null);
@@ -5438,13 +5644,8 @@ export default function Home() {
                                   </div>
                                 </div>
 
-                                {/* Right side: Live Exam Count Badge + Arrow */}
+                                {/* Right side: Arrow only */}
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
-                                    liveCount > 0 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80" : "bg-slate-100 text-slate-500"
-                                  }`}>
-                                    {liveCount} Live
-                                  </span>
                                   <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-orange-50 group-hover:text-[#FF6A00] flex items-center justify-center text-slate-400 transition-colors">
                                     <ChevronRight className="w-4 h-4 stroke-[2.5px]" />
                                   </div>
@@ -5471,24 +5672,36 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* If Course has NO sub-subjects: Show Routine / Archive / Results view directly */}
+                  {/* If Course has NO sub-subjects: Show Routine / Archive / Results view directly (strictly isolated) */}
                   {(!selectedCourseDetail.subSubjects || selectedCourseDetail.subSubjects.length === 0) && (
                     <CourseExamRoutineView
                       courseName={selectedCourseDetail.name}
                       courseTitle={selectedCourseDetail.title}
                       papers={examPapers.filter(p => {
-                        const pCat = (p.categoryType || "").toLowerCase();
+                        const pCat = (p.categoryType || "").trim().toLowerCase();
                         if (pCat === "prep_hub" || pCat === "pro_feature") return false;
 
-                        const pCourse = (p.course || "").toLowerCase();
-                        const cId = (selectedCourseDetail.id || "").toLowerCase();
-                        const cTitle = (selectedCourseDetail.title || "").toLowerCase();
-                        const cName = (selectedCourseDetail.name || "").toLowerCase();
-                        const isCourseMatch = !p.course || pCourse === "all_courses" || pCourse === "all" ||
-                                              pCourse === cId || pCourse === cTitle || pCourse === cName;
+                        const pCourse = (p.course || "").trim().toLowerCase();
+                        if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
+
+                        const cId = (selectedCourseDetail.id || "").trim().toLowerCase();
+                        const cTitle = (selectedCourseDetail.title || "").trim().toLowerCase();
+                        const cName = (selectedCourseDetail.name || "").trim().toLowerCase();
+                        const isCourseMatch =
+                          (cId && pCourse === cId) ||
+                          (cTitle && pCourse === cTitle) ||
+                          (cName && pCourse === cName);
                         if (!isCourseMatch) return false;
 
-                        const hasSpecificSubSubject = p.subSubject && p.subSubject !== "none" && p.subSubject !== "all" && p.subSubject !== "";
+                        const rawSub = (p.subSubject || "").trim().toLowerCase();
+                        const hasSpecificSubSubject =
+                          rawSub !== "" &&
+                          rawSub !== "none" &&
+                          rawSub !== "all" &&
+                          rawSub !== "all subjects" &&
+                          rawSub !== cId &&
+                          rawSub !== cName &&
+                          rawSub !== cTitle;
                         if (hasSpecificSubSubject) return false;
 
                         return true;
@@ -7619,11 +7832,11 @@ export default function Home() {
                     className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-extrabold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF6A00] cursor-pointer"
                   >
                     <option value="all">{"\uD83C\uDF10"} সকল কোর্স (All Courses)</option>
-                    <option value="bcs">{"\uD83D\uDCDA"} BCS Course (বিসিএস)</option>
-                    <option value="bank">{"\uD83C\uDFE6"} Bank Jobs (ব্যাংক নিয়োগ)</option>
-                    <option value="primary">{"\uD83C\uDFEB"} Primary Teacher (প্রাথমিক শিক্ষক)</option>
-                    <option value="ntrca">{"\uD83C\uDF93"} NTRCA Exam (এনটিআরসিএ)</option>
-                    <option value="psc">{"\uD83D\uDCC4"} PSC Exams (পিএসসি)</option>
+                    {allCoursesData.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name || c.title}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -7663,11 +7876,35 @@ export default function Home() {
                   const currentStatus = getExamStatus(p);
                   if (currentStatus !== "Archive") return false;
 
-                  // 2. Course filter
+                  // 2. Strict Course / Subject filter
                   if (archiveFilterCourse !== "all") {
-                    if (p.course && p.course !== "all_courses" && p.course !== "all" && p.course !== archiveFilterCourse) {
-                      return false;
-                    }
+                    const targetLow = archiveFilterCourse.trim().toLowerCase();
+                    const pCourse = (p.course || "").trim().toLowerCase();
+                    if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
+                    const matchedCourse = allCoursesData.find(
+                      (c: any) =>
+                        c.id?.toLowerCase() === targetLow ||
+                        c.name?.toLowerCase() === targetLow ||
+                        c.title?.toLowerCase() === targetLow
+                    );
+                    const matchedPrep = allPrepSubjectsData.find(
+                      (s: any) =>
+                        s.id?.toLowerCase() === targetLow ||
+                        s.name?.toLowerCase() === targetLow ||
+                        (s.bnName && s.bnName.toLowerCase() === targetLow)
+                    );
+                    const validFilterKeys = new Set<string>(
+                      [
+                        targetLow,
+                        matchedCourse?.id?.toLowerCase(),
+                        matchedCourse?.name?.toLowerCase(),
+                        matchedCourse?.title?.toLowerCase(),
+                        (matchedPrep as any)?.id?.toLowerCase(),
+                        matchedPrep?.name?.toLowerCase(),
+                        (matchedPrep as any)?.bnName?.toLowerCase()
+                      ].filter(Boolean) as string[]
+                    );
+                    if (!validFilterKeys.has(pCourse)) return false;
                   }
 
                   // 3. Category filter

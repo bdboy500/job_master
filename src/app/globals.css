@@ -9,6 +9,10 @@
   font-display: swap;
 }
 
+:root {
+  --font-anek-bangla: "Anek Bangla";
+}
+
 @theme {
   --font-sans: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", var(--font-anek-bangla), "Anek Bangla", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", "Anek Bangla", sans-serif;

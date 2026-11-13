@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Hind_Siliguri, Poppins, Anek_Bangla } from "next/font/google";
+import { Hind_Siliguri, Poppins } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "../components/ClientProviders";
 
@@ -16,13 +16,6 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
   variable: "--font-poppins",
-});
-
-const anekBangla = Anek_Bangla({
-  subsets: ["bengali"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-anek-bangla",
 });
 
 export const metadata: Metadata = {
@@ -192,7 +185,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className={`${hindSiliguri.variable} ${poppins.variable} ${anekBangla.variable}`}>
+    <html lang="bn" className={`${hindSiliguri.variable} ${poppins.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
