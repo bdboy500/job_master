@@ -6,7 +6,7 @@ export interface ExamPaper {
   title: string;
   course: string; // "all_courses", "bcs", "bank", "primary", "ntrca", "psc", "all_job", "bangla", "english", "mathematics", "science", etc.
   subSubject?: string; // "all", "Bangla 1st Paper", "Bangla 2nd Paper", "Physics", "Arithmetic (পাটিগণিত)", etc.
-  categoryType?: "our_course" | "prep_hub" | "pro_feature";
+  categoryType?: "our_course" | "prep_hub" | "pro_feature" | "weekly_model_test";
   examType: "model_test" | "daily" | "weekly" | "subject" | "special" | string;
   subject?: string;
   questionCount: number;

@@ -2465,7 +2465,9 @@ export default function Home() {
       );
 
     let parentName = "";
-    if (pCat === "pro_feature") {
+    if (pCat === "weekly_model_test") {
+      return "সাপ্তাহিক মডেল টেস্ট";
+    } else if (pCat === "pro_feature") {
       parentName =
         matchedPro?.name ||
         (pCourse === "question_bank" ? "প্রশ্ন ব্যাংক" : pCourse === "job_solution" ? "জব সল্যুশন" : "");
@@ -2641,7 +2643,7 @@ export default function Home() {
         return true;
       }
 
-      if (view === "daily-quick-test" || view === "daily_quick_test" || view === "daily-test" || view === "daily") {
+      if (view === "daily-quick-test" || view === "daily_quick_test" || view === "daily-test" || view === "daily" || view === "weekly-model-test" || view === "weekly_model_test") {
         initialDeepLinkHandledRef.current = true;
         pendingDeepLinkRef.current = null;
         setCurrentScreen("daily-quick-test");
@@ -3276,7 +3278,7 @@ export default function Home() {
                     </>
                   ) : currentScreen === "daily-quick-test" ? (
                     <>
-                      Daily <span className="text-[#FF6A00]">Quick Test</span>
+                      সাপ্তাহিক <span className="text-[#FF6A00]">মডেল টেস্ট</span>
                     </>
                   ) : (
                     <>
@@ -3312,7 +3314,7 @@ export default function Home() {
                     : currentScreen === "auth"
                     ? (authModalMode === "signup" ? "CREATE NEW ACCOUNT" : "ACCOUNT LOGIN")
                     : currentScreen === "daily-quick-test"
-                    ? "⚡ DAILY QUICK TEST"
+                    ? "সকল চাকরী পার্থীদের জন্য"
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -3414,9 +3416,9 @@ export default function Home() {
                   shareTitle = "JobMaster Live Exams";
                   shareText = "চলতি সপ্তাহের সকল লাইভ পরীক্ষা সমূহ!";
                 } else if (currentScreen === "daily-quick-test") {
-                  shareView = "daily-quick-test";
-                  shareTitle = "JobMaster Daily Quick Test";
-                  shareText = "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন!";
+                  shareView = "weekly-model-test";
+                  shareTitle = "JobMaster সাপ্তাহিক মডেল টেস্ট";
+                  shareText = "সকল চাকরি প্রার্থীদের জন্য সাপ্তাহিক মডেল টেস্টে অংশগ্রহণ করে আপনার প্রস্তুতি যাচাই করুন!";
                 }
 
                 handleShareLink({
@@ -3790,13 +3792,14 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Daily Quick Test Section (Placed between Live Quiz Game and Preparation Hub) */}
+              {/* Weekly Model Test Section (Placed between Live Quiz Game and Pro Feature) */}
               <div className="pt-1 sm:pt-1.5">
                 {(() => {
-                  const dailyCount = examPapers.filter(p => {
+                  const weeklyLiveCount = examPapers.filter(p => {
                     const status = getExamStatus(p);
                     if (status !== "Live") return false;
-                    return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
+                    const pCat = (p.categoryType || "").trim().toLowerCase();
+                    return pCat === "weekly_model_test";
                   }).length;
 
                   return (
@@ -3820,14 +3823,14 @@ export default function Home() {
                           <div className="space-y-0.5 truncate text-left min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <h4 className="font-black text-[13px] min-[360px]:text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
-                                Daily Quick Test
+                                সাপ্তাহিক মডেল টেস্ট
                               </h4>
-                              {dailyCount > 0 && (
+                              {weeklyLiveCount > 0 && (
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" title="Live Now" />
                               )}
                             </div>
                             <p className="text-[10.5px] sm:text-[11px] font-bold text-slate-400 truncate">
-                              শর্ট কুইজ টেস্ট
+                              সকল চাকরী পার্থীদের জন্য
                             </p>
                           </div>
                         </div>
@@ -3839,12 +3842,12 @@ export default function Home() {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleShareLink({
-                                view: "daily-quick-test",
-                                title: "JobMaster Daily Quick Test",
-                                text: "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
+                                view: "weekly-model-test",
+                                title: "JobMaster সাপ্তাহিক মডেল টেস্ট",
+                                text: "JobMaster সাপ্তাহিক মডেল টেস্ট এ অংশগ্রহণ করে আপনার প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
                               });
                             }}
-                            title="Daily Quick Test লিংক কপি / শেয়ার করুন"
+                            title="সাপ্তাহিক মডেল টেস্ট লিংক কপি / শেয়ার করুন"
                             className="px-2 sm:px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center gap-1 text-[11px] sm:text-xs font-black shadow-2xs"
                           >
                             <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
@@ -4496,159 +4499,35 @@ export default function Home() {
           )}
 
           {/* ========================================================= */}
-          {/* SCREEN: DAILY QUICK TEST SCREEN                           */}
+          {/* SCREEN: WEEKLY MODEL TEST SCREEN (সাপ্তাহিক মডেল টেস্ট)  */}
           {/* ========================================================= */}
           {currentScreen === "daily-quick-test" && (
-            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12 text-left">
-              {/* Header Banner */}
-              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#FF6A00] rounded-3xl p-5 text-white shadow-sm flex items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">⚡</span>
-                    <h3 className="text-lg sm:text-xl font-black">Daily Quick Test</h3>
-                  </div>
-                  <p className="text-xs text-amber-100 font-bold">
-                    শর্ট কুইজ টেস্ট ও দ্রুত রিভিশন
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleShareLink({
-                        view: "daily-quick-test",
-                        title: "JobMaster Daily Quick Test",
-                        text: "JobMaster Daily Quick Test এ অংশগ্রহণ করে প্রতিদিনের প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
-                      });
-                    }}
-                    title="লিংক কপি / শেয়ার করুন"
-                    className="bg-white/20 hover:bg-white/30 border border-white/40 text-white px-3 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-xs"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Share</span>
-                  </button>
-                  {(() => {
-                    const dailyCount = examPapers.filter(p => {
-                      const status = getExamStatus(p);
-                      if (status !== "Archive") return false;
-                      return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
-                    }).length;
-                    return (
-                      <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-2xl text-xs font-black hidden min-[400px]:block">
-                        {dailyCount}টি পরীক্ষা
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* Papers List */}
-              {(() => {
-                const rawDailyPapers = examPapers.filter(p => {
-                  const currentStatus = getExamStatus(p);
-                  if (currentStatus === "Archive") return false;
-                  return p.examType === "daily" || (p.title && (p.title.toLowerCase().includes("daily") || p.title.toLowerCase().includes("ডেইলি")));
-                });
-
-                const dailyPapers = sortExamPapersForDisplay(rawDailyPapers);
-
-                if (dailyPapers.length === 0) {
-                  return (
-                    <div className="bg-white border border-slate-200/80 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
-                      <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-black">
-                        ⚡
-                      </div>
-                      <h3 className="text-sm sm:text-base font-black text-slate-800">
-                        বর্তমানে কোনো ডেইলি কুইক টেস্ট লাইভ নেই
-                      </h3>
-                      <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
-                        নতুন ডেইলি কুইক টেস্ট প্রকাশিত হলে এখানে দেখতে পাবেন। আগের সকল পরীক্ষা আর্কাইভ থেকে অনুশীলন করতে পারেন।
-                      </p>
-                      <button
-                        onClick={() => {
-                          setArchiveFilterCategory("daily");
-                          setArchiveModalOpen(true);
-                          if (soundEnabled) quizAudio.playClick();
-                        }}
-                        className="px-4 py-2 bg-[#FF6A00] text-white text-xs font-black rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm shadow-orange-500/20 inline-block"
-                      >
-                        আর্কাইভ থেকে পূর্বের কুইক টেস্ট দেখুন
-                      </button>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="space-y-4">
-                    {dailyPapers.map((paper) => {
-                      const computedStatus = getExamStatus(paper);
-                      const totalSec = paper.totalDurationSeconds || (paper.questions?.length || 10) * 36;
-                      const durationMins = Math.floor(totalSec / 60);
-
-                      return (
-                        <div key={paper.id} className="bg-white border border-slate-200/80 hover:border-amber-300 rounded-[2rem] p-5 shadow-2xs space-y-3.5 transition-all">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <span className="text-[11px] font-extrabold text-slate-500">
-                              📅 {paper.examDate || "Live Now"}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
-                                ⚡ Daily Quick Test
-                              </span>
-                              {computedStatus === "Live" && (
-                                <span className="bg-emerald-50 text-emerald-600 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100">
-                                  ● Live
-                                </span>
-                              )}
-                              {computedStatus === "Upcoming" && (
-                                <span className="bg-amber-50 text-amber-700 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">
-                                  ⏳ Upcoming
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
-                            <span>Marks: {paper.totalMarks || paper.questions?.length || 10}</span>
-                            <span>•</span>
-                            <span>Duration: {durationMins} mins</span>
-                          </div>
-
-                          <div className="space-y-1">
-                            {paper.topic && (
-                              <div className="text-xs font-extrabold text-[#FF6A00]">
-                                Topic: <span className="text-slate-800 font-bold">"{paper.topic}"</span>
-                              </div>
-                            )}
-                            <h4 className="text-sm font-black text-slate-800 leading-snug">
-                              <MathRenderer content={paper.title} />
-                            </h4>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3 pt-1">
-                            <button
-                              onClick={() => {
-                                setSelectedLiveExamModal(paper);
-                                if (soundEnabled) quizAudio.playClick();
-                              }}
-                              className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-purple-500/10 cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <span>📝 পরীক্ষা দিন</span>
-                            </button>
-
-                            <button
-                              onClick={() => handleOpenViewPaper(paper)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 rounded-2xl active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <span>📄 প্রশ্নপত্র</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+            <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
+              <CourseExamRoutineView
+                courseName="সাপ্তাহিক মডেল টেস্ট"
+                courseTitle="সাপ্তাহিক মডেল টেস্ট"
+                papers={examPapers.filter(p => {
+                  const pCat = (p.categoryType || "").trim().toLowerCase();
+                  return pCat === "weekly_model_test";
+                })}
+                onStartExam={(paper) => {
+                  setSelectedLiveExamModal(paper);
+                }}
+                onSharePaper={(paper) => {
+                  handleShareLink({
+                    view: "live-exam",
+                    id: paper.id,
+                    title: paper.title,
+                    text: `${paper.title} - JobMaster সাপ্তাহিক মডেল টেস্ট`
+                  });
+                }}
+                onViewLeaderboard={() => {
+                  setCurrentScreen("rankings");
+                }}
+                soundEnabled={soundEnabled}
+                quizAudio={quizAudio}
+                formatBengaliExamDate={formatBengaliExamDate}
+              />
             </div>
           )}
 
@@ -5536,7 +5415,7 @@ export default function Home() {
                   if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
                   if (isCourseOrigin) {
-                    if (pCat === "prep_hub" || pCat === "pro_feature") return false;
+                    if (pCat === "prep_hub" || pCat === "pro_feature" || pCat === "weekly_model_test") return false;
                   } else if (isCurrentSubjectProFeature) {
                     if (pCat !== "pro_feature") return false;
                   } else {
@@ -5679,7 +5558,7 @@ export default function Home() {
                       courseTitle={selectedCourseDetail.title}
                       papers={examPapers.filter(p => {
                         const pCat = (p.categoryType || "").trim().toLowerCase();
-                        if (pCat === "prep_hub" || pCat === "pro_feature") return false;
+                        if (pCat === "prep_hub" || pCat === "pro_feature" || pCat === "weekly_model_test") return false;
 
                         const pCourse = (p.course || "").trim().toLowerCase();
                         if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;

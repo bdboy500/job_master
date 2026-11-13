@@ -697,7 +697,7 @@ export default function AdminPage() {
   const [examPaperDisplayLimit, setExamPaperDisplayLimit] = useState<number>(10);
 
   // Dynamic Filtering for Published Exam Papers
-  const [filterPaperCategory, setFilterPaperCategory] = useState<"all" | "our_course" | "prep_hub" | "pro_feature">("all");
+  const [filterPaperCategory, setFilterPaperCategory] = useState<"all" | "our_course" | "prep_hub" | "pro_feature" | "weekly_model_test">("all");
   const [filterPaperCourse, setFilterPaperCourse] = useState<string>("all");
   const [filterPaperSubSubject, setFilterPaperSubSubject] = useState<string>("all");
   const [filterPaperExamType, setFilterPaperExamType] = useState<string>("all");
@@ -723,7 +723,7 @@ export default function AdminPage() {
   };
 
   // Form states for creating/editing paper
-  const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub" | "pro_feature">("our_course");
+  const [paperCategoryType, setPaperCategoryType] = useState<"our_course" | "prep_hub" | "pro_feature" | "weekly_model_test">("our_course");
   const [paperTitle, setPaperTitle] = useState("");
   const [paperCourse, setPaperCourse] = useState("bcs");
   const [paperSubSubject, setPaperSubSubject] = useState<string>(() => {
@@ -1753,7 +1753,7 @@ export default function AdminPage() {
   const handlePublishExamPaper = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!paperTitle.trim()) {
+    if (paperCategoryType !== "weekly_model_test" && !paperTitle.trim()) {
       triggerNotification("error", "দয়া করে পরীক্ষার নাম প্রদান করুন।");
       return;
     }
@@ -1792,7 +1792,10 @@ export default function AdminPage() {
     let targetCourse = paperCourse;
     let targetSubSubject = paperSubSubject;
 
-    if (paperCategoryType === "prep_hub") {
+    if (paperCategoryType === "weekly_model_test") {
+      targetCourse = "weekly_model_test";
+      targetSubSubject = "";
+    } else if (paperCategoryType === "prep_hub") {
       targetCourse = paperPrepSubjectId;
       targetSubSubject = paperPrepSubSubject;
     } else if (paperCategoryType === "pro_feature") {
@@ -1801,14 +1804,18 @@ export default function AdminPage() {
     }
 
     // Validation: সাবজেক্ট এর ভেতর যদি সাব সাবজেক্ট থাকে তাহলে ৩.১ বিষয় পেপার / সাব-ক্যাটাগরি সিলেক্ট করা বাধ্যতামূলক
-    const availableSubs = SUB_SUBJECTS_MAP[targetCourse] || 
-                          SUB_SUBJECTS_MAP[targetCourse.toLowerCase()] || 
-                          (prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse) ? 
-                            SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse)!.name] : null) || 
-                          (coursesList.find(c => c.id === targetCourse || c.name === targetCourse) ? 
-                            SUB_SUBJECTS_MAP[coursesList.find(c => c.id === targetCourse || c.name === targetCourse)!.name] : null) || 
-                          (proSectionList.find(p => p.id === targetCourse || p.name === targetCourse) ? 
-                            SUB_SUBJECTS_MAP[proSectionList.find(p => p.id === targetCourse || p.name === targetCourse)!.name] : null) || [];
+    const availableSubs = paperCategoryType === "weekly_model_test"
+      ? []
+      : (
+          SUB_SUBJECTS_MAP[targetCourse] || 
+          SUB_SUBJECTS_MAP[targetCourse.toLowerCase()] || 
+          (prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse) ? 
+            SUB_SUBJECTS_MAP[prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse)!.name] : null) || 
+          (coursesList.find(c => c.id === targetCourse || c.name === targetCourse) ? 
+            SUB_SUBJECTS_MAP[coursesList.find(c => c.id === targetCourse || c.name === targetCourse)!.name] : null) || 
+          (proSectionList.find(p => p.id === targetCourse || p.name === targetCourse) ? 
+            SUB_SUBJECTS_MAP[proSectionList.find(p => p.id === targetCourse || p.name === targetCourse)!.name] : null) || []
+        );
 
     if (availableSubs.length > 0) {
       if (!targetSubSubject || targetSubSubject === "none" || targetSubSubject === "all" || targetSubSubject === "All Subjects" || targetSubSubject.trim() === "") {
@@ -1825,6 +1832,9 @@ export default function AdminPage() {
         : "";
 
     const resolvedParentName = (() => {
+      if (paperCategoryType === "weekly_model_test") {
+        return "সাপ্তাহিক মডেল টেস্ট";
+      }
       if (paperCategoryType === "prep_hub") {
         const matched = prepSubjectsList.find(s => s.id === targetCourse || s.name === targetCourse || s.bnName === targetCourse);
         return matched ? (matched.bnName || matched.name) : targetCourse;
@@ -1839,14 +1849,26 @@ export default function AdminPage() {
       return matched ? (matched.name || matched.title) : targetCourse;
     })();
 
+    const toBnDigit = (n: number) => n.toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[+d]);
+    const existingWeeklyCount = examPapers.filter(p => p.categoryType === "weekly_model_test").length;
+    const autoWeeklyTitle = paperTopic.trim()
+      ? (paperTopic.trim().includes("সাপ্তাহিক মডেল টেস্ট") ? paperTopic.trim() : `সাপ্তাহিক মডেল টেস্ট - ${paperTopic.trim()}`)
+      : `সাপ্তাহিক মডেল টেস্ট - ${toBnDigit(existingWeeklyCount + 1)}`;
+    const finalTitle = paperCategoryType === "weekly_model_test"
+      ? (paperTitle.trim() || autoWeeklyTitle)
+      : paperTitle.trim();
+    const finalExamType = paperCategoryType === "weekly_model_test" ? "weekly" : paperExamType;
+
     const newPaper: ExamPaper = {
       id: editingPaperId || `exam-${Date.now()}`,
-      title: paperTitle.trim(),
+      title: finalTitle,
       course: targetCourse,
       subSubject: cleanSubSubject,
       categoryType: paperCategoryType,
-      examType: paperExamType,
-      subject: cleanSubSubject || resolvedParentName || (paperSubject !== "All Subjects" ? paperSubject : ""),
+      examType: finalExamType,
+      subject: paperCategoryType === "weekly_model_test"
+        ? "সাপ্তাহিক মডেল টেস্ট"
+        : (cleanSubSubject || resolvedParentName || (paperSubject !== "All Subjects" ? paperSubject : "")),
       questionCount: normalizedPaperQuestions.length,
       timePerQuestionSeconds: 36,
       totalDurationSeconds: totalSeconds,
@@ -1878,7 +1900,9 @@ export default function AdminPage() {
         ? paper.subSubject
         : "";
 
-    if (paper.categoryType === "pro_feature") {
+    if (paper.categoryType === "weekly_model_test") {
+      setPaperCategoryType("weekly_model_test");
+    } else if (paper.categoryType === "pro_feature") {
       setPaperCategoryType("pro_feature");
       setPaperProModule(paper.course || "question_bank");
       const list = SUB_SUBJECTS_MAP[paper.course] || [];
@@ -4342,12 +4366,12 @@ export default function AdminPage() {
                 </div>
 
                 <form onSubmit={handlePublishExamPaper} className="space-y-6">
-                  {/* Mode Selector: Our Course vs Preparation Hub vs Pro Feature */}
+                  {/* Mode Selector: Our Course vs Preparation Hub vs Pro Feature vs Weekly Model Test */}
                   <div className="p-4 bg-orange-50/60 border border-orange-200/80 rounded-2xl space-y-2">
                     <label className="text-[11px] font-black text-slate-700 uppercase block">
                       প্রশ্নপত্র তৈরির সেকশন সিলেক্ট করুন (Target Section) *
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -4363,7 +4387,7 @@ export default function AdminPage() {
                             : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                         }`}
                       >
-                        <Compass className="w-4 h-4" />
+                        <Compass className="w-4 h-4 shrink-0" />
                         <span>আওয়ার কোর্স (Our Courses)</span>
                       </button>
 
@@ -4382,7 +4406,7 @@ export default function AdminPage() {
                             : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                         }`}
                       >
-                        <BookOpen className="w-4 h-4" />
+                        <BookOpen className="w-4 h-4 shrink-0" />
                         <span>প্রেপারেশন হাব (Preparation Hub)</span>
                       </button>
 
@@ -4399,45 +4423,64 @@ export default function AdminPage() {
                             : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                         }`}
                       >
-                        <Sparkles className="w-4 h-4" />
+                        <Sparkles className="w-4 h-4 shrink-0" />
                         <span>প্রো ফিচার (Pro Feature)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaperCategoryType("weekly_model_test");
+                          setPaperExamType("weekly");
+                          if (paperSearchSubjects.length === 0) setPaperSearchSubjects(["All"]);
+                        }}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          paperCategoryType === "weekly_model_test"
+                            ? "bg-[#FF6A00] text-white shadow-md shadow-orange-500/20"
+                            : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Calendar className="w-4 h-4 shrink-0" />
+                        <span>Weekly Model Test</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Form fields */}
                   <div className="space-y-4">
-                    {/* 1. Exam Title */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ১. পরীক্ষার নাম (Exam Title) *
-                      </label>
-                      <input 
-                        type="text"
-                        placeholder="যেমন: Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস"
-                        value={paperTitle}
-                        onChange={(e) => setPaperTitle(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
-                        required
-                      />
-                    </div>
+                    {/* 1. Exam Title (Hidden for Weekly Model Test) */}
+                    {paperCategoryType !== "weekly_model_test" && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ১. পরীক্ষার নাম (Exam Title) *
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="যেমন: Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস"
+                          value={paperTitle}
+                          onChange={(e) => setPaperTitle(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                          required
+                        />
+                      </div>
+                    )}
 
-                    {/* 2. Topic (Moved from 4 to 2) */}
+                    {/* 2. Topic */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
                         ২. টপিক / বিষয় বিবরণ (Topic)
                       </label>
                       <input 
                         type="text"
-                        placeholder='যেমন: "Award Mania" এর জন্য প্রযোজ্য'
+                        placeholder={paperCategoryType === "weekly_model_test" ? 'যেমন: সকল চাকরির সাপ্তাহিক মডেল টেস্ট - ০১ (সিলেবাস)' : 'যেমন: "Award Mania" এর জন্য প্রযোজ্য'}
                         value={paperTopic}
                         onChange={(e) => setPaperTopic(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
                       />
                     </div>
 
-                    {/* 3. Target Section Selection */}
-                    {paperCategoryType === "prep_hub" ? (
+                    {/* 3. Target Section Selection (Hidden for Weekly Model Test) */}
+                    {paperCategoryType === "weekly_model_test" ? null : paperCategoryType === "prep_hub" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
                         <div className="space-y-1.5">
                           <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
@@ -4628,22 +4671,24 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  {/* 4. Exam Type & 5. Status */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ৪. পরীক্ষার ধরন (Type) *
-                      </label>
-                      <select
-                        value={paperExamType}
-                        onChange={(e) => setPaperExamType(e.target.value as any)}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
-                      >
-                        {EXAM_TYPES.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* 4. Exam Type (Hidden for Weekly Model Test) & 5. Status */}
+                  <div className={`grid grid-cols-1 ${paperCategoryType !== "weekly_model_test" ? "md:grid-cols-2" : ""} gap-4`}>
+                    {paperCategoryType !== "weekly_model_test" && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          ৪. পরীক্ষার ধরন (Type) *
+                        </label>
+                        <select
+                          value={paperExamType}
+                          onChange={(e) => setPaperExamType(e.target.value as any)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
+                        >
+                          {EXAM_TYPES.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
@@ -5233,6 +5278,7 @@ export default function AdminPage() {
                         <option value="our_course">আওয়ার কোর্স (Our Course)</option>
                         <option value="prep_hub">প্রিপারেশন হাব (Prep Hub)</option>
                         <option value="pro_feature">প্রো ফিচার (Pro Feature)</option>
+                        <option value="weekly_model_test">সাপ্তাহিক মডেল টেস্ট (Weekly Model Test)</option>
                       </select>
                     </div>
 
@@ -5248,21 +5294,21 @@ export default function AdminPage() {
                         className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer"
                       >
                         <option value="all">সকল কোর্স ও বিষয়</option>
-                        {filterPaperCategory !== "prep_hub" && filterPaperCategory !== "pro_feature" && (
+                        {(filterPaperCategory === "all" || filterPaperCategory === "our_course") && (
                           <optgroup label="── আওয়ার কোর্স ──">
                             {coursesList.map(c => (
                               <option key={c.id} value={c.id}>{c.name} ({c.title})</option>
                             ))}
                           </optgroup>
                         )}
-                        {filterPaperCategory !== "our_course" && filterPaperCategory !== "pro_feature" && (
+                        {(filterPaperCategory === "all" || filterPaperCategory === "prep_hub") && (
                           <optgroup label="── প্রিপারেশন হাব (বিষয়সমূহ) ──">
                             {prepSubjectsList.map(p => (
                               <option key={p.id} value={p.id}>{p.bnName || p.name}</option>
                             ))}
                           </optgroup>
                         )}
-                        {filterPaperCategory !== "our_course" && filterPaperCategory !== "prep_hub" && (
+                        {(filterPaperCategory === "all" || filterPaperCategory === "pro_feature") && (
                           <optgroup label="── প্রো ফিচার মডিউল ──">
                             {proSectionList.map(pro => (
                               <option key={pro.id} value={pro.id}>{pro.name}</option>
@@ -5442,7 +5488,9 @@ export default function AdminPage() {
                           : getExamStatus(paper);
 
                         const resolvedParentLabel =
-                          paper.categoryType === "pro_feature"
+                          paper.categoryType === "weekly_model_test"
+                            ? "সকল চাকরী পার্থীদের জন্য"
+                            : paper.categoryType === "pro_feature"
                             ? (
                                 paper.course === "question_bank"
                                   ? "প্রশ্ন ব্যাংক"
@@ -5463,6 +5511,7 @@ export default function AdminPage() {
                               );
 
                         const hasRealSubSubject = Boolean(
+                          paper.categoryType !== "weekly_model_test" &&
                           paper.subSubject &&
                           paper.subSubject !== "all" &&
                           paper.subSubject !== "none" &&
@@ -5489,7 +5538,7 @@ export default function AdminPage() {
                                   {computedStatus}
                                 </span>
                                 <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded uppercase">
-                                  {paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {resolvedParentLabel} • {paper.examType.toUpperCase()}
+                                  {paper.categoryType === "weekly_model_test" ? "সাপ্তাহিক মডেল টেস্ট" : paper.categoryType === "pro_feature" ? "PRO FEATURE" : paper.categoryType === "prep_hub" ? "PREP HUB" : "OUR COURSE"} • {resolvedParentLabel} • {paper.examType.toUpperCase()}
                                 </span>
                                 {hasRealSubSubject && (
                                   <span className="text-[9px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded">
