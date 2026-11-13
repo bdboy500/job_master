@@ -432,9 +432,9 @@ export function parseRawExamPaper(item: any): ExamPaper {
   return paperObj;
 }
 
-export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> {
-  // Check memory cache first
-  if (examPapersMemoryCache) {
+export async function fetchExamPaperById(id: string, forceRefresh = false): Promise<ExamPaper | null> {
+  // Check memory cache first unless forceRefresh is requested
+  if (!forceRefresh && examPapersMemoryCache) {
     const cached = examPapersMemoryCache.find(p => p.id === id);
     if (cached && Array.isArray(cached.questions) && cached.questions.length > 0) {
       return cached;
@@ -452,7 +452,7 @@ export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> 
 
       if (!error && data) {
         const fullPaper = parseRawExamPaper(data);
-        
+
         // Update memory cache
         if (examPapersMemoryCache) {
           const idx = examPapersMemoryCache.findIndex(p => p.id === id);
@@ -469,7 +469,35 @@ export async function fetchExamPaperById(id: string): Promise<ExamPaper | null> 
     console.error("Error fetching full exam paper by id:", err);
   }
 
-  // Do NOT fallback to demo questions if network or fetch failed!
+  // Fallback to memory cache if available with questions
+  if (examPapersMemoryCache) {
+    const cached = examPapersMemoryCache.find(p => p.id === id);
+    if (cached && Array.isArray(cached.questions) && cached.questions.length > 0) {
+      return cached;
+    }
+  }
+
+  // Fallback to localStorage cached paper if it already has questions
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("job_master_exam_papers");
+      if (raw) {
+        const parsed: ExamPaper[] = JSON.parse(raw);
+        const localMatch = Array.isArray(parsed) ? parsed.find(p => p.id === id) : undefined;
+        if (localMatch && Array.isArray(localMatch.questions) && localMatch.questions.length > 0) {
+          return localMatch;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Fallback to DEFAULT_EXAM_PAPERS only if the paper id itself is one of the built-in defaults
+  const defaultMatch = DEFAULT_EXAM_PAPERS.find(p => p.id === id);
+  if (defaultMatch && Array.isArray(defaultMatch.questions) && defaultMatch.questions.length > 0) {
+    return defaultMatch;
+  }
+
+  // Do NOT fallback to demo questions for server papers!
   return null;
 }
 

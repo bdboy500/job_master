@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { 
   Calendar, 
   Archive, 
@@ -19,10 +19,11 @@ import {
   FileText,
   Check,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from "lucide-react";
-import { ExamPaper, getExamStatus } from "../lib/exams";
-import { QUIZ_QUESTIONS } from "../data";
+import { ExamPaper, getExamStatus, fetchExamPaperById } from "../lib/exams";
+import MathRenderer from "./MathRenderer";
 
 interface CourseExamRoutineViewProps {
   courseName: string;
@@ -38,16 +39,23 @@ interface CourseExamRoutineViewProps {
 }
 
 function getQuestionCorrectIndex(q: any): number {
-  if (typeof q?.correctOptionIndex === "number") return q.correctOptionIndex;
-  if (typeof q?.correctIndex === "number") return q.correctIndex;
-  if (typeof q?.correctAnswer === "number") return q.correctAnswer;
-  if (typeof q?.correctAnswer === "string") {
-    const num = parseInt(q.correctAnswer, 10);
-    if (!isNaN(num) && num >= 0 && num <= 3) return num;
-    if (Array.isArray(q.options)) {
-      const idx = q.options.findIndex((opt: string) => opt?.trim() === q.correctAnswer?.trim());
-      if (idx >= 0) return idx;
+  const candidates = [
+    q?.correctIndex,
+    q?.correctOptionIndex,
+    q?.correct_index,
+    q?.correct_option_index,
+    q?.correctAnswer
+  ];
+  for (const val of candidates) {
+    if (typeof val === "number" && !isNaN(val) && val >= 0) return val;
+    if (typeof val === "string" && val.trim() !== "") {
+      const num = parseInt(val.trim(), 10);
+      if (!isNaN(num) && num >= 0 && num <= 10) return num;
     }
+  }
+  if (typeof q?.correctAnswer === "string" && Array.isArray(q.options)) {
+    const idx = q.options.findIndex((opt: string) => opt?.trim() === q.correctAnswer?.trim());
+    if (idx >= 0) return idx;
   }
   return 0;
 }
@@ -67,9 +75,13 @@ export default function CourseExamRoutineView({
   const [activeTab, setActiveTab] = useState<"routine" | "archive" | "results">("routine");
   const [selectedSyllabusPaper, setSelectedSyllabusPaper] = useState<ExamPaper | null>(null);
   const [selectedQuestionsPaper, setSelectedQuestionsPaper] = useState<ExamPaper | null>(null);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState<boolean>(false);
+  const [questionsLoadError, setQuestionsLoadError] = useState<string | null>(null);
   const [revealedAnswers, setRevealedAnswers] = useState<Record<number, boolean>>({});
+  const [revealedExplanations, setRevealedExplanations] = useState<Record<number, boolean>>({});
   const [userSelectedOptions, setUserSelectedOptions] = useState<Record<number, number>>({});
   const [showAllAnswers, setShowAllAnswers] = useState<boolean>(false);
+  const loadingPaperIdRef = useRef<string | null>(null);
 
   // Filter and sort papers
   const { livePapers, upcomingPapers, archivedPapers } = useMemo(() => {
@@ -122,10 +134,61 @@ export default function CourseExamRoutineView({
   };
 
   const toggleRevealAnswer = (qIdx: number) => {
-    setRevealedAnswers(prev => ({ ...prev, [qIdx]: !prev[qIdx] }));
+    setRevealedAnswers(prev => {
+      const current = prev[qIdx] !== undefined ? prev[qIdx] : showAllAnswers;
+      return { ...prev, [qIdx]: !current };
+    });
     if (soundEnabled && quizAudio?.playClick) {
       quizAudio.playClick();
     }
+  };
+
+  const toggleRevealExplanation = (qIdx: number) => {
+    setRevealedExplanations(prev => ({ ...prev, [qIdx]: !prev[qIdx] }));
+    if (soundEnabled && quizAudio?.playClick) {
+      quizAudio.playClick();
+    }
+  };
+
+  const handleOpenPaperQuestions = async (paper: ExamPaper) => {
+    loadingPaperIdRef.current = paper.id;
+    setSelectedQuestionsPaper(paper);
+    setRevealedAnswers({});
+    setRevealedExplanations({});
+    setUserSelectedOptions({});
+    setShowAllAnswers(false);
+    setQuestionsLoadError(null);
+    setIsLoadingQuestions(true);
+    playClick();
+
+    try {
+      const fullPaper = await fetchExamPaperById(paper.id, true);
+      if (loadingPaperIdRef.current !== paper.id) return;
+
+      if (fullPaper && Array.isArray(fullPaper.questions) && fullPaper.questions.length > 0) {
+        setSelectedQuestionsPaper(fullPaper);
+      } else if (fullPaper && Array.isArray(fullPaper.questions)) {
+        setSelectedQuestionsPaper(fullPaper);
+      } else if (!paper.questions || paper.questions.length === 0) {
+        setQuestionsLoadError("সার্ভার থেকে প্রশ্নপত্র লোড করা যায়নি। ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।");
+      }
+    } catch (err) {
+      if (loadingPaperIdRef.current !== paper.id) return;
+      if (!paper.questions || paper.questions.length === 0) {
+        setQuestionsLoadError("সার্ভার থেকে প্রশ্নপত্র লোড করতে সমস্যা হয়েছে।");
+      }
+    } finally {
+      if (loadingPaperIdRef.current === paper.id) {
+        setIsLoadingQuestions(false);
+      }
+    }
+  };
+
+  const closeQuestionsModal = () => {
+    loadingPaperIdRef.current = null;
+    setIsLoadingQuestions(false);
+    setQuestionsLoadError(null);
+    setSelectedQuestionsPaper(null);
   };
 
   return (
@@ -332,13 +395,7 @@ export default function CourseExamRoutineView({
                             {/* প্রশ্নপত্র বাটন: আপকামিং এর জন্য একটিভ (Active for upcoming) */}
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelectedQuestionsPaper(paper);
-                                setRevealedAnswers({});
-                                setUserSelectedOptions({});
-                                setShowAllAnswers(false);
-                                playClick();
-                              }}
+                              onClick={() => handleOpenPaperQuestions(paper)}
                               className="py-2 sm:py-2.5 px-2.5 sm:px-3.5 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 text-purple-700 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0"
                             >
                               <FileText className="w-3.5 h-3.5" />
@@ -436,13 +493,7 @@ export default function CourseExamRoutineView({
                       {/* প্রশ্নপত্র বাটন: আর্কাইভের জন্য এক্টিভ (Active for archive) */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedQuestionsPaper(paper);
-                          setRevealedAnswers({});
-                          setUserSelectedOptions({});
-                          setShowAllAnswers(false);
-                          playClick();
-                        }}
+                        onClick={() => handleOpenPaperQuestions(paper)}
                         className="py-2 sm:py-2.5 px-2.5 sm:px-3 bg-purple-100 hover:bg-purple-200/70 border border-purple-300/80 text-purple-800 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0"
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -571,9 +622,13 @@ export default function CourseExamRoutineView({
       {/* INTERACTIVE QUESTION PAPER MODAL (প্রশ্নপত্র ও সমাধান)     */}
       {/* ========================================================= */}
       {selectedQuestionsPaper && (() => {
-        const paperQuestions = (selectedQuestionsPaper.questions && selectedQuestionsPaper.questions.length > 0)
+        const paperQuestions = Array.isArray(selectedQuestionsPaper.questions)
           ? selectedQuestionsPaper.questions
-          : QUIZ_QUESTIONS.slice(0, selectedQuestionsPaper.questionCount || 20);
+          : [];
+        const displayCount =
+          isLoadingQuestions && paperQuestions.length === 0
+            ? (selectedQuestionsPaper.questionCount || 0)
+            : paperQuestions.length;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
@@ -587,7 +642,7 @@ export default function CourseExamRoutineView({
                       প্রশ্নপত্র ও সমাধান
                     </span>
                     <span className="text-[10px] font-bold text-white/90">
-                      মোট {paperQuestions.length} টি প্রশ্ন
+                      মোট {displayCount} টি প্রশ্ন
                     </span>
                   </div>
                   <h3 className="font-black text-sm sm:text-base text-white truncate">
@@ -596,19 +651,26 @@ export default function CourseExamRoutineView({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowAllAnswers(!showAllAnswers)}
-                    className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-black transition-all cursor-pointer"
-                    title={showAllAnswers ? "উত্তর লুকান" : "সব উত্তর দেখুন"}
-                  >
-                    {showAllAnswers ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    <span>{showAllAnswers ? "উত্তর লুকান" : "সব উত্তর দেখুন"}</span>
-                  </button>
+                  {paperQuestions.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !showAllAnswers;
+                        setShowAllAnswers(next);
+                        setRevealedAnswers({});
+                        playClick();
+                      }}
+                      className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-black transition-all cursor-pointer"
+                      title={showAllAnswers ? "উত্তর লুকান" : "সব উত্তর দেখুন"}
+                    >
+                      {showAllAnswers ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>{showAllAnswers ? "উত্তর লুকান" : "সব উত্তর দেখুন"}</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
-                    onClick={() => setSelectedQuestionsPaper(null)}
+                    onClick={closeQuestionsModal}
                     className="p-1.5 hover:bg-white/20 rounded-full text-white transition-all cursor-pointer"
                   >
                     <X className="w-5 h-5" />
@@ -617,149 +679,212 @@ export default function CourseExamRoutineView({
               </div>
 
               {/* Sub-bar for mobile toggle */}
-              <div className="sm:hidden px-4 py-2 bg-orange-50 border-b border-orange-100 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-600">
-                  যেকোনো অপশনে ক্লিক করে উত্তর যাচাই করুন
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAllAnswers(!showAllAnswers)}
-                  className="px-2.5 py-1 rounded-lg bg-[#FF6A00] text-white text-[11px] font-black cursor-pointer flex items-center gap-1"
-                >
-                  {showAllAnswers ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  <span>{showAllAnswers ? "লুকান" : "সব উত্তর"}</span>
-                </button>
-              </div>
+              {paperQuestions.length > 0 && (
+                <div className="sm:hidden px-4 py-2 bg-orange-50 border-b border-orange-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-600">
+                    যেকোনো অপশনে ক্লিক করে উত্তর যাচাই করুন
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !showAllAnswers;
+                      setShowAllAnswers(next);
+                      setRevealedAnswers({});
+                      playClick();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-[#FF6A00] text-white text-[11px] font-black cursor-pointer flex items-center gap-1"
+                  >
+                    {showAllAnswers ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    <span>{showAllAnswers ? "লুকান" : "সব উত্তর"}</span>
+                  </button>
+                </div>
+              )}
 
               {/* Scrollable Questions List */}
               <div className="p-3 sm:p-5 overflow-y-auto space-y-4 flex-1">
-                {paperQuestions.map((q: any, qIdx: number) => {
-                  const correctIdx = getQuestionCorrectIndex(q);
-                  const isRevealed = showAllAnswers || revealedAnswers[qIdx];
-                  const userChoice = userSelectedOptions[qIdx];
-                  const qText = q.question || q.questionText || `প্রশ্ন ${qIdx + 1}`;
-                  const optionsList: string[] = Array.isArray(q.options) ? q.options : [];
-                  const explanation = q.explanation || "";
-
-                  return (
-                    <div 
-                      key={q.id || qIdx} 
-                      className="p-3.5 sm:p-4.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl sm:rounded-3xl space-y-3 transition-all hover:border-orange-200"
+                {isLoadingQuestions && paperQuestions.length === 0 ? (
+                  <div className="py-14 flex flex-col items-center justify-center gap-3 text-center">
+                    <Loader2 className="w-8 h-8 text-[#FF6A00] animate-spin" />
+                    <p className="text-sm font-black text-slate-700">সার্ভার থেকে প্রশ্নপত্র লোড হচ্ছে...</p>
+                    <p className="text-xs font-bold text-slate-400">অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন</p>
+                  </div>
+                ) : questionsLoadError && paperQuestions.length === 0 ? (
+                  <div className="py-12 px-4 flex flex-col items-center justify-center gap-3 text-center">
+                    <AlertCircle className="w-9 h-9 text-rose-500" />
+                    <p className="text-sm font-black text-slate-800">{questionsLoadError}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPaperQuestions(selectedQuestionsPaper)}
+                      className="px-4 py-2 bg-[#FF6A00] text-white text-xs font-black rounded-xl cursor-pointer active:scale-95 transition-all"
                     >
-                      {/* Question Text */}
-                      <div className="flex items-start gap-2.5">
-                        <span className="w-6 h-6 rounded-full bg-[#FF6A00] text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                          {qIdx + 1}
-                        </span>
-                        <div className="flex-1 space-y-1">
-                          <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-snug">
-                            {qText}
-                          </h4>
-                          {q.subject && (
-                            <span className="inline-block text-[10px] font-bold bg-orange-100 text-orange-800 px-2 py-0.2 rounded-md">
-                              {q.subject}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      আবার চেষ্টা করুন
+                    </button>
+                  </div>
+                ) : paperQuestions.length === 0 ? (
+                  <div className="py-12 px-4 flex flex-col items-center justify-center gap-2 text-center">
+                    <HelpCircle className="w-9 h-9 text-slate-300" />
+                    <p className="text-sm font-black text-slate-700">এই প্রশ্নপত্রে এখনো কোনো প্রশ্ন যুক্ত করা হয়নি।</p>
+                  </div>
+                ) : (
+                  paperQuestions.map((q: any, qIdx: number) => {
+                    const correctIdx = getQuestionCorrectIndex(q);
+                    const isAnswerRevealed =
+                      revealedAnswers[qIdx] !== undefined ? revealedAnswers[qIdx] : showAllAnswers;
+                    const isExpRevealed = !!revealedExplanations[qIdx];
+                    const userChoice = userSelectedOptions[qIdx];
+                    const qText = q.question || q.questionText || q.question_text || q.title || `প্রশ্ন ${qIdx + 1}`;
+                    const optionsList: string[] = Array.isArray(q.options) ? q.options : [];
+                    const explanation = q.explanation || "";
+                    const qSub = q.subject || q.subjectName;
 
-                      {/* Options Grid (Click to reveal / test answer) */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-0 sm:pl-8">
-                        {optionsList.map((optText: string, optIdx: number) => {
-                          const isCorrect = optIdx === correctIdx;
-                          const isSelectedByUser = userChoice === optIdx;
-
-                          let btnStyle = "bg-white border-slate-200/90 text-slate-700 hover:border-orange-300 hover:bg-orange-50/40";
-
-                          if (isRevealed) {
-                            if (isCorrect) {
-                              btnStyle = "bg-emerald-50 border-emerald-400 text-emerald-900 font-black shadow-xs ring-1 ring-emerald-300";
-                            } else if (isSelectedByUser) {
-                              btnStyle = "bg-rose-50 border-rose-300 text-rose-800 font-bold line-through";
-                            } else {
-                              btnStyle = "bg-white/70 border-slate-200 text-slate-400 opacity-60";
-                            }
-                          } else if (isSelectedByUser) {
-                            btnStyle = "bg-orange-50 border-[#FF6A00] text-[#FF6A00] font-black";
-                          }
-
-                          return (
-                            <button
-                              key={optIdx}
-                              type="button"
-                              onClick={() => handleOptionSelect(qIdx, optIdx)}
-                              className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-xs text-left border transition-all flex items-center justify-between cursor-pointer ${btnStyle}`}
-                            >
-                              <span className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10.5px] font-black shrink-0 ${
-                                  isRevealed && isCorrect 
-                                    ? "bg-emerald-600 text-white" 
-                                    : "bg-slate-100 text-slate-600"
-                                }`}>
-                                  {String.fromCharCode(65 + optIdx)}
-                                </span>
-                                <span className="break-words leading-tight">{optText}</span>
+                    return (
+                      <div 
+                        key={q.id || qIdx} 
+                        className="p-3.5 sm:p-4.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl sm:rounded-3xl space-y-3 transition-all hover:border-orange-200"
+                      >
+                        {/* Question Text */}
+                        <div className="flex items-start gap-2.5">
+                          <span className="w-6 h-6 rounded-full bg-[#FF6A00] text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                            {qIdx + 1}
+                          </span>
+                          <div className="flex-1 space-y-1">
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-snug">
+                              <MathRenderer content={qText} />
+                            </h4>
+                            {qSub && (
+                              <span className="inline-block text-[10px] font-bold bg-orange-100 text-orange-800 px-2 py-0.2 rounded-md">
+                                {qSub}
                               </span>
-
-                              {isRevealed && isCorrect && (
-                                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ml-1">
-                                  <Check className="w-3 h-3 stroke-[2.5px]" />
-                                  <span>সঠিক উত্তর</span>
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Explanation & Reveal Toggle Button */}
-                      <div className="pl-0 sm:pl-8 pt-1 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() => toggleRevealAnswer(qIdx)}
-                            className="text-[11px] font-black text-[#FF6A00] hover:text-orange-700 flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            <span>{isRevealed ? "উত্তর ও ব্যাখ্যা লুকান" : "উত্তর ও ব্যাখ্যা দেখুন"}</span>
-                          </button>
-
-                          {userChoice !== undefined && (
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                              userChoice === correctIdx 
-                                ? "bg-emerald-100 text-emerald-800" 
-                                : "bg-rose-100 text-rose-800"
-                            }`}>
-                              {userChoice === correctIdx ? "আপনার উত্তর সঠিক 🎉" : "আপনার উত্তর ভুল হয়েছে"}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Detailed Explanation Box */}
-                        {isRevealed && (
-                          <div className="p-3 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-xs text-amber-950 space-y-1 animate-fade-in text-left">
-                            <span className="font-black text-amber-800 block text-[11px] uppercase tracking-wide">
-                              💡 সঠিক উত্তর ও সমাধান:
-                            </span>
-                            <p className="font-extrabold text-emerald-800 text-xs">
-                              সঠিক অপশন: {String.fromCharCode(65 + correctIdx)}. {optionsList[correctIdx]}
-                            </p>
-                            {explanation ? (
-                              <p className="text-slate-700 leading-relaxed pt-1 text-[11.5px] font-medium">
-                                <span className="font-bold text-slate-800">ব্যাখ্যা: </span>
-                                {explanation}
-                              </p>
-                            ) : (
-                              <p className="text-slate-500 italic text-[11px] pt-0.5">
-                                এই প্রশ্নের জন্য কোনো অতিরিক্ত ব্যাখ্যা সংরক্ষিত নেই।
-                              </p>
                             )}
                           </div>
-                        )}
+                        </div>
+
+                        {/* Options Grid (Click to reveal / test answer) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-0 sm:pl-8">
+                          {optionsList.map((optText: string, optIdx: number) => {
+                            const isCorrect = optIdx === correctIdx;
+                            const isSelectedByUser = userChoice === optIdx;
+
+                            let btnStyle = "bg-white border-slate-200/90 text-slate-700 hover:border-orange-300 hover:bg-orange-50/40";
+
+                            if (isAnswerRevealed) {
+                              if (isCorrect) {
+                                btnStyle = "bg-emerald-50 border-emerald-400 text-emerald-900 font-black shadow-xs ring-1 ring-emerald-300";
+                              } else if (isSelectedByUser) {
+                                btnStyle = "bg-rose-50 border-rose-300 text-rose-800 font-bold line-through";
+                              } else {
+                                btnStyle = "bg-white/70 border-slate-200 text-slate-400 opacity-60";
+                              }
+                            } else if (isSelectedByUser) {
+                              btnStyle = "bg-orange-50 border-[#FF6A00] text-[#FF6A00] font-black";
+                            }
+
+                            return (
+                              <button
+                                key={optIdx}
+                                type="button"
+                                onClick={() => handleOptionSelect(qIdx, optIdx)}
+                                className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-xs text-left border transition-all flex items-center justify-between cursor-pointer ${btnStyle}`}
+                              >
+                                <span className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10.5px] font-black shrink-0 ${
+                                    isAnswerRevealed && isCorrect 
+                                      ? "bg-emerald-600 text-white" 
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {String.fromCharCode(65 + optIdx)}
+                                  </span>
+                                  <span className="break-words leading-tight">
+                                    <MathRenderer content={optText} />
+                                  </span>
+                                </span>
+
+                                {isAnswerRevealed && isCorrect && (
+                                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ml-1">
+                                    <Check className="w-3 h-3 stroke-[2.5px]" />
+                                    <span>সঠিক উত্তর</span>
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Separate Answer & Explanation Toggle Buttons */}
+                        <div className="pl-0 sm:pl-8 pt-1 flex flex-col gap-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleRevealAnswer(qIdx)}
+                                className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 cursor-pointer transition-all border ${
+                                  isAnswerRevealed
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100"
+                                }`}
+                              >
+                                {isAnswerRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                <span>{isAnswerRevealed ? "উত্তর লুকান" : "উত্তর দেখুন"}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleRevealExplanation(qIdx)}
+                                className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 cursor-pointer transition-all border ${
+                                  isExpRevealed
+                                    ? "bg-amber-100 text-amber-800 border-amber-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100"
+                                }`}
+                              >
+                                <BookOpen className="w-3.5 h-3.5" />
+                                <span>{isExpRevealed ? "ব্যাখ্যা লুকান" : "ব্যাখ্যা দেখুন"}</span>
+                              </button>
+                            </div>
+
+                            {userChoice !== undefined && (
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                userChoice === correctIdx 
+                                  ? "bg-emerald-100 text-emerald-800" 
+                                  : "bg-rose-100 text-rose-800"
+                              }`}>
+                                {userChoice === correctIdx ? "আপনার উত্তর সঠিক 🎉" : "আপনার উত্তর ভুল হয়েছে"}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Answer Box (Shown ONLY when "উত্তর দেখুন" is active) */}
+                          {isAnswerRevealed && (
+                            <div className="p-2.5 sm:p-3 bg-emerald-50/90 border border-emerald-200/90 rounded-2xl text-xs text-emerald-950 animate-fade-in text-left flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                              <div className="font-extrabold text-emerald-800 leading-snug">
+                                সঠিক উত্তর: {String.fromCharCode(65 + correctIdx)}.{" "}
+                                <MathRenderer content={optionsList[correctIdx] || ""} />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Explanation Box (Shown ONLY when "ব্যাখ্যা দেখুন" is active) */}
+                          {isExpRevealed && (
+                            <div className="p-3 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-xs text-amber-950 space-y-1 animate-fade-in text-left">
+                              <span className="font-black text-amber-800 block text-[11px] uppercase tracking-wide">
+                                💡 ব্যাখ্যা:
+                              </span>
+                              {explanation ? (
+                                <div className="text-slate-700 leading-relaxed text-[11.5px] font-medium">
+                                  <MathRenderer content={explanation} />
+                                </div>
+                              ) : (
+                                <p className="text-slate-500 italic text-[11px]">
+                                  এই প্রশ্নের জন্য কোনো অতিরিক্ত ব্যাখ্যা সংরক্ষিত নেই।
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -769,7 +894,7 @@ export default function CourseExamRoutineView({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setSelectedQuestionsPaper(null)}
+                  onClick={closeQuestionsModal}
                   className="px-5 sm:px-6 py-2 bg-[#FF6A00] hover:bg-[#e55f00] text-white font-black text-xs sm:text-sm rounded-xl cursor-pointer shadow-md shadow-orange-500/20 active:scale-95 transition-all"
                 >
                   বন্ধ করুন

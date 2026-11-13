@@ -1767,7 +1767,7 @@ export default function Home() {
 
     setIsPaperLoading(true);
     try {
-      const fullPaper = await fetchExamPaperById(paper.id);
+      const fullPaper = await fetchExamPaperById(paper.id, true);
       setIsPaperLoading(false);
       if (fullPaper && fullPaper.questions && fullPaper.questions.length > 0) {
         setExamPapers(prev => prev.map(p => p.id === fullPaper.id ? fullPaper : p));
@@ -7719,8 +7719,15 @@ export default function Home() {
                     const isExpRevealed = revealedExplanations[idx];
                     const isFav = bookmarkedQuestions[idx];
                     const qSubject = q.subject || (q as any).subjectName;
-                    const qText = q.question || (q as any).questionText || "";
-                    const correctIdx = q.correctIndex !== undefined ? q.correctIndex : (q as any).correctOptionIndex;
+                    const qText = q.question || (q as any).questionText || (q as any).question_text || "";
+                    const rawCorrectIdx =
+                      q.correctIndex !== undefined && q.correctIndex !== null
+                        ? Number(q.correctIndex)
+                        : (q as any).correctOptionIndex !== undefined && (q as any).correctOptionIndex !== null
+                        ? Number((q as any).correctOptionIndex)
+                        : 0;
+                    const correctIdx = isNaN(rawCorrectIdx) ? 0 : rawCorrectIdx;
+                    const optionLetters = ["ক", "খ", "গ", "ঘ"];
 
                     return (
                       <div key={idx} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5">
@@ -7740,7 +7747,6 @@ export default function Home() {
                         {/* Options Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {(q.options || []).map((opt, optIdx) => {
-                            const optionLetters = ["ক", "খ", "গ", "ঘ"];
                             const isCorrect = optIdx === correctIdx;
                             const showAsCorrect = isAnswerRevealed && isCorrect;
 
@@ -7776,18 +7782,18 @@ export default function Home() {
                                   : "bg-purple-50 text-purple-700 hover:bg-purple-100"
                               }`}
                             >
-                              {isAnswerRevealed ? "উত্তর লুকান" : "উত্তর"}
+                              {isAnswerRevealed ? "উত্তর লুকান" : "উত্তর দেখুন"}
                             </button>
 
                             <button
                               onClick={() => setRevealedExplanations(prev => ({ ...prev, [idx]: !prev[idx] }))}
                               className={`px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all cursor-pointer ${
                                 isExpRevealed 
-                                  ? "bg-blue-100 text-blue-700" 
+                                  ? "bg-amber-100 text-amber-800" 
                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                               }`}
                             >
-                              {isExpRevealed ? "ব্যাখ্যা লুকান" : "ব্যাখ্যা"}
+                              {isExpRevealed ? "ব্যাখ্যা লুকান" : "ব্যাখ্যা দেখুন"}
                             </button>
                           </div>
 
@@ -7807,7 +7813,7 @@ export default function Home() {
                             <button
                               onClick={() => {
                                 if ('speechSynthesis' in window) {
-                                  const utterance = new SpeechSynthesisUtterance(q.question);
+                                  const utterance = new SpeechSynthesisUtterance(qText);
                                   utterance.lang = 'bn-BD';
                                   window.speechSynthesis.speak(utterance);
                                 }
@@ -7820,11 +7826,30 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Explanation Box */}
+                        {/* Correct Answer Box (Only when "উত্তর দেখুন" is active) */}
+                        {isAnswerRevealed && (
+                          <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-bold space-y-1 animate-fade-in">
+                            <div className="font-extrabold text-emerald-800 flex items-center gap-1.5">
+                              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>
+                                সঠিক উত্তর: {optionLetters[correctIdx] || correctIdx + 1}.{" "}
+                                <MathRenderer content={(q.options && q.options[correctIdx]) || ""} />
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Explanation Box (Only when "ব্যাখ্যা দেখুন" is active) */}
                         {isExpRevealed && (
-                          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-semibold space-y-1 animate-fade-in">
-                            <div className="font-extrabold text-emerald-700">{"\uD83D\uDCCC"} ব্যাখ্যা ও রেফারেন্স:</div>
-                            <MathRenderer content={q.explanation || `সঠিক উত্তর: ${q.options[q.correctIndex]}। এই বিষয়ের আরও বিস্তারিত তথ্য আমাদের প্রশ্ন ব্যাংকে দেওয়া আছে।`} />
+                          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-950 font-semibold space-y-1 animate-fade-in">
+                            <div className="font-extrabold text-amber-800">{"\uD83D\uDCCC"} ব্যাখ্যা ও রেফারেন্স:</div>
+                            {q.explanation ? (
+                              <MathRenderer content={q.explanation} />
+                            ) : (
+                              <p className="text-slate-500 italic text-[11px]">
+                                এই প্রশ্নের জন্য কোনো অতিরিক্ত ব্যাখ্যা সংরক্ষিত নেই।
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
