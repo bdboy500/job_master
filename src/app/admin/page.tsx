@@ -7066,20 +7066,6 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                           <option value="text-sky-600">Sky</option>
                         </select>
                       </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          কুইক টুলস দেখাবেন? (Quick Tools)
-                        </label>
-                        <select
-                          value={prepFormShowQuickTools ? "yes" : "no"}
-                          onChange={(e) => setPrepFormShowQuickTools(e.target.value === "yes")}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-purple-500 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
-                        >
-                          <option value="yes">Yes (কুইক টুলস দেখাবে)</option>
-                          <option value="no">No (কুইক টুলস দেখাবে না)</option>
-                        </select>
-                      </div>
                     </div>
 
                     {/* MULTI-LEVEL SUB-CATEGORY EDITOR (Level 2 & Level 3) */}
@@ -7366,10 +7352,6 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                     <span>Level 2: {(prep.subSubjects || []).length}টি</span>
                                     <span>•</span>
                                     <span>Level 3: {totalSub2Count}টি টপিক</span>
-                                    <span>•</span>
-                                    <span className={prep.showQuickTools !== false ? "text-emerald-600 font-extrabold" : "text-rose-500 font-extrabold"}>
-                                      Quick Tools: {prep.showQuickTools !== false ? "Yes" : "No"}
-                                    </span>
                                   </div>
                                 </div>
                               </div>
