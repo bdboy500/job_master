@@ -107,6 +107,15 @@ const AuthModal = dynamic(() => import("../components/AuthModal"), { ssr: false 
 const ExamStartModal = dynamic(() => import("../components/ExamStartModal"), { ssr: false });
 const IntroOffer = dynamic(() => import("../components/intro-offer"), { ssr: false });
 const PushPermissionModal = dynamic(() => import("../components/PushPermissionModal"), { ssr: false });
+const CvMakerView = dynamic(() => import("../components/CvMakerView"), {
+  loading: () => (
+    <div className="bg-white border border-purple-100 rounded-[2rem] p-8 flex flex-col items-center justify-center gap-3 shadow-2xs">
+      <Loader2 className="w-7 h-7 animate-spin text-purple-600" />
+      <p className="text-xs font-black text-slate-500">সিভি মেকার লোড হচ্ছে...</p>
+    </div>
+  ),
+  ssr: false
+});
 import CourseExamRoutineView from "../components/CourseExamRoutineView";
 
 // Type definition for routine items
@@ -2721,18 +2730,34 @@ export default function Home() {
         pendingDeepLinkRef.current = null;
         if (id) {
           const normSubId = id.trim().toLowerCase();
-          const matchedSub = allPrepSubjectsData.find((s) => 
-            s.name.toLowerCase() === normSubId || 
-            (s.bnName && s.bnName.toLowerCase() === normSubId) ||
-            s.name.includes(id)
-          ) || DEFAULT_PREP_SUBJECTS.find((s) => 
-            s.name.toLowerCase() === normSubId || 
-            (s.bnName && s.bnName.toLowerCase() === normSubId) ||
-            s.name.includes(id)
+          const matchedPro = allProSectionData.find((p) =>
+            p.name.toLowerCase() === normSubId ||
+            p.id.toLowerCase() === normSubId ||
+            p.name.includes(id)
+          ) || DEFAULT_PRO_SECTION.find((p) =>
+            p.name.toLowerCase() === normSubId ||
+            p.id.toLowerCase() === normSubId ||
+            p.name.includes(id)
           );
 
-          setSelectedPrepSubject(matchedSub?.name || id);
-          setCurrentScreen("prep-sub");
+          if (matchedPro) {
+            setIsProSectionActive(true);
+            setSelectedPrepSubject(matchedPro.name);
+            setCurrentScreen("prep-sub");
+          } else {
+            const matchedSub = allPrepSubjectsData.find((s) => 
+              s.name.toLowerCase() === normSubId || 
+              (s.bnName && s.bnName.toLowerCase() === normSubId) ||
+              s.name.includes(id)
+            ) || DEFAULT_PREP_SUBJECTS.find((s) => 
+              s.name.toLowerCase() === normSubId || 
+              (s.bnName && s.bnName.toLowerCase() === normSubId) ||
+              s.name.includes(id)
+            );
+
+            setSelectedPrepSubject(matchedSub?.name || id);
+            setCurrentScreen("prep-sub");
+          }
         } else {
           setCurrentScreen("prep-all-subjects");
         }
@@ -3230,7 +3255,10 @@ export default function Home() {
                     </>
                   ) : currentScreen === "prep-sub" ? (
                     <>
-                      {selectedPrepSubject} <span className="text-[#FF6A00]">Hub</span>
+                      {selectedPrepSubject}{" "}
+                      <span className="text-[#FF6A00]">
+                        {isCurrentSubjectProFeature ? "Pro" : "Hub"}
+                      </span>
                     </>
                   ) : currentScreen === "prep-sub-detail" && selectedPrepSubSubject ? (
                     <>
@@ -4632,8 +4660,25 @@ export default function Home() {
           {/* ========================================================= */}
           {currentScreen === "prep-sub" && (
             <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
-              
-              {/* Sub-subjects grid */}
+              {(isCurrentSubjectProFeature &&
+                (selectedPrepSubject.toLowerCase().includes("সিভি") ||
+                  selectedPrepSubject.toLowerCase().includes("cv") ||
+                  selectedPrepSubject.toLowerCase().includes("resume"))) ? (
+                <CvMakerView
+                  initialName={
+                    profileName && profileName !== "Guest User"
+                      ? profileName
+                      : currentUser?.full_name || ""
+                  }
+                  initialEmail={
+                    currentUser?.email ||
+                    (profileEmail && profileEmail !== "guest@jobmaster.com" ? profileEmail : "")
+                  }
+                  soundEnabled={soundEnabled}
+                  quizAudio={quizAudio}
+                />
+              ) : (
+              /* Sub-subjects grid */
               <div className="space-y-2.5 pt-0.5">
                 <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                     {(() => {
@@ -4987,6 +5032,7 @@ export default function Home() {
                   })()}
                 </div>
               </div>
+              )}
             </div>
           )}
 
