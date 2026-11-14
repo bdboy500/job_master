@@ -26,7 +26,14 @@ export function getSupabase(): SupabaseClient {
   const supabaseUrl = rawUrl.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
   const supabaseAnonKey = rawKey.trim();
 
-  // Create client
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  // Create client with PKCE flow so deep-link /auth/callback?code=... exchanges cleanly
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      flowType: "pkce",
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
   return supabaseInstance;
 }

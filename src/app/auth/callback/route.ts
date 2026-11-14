@@ -233,7 +233,15 @@ export async function GET(request: NextRequest) {
           if (window.supabase) {
             var sb = window.supabase.createClient(
               "https://cqwssqcpxrwkivrrmuou.supabase.co",
-              "sb_publishable_LmhA6lMdI1LwZ4SnCaiPMg_0Fu5Saze"
+              "sb_publishable_LmhA6lMdI1LwZ4SnCaiPMg_0Fu5Saze",
+              {
+                auth: {
+                  flowType: "pkce",
+                  persistSession: true,
+                  autoRefreshToken: true,
+                  detectSessionInUrl: false
+                }
+              }
             );
 
             if (accessToken && refreshToken) {
@@ -283,7 +291,9 @@ export async function GET(request: NextRequest) {
         Boolean(window.AndroidBridge) ||
         Boolean(window.Android) ||
         Boolean(window.isNativeApp) ||
-        /;\\s*wv\\)/i.test(ua) ||
+        Boolean(window.isJobMasterApp) ||
+        ua.indexOf("JobMasterApp") !== -1 ||
+        ua.indexOf("wv") !== -1 ||
         (/Android/i.test(ua) && /Version\\/[0-9.]+/i.test(ua) && !/Chrome\\/[0-9.]+\\s+Mobile/i.test(ua));
 
       if (isRealWebView) {

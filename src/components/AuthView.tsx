@@ -521,24 +521,30 @@ export default function AuthView({
       const supabase = getSupabase();
       if (supabase) {
         const ua = typeof navigator !== "undefined" ? (navigator.userAgent || "") : "";
-        const isAndroidWebView = typeof window !== "undefined" && (
+        const isAndroidApp = typeof window !== "undefined" && (
+          ua.includes("JobMasterApp") ||
+          ua.includes("wv") ||
+          Boolean((window as any).isJobMasterApp) ||
           Boolean((window as any).AndroidInterface) ||
           Boolean((window as any).AndroidBridge) ||
           Boolean((window as any).Android) ||
           Boolean((window as any).isNativeApp) ||
           (typeof document !== "undefined" && document.referrer.startsWith("android-app://")) ||
-          /;\s*wv\)/i.test(ua) ||
           (/Android/i.test(ua) && /Version\/[0-9.]+/i.test(ua))
         );
         const isAndroidDevice = /Android/i.test(ua);
         const isIframe = typeof window !== "undefined" && window.self !== window.top;
 
-        const handoffId = `jm_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const handoffId = isAndroidApp
+          ? null
+          : `jm_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         setActiveHandoffId(handoffId);
 
-        const redirectUrl = typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback?handoff=${encodeURIComponent(handoffId)}${isAndroidWebView ? "&source=app" : ""}`
-          : undefined;
+        const redirectUrl = isAndroidApp
+          ? "jobmaster://auth/callback"
+          : (typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback${handoffId ? `?handoff=${encodeURIComponent(handoffId)}` : ""}`
+              : undefined);
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -566,7 +572,7 @@ export default function AuthView({
           return;
         }
 
-        if (isAndroidWebView || (isAndroidDevice && !isIframe)) {
+        if (isAndroidApp || (isAndroidDevice && !isIframe)) {
           window.location.href = data.url;
           return;
         }
