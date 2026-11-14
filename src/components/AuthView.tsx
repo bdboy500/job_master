@@ -80,6 +80,7 @@ export default function AuthView({
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const isLoading = isSubmitting || isGoogleLoading;
   const [oauthPopupUrl, setOauthPopupUrl] = useState<string | null>(null);
+  const [activeHandoffId, setActiveHandoffId] = useState<string | null>(null);
 
   useEffect(() => {
     setMode(initialMode);
@@ -88,6 +89,7 @@ export default function AuthView({
     setIsSubmitting(false);
     setIsGoogleLoading(false);
     setOauthPopupUrl(null);
+    setActiveHandoffId(null);
     setShowSignInPassword(false);
     setShowSignUpPassword(false);
     setShowSignUpConfirmPassword(false);
@@ -230,29 +232,81 @@ export default function AuthView({
     };
   }, [handleCompleteSessionAuth]);
 
-  // Polling for session when Google sign-in is active
+  // Polling for session & Chrome Custom Tab -> WebView handoff sync
   useEffect(() => {
-    if (!isGoogleLoading) return;
+    if (!isGoogleLoading && !activeHandoffId) return;
 
+    let stopped = false;
     let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (attempts > 25) {
-        clearInterval(interval);
-        setIsGoogleLoading(false);
-        return;
+
+    const checkSessionAndHandoff = async () => {
+      if (stopped) return;
+
+      if (activeHandoffId) {
+        try {
+          const hRes = await fetch(`/api/auth/handoff?id=${encodeURIComponent(activeHandoffId)}`, {
+            cache: "no-store",
+          });
+          if (hRes.ok) {
+            const hData = await hRes.json();
+            if (hData?.ready) {
+              stopped = true;
+              setActiveHandoffId(null);
+              if (hData.error) {
+                setErrorMsg(hData.errorDescription || hData.error || "Google authentication failed.");
+                setIsGoogleLoading(false);
+                return;
+              }
+              setIsGoogleLoading(true);
+              if (hData.access_token && hData.refresh_token) {
+                const syntheticHash = `#access_token=${encodeURIComponent(hData.access_token)}&refresh_token=${encodeURIComponent(hData.refresh_token)}`;
+                await handleCompleteSessionAuth(null, syntheticHash);
+              } else if (hData.code) {
+                await handleCompleteSessionAuth(hData.code, null);
+              }
+              return;
+            }
+          }
+        } catch (e) {}
       }
+
       const supabase = getSupabase();
       if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        clearInterval(interval);
+      if (session?.user && !stopped) {
+        stopped = true;
+        setActiveHandoffId(null);
         await handleCompleteSessionAuth();
       }
-    }, 1200);
+    };
 
-    return () => clearInterval(interval);
-  }, [isGoogleLoading, handleCompleteSessionAuth]);
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 90) {
+        stopped = true;
+        clearInterval(interval);
+        setIsGoogleLoading(false);
+        setActiveHandoffId(null);
+        return;
+      }
+      await checkSessionAndHandoff();
+    }, 1100);
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === "visible") {
+        void checkSessionAndHandoff();
+      }
+    };
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+    };
+  }, [isGoogleLoading, activeHandoffId, handleCompleteSessionAuth]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -466,8 +520,24 @@ export default function AuthView({
 
       const supabase = getSupabase();
       if (supabase) {
+        const ua = typeof navigator !== "undefined" ? (navigator.userAgent || "") : "";
+        const isAndroidWebView = typeof window !== "undefined" && (
+          Boolean((window as any).AndroidInterface) ||
+          Boolean((window as any).AndroidBridge) ||
+          Boolean((window as any).Android) ||
+          Boolean((window as any).isNativeApp) ||
+          (typeof document !== "undefined" && document.referrer.startsWith("android-app://")) ||
+          /;\s*wv\)/i.test(ua) ||
+          (/Android/i.test(ua) && /Version\/[0-9.]+/i.test(ua))
+        );
+        const isAndroidDevice = /Android/i.test(ua);
+        const isIframe = typeof window !== "undefined" && window.self !== window.top;
+
+        const handoffId = `jm_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        setActiveHandoffId(handoffId);
+
         const redirectUrl = typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
+          ? `${window.location.origin}/auth/callback?handoff=${encodeURIComponent(handoffId)}${isAndroidWebView ? "&source=app" : ""}`
           : undefined;
 
         const { data, error } = await supabase.auth.signInWithOAuth({
@@ -485,22 +555,18 @@ export default function AuthView({
         if (error) {
           setErrorMsg("Failed to initialize Google sign in: " + error.message);
           setIsGoogleLoading(false);
+          setActiveHandoffId(null);
           return;
         }
 
         if (!data?.url) {
           setErrorMsg("Google authentication URL not available.");
           setIsGoogleLoading(false);
+          setActiveHandoffId(null);
           return;
         }
 
-        const isAndroidWebView = typeof window !== "undefined" && (
-          Boolean((window as any).AndroidInterface) || 
-          navigator.userAgent.includes("; wv") ||
-          (navigator.userAgent.includes("Android") && navigator.userAgent.includes("Version/"))
-        );
-
-        if (isAndroidWebView) {
+        if (isAndroidWebView || (isAndroidDevice && !isIframe)) {
           window.location.href = data.url;
           return;
         }
@@ -537,7 +603,7 @@ export default function AuthView({
             }
             return false;
           });
-        }, 45000);
+        }, 95000);
       } else {
         const googleUser: UserProfile = {
           id: `goog-${Date.now()}`,

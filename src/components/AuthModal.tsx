@@ -60,6 +60,7 @@ export default function AuthModal({
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const isLoading = isSubmitting || isGoogleLoading;
   const [oauthPopupUrl, setOauthPopupUrl] = useState<string | null>(null);
+  const [activeHandoffId, setActiveHandoffId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -75,12 +76,15 @@ export default function AuthModal({
       setIsSubmitting(false);
       setIsGoogleLoading(false);
       setOauthPopupUrl(null);
+      setActiveHandoffId(null);
       setShowSignInPassword(false);
       setShowSignUpPassword(false);
       setShowSignUpConfirmPassword(false);
       if (!studentId) {
         setStudentId(generateStudentId());
       }
+    } else {
+      setActiveHandoffId(null);
     }
   }, [isOpen, initialMode]);
 
@@ -225,29 +229,81 @@ export default function AuthModal({
     };
   }, [isOpen, handleCompleteSessionAuth]);
 
-  // Active polling for session when Google sign-in is in progress (timeout after 30s)
+  // Active polling for session & Chrome Custom Tab -> WebView handoff sync
   useEffect(() => {
-    if (!isGoogleLoading || !isOpen) return;
+    if ((!isGoogleLoading && !activeHandoffId) || !isOpen) return;
 
+    let stopped = false;
     let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (attempts > 25) {
-        clearInterval(interval);
-        setIsGoogleLoading(false);
-        return;
+
+    const checkSessionAndHandoff = async () => {
+      if (stopped) return;
+
+      if (activeHandoffId) {
+        try {
+          const hRes = await fetch(`/api/auth/handoff?id=${encodeURIComponent(activeHandoffId)}`, {
+            cache: "no-store",
+          });
+          if (hRes.ok) {
+            const hData = await hRes.json();
+            if (hData?.ready) {
+              stopped = true;
+              setActiveHandoffId(null);
+              if (hData.error) {
+                setErrorMsg(hData.errorDescription || hData.error || "গুগল সাইন-ইন প্রক্রিয়া সম্পন্ন হতে পারেনি।");
+                setIsGoogleLoading(false);
+                return;
+              }
+              setIsGoogleLoading(true);
+              if (hData.access_token && hData.refresh_token) {
+                const syntheticHash = `#access_token=${encodeURIComponent(hData.access_token)}&refresh_token=${encodeURIComponent(hData.refresh_token)}`;
+                await handleCompleteSessionAuth(null, syntheticHash);
+              } else if (hData.code) {
+                await handleCompleteSessionAuth(hData.code, null);
+              }
+              return;
+            }
+          }
+        } catch (e) {}
       }
+
       const supabase = getSupabase();
       if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        clearInterval(interval);
+      if (session?.user && !stopped) {
+        stopped = true;
+        setActiveHandoffId(null);
         await handleCompleteSessionAuth();
       }
-    }, 1200);
+    };
 
-    return () => clearInterval(interval);
-  }, [isGoogleLoading, isOpen, handleCompleteSessionAuth]);
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 90) {
+        stopped = true;
+        clearInterval(interval);
+        setIsGoogleLoading(false);
+        setActiveHandoffId(null);
+        return;
+      }
+      await checkSessionAndHandoff();
+    }, 1100);
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === "visible") {
+        void checkSessionAndHandoff();
+      }
+    };
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+    };
+  }, [isGoogleLoading, activeHandoffId, isOpen, handleCompleteSessionAuth]);
 
   if (!isOpen) return null;
 
@@ -465,12 +521,26 @@ export default function AuthModal({
 
       const supabase = getSupabase();
       if (supabase) {
-        // Direct to dedicated OAuth callback endpoint
-        const redirectUrl = typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
-          : undefined;
-
+        const ua = typeof navigator !== "undefined" ? (navigator.userAgent || "") : "";
+        const isAndroidWebView = typeof window !== "undefined" && (
+          Boolean((window as any).AndroidInterface) ||
+          Boolean((window as any).AndroidBridge) ||
+          Boolean((window as any).Android) ||
+          Boolean((window as any).isNativeApp) ||
+          (typeof document !== "undefined" && document.referrer.startsWith("android-app://")) ||
+          /;\s*wv\)/i.test(ua) ||
+          (/Android/i.test(ua) && /Version\/[0-9.]+/i.test(ua))
+        );
+        const isAndroidDevice = /Android/i.test(ua);
         const isIframe = typeof window !== "undefined" && window.self !== window.top;
+
+        const handoffId = `jm_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        setActiveHandoffId(handoffId);
+
+        // Direct to dedicated OAuth callback endpoint with one-time handoff ID
+        const redirectUrl = typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback?handoff=${encodeURIComponent(handoffId)}${isAndroidWebView ? "&source=app" : ""}`
+          : undefined;
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -487,24 +557,20 @@ export default function AuthModal({
         if (error) {
           setErrorMsg("গুগল সাইন-ইন শুরু করতে ব্যর্থ হয়েছে: " + error.message);
           setIsGoogleLoading(false);
+          setActiveHandoffId(null);
           return;
         }
 
         if (!data?.url) {
           setErrorMsg("গুগল অথেন্টিকেশন ইউআরএল পাওয়া যায়নি।");
           setIsGoogleLoading(false);
+          setActiveHandoffId(null);
           return;
         }
 
-        // Check if running inside Android WebView (e.g. Kotlin app with AndroidInterface)
-        const isAndroidWebView = typeof window !== "undefined" && (
-          Boolean((window as any).AndroidInterface) || 
-          navigator.userAgent.includes("; wv") ||
-          (navigator.userAgent.includes("Android") && navigator.userAgent.includes("Version/"))
-        );
-
-        if (isAndroidWebView) {
-          // In Android WebView, navigate directly in the current window
+        // On Android WebView or Android standalone (outside iframe), navigate directly instead of window.open
+        // If Kotlin WebView launches Chrome Custom Tab on top, activeHandoffId polling stays alive underneath!
+        if (isAndroidWebView || (isAndroidDevice && !isIframe)) {
           window.location.href = data.url;
           return;
         }
@@ -517,14 +583,13 @@ export default function AuthModal({
         );
 
         if (!popup || popup.closed || typeof popup.closed === "undefined") {
-          // If popup was blocked by browser
           setOauthPopupUrl(data.url);
           setErrorMsg("ব্রাউজারে পপ-আপ ব্লক করা আছে। অনুগ্রহ করে নিচের বাটনে ক্লিক করে গুগল লগইন সম্পন্ন করুন।");
           setIsGoogleLoading(false);
           return;
         }
 
-        // Monitor popup status: if user closes popup without completing login, reset spinner
+        // Monitor popup status: keep handoff polling alive briefly in case Chrome Custom Tab opened asynchronously
         const checkClosed = setInterval(() => {
           try {
             if (popup.closed) {
@@ -536,7 +601,7 @@ export default function AuthModal({
           }
         }, 1000);
 
-        // Safety timeout (45 seconds) so spinner never hangs indefinitely
+        // Safety timeout (95 seconds) so spinner never hangs indefinitely
         setTimeout(() => {
           try { clearInterval(checkClosed); } catch (e) {}
           setIsGoogleLoading((prev) => {
@@ -545,7 +610,7 @@ export default function AuthModal({
             }
             return false;
           });
-        }, 45000);
+        }, 95000);
       } else {
         // Fallback simulate demo google sign in
         const googleUser: UserProfile = {
