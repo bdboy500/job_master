@@ -114,6 +114,11 @@ const ACCENT_THEMES = [
   { id: "blue", label: "Corporate Blue", color: "#1D4ED8" },
 ];
 
+const DEFAULT_DECLARATION_EN =
+  "I hereby declare that all the information stated above is true and accurate to the best of my knowledge and belief.";
+const DEFAULT_DECLARATION_BN =
+  "আমি এই মর্মে অঙ্গীকার করছি যে, উপরে বর্ণিত সকল তথ্য আমার জানামতে সম্পূর্ণ সত্য ও সঠিক।";
+
 const EMPTY_CV_DATA = (initialName = "", initialEmail = ""): CvData => ({
   language: "en",
   template: "classic",
@@ -157,8 +162,7 @@ const EMPTY_CV_DATA = (initialName = "", initialEmail = ""): CvData => ({
   hobbies: "",
   references: [],
   showDeclaration: true,
-  declarationText:
-    "I hereby declare that all the information stated above is true and accurate to the best of my knowledge and belief.",
+  declarationText: DEFAULT_DECLARATION_EN,
   signatureName: initialName,
   signatureDate: "",
 });
@@ -263,13 +267,27 @@ const SAMPLE_CV_DATA: CvData = {
     },
   ],
   showDeclaration: true,
-  declarationText:
-    "I hereby declare that all the information stated above is true and accurate to the best of my knowledge and belief.",
+  declarationText: DEFAULT_DECLARATION_EN,
   signatureName: "Md. Tariqul Islam",
   signatureDate: "",
 };
 
 const OBJECTIVE_PRESETS = [
+  {
+    label: "বাংলা অবজেক্টিভ",
+    text: "একটি স্বনামধন্য প্রতিষ্ঠানে দায়িত্বশীল পদে কাজ করে আমার শিক্ষাগত যোগ্যতা, দক্ষতা ও নিষ্ঠার মাধ্যমে প্রতিষ্ঠানের উন্নয়নে সক্রিয় ভূমিকা রাখতে চাই।",
+    lang: "bn" as const,
+  },
+  {
+    label: "ফ্রেশ গ্র্যাজুয়েট (বাংলা)",
+    text: "একটি গতিশীল ও প্রবৃদ্ধিশীল প্রতিষ্ঠানে দীর্ঘমেয়াদী ক্যারিয়ার গড়তে চাই, যেখানে আমার একাডেমিক জ্ঞান, বিশ্লেষণধর্মী চিন্তাভাবনা এবং নিষ্ঠার মাধ্যমে প্রতিষ্ঠানের লক্ষ্য অর্জনে কার্যকর অবদান রাখতে পারব।",
+    lang: "bn" as const,
+  },
+  {
+    label: "ব্যাংক ও কর্পোরেট (বাংলা)",
+    text: "একজন নিবেদিতপ্রাণ ও দায়িত্বশীল স্নাতক হিসেবে ব্যাংক ও কর্পোরেট প্রতিষ্ঠানে অফিসার পদে যুক্ত হয়ে আমার গাণিতিক, আর্থিক বিশ্লেষণ এবং গ্রাহকসেবা দক্ষতার মাধ্যমে প্রতিষ্ঠানের সাফল্যে অবদান রাখতে চাই।",
+    lang: "bn" as const,
+  },
   {
     label: "ফ্রেশ গ্র্যাজুয়েট (English)",
     text: "To build a long-term career in a dynamic and growth-oriented organization where my academic knowledge, analytical thinking, and strong work ethic can add measurable value.",
@@ -280,12 +298,39 @@ const OBJECTIVE_PRESETS = [
     text: "Dedicated and detail-oriented graduate seeking an Officer position to leverage strong quantitative, financial analysis, and customer service skills toward institutional success.",
     lang: "en" as const,
   },
-  {
-    label: "বাংলা অবজেক্টিভ",
-    text: "একটি স্বনামধন্য প্রতিষ্ঠানে দায়িত্বশীল পদে কাজ করে আমার শিক্ষাগত যোগ্যতা, দক্ষতা ও নিষ্ঠার মাধ্যমে প্রতিষ্ঠানের উন্নয়নে সক্রিয় ভূমিকা রাখতে চাই।",
-    lang: "bn" as const,
-  },
 ];
+
+const A4_WIDTH_PX = 794;
+const A4_HEIGHT_PX = 1123;
+
+type CvBlock =
+  | { id: string; kind: "header"; keepWithNext?: boolean }
+  | { id: string; kind: "sectionTitle"; title: string; keepWithNext: true }
+  | { id: string; kind: "paragraph"; text: string; justify?: boolean }
+  | { id: string; kind: "experienceItem"; exp: ExperienceItem }
+  | { id: string; kind: "eduThead"; keepWithNext: true }
+  | { id: string; kind: "eduRow"; edu: EducationItem }
+  | { id: string; kind: "skillRow"; label: string; value: string }
+  | { id: string; kind: "trainingItem"; trn: TrainingItem }
+  | { id: string; kind: "personalRow"; label: string; value: string }
+  | { id: string; kind: "refPair"; refs: ReferenceItem[]; twoCols: boolean }
+  | { id: string; kind: "declarationFooter" };
+
+function getBlockMarginTop(prevKind: CvBlock["kind"] | null, currKind: CvBlock["kind"]): number {
+  if (!prevKind) return 0;
+  if (prevKind === "header") return 20;
+  if (currKind === "sectionTitle") return 15;
+  if (prevKind === "sectionTitle") return 8;
+  if (currKind === "declarationFooter") return 16;
+  if (currKind === "eduRow" && (prevKind === "eduThead" || prevKind === "eduRow")) return 0;
+  if (currKind === "personalRow" && prevKind === "personalRow") return 0;
+  if (currKind === "experienceItem" && prevKind === "experienceItem") return 10;
+  if (currKind === "trainingItem" && prevKind === "trainingItem") return 6;
+  if (currKind === "skillRow" && prevKind === "skillRow") return 5;
+  if (currKind === "paragraph" && prevKind === "paragraph") return 4;
+  if (currKind === "refPair" && prevKind === "refPair") return 10;
+  return 6;
+}
 
 interface CvMakerViewProps {
   initialName?: string;
@@ -373,10 +418,29 @@ export default function CvMakerView({
   } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
+  const [pageAssignments, setPageAssignments] = useState<string[][]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewWrapperRef = useRef<HTMLDivElement | null>(null);
-  const printSheetRef = useRef<HTMLDivElement | null>(null);
+  const measureContainerRef = useRef<HTMLDivElement | null>(null);
+  const printPageRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const applyLanguageChange = (prev: CvData, nextLang: "en" | "bn"): CvData => {
+    const currentDecl = (prev.declarationText || "").trim();
+    let nextDecl = prev.declarationText;
+    if (
+      !currentDecl ||
+      currentDecl === DEFAULT_DECLARATION_EN ||
+      currentDecl === DEFAULT_DECLARATION_BN
+    ) {
+      nextDecl = nextLang === "bn" ? DEFAULT_DECLARATION_BN : DEFAULT_DECLARATION_EN;
+    }
+    return {
+      ...prev,
+      language: nextLang,
+      declarationText: nextDecl,
+    };
+  };
 
   const playClick = () => {
     if (soundEnabled && quizAudio?.playClick) {
@@ -399,12 +463,23 @@ export default function CvMakerView({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === "object") {
-          setCv((prev) => ({
-            ...prev,
-            ...parsed,
-            fullName: parsed.fullName || initialName || prev.fullName,
-            email: parsed.email || initialEmail || prev.email,
-          }));
+          setCv((prev) => {
+            const lang: "en" | "bn" = parsed.language === "bn" ? "bn" : "en";
+            const rawDecl = typeof parsed.declarationText === "string" ? parsed.declarationText.trim() : "";
+            const fixedDecl =
+              lang === "bn" && rawDecl === DEFAULT_DECLARATION_EN
+                ? DEFAULT_DECLARATION_BN
+                : lang === "en" && rawDecl === DEFAULT_DECLARATION_BN
+                ? DEFAULT_DECLARATION_EN
+                : parsed.declarationText ?? (lang === "bn" ? DEFAULT_DECLARATION_BN : DEFAULT_DECLARATION_EN);
+            return {
+              ...prev,
+              ...parsed,
+              declarationText: fixedDecl,
+              fullName: parsed.fullName || initialName || prev.fullName,
+              email: parsed.email || initialEmail || prev.email,
+            };
+          });
         }
       }
     } catch (e) {}
@@ -421,14 +496,14 @@ export default function CvMakerView({
     }
   }, [cv, hydrated]);
 
-  // Responsive A4 preview scaling
+  // Responsive A4 preview scaling (account for container horizontal padding)
   useEffect(() => {
     const updateScale = () => {
       if (!previewWrapperRef.current) return;
-      const availableWidth = previewWrapperRef.current.clientWidth;
-      const a4WidthPx = 794;
-      if (availableWidth > 0 && availableWidth < a4WidthPx) {
-        setPreviewScale(availableWidth / a4WidthPx);
+      const horizontalPad = window.innerWidth < 640 ? 18 : 34;
+      const availableWidth = Math.max(240, previewWrapperRef.current.clientWidth - horizontalPad);
+      if (availableWidth < A4_WIDTH_PX) {
+        setPreviewScale(availableWidth / A4_WIDTH_PX);
       } else {
         setPreviewScale(1);
       }
@@ -560,15 +635,442 @@ export default function CvMakerView({
     validReferences.length > 0 ||
     (cv.showPhoto && hasText(cv.photoDataUrl));
 
-  // Real PDF Download Engine (A4, multi-page safe, Bengali & English crisp font rendering)
+  // Labels helper (English vs Bengali CV headers)
+  const L =
+    cv.language === "bn"
+      ? {
+          objective: "ক্যারিয়ার অবজেক্টিভ",
+          experience: "কর্মঅভিজ্ঞতা",
+          education: "শিক্ষাগত যোগ্যতা",
+          degree: "পরীক্ষা / ডিগ্রি",
+          subject: "বিষয় / বিভাগ",
+          institution: "প্রতিষ্ঠান",
+          board: "বোর্ড",
+          result: "ফলাফল",
+          year: "সাল",
+          skills: "দক্ষতা ও ভাষাগত যোগ্যতা",
+          proSkills: "প্রফেশনাল দক্ষতা",
+          compSkills: "কম্পিউটার দক্ষতা",
+          langSkills: "ভাষাগত দক্ষতা",
+          training: "প্রশিক্ষণ ও সার্টিফিকেট",
+          projects: "প্রজেক্ট ও অর্জনসমূহ",
+          hobbies: "সহশিক্ষা ও শখ",
+          personalInfo: "ব্যক্তিগত তথ্যাবলী",
+          references: "রেফারেন্স",
+          declaration: "অঙ্গীকারনামা",
+          signature: "স্বাক্ষর",
+          date: "তারিখ",
+        }
+      : {
+          objective: "CAREER OBJECTIVE",
+          experience: "WORK EXPERIENCE",
+          education: "EDUCATIONAL QUALIFICATION",
+          degree: "Degree / Exam",
+          subject: "Subject / Major",
+          institution: "Institution",
+          board: "Board",
+          result: "Result",
+          year: "Year",
+          skills: "SKILLS & COMPETENCIES",
+          proSkills: "Core Skills",
+          compSkills: "Computer Literacy",
+          langSkills: "Language Proficiency",
+          training: "TRAINING & CERTIFICATIONS",
+          projects: "PROJECTS & ACHIEVEMENTS",
+          hobbies: "EXTRACURRICULAR & HOBBIES",
+          personalInfo: "PERSONAL INFORMATION",
+          references: "REFERENCES",
+          declaration: "DECLARATION",
+          signature: "Signature",
+          date: "Date",
+        };
+
+  // Completion status for each of the 10 numbered sections (for blue collapsed indicator)
+  const sectionFilledMap = {
+    basic:
+      hasText(cv.fullName) ||
+      hasText(cv.headline) ||
+      hasText(cv.phone) ||
+      hasText(cv.email) ||
+      hasText(cv.presentAddress) ||
+      hasText(cv.permanentAddress) ||
+      hasText(cv.website),
+    objective: hasText(cv.careerObjective),
+    education: validEducations.length > 0,
+    experience: validExperiences.length > 0,
+    skills: hasAnySkillBlock,
+    training: validTrainings.length > 0,
+    personal:
+      hasText(cv.fatherName) ||
+      hasText(cv.motherName) ||
+      hasText(cv.dateOfBirth) ||
+      hasText(cv.gender) ||
+      hasText(cv.nationality) ||
+      hasText(cv.religion) ||
+      hasText(cv.maritalStatus) ||
+      hasText(cv.bloodGroup) ||
+      hasText(cv.nidNumber),
+    extras: hasText(cv.projectsOrAchievements) || hasText(cv.hobbies),
+    references: validReferences.length > 0,
+    declaration:
+      cv.showDeclaration &&
+      (hasText(cv.signatureName) ||
+        hasText(cv.signatureDate) ||
+        (hasText(cv.declarationText) &&
+          cv.declarationText.trim() !== DEFAULT_DECLARATION_EN &&
+          cv.declarationText.trim() !== DEFAULT_DECLARATION_BN)),
+  };
+
+  const getSectionCardClass = (key: keyof typeof sectionFilledMap) => {
+    const isFilled = sectionFilledMap[key];
+    const isOpen = openSections[key];
+    if (isFilled && !isOpen) {
+      return "bg-blue-50/90 border border-blue-300/90 rounded-3xl overflow-hidden shadow-2xs transition-colors";
+    }
+    if (isFilled) {
+      return "bg-white border border-blue-200/90 rounded-3xl overflow-hidden shadow-2xs transition-colors";
+    }
+    return "bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs transition-colors";
+  };
+
+  const getSectionBtnClass = (key: keyof typeof sectionFilledMap) => {
+    const isFilled = sectionFilledMap[key];
+    const isOpen = openSections[key];
+    if (isFilled && !isOpen) {
+      return "w-full px-4 py-3.5 flex items-center justify-between bg-blue-50/95 hover:bg-blue-100/80 transition-colors cursor-pointer";
+    }
+    return "w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer";
+  };
+
+  const renderSectionChevron = (key: keyof typeof sectionFilledMap) => {
+    const isFilled = sectionFilledMap[key];
+    const isOpen = openSections[key];
+    return (
+      <div className="flex items-center gap-2 shrink-0">
+        {isFilled && !isOpen && (
+          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-black">
+            ✓ পূরণকৃত
+          </span>
+        )}
+        {isOpen ? (
+          <ChevronUp className={`w-4 h-4 ${isFilled ? "text-blue-500" : "text-slate-400"}`} />
+        ) : (
+          <ChevronDown className={`w-4 h-4 ${isFilled ? "text-blue-600" : "text-slate-400"}`} />
+        )}
+      </div>
+    );
+  };
+
+  // Deterministic Education table column visibility & widths so split pages align 100%
+  const showDegreeCol = validEducations.some((e) => hasText(e.degree));
+  const showSubjectCol = validEducations.some((e) => hasText(e.subject));
+  const showInstCol = validEducations.some((e) => hasText(e.institution));
+  const showBoardCol = validEducations.some((e) => hasText(e.board));
+  const showResultCol = validEducations.some((e) => hasText(e.result));
+  const showYearCol = validEducations.some((e) => hasText(e.passingYear));
+
+  const activeEduCols = [
+    { key: "degree", show: showDegreeCol, weight: 17 },
+    { key: "subject", show: showSubjectCol, weight: 18 },
+    { key: "institution", show: showInstCol, weight: 29 },
+    { key: "board", show: showBoardCol, weight: 14 },
+    { key: "result", show: showResultCol, weight: 14 },
+    { key: "year", show: showYearCol, weight: 8 },
+  ].filter((c) => c.show);
+  const totalEduWeight = activeEduCols.reduce((acc, c) => acc + c.weight, 0) || 100;
+  const getColWidth = (key: string) => {
+    const col = activeEduCols.find((c) => c.key === key);
+    return col ? `${((col.weight / totalEduWeight) * 100).toFixed(2)}%` : "auto";
+  };
+
+  // Build flat atomic CV blocks for exact row-by-row pagination (no big empty gaps!)
+  const cvBlocks: CvBlock[] = (() => {
+    const blocks: CvBlock[] = [{ id: "header", kind: "header" }];
+
+    if (hasText(cv.careerObjective)) {
+      blocks.push({
+        id: "obj-head",
+        kind: "sectionTitle",
+        title: L.objective,
+        keepWithNext: true,
+      });
+      blocks.push({
+        id: "obj-body",
+        kind: "paragraph",
+        text: cv.careerObjective.trim(),
+        justify: true,
+      });
+    }
+
+    if (validExperiences.length > 0) {
+      blocks.push({
+        id: "exp-head",
+        kind: "sectionTitle",
+        title: L.experience,
+        keepWithNext: true,
+      });
+      validExperiences.forEach((exp) => {
+        blocks.push({ id: `exp-${exp.id}`, kind: "experienceItem", exp });
+      });
+    }
+
+    if (validEducations.length > 0) {
+      blocks.push({
+        id: "edu-head",
+        kind: "sectionTitle",
+        title: L.education,
+        keepWithNext: true,
+      });
+      blocks.push({ id: "edu-thead", kind: "eduThead", keepWithNext: true });
+      validEducations.forEach((edu) => {
+        blocks.push({ id: `edu-${edu.id}`, kind: "eduRow", edu });
+      });
+    }
+
+    if (hasAnySkillBlock) {
+      blocks.push({
+        id: "skills-head",
+        kind: "sectionTitle",
+        title: L.skills,
+        keepWithNext: true,
+      });
+      if (hasText(cv.skills)) {
+        blocks.push({ id: "skill-pro", kind: "skillRow", label: L.proSkills, value: cv.skills.trim() });
+      }
+      if (hasText(cv.computerSkills)) {
+        blocks.push({
+          id: "skill-comp",
+          kind: "skillRow",
+          label: L.compSkills,
+          value: cv.computerSkills.trim(),
+        });
+      }
+      if (hasText(cv.languages)) {
+        blocks.push({
+          id: "skill-lang",
+          kind: "skillRow",
+          label: L.langSkills,
+          value: cv.languages.trim(),
+        });
+      }
+    }
+
+    if (validTrainings.length > 0) {
+      blocks.push({
+        id: "trn-head",
+        kind: "sectionTitle",
+        title: L.training,
+        keepWithNext: true,
+      });
+      validTrainings.forEach((trn) => {
+        blocks.push({ id: `trn-${trn.id}`, kind: "trainingItem", trn });
+      });
+    }
+
+    if (hasText(cv.projectsOrAchievements)) {
+      blocks.push({
+        id: "proj-head",
+        kind: "sectionTitle",
+        title: L.projects,
+        keepWithNext: true,
+      });
+      const projLines = cv.projectsOrAchievements
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      projLines.forEach((line, idx) => {
+        blocks.push({ id: `proj-line-${idx}`, kind: "paragraph", text: line });
+      });
+    }
+
+    if (hasText(cv.hobbies)) {
+      blocks.push({
+        id: "hobby-head",
+        kind: "sectionTitle",
+        title: L.hobbies,
+        keepWithNext: true,
+      });
+      blocks.push({
+        id: "hobby-body",
+        kind: "paragraph",
+        text: cv.hobbies.trim(),
+      });
+    }
+
+    if (personalDetailRows.length > 0) {
+      blocks.push({
+        id: "pers-head",
+        kind: "sectionTitle",
+        title: L.personalInfo,
+        keepWithNext: true,
+      });
+      personalDetailRows.forEach((row, idx) => {
+        blocks.push({
+          id: `pers-row-${idx}`,
+          kind: "personalRow",
+          label: row.label,
+          value: row.value.trim(),
+        });
+      });
+    }
+
+    if (validReferences.length > 0) {
+      blocks.push({
+        id: "ref-head",
+        kind: "sectionTitle",
+        title: L.references,
+        keepWithNext: true,
+      });
+      const twoCols = validReferences.length > 1;
+      for (let idx = 0; idx < validReferences.length; idx += 2) {
+        blocks.push({
+          id: `ref-pair-${idx}`,
+          kind: "refPair",
+          refs: validReferences.slice(idx, idx + 2),
+          twoCols,
+        });
+      }
+    }
+
+    if (
+      cv.showDeclaration &&
+      (hasText(cv.declarationText) || hasText(cv.signatureName) || hasText(cv.signatureDate))
+    ) {
+      blocks.push({ id: "decl-footer", kind: "declarationFooter" });
+    }
+
+    return blocks;
+  })();
+
+  const blockMap = new Map<string, CvBlock>(cvBlocks.map((b) => [b.id, b]));
+
+  // Measure atomic blocks & calculate clean multi-page A4 assignments automatically
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const computePagination = () => {
+      const container = measureContainerRef.current;
+      if (!container) return;
+
+      const heightMap = new Map<string, number>();
+      const measuredEls = container.querySelectorAll<HTMLElement>("[data-measure-id]");
+      measuredEls.forEach((el) => {
+        const id = el.getAttribute("data-measure-id");
+        if (id) {
+          heightMap.set(id, el.getBoundingClientRect().height);
+        }
+      });
+
+      if (heightMap.size === 0) return;
+
+      const pages: string[][] = [];
+      let currentPage: string[] = [];
+      let usedHeight = 0;
+
+      const getMaxHeight = (pageIdx: number) =>
+        pageIdx === 0 && cv.template === "modern"
+          ? A4_HEIGHT_PX - 36
+          : A4_HEIGHT_PX - 76;
+
+      let i = 0;
+      while (i < cvBlocks.length) {
+        let groupEnd = i;
+        while (
+          groupEnd < cvBlocks.length - 1 &&
+          "keepWithNext" in cvBlocks[groupEnd] &&
+          Boolean((cvBlocks[groupEnd] as { keepWithNext?: boolean }).keepWithNext)
+        ) {
+          groupEnd++;
+        }
+        const group = cvBlocks.slice(i, groupEnd + 1);
+        const maxH = getMaxHeight(pages.length);
+
+        const prevBlockOnPage: CvBlock | null =
+          currentPage.length > 0 ? blockMap.get(currentPage[currentPage.length - 1]) || null : null;
+
+        let groupCost = 0;
+        let simPrev = prevBlockOnPage;
+
+        if (
+          group[0].kind === "eduRow" &&
+          simPrev?.kind !== "eduRow" &&
+          simPrev?.kind !== "eduThead"
+        ) {
+          groupCost += heightMap.get("edu-thead") || 32;
+        }
+
+        for (const gb of group) {
+          groupCost += getBlockMarginTop(simPrev?.kind || null, gb.kind) + (heightMap.get(gb.id) || 20);
+          simPrev = gb;
+        }
+
+        if (currentPage.length > 0 && usedHeight + groupCost > maxH) {
+          pages.push(currentPage);
+          currentPage = [];
+          usedHeight = 0;
+
+          let freshCost = 0;
+          let freshPrev: CvBlock | null = null;
+          if (group[0].kind === "eduRow") {
+            freshCost += heightMap.get("edu-thead") || 32;
+          }
+          for (const gb of group) {
+            freshCost += getBlockMarginTop(freshPrev?.kind || null, gb.kind) + (heightMap.get(gb.id) || 20);
+            freshPrev = gb;
+          }
+          group.forEach((gb) => currentPage.push(gb.id));
+          usedHeight = freshCost;
+        } else {
+          group.forEach((gb) => currentPage.push(gb.id));
+          usedHeight += groupCost;
+        }
+
+        i = groupEnd + 1;
+      }
+
+      if (currentPage.length > 0) {
+        pages.push(currentPage);
+      }
+
+      setPageAssignments((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(pages)) return prev;
+        return pages;
+      });
+    };
+
+    const rafId = requestAnimationFrame(computePagination);
+    let cancelled = false;
+    if ((document as any).fonts?.ready) {
+      (document as any).fonts.ready.then(() => {
+        if (!cancelled) requestAnimationFrame(computePagination);
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  });
+
+  const effectivePages: string[][] =
+    pageAssignments.length > 0 &&
+    pageAssignments.every((p) => p.every((id) => blockMap.has(id))) &&
+    pageAssignments.reduce((acc, p) => acc + p.length, 0) === cvBlocks.length
+      ? pageAssignments
+      : [cvBlocks.map((b) => b.id)];
+
+  // Real PDF Download Engine (captures each exact A4 page cleanly)
   const handleDownloadPdf = async () => {
     if (!hasAnyContentForExport) {
       showToast("error", "PDF ডাউনলোড করার আগে অন্তত আপনার নাম বা প্রয়োজনীয় তথ্য লিখুন।");
       return;
     }
 
-    const sheetEl = printSheetRef.current;
-    if (!sheetEl) {
+    const pageNodes = effectivePages
+      .map((_, idx) => printPageRefs.current[idx])
+      .filter((el): el is HTMLDivElement => Boolean(el));
+
+    if (pageNodes.length === 0) {
       showToast("error", "সিভি টেমপ্লেট প্রস্তুত নয়, অনুগ্রহ করে আবার চেষ্টা করুন।");
       return;
     }
@@ -576,53 +1078,15 @@ export default function CvMakerView({
     setIsGeneratingPdf(true);
     playClick();
 
-    // Reset any prior page-break spacer margins before measuring
-    const sectionNodes = Array.from(
-      sheetEl.querySelectorAll<HTMLElement>("[data-cv-section='true']")
-    );
-    sectionNodes.forEach((node) => {
-      node.style.marginTop = "";
-    });
-
     try {
       if (typeof document !== "undefined" && (document as any).fonts?.ready) {
         await (document as any).fonts.ready;
-      }
-
-      // Smart A4 page-break avoidance: ensure no section block is split in half across pages
-      const a4HeightPx = Math.floor((794 * 297) / 210); // ~1122px
-      const topPaddingBuffer = 28;
-      for (const node of sectionNodes) {
-        const sheetTop = sheetEl.getBoundingClientRect().top;
-        const rect = node.getBoundingClientRect();
-        const relTop = rect.top - sheetTop;
-        const relBottom = rect.bottom - sheetTop;
-        const pageStartIdx = Math.floor(relTop / a4HeightPx);
-        const pageEndIdx = Math.floor((relBottom - 1) / a4HeightPx);
-
-        if (pageEndIdx > pageStartIdx && rect.height < a4HeightPx - 60) {
-          const nextPageTop = (pageStartIdx + 1) * a4HeightPx + topPaddingBuffer;
-          const pushDownPx = Math.ceil(nextPageTop - relTop);
-          if (pushDownPx > 0) {
-            node.style.marginTop = `${pushDownPx}px`;
-          }
-        }
       }
 
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas-pro"),
         import("jspdf"),
       ]);
-
-      const canvas = await html2canvas(sheetEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        width: 794,
-        windowWidth: 794,
-        logging: false,
-      });
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -633,45 +1097,59 @@ export default function CvMakerView({
 
       const pageWidthMm = 210;
       const pageHeightMm = 297;
-      const pxPerMm = canvas.width / pageWidthMm;
-      const pageHeightPx = Math.floor(pageHeightMm * pxPerMm);
+      let pdfPageCount = 0;
 
-      let yOffsetPx = 0;
-      let pageIndex = 0;
+      for (let idx = 0; idx < pageNodes.length; idx++) {
+        const pageEl = pageNodes[idx];
+        const canvas = await html2canvas(pageEl, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          width: A4_WIDTH_PX,
+          windowWidth: A4_WIDTH_PX,
+          logging: false,
+        });
 
-      while (yOffsetPx < canvas.height - 8) {
-        const sliceHeightPx = Math.min(pageHeightPx, canvas.height - yOffsetPx);
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeightPx;
+        const pxPerMm = canvas.width / pageWidthMm;
+        const singlePagePx = Math.floor(pageHeightMm * pxPerMm);
 
-        const ctx = pageCanvas.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0,
-            yOffsetPx,
-            canvas.width,
-            sliceHeightPx,
-            0,
-            0,
-            canvas.width,
-            sliceHeightPx
-          );
+        if (canvas.height <= singlePagePx + 10) {
+          const imgData = canvas.toDataURL("image/jpeg", 0.95);
+          if (pdfPageCount > 0) pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
+          pdfPageCount++;
+        } else {
+          let yOffsetPx = 0;
+          while (yOffsetPx < canvas.height - 8) {
+            const sliceHeightPx = Math.min(singlePagePx, canvas.height - yOffsetPx);
+            const sliceCanvas = document.createElement("canvas");
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceHeightPx;
+            const ctx = sliceCanvas.getContext("2d");
+            if (ctx) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+              ctx.drawImage(
+                canvas,
+                0,
+                yOffsetPx,
+                canvas.width,
+                sliceHeightPx,
+                0,
+                0,
+                canvas.width,
+                sliceHeightPx
+              );
+            }
+            const imgData = sliceCanvas.toDataURL("image/jpeg", 0.95);
+            const sliceHeightMm = sliceHeightPx / pxPerMm;
+            if (pdfPageCount > 0) pdf.addPage();
+            pdf.addImage(imgData, "JPEG", 0, 0, pageWidthMm, sliceHeightMm, undefined, "FAST");
+            pdfPageCount++;
+            yOffsetPx += sliceHeightPx;
+          }
         }
-
-        const imgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-        const sliceHeightMm = sliceHeightPx / pxPerMm;
-
-        if (pageIndex > 0) {
-          pdf.addPage();
-        }
-        pdf.addImage(imgData, "JPEG", 0, 0, pageWidthMm, sliceHeightMm, undefined, "FAST");
-
-        yOffsetPx += sliceHeightPx;
-        pageIndex++;
       }
 
       const cleanBaseName = (cv.fullName || "JobMaster_CV")
@@ -680,7 +1158,6 @@ export default function CvMakerView({
         .replace(/\s+/g, "_");
       const fileName = `${cleanBaseName || "Resume"}_CV.pdf`;
 
-      // Generate Blob & trigger direct download (reliable across desktop, mobile & iframe)
       const blob = pdf.output("blob");
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -691,71 +1168,20 @@ export default function CvMakerView({
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
 
-      showToast("success", `✅ "${fileName}" আপনার ডিভাইসে PDF আকারে ডাউনলোড হয়েছে!`);
+      showToast("success", `✅ "${fileName}" (${pdfPageCount} পৃষ্ঠা) PDF আকারে ডাউনলোড হয়েছে!`);
     } catch (err) {
       console.error("PDF generation error:", err);
       showToast("error", "PDF তৈরি করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
     } finally {
-      sectionNodes.forEach((node) => {
-        node.style.marginTop = "";
-      });
       setIsGeneratingPdf(false);
     }
   };
 
-  // Labels helper (English vs Bengali CV headers)
-  const L = cv.language === "bn"
-    ? {
-        objective: "ক্যারিয়ার অবজেক্টিভ",
-        experience: "কর্মঅভিজ্ঞতা",
-        education: "শিক্ষাগত যোগ্যতা",
-        degree: "পরীক্ষা / ডিগ্রি",
-        subject: "বিষয় / বিভাগ",
-        institution: "প্রতিষ্ঠান",
-        board: "বোর্ড",
-        result: "ফলাফল",
-        year: "সাল",
-        skills: "দক্ষতা ও ভাষাগত যোগ্যতা",
-        proSkills: "প্রফেশনাল দক্ষতা",
-        compSkills: "কম্পিউটার দক্ষতা",
-        langSkills: "ভাষাগত দক্ষতা",
-        training: "প্রশিক্ষণ ও সার্টিফিকেট",
-        projects: "প্রজেক্ট ও অর্জনসমূহ",
-        hobbies: "সহশিক্ষা ও শখ",
-        personalInfo: "ব্যক্তিগত তথ্যাবলী",
-        references: "রেফারেন্স",
-        declaration: "অঙ্গীকারনামা",
-        signature: "স্বাক্ষর",
-        date: "তারিখ",
-      }
-    : {
-        objective: "CAREER OBJECTIVE",
-        experience: "WORK EXPERIENCE",
-        education: "EDUCATIONAL QUALIFICATION",
-        degree: "Degree / Exam",
-        subject: "Subject / Major",
-        institution: "Institution",
-        board: "Board",
-        result: "Result",
-        year: "Year",
-        skills: "SKILLS & COMPETENCIES",
-        proSkills: "Core Skills",
-        compSkills: "Computer Literacy",
-        langSkills: "Language Proficiency",
-        training: "TRAINING & CERTIFICATIONS",
-        projects: "PROJECTS & ACHIEVEMENTS",
-        hobbies: "EXTRACURRICULAR & HOBBIES",
-        personalInfo: "PERSONAL INFORMATION",
-        references: "REFERENCES",
-        declaration: "DECLARATION",
-        signature: "Signature",
-        date: "Date",
-      };
+  // Pure-hex UI fragments shared by measurement container, live preview pages & PDF pages
+  const accent = cv.accentColor || "#1E293B";
+  const isModern = cv.template === "modern";
 
-  // Reusable Pure-Hex A4 CV Sheet Renderer (used for both Live Preview & PDF Export!)
-  const renderA4CvSheet = (isPrintTarget: boolean) => {
-    const accent = cv.accentColor || "#1E293B";
-    const isModern = cv.template === "modern";
+  const renderHeaderBlock = (measureId?: string) => {
     const contactParts = [
       hasText(cv.phone) ? `📞 ${cv.phone.trim()}` : "",
       hasText(cv.email) ? `✉️ ${cv.email.trim()}` : "",
@@ -768,730 +1194,662 @@ export default function CvMakerView({
       ? cv.permanentAddress.trim()
       : "";
 
-    const showDegreeCol = validEducations.some((e) => hasText(e.degree));
-    const showSubjectCol = validEducations.some((e) => hasText(e.subject));
-    const showInstCol = validEducations.some((e) => hasText(e.institution));
-    const showBoardCol = validEducations.some((e) => hasText(e.board));
-    const showResultCol = validEducations.some((e) => hasText(e.result));
-    const showYearCol = validEducations.some((e) => hasText(e.passingYear));
+    return (
+      <div
+        data-measure-id={measureId}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "24px",
+          backgroundColor: isModern ? accent : "transparent",
+          color: isModern ? "#ffffff" : "#0f172a",
+          padding: isModern ? "32px 44px 26px 44px" : "0px 0px 16px 0px",
+          borderBottom: isModern ? "none" : `2.5px solid ${accent}`,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1
+            style={{
+              fontSize: "27px",
+              fontWeight: 800,
+              margin: "0 0 4px 0",
+              color: isModern ? "#ffffff" : accent,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.2,
+              wordBreak: "break-word",
+            }}
+          >
+            {hasText(cv.fullName)
+              ? cv.fullName.trim()
+              : cv.language === "bn"
+              ? "আপনার পূর্ণ নাম"
+              : "YOUR FULL NAME"}
+          </h1>
+
+          {hasText(cv.headline) && (
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: 700,
+                color: isModern ? "#e2e8f0" : "#475569",
+                marginBottom: "8px",
+              }}
+            >
+              {cv.headline.trim()}
+            </div>
+          )}
+
+          {contactParts.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px 16px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                color: isModern ? "#f8fafc" : "#334155",
+                marginTop: "6px",
+              }}
+            >
+              {contactParts.map((part, i) => (
+                <span key={i}>{part}</span>
+              ))}
+            </div>
+          )}
+
+          {hasText(addressLine) && (
+            <div
+              style={{
+                fontSize: "12.5px",
+                fontWeight: 500,
+                color: isModern ? "#e2e8f0" : "#475569",
+                marginTop: "5px",
+              }}
+            >
+              📍 {addressLine}
+            </div>
+          )}
+        </div>
+
+        {/* PASSPORT SIZE PHOTO (35mm x 45mm ratio -> 108px x 138px) */}
+        {cv.showPhoto && (
+          <div
+            style={{
+              width: "108px",
+              height: "138px",
+              flexShrink: 0,
+              borderRadius: "6px",
+              border: hasText(cv.photoDataUrl)
+                ? `2px solid ${isModern ? "#ffffff" : accent}`
+                : isModern
+                ? "1.5px dashed #cbd5e1"
+                : "1.5px solid #94a3b8",
+              backgroundColor: "#ffffff",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {hasText(cv.photoDataUrl) ? (
+              <img
+                src={cv.photoDataUrl}
+                alt="Passport Photo"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "#ffffff",
+                }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderEduColGroup = () => (
+    <colgroup>
+      {showDegreeCol && <col style={{ width: getColWidth("degree") }} />}
+      {showSubjectCol && <col style={{ width: getColWidth("subject") }} />}
+      {showInstCol && <col style={{ width: getColWidth("institution") }} />}
+      {showBoardCol && <col style={{ width: getColWidth("board") }} />}
+      {showResultCol && <col style={{ width: getColWidth("result") }} />}
+      {showYearCol && <col style={{ width: getColWidth("year") }} />}
+    </colgroup>
+  );
+
+  const renderEduTheadRow = (measureId?: string) => (
+    <tr data-measure-id={measureId} style={{ backgroundColor: "#f1f5f9", color: "#0f172a" }}>
+      {showDegreeCol && (
+        <th
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "7px 8px",
+            textAlign: "left",
+            fontWeight: 800,
+          }}
+        >
+          {L.degree}
+        </th>
+      )}
+      {showSubjectCol && (
+        <th
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "7px 8px",
+            textAlign: "left",
+            fontWeight: 800,
+          }}
+        >
+          {L.subject}
+        </th>
+      )}
+      {showInstCol && (
+        <th
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "7px 8px",
+            textAlign: "left",
+            fontWeight: 800,
+          }}
+        >
+          {L.institution}
+        </th>
+      )}
+      {showBoardCol && (
+        <th
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "7px 8px",
+            textAlign: "left",
+            fontWeight: 800,
+          }}
+        >
+          {L.board}
+        </th>
+      )}
+      {showResultCol && (
+        <th
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "7px 8px",
+            textAlign: "left",
+            fontWeight: 800,
+          }}
+        >
+          {L.result}
+        </th>
+      )}
+      {showYearCol && (
+        <th
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "7px 8px",
+            textAlign: "center",
+            fontWeight: 800,
+          }}
+        >
+          {L.year}
+        </th>
+      )}
+    </tr>
+  );
+
+  const renderEduDataRow = (edu: EducationItem, measureId?: string) => (
+    <tr key={edu.id} data-measure-id={measureId}>
+      {showDegreeCol && (
+        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px", fontWeight: 700 }}>
+          {edu.degree.trim()}
+        </td>
+      )}
+      {showSubjectCol && (
+        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px" }}>{edu.subject.trim()}</td>
+      )}
+      {showInstCol && (
+        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px" }}>
+          {edu.institution.trim()}
+        </td>
+      )}
+      {showBoardCol && (
+        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px" }}>{edu.board.trim()}</td>
+      )}
+      {showResultCol && (
+        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px", fontWeight: 600 }}>
+          {edu.result.trim()}
+        </td>
+      )}
+      {showYearCol && (
+        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px", textAlign: "center" }}>
+          {edu.passingYear.trim()}
+        </td>
+      )}
+    </tr>
+  );
+
+  const renderSingleNonTableBlock = (
+    block: CvBlock,
+    marginTop: number,
+    isMeasure: boolean
+  ): React.ReactNode => {
+    const mid = isMeasure ? block.id : undefined;
+
+    switch (block.kind) {
+      case "header":
+        return <React.Fragment key={block.id}>{renderHeaderBlock(mid)}</React.Fragment>;
+
+      case "sectionTitle":
+        return (
+          <div
+            key={block.id}
+            data-measure-id={mid}
+            style={{
+              marginTop: `${marginTop}px`,
+              fontSize: "13.5px",
+              fontWeight: 800,
+              color: accent,
+              borderBottom: "1.5px solid #cbd5e1",
+              paddingBottom: "4px",
+              letterSpacing: "0.03em",
+            }}
+          >
+            {block.title}
+          </div>
+        );
+
+      case "paragraph":
+        return (
+          <p
+            key={block.id}
+            data-measure-id={mid}
+            style={{
+              margin: `${marginTop}px 0px 0px 0px`,
+              fontSize: "12.5px",
+              color: "#334155",
+              lineHeight: 1.6,
+              textAlign: block.justify ? "justify" : "left",
+              whiteSpace: "pre-line",
+            }}
+          >
+            {block.text}
+          </p>
+        );
+
+      case "experienceItem": {
+        const exp = block.exp;
+        return (
+          <div
+            key={block.id}
+            data-measure-id={mid}
+            style={{ marginTop: `${marginTop}px`, fontSize: "12.5px", color: "#334155" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontWeight: 800, color: "#0f172a", fontSize: "13px" }}>
+                {[exp.role.trim(), exp.company.trim()].filter(Boolean).join(" — ")}
+              </span>
+              {hasText(exp.duration) && (
+                <span style={{ fontWeight: 700, color: accent, fontSize: "12px" }}>
+                  {exp.duration.trim()}
+                </span>
+              )}
+            </div>
+            {hasText(exp.location) && (
+              <div style={{ fontSize: "11.5px", color: "#64748b", fontWeight: 600 }}>
+                {exp.location.trim()}
+              </div>
+            )}
+            {hasText(exp.details) && (
+              <div
+                style={{
+                  marginTop: "3px",
+                  fontSize: "12px",
+                  color: "#334155",
+                  lineHeight: 1.55,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {exp.details.trim()}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      case "skillRow":
+        return (
+          <div
+            key={block.id}
+            data-measure-id={mid}
+            style={{ marginTop: `${marginTop}px`, fontSize: "12.5px", color: "#334155" }}
+          >
+            <strong style={{ color: "#0f172a" }}>{block.label}: </strong>
+            <span>{block.value}</span>
+          </div>
+        );
+
+      case "trainingItem": {
+        const t = block.trn;
+        return (
+          <div
+            key={block.id}
+            data-measure-id={mid}
+            style={{
+              marginTop: `${marginTop}px`,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "12px",
+              fontSize: "12.5px",
+              color: "#334155",
+            }}
+          >
+            <div>
+              <strong style={{ color: "#0f172a" }}>{t.title.trim()}</strong>
+              {hasText(t.institute) && <span> — {t.institute.trim()}</span>}
+            </div>
+            {hasText(t.duration) && (
+              <span style={{ fontWeight: 700, color: accent, flexShrink: 0 }}>
+                {t.duration.trim()}
+              </span>
+            )}
+          </div>
+        );
+      }
+
+      case "refPair":
+        return (
+          <div
+            key={block.id}
+            data-measure-id={mid}
+            style={{
+              marginTop: `${marginTop}px`,
+              display: "grid",
+              gridTemplateColumns: block.twoCols ? "repeat(2, minmax(0, 1fr))" : "1fr",
+              gap: "16px",
+              fontSize: "12px",
+              color: "#334155",
+            }}
+          >
+            {block.refs.map((ref) => (
+              <div
+                key={ref.id}
+                style={{
+                  padding: "10px 12px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  backgroundColor: "#f8fafc",
+                }}
+              >
+                {hasText(ref.name) && (
+                  <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "13px" }}>
+                    {ref.name.trim()}
+                  </div>
+                )}
+                {hasText(ref.designation) && <div>{ref.designation.trim()}</div>}
+                {hasText(ref.organization) && <div>{ref.organization.trim()}</div>}
+                {hasText(ref.phone) && <div>Phone: {ref.phone.trim()}</div>}
+                {hasText(ref.email) && <div>Email: {ref.email.trim()}</div>}
+              </div>
+            ))}
+          </div>
+        );
+
+      case "declarationFooter":
+        return (
+          <div key={block.id} data-measure-id={mid} style={{ marginTop: `${marginTop}px` }}>
+            {hasText(cv.declarationText) && (
+              <>
+                <div
+                  style={{
+                    fontSize: "13.5px",
+                    fontWeight: 800,
+                    color: accent,
+                    borderBottom: "1.5px solid #cbd5e1",
+                    paddingBottom: "4px",
+                    marginBottom: "8px",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {L.declaration}
+                </div>
+                <p
+                  style={{
+                    margin: "0 0 22px 0",
+                    fontSize: "12px",
+                    color: "#334155",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {cv.declarationText.trim()}
+                </p>
+              </>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-end",
+                paddingTop: "10px",
+                fontSize: "12px",
+                color: "#0f172a",
+              }}
+            >
+              <div>
+                {hasText(cv.signatureDate) && (
+                  <div style={{ fontWeight: 600 }}>
+                    {L.date}: {cv.signatureDate.trim()}
+                  </div>
+                )}
+              </div>
+              {(hasText(cv.signatureName) || hasText(cv.fullName)) && (
+                <div style={{ textAlign: "center", minWidth: "170px" }}>
+                  <div
+                    style={{
+                      borderTop: "1.5px solid #334155",
+                      paddingTop: "4px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {hasText(cv.signatureName) ? cv.signatureName.trim() : cv.fullName.trim()}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>{L.signature}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Renders a sequence of blocks onto a page (or measurement sheet), grouping table rows cleanly
+  const renderBlockSequence = (blocksToRender: CvBlock[], isMeasure: boolean) => {
+    const elements: React.ReactNode[] = [];
+    let idx = 0;
+
+    while (idx < blocksToRender.length) {
+      const curr = blocksToRender[idx];
+      const prev = idx > 0 ? blocksToRender[idx - 1] : null;
+      const mt = getBlockMarginTop(prev?.kind || null, curr.kind);
+
+      // Group Education table header + rows together into one <table>
+      if (curr.kind === "eduThead" || curr.kind === "eduRow") {
+        let includeThead = curr.kind === "eduThead";
+        const rows: CvBlock[] = [];
+        let j = idx;
+        if (curr.kind === "eduThead") {
+          j++;
+        } else {
+          // Education rows continuing onto page 2+ automatically show repeated table header
+          includeThead = true;
+        }
+        while (j < blocksToRender.length && blocksToRender[j].kind === "eduRow") {
+          rows.push(blocksToRender[j]);
+          j++;
+        }
+        elements.push(
+          <table
+            key={`edu-table-${curr.id}`}
+            style={{
+              width: "100%",
+              tableLayout: "fixed",
+              borderCollapse: "collapse",
+              fontSize: "12px",
+              color: "#1e293b",
+              marginTop: `${prev ? getBlockMarginTop(prev.kind, curr.kind) : 0}px`,
+            }}
+          >
+            {renderEduColGroup()}
+            {includeThead && (
+              <thead>{renderEduTheadRow(isMeasure ? "edu-thead" : undefined)}</thead>
+            )}
+            <tbody>
+              {rows.map((r) =>
+                r.kind === "eduRow"
+                  ? renderEduDataRow(r.edu, isMeasure ? r.id : undefined)
+                  : null
+              )}
+            </tbody>
+          </table>
+        );
+        idx = j;
+        continue;
+      }
+
+      // Group consecutive Personal Info rows together into one aligned <table>
+      if (curr.kind === "personalRow") {
+        const rows: CvBlock[] = [];
+        let j = idx;
+        while (j < blocksToRender.length && blocksToRender[j].kind === "personalRow") {
+          rows.push(blocksToRender[j]);
+          j++;
+        }
+        elements.push(
+          <table
+            key={`pers-table-${curr.id}`}
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "12.5px",
+              marginTop: `${mt}px`,
+            }}
+          >
+            <tbody>
+              {rows.map((r) =>
+                r.kind === "personalRow" ? (
+                  <tr key={r.id} data-measure-id={isMeasure ? r.id : undefined}>
+                    <td
+                      style={{
+                        width: "185px",
+                        padding: "3px 8px 3px 0px",
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        verticalAlign: "top",
+                      }}
+                    >
+                      {r.label}
+                    </td>
+                    <td
+                      style={{
+                        width: "14px",
+                        padding: "3px 4px",
+                        fontWeight: 700,
+                        color: "#475569",
+                        verticalAlign: "top",
+                      }}
+                    >
+                      :
+                    </td>
+                    <td
+                      style={{
+                        padding: "3px 0px",
+                        color: "#334155",
+                        verticalAlign: "top",
+                      }}
+                    >
+                      {r.value}
+                    </td>
+                  </tr>
+                ) : null
+              )}
+            </tbody>
+          </table>
+        );
+        idx = j;
+        continue;
+      }
+
+      elements.push(renderSingleNonTableBlock(curr, mt, isMeasure));
+      idx++;
+    }
+
+    return elements;
+  };
+
+  // Renders an exact A4 page (794px x 1123px) for either Live Preview or Offscreen PDF capture
+  const renderSingleA4Page = (
+    pageBlockIds: string[],
+    pageIndex: number,
+    isPrintTarget: boolean
+  ) => {
+    const pageBlocks = pageBlockIds
+      .map((id) => blockMap.get(id))
+      .filter((b): b is CvBlock => Boolean(b));
+
+    const hasModernHeaderOnThisPage =
+      isModern && pageIndex === 0 && pageBlocks[0]?.kind === "header";
+    const headerBlock = hasModernHeaderOnThisPage ? pageBlocks[0] : null;
+    const bodyBlocks = hasModernHeaderOnThisPage ? pageBlocks.slice(1) : pageBlocks;
 
     return (
       <div
-        ref={isPrintTarget ? printSheetRef : undefined}
+        key={`a4-page-${pageIndex}-${isPrintTarget ? "print" : "prev"}`}
+        ref={
+          isPrintTarget
+            ? (el) => {
+                printPageRefs.current[pageIndex] = el;
+              }
+            : undefined
+        }
         style={{
-          width: "794px",
-          minHeight: "1122px",
+          width: `${A4_WIDTH_PX}px`,
+          minHeight: `${A4_HEIGHT_PX}px`,
           backgroundColor: "#ffffff",
           color: "#1e293b",
           fontFamily:
             "'Anek Bangla', 'Hind Siliguri', 'Poppins', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
           boxSizing: "border-box",
-          padding: isModern ? "0px 0px 40px 0px" : "40px 44px",
+          padding: hasModernHeaderOnThisPage ? "0px 0px 36px 0px" : "38px 44px",
           lineHeight: 1.5,
         }}
       >
-        {/* HEADER SECTION (With Passport Size Photo Slot) */}
-        <div
-          data-cv-section="true"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: "24px",
-            backgroundColor: isModern ? accent : "transparent",
-            color: isModern ? "#ffffff" : "#0f172a",
-            padding: isModern ? "34px 44px 28px 44px" : "0px 0px 18px 0px",
-            borderBottom: isModern ? "none" : `2.5px solid ${accent}`,
-            marginBottom: "22px",
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1
-              style={{
-                fontSize: "27px",
-                fontWeight: 800,
-                margin: "0 0 4px 0",
-                color: isModern ? "#ffffff" : accent,
-                letterSpacing: "-0.01em",
-                lineHeight: 1.2,
-                wordBreak: "break-word",
-              }}
-            >
-              {hasText(cv.fullName)
-                ? cv.fullName.trim()
-                : cv.language === "bn"
-                ? "আপনার পূর্ণ নাম"
-                : "YOUR FULL NAME"}
-            </h1>
-
-            {hasText(cv.headline) && (
-              <div
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: isModern ? "#e2e8f0" : "#475569",
-                  marginBottom: "10px",
-                }}
-              >
-                {cv.headline.trim()}
-              </div>
-            )}
-
-            {contactParts.length > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "8px 16px",
-                  fontSize: "12.5px",
-                  fontWeight: 600,
-                  color: isModern ? "#f8fafc" : "#334155",
-                  marginTop: "8px",
-                }}
-              >
-                {contactParts.map((part, i) => (
-                  <span key={i}>{part}</span>
-                ))}
-              </div>
-            )}
-
-            {hasText(addressLine) && (
-              <div
-                style={{
-                  fontSize: "12.5px",
-                  fontWeight: 500,
-                  color: isModern ? "#e2e8f0" : "#475569",
-                  marginTop: "5px",
-                }}
-              >
-                📍 {addressLine}
-              </div>
-            )}
-          </div>
-
-          {/* PASSPORT SIZE PHOTO (35mm x 45mm ratio -> 108px x 138px) */}
-          {cv.showPhoto && (
-            <div
-              style={{
-                width: "108px",
-                height: "138px",
-                flexShrink: 0,
-                borderRadius: "6px",
-                border: hasText(cv.photoDataUrl)
-                  ? `2px solid ${isModern ? "#ffffff" : accent}`
-                  : isModern
-                  ? "1.5px dashed #cbd5e1"
-                  : "1.5px solid #94a3b8",
-                backgroundColor: "#ffffff",
-                overflow: "hidden",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {hasText(cv.photoDataUrl) ? (
-                <img
-                  src={cv.photoDataUrl}
-                  alt="Passport Photo"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                /* Empty passport box when no photo is uploaded */
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    backgroundColor: "#ffffff",
-                  }}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* BODY WRAPPER */}
+        {headerBlock && renderHeaderBlock()}
         <div
           style={{
-            padding: isModern ? "0px 44px" : "0px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "18px",
+            padding: hasModernHeaderOnThisPage ? "20px 44px 0px 44px" : "0px",
           }}
         >
-          {/* 1. CAREER OBJECTIVE */}
-          {hasText(cv.careerObjective) && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: `1.5px solid ${isModern ? "#cbd5e1" : "#cbd5e1"}`,
-                  paddingBottom: "4px",
-                  marginBottom: "8px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.objective}
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "12.5px",
-                  color: "#334155",
-                  lineHeight: 1.65,
-                  textAlign: "justify",
-                  whiteSpace: "pre-line",
-                }}
-              >
-                {cv.careerObjective.trim()}
-              </p>
-            </div>
-          )}
-
-          {/* 2. WORK EXPERIENCE */}
-          {validExperiences.length > 0 && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "10px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.experience}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {validExperiences.map((exp) => (
-                  <div key={exp.id} style={{ fontSize: "12.5px", color: "#334155" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "baseline",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span style={{ fontWeight: 800, color: "#0f172a", fontSize: "13px" }}>
-                        {[exp.role.trim(), exp.company.trim()].filter(Boolean).join(" — ")}
-                      </span>
-                      {hasText(exp.duration) && (
-                        <span style={{ fontWeight: 700, color: accent, fontSize: "12px" }}>
-                          {exp.duration.trim()}
-                        </span>
-                      )}
-                    </div>
-                    {hasText(exp.location) && (
-                      <div style={{ fontSize: "11.5px", color: "#64748b", fontWeight: 600 }}>
-                        {exp.location.trim()}
-                      </div>
-                    )}
-                    {hasText(exp.details) && (
-                      <div
-                        style={{
-                          marginTop: "4px",
-                          fontSize: "12px",
-                          color: "#334155",
-                          lineHeight: 1.55,
-                          whiteSpace: "pre-line",
-                        }}
-                      >
-                        {exp.details.trim()}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 3. EDUCATIONAL QUALIFICATION */}
-          {validEducations.length > 0 && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "10px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.education}
-              </div>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "12px",
-                  color: "#1e293b",
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: "#f1f5f9", color: "#0f172a" }}>
-                    {showDegreeCol && (
-                      <th
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          padding: "7px 8px",
-                          textAlign: "left",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {L.degree}
-                      </th>
-                    )}
-                    {showSubjectCol && (
-                      <th
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          padding: "7px 8px",
-                          textAlign: "left",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {L.subject}
-                      </th>
-                    )}
-                    {showInstCol && (
-                      <th
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          padding: "7px 8px",
-                          textAlign: "left",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {L.institution}
-                      </th>
-                    )}
-                    {showBoardCol && (
-                      <th
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          padding: "7px 8px",
-                          textAlign: "left",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {L.board}
-                      </th>
-                    )}
-                    {showResultCol && (
-                      <th
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          padding: "7px 8px",
-                          textAlign: "left",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {L.result}
-                      </th>
-                    )}
-                    {showYearCol && (
-                      <th
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          padding: "7px 8px",
-                          textAlign: "center",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {L.year}
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {validEducations.map((edu) => (
-                    <tr key={edu.id}>
-                      {showDegreeCol && (
-                        <td
-                          style={{
-                            border: "1px solid #cbd5e1",
-                            padding: "7px 8px",
-                            fontWeight: 700,
-                          }}
-                        >
-                          {edu.degree.trim()}
-                        </td>
-                      )}
-                      {showSubjectCol && (
-                        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px" }}>
-                          {edu.subject.trim()}
-                        </td>
-                      )}
-                      {showInstCol && (
-                        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px" }}>
-                          {edu.institution.trim()}
-                        </td>
-                      )}
-                      {showBoardCol && (
-                        <td style={{ border: "1px solid #cbd5e1", padding: "7px 8px" }}>
-                          {edu.board.trim()}
-                        </td>
-                      )}
-                      {showResultCol && (
-                        <td
-                          style={{
-                            border: "1px solid #cbd5e1",
-                            padding: "7px 8px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {edu.result.trim()}
-                        </td>
-                      )}
-                      {showYearCol && (
-                        <td
-                          style={{
-                            border: "1px solid #cbd5e1",
-                            padding: "7px 8px",
-                            textAlign: "center",
-                          }}
-                        >
-                          {edu.passingYear.trim()}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* 4. SKILLS & LANGUAGES */}
-          {hasAnySkillBlock && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "8px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.skills}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                  fontSize: "12.5px",
-                  color: "#334155",
-                }}
-              >
-                {hasText(cv.skills) && (
-                  <div>
-                    <strong style={{ color: "#0f172a" }}>{L.proSkills}: </strong>
-                    <span>{cv.skills.trim()}</span>
-                  </div>
-                )}
-                {hasText(cv.computerSkills) && (
-                  <div>
-                    <strong style={{ color: "#0f172a" }}>{L.compSkills}: </strong>
-                    <span>{cv.computerSkills.trim()}</span>
-                  </div>
-                )}
-                {hasText(cv.languages) && (
-                  <div>
-                    <strong style={{ color: "#0f172a" }}>{L.langSkills}: </strong>
-                    <span>{cv.languages.trim()}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 5. TRAINING & CERTIFICATIONS */}
-          {validTrainings.length > 0 && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "8px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.training}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12.5px" }}>
-                {validTrainings.map((t) => (
-                  <div
-                    key={t.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                      color: "#334155",
-                    }}
-                  >
-                    <div>
-                      <strong style={{ color: "#0f172a" }}>{t.title.trim()}</strong>
-                      {hasText(t.institute) && <span> — {t.institute.trim()}</span>}
-                    </div>
-                    {hasText(t.duration) && (
-                      <span style={{ fontWeight: 700, color: accent, flexShrink: 0 }}>
-                        {t.duration.trim()}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 6. PROJECTS / ACHIEVEMENTS */}
-          {hasText(cv.projectsOrAchievements) && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "8px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.projects}
-              </div>
-              <div
-                style={{
-                  fontSize: "12.5px",
-                  color: "#334155",
-                  lineHeight: 1.65,
-                  whiteSpace: "pre-line",
-                }}
-              >
-                {cv.projectsOrAchievements.trim()}
-              </div>
-            </div>
-          )}
-
-          {/* 7. HOBBIES & EXTRACURRICULAR */}
-          {hasText(cv.hobbies) && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "8px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.hobbies}
-              </div>
-              <div style={{ fontSize: "12.5px", color: "#334155", lineHeight: 1.6 }}>
-                {cv.hobbies.trim()}
-              </div>
-            </div>
-          )}
-
-          {/* 8. PERSONAL INFORMATION */}
-          {personalDetailRows.length > 0 && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "8px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.personalInfo}
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
-                <tbody>
-                  {personalDetailRows.map((row, idx) => (
-                    <tr key={idx}>
-                      <td
-                        style={{
-                          width: "185px",
-                          padding: "3px 8px 3px 0px",
-                          fontWeight: 700,
-                          color: "#0f172a",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        {row.label}
-                      </td>
-                      <td
-                        style={{
-                          width: "14px",
-                          padding: "3px 4px",
-                          fontWeight: 700,
-                          color: "#475569",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        :
-                      </td>
-                      <td
-                        style={{
-                          padding: "3px 0px",
-                          color: "#334155",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        {row.value.trim()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* 9. REFERENCES */}
-          {validReferences.length > 0 && (
-            <div data-cv-section="true">
-              <div
-                style={{
-                  fontSize: "13.5px",
-                  fontWeight: 800,
-                  color: accent,
-                  borderBottom: "1.5px solid #cbd5e1",
-                  paddingBottom: "4px",
-                  marginBottom: "10px",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                {L.references}
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    validReferences.length > 1 ? "repeat(2, minmax(0, 1fr))" : "1fr",
-                  gap: "16px",
-                  fontSize: "12px",
-                  color: "#334155",
-                }}
-              >
-                {validReferences.map((ref) => (
-                  <div
-                    key={ref.id}
-                    style={{
-                      padding: "10px 12px",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      backgroundColor: "#f8fafc",
-                    }}
-                  >
-                    {hasText(ref.name) && (
-                      <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "13px" }}>
-                        {ref.name.trim()}
-                      </div>
-                    )}
-                    {hasText(ref.designation) && <div>{ref.designation.trim()}</div>}
-                    {hasText(ref.organization) && <div>{ref.organization.trim()}</div>}
-                    {hasText(ref.phone) && <div>Phone: {ref.phone.trim()}</div>}
-                    {hasText(ref.email) && <div>Email: {ref.email.trim()}</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 10. DECLARATION & SIGNATURE */}
-          {cv.showDeclaration &&
-            (hasText(cv.declarationText) ||
-              hasText(cv.signatureName) ||
-              hasText(cv.signatureDate)) && (
-              <div data-cv-section="true" style={{ marginTop: "6px" }}>
-                {hasText(cv.declarationText) && (
-                  <>
-                    <div
-                      style={{
-                        fontSize: "13.5px",
-                        fontWeight: 800,
-                        color: accent,
-                        borderBottom: "1.5px solid #cbd5e1",
-                        paddingBottom: "4px",
-                        marginBottom: "8px",
-                        letterSpacing: "0.03em",
-                      }}
-                    >
-                      {L.declaration}
-                    </div>
-                    <p
-                      style={{
-                        margin: "0 0 24px 0",
-                        fontSize: "12px",
-                        color: "#334155",
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      {cv.declarationText.trim()}
-                    </p>
-                  </>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-end",
-                    paddingTop: "12px",
-                    fontSize: "12px",
-                    color: "#0f172a",
-                  }}
-                >
-                  <div>
-                    {hasText(cv.signatureDate) && (
-                      <div style={{ fontWeight: 600 }}>
-                        {L.date}: {cv.signatureDate.trim()}
-                      </div>
-                    )}
-                  </div>
-                  {(hasText(cv.signatureName) || hasText(cv.fullName)) && (
-                    <div style={{ textAlign: "center", minWidth: "170px" }}>
-                      <div
-                        style={{
-                          borderTop: "1.5px solid #334155",
-                          paddingTop: "4px",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {hasText(cv.signatureName)
-                          ? cv.signatureName.trim()
-                          : cv.fullName.trim()}
-                      </div>
-                      <div style={{ fontSize: "11px", color: "#64748b" }}>{L.signature}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+          {renderBlockSequence(bodyBlocks, false)}
         </div>
       </div>
     );
@@ -1791,7 +2149,7 @@ export default function CvMakerView({
                     <div className="grid grid-cols-2 gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setCv((prev) => ({ ...prev, language: "en" }))}
+                        onClick={() => setCv((prev) => applyLanguageChange(prev, "en"))}
                         className={`py-2 px-2.5 rounded-xl text-xs font-black border cursor-pointer ${
                           cv.language === "en"
                             ? "bg-slate-900 text-white border-slate-900"
@@ -1802,7 +2160,7 @@ export default function CvMakerView({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setCv((prev) => ({ ...prev, language: "bn" }))}
+                        onClick={() => setCv((prev) => applyLanguageChange(prev, "bn"))}
                         className={`py-2 px-2.5 rounded-xl text-xs font-black border cursor-pointer ${
                           cv.language === "bn"
                             ? "bg-slate-900 text-white border-slate-900"
@@ -1869,14 +2227,14 @@ export default function CvMakerView({
           </div>
 
           {/* 1. Basic & Contact Info */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("basic")}>
             <button
               type="button"
               onClick={() => toggleSection("basic")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("basic")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -1888,11 +2246,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.basic ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("basic")}
             </button>
 
             {openSections.basic && (
@@ -1996,14 +2350,14 @@ export default function CvMakerView({
           </div>
 
           {/* 2. Career Objective */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("objective")}>
             <button
               type="button"
               onClick={() => toggleSection("objective")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("objective")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2015,11 +2369,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.objective ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("objective")}
             </button>
 
             {openSections.objective && (
@@ -2032,11 +2382,12 @@ export default function CvMakerView({
                       type="button"
                       onClick={() => {
                         playClick();
-                        setCv((p) => ({
-                          ...p,
-                          careerObjective: preset.text,
-                          language: preset.lang,
-                        }));
+                        setCv((p) =>
+                          applyLanguageChange(
+                            { ...p, careerObjective: preset.text },
+                            preset.lang
+                          )
+                        );
                       }}
                       className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[10.5px] font-black cursor-pointer"
                     >
@@ -2056,14 +2407,14 @@ export default function CvMakerView({
           </div>
 
           {/* 3. Education */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("education")}>
             <button
               type="button"
               onClick={() => toggleSection("education")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("education")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                   <GraduationCap className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2075,11 +2426,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.education ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("education")}
             </button>
 
             {openSections.education && (
@@ -2229,14 +2576,14 @@ export default function CvMakerView({
           </div>
 
           {/* 4. Work Experience */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("experience")}>
             <button
               type="button"
               onClick={() => toggleSection("experience")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("experience")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
                   <Briefcase className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2248,11 +2595,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.experience ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("experience")}
             </button>
 
             {openSections.experience && (
@@ -2383,14 +2726,14 @@ export default function CvMakerView({
           </div>
 
           {/* 5. Skills, Computer & Language */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("skills")}>
             <button
               type="button"
               onClick={() => toggleSection("skills")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("skills")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
                   <Laptop className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2402,11 +2745,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.skills ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("skills")}
             </button>
 
             {openSections.skills && (
@@ -2455,14 +2794,14 @@ export default function CvMakerView({
           </div>
 
           {/* 6. Training & Certifications */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("training")}>
             <button
               type="button"
               onClick={() => toggleSection("training")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("training")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center shrink-0">
                   <Award className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2474,11 +2813,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.training ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("training")}
             </button>
 
             {openSections.training && (
@@ -2574,14 +2909,14 @@ export default function CvMakerView({
           </div>
 
           {/* 7. Personal Information (BD Standard) */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("personal")}>
             <button
               type="button"
               onClick={() => toggleSection("personal")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("personal")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2593,11 +2928,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.personal ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("personal")}
             </button>
 
             {openSections.personal && (
@@ -2670,14 +3001,14 @@ export default function CvMakerView({
           </div>
 
           {/* 8. Projects, Achievements & Hobbies */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("extras")}>
             <button
               type="button"
               onClick={() => toggleSection("extras")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("extras")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
                   <FolderGit2 className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2689,11 +3020,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.extras ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("extras")}
             </button>
 
             {openSections.extras && (
@@ -2729,14 +3056,14 @@ export default function CvMakerView({
           </div>
 
           {/* 9. References */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("references")}>
             <button
               type="button"
               onClick={() => toggleSection("references")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("references")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2748,11 +3075,7 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.references ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("references")}
             </button>
 
             {openSections.references && (
@@ -2883,14 +3206,14 @@ export default function CvMakerView({
           </div>
 
           {/* 10. Declaration & Signature */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-2xs">
+          <div className={getSectionCardClass("declaration")}>
             <button
               type="button"
               onClick={() => toggleSection("declaration")}
-              className="w-full px-4 py-3.5 flex items-center justify-between bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer"
+              className={getSectionBtnClass("declaration")}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div className="text-left">
@@ -2902,30 +3225,41 @@ export default function CvMakerView({
                   </p>
                 </div>
               </div>
-              {openSections.declaration ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {renderSectionChevron("declaration")}
             </button>
 
             {openSections.declaration && (
               <div className="p-4 space-y-3 border-t border-slate-100">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs font-black text-slate-700">
                     সিভির নিচে অঙ্গীকারনামা ও স্বাক্ষর রাখবেন?
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setCv((p) => ({ ...p, showDeclaration: !p.showDeclaration }))}
-                    className={`px-3 py-1 rounded-xl text-[11px] font-black cursor-pointer ${
-                      cv.showDeclaration
-                        ? "bg-emerald-600 text-white"
-                        : "bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    {cv.showDeclaration ? "হ্যাঁ (ON)" : "না (OFF)"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCv((p) => ({
+                          ...p,
+                          declarationText:
+                            p.language === "bn" ? DEFAULT_DECLARATION_BN : DEFAULT_DECLARATION_EN,
+                        }))
+                      }
+                      className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10.5px] font-black cursor-pointer"
+                    >
+                      ডিফল্ট টেক্সট
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCv((p) => ({ ...p, showDeclaration: !p.showDeclaration }))}
+                      className={`px-3 py-1 rounded-xl text-[11px] font-black cursor-pointer ${
+                        cv.showDeclaration
+                          ? "bg-emerald-600 text-white"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {cv.showDeclaration ? "হ্যাঁ (ON)" : "না (OFF)"}
+                    </button>
+                  </div>
                 </div>
 
                 {cv.showDeclaration && (
@@ -2934,7 +3268,11 @@ export default function CvMakerView({
                       rows={2}
                       value={cv.declarationText}
                       onChange={(e) => setCv((p) => ({ ...p, declarationText: e.target.value }))}
-                      placeholder="অঙ্গীকারনামা লিখুন (খালি রাখলে দেখাবে না)"
+                      placeholder={
+                        cv.language === "bn"
+                          ? "অঙ্গীকারনামা লিখুন (খালি রাখলে দেখাবে না)"
+                          : "Write declaration statement (leave empty to hide)"
+                      }
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#FF6A00]"
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -2942,7 +3280,7 @@ export default function CvMakerView({
                         type="text"
                         value={cv.signatureName}
                         onChange={(e) => setCv((p) => ({ ...p, signatureName: e.target.value }))}
-                        placeholder="স্বাক্ষরের নিচে নাম (যেমন: Md. Tariqul Islam)"
+                        placeholder="স্বাক্ষরের নিচে নাম (যেমন: মোঃ তারিকুল ইসলাম)"
                         className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-[#FF6A00]"
                       />
                       <input
@@ -2996,14 +3334,19 @@ export default function CvMakerView({
       )}
 
       {/* ========================================================= */}
-      {/* LIVE A4 PREVIEW MODE                                      */}
+      {/* LIVE MULTI-PAGE A4 PREVIEW MODE                           */}
       {/* ========================================================= */}
       {activeMode === "preview" && (
         <div className="space-y-3">
           <div className="bg-purple-50/80 border border-purple-200/80 rounded-2xl p-3 flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-xs font-black text-purple-900">
-              📄 আপনার সিভির লাইভ A4 প্রিভিউ (খালি ঘরগুলো অটো বাদ দেওয়া হয়েছে)
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-black text-purple-900">
+                📄 আপনার সিভির লাইভ A4 প্রিভিউ
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-black">
+                মোট {effectivePages.length}টি পৃষ্ঠা (A4)
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => setActiveMode("edit")}
@@ -3015,47 +3358,93 @@ export default function CvMakerView({
 
           <div
             ref={previewWrapperRef}
-            className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-200/70 p-2 sm:p-4 flex justify-center"
+            className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-200/80 p-2 sm:p-4 flex flex-col items-center gap-5"
           >
-            <div
-              style={{
-                width: `${794 * previewScale}px`,
-                minHeight: `${1122 * previewScale}px`,
-                overflow: "hidden",
-                boxShadow: "0 10px 30px rgba(15, 23, 42, 0.14)",
-                backgroundColor: "#ffffff",
-              }}
-            >
-              <div
-                style={{
-                  transform: `scale(${previewScale})`,
-                  transformOrigin: "top left",
-                  width: "794px",
-                }}
-              >
-                {renderA4CvSheet(false)}
+            {effectivePages.map((pageIds, pageIdx) => (
+              <div key={`preview-sheet-${pageIdx}`} className="flex flex-col items-center gap-1.5">
+                {effectivePages.length > 1 && (
+                  <div className="px-3 py-1 rounded-full bg-slate-800/90 text-white text-[10.5px] font-black shadow-xs">
+                    পৃষ্ঠা {pageIdx + 1} / {effectivePages.length} (A4)
+                  </div>
+                )}
+                <div
+                  style={{
+                    width: `${A4_WIDTH_PX * previewScale}px`,
+                    minHeight: `${A4_HEIGHT_PX * previewScale}px`,
+                    overflow: "hidden",
+                    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.16)",
+                    backgroundColor: "#ffffff",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <div
+                    style={{
+                      transform: `scale(${previewScale})`,
+                      transformOrigin: "top left",
+                      width: `${A4_WIDTH_PX}px`,
+                    }}
+                  >
+                    {renderSingleA4Page(pageIds, pageIdx, false)}
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* DEDICATED OFFSCREEN A4 PRINTABLE DOM FOR PDF GENERATION   */}
+      {/* OFFSCREEN BLOCK MEASUREMENT SHEET (FOR EXACT PAGINATION)  */}
+      {/* ========================================================= */}
+      <div
+        aria-hidden="true"
+        ref={measureContainerRef}
+        style={{
+          position: "fixed",
+          left: "-12000px",
+          top: "0px",
+          width: `${A4_WIDTH_PX}px`,
+          backgroundColor: "#ffffff",
+          color: "#1e293b",
+          fontFamily:
+            "'Anek Bangla', 'Hind Siliguri', 'Poppins', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
+          boxSizing: "border-box",
+          padding: isModern ? "0px 0px 36px 0px" : "38px 44px",
+          lineHeight: 1.5,
+          pointerEvents: "none",
+          zIndex: -2,
+        }}
+      >
+        {isModern ? (
+          <>
+            {renderHeaderBlock("header")}
+            <div style={{ padding: "20px 44px 0px 44px" }}>
+              {renderBlockSequence(cvBlocks.slice(1), true)}
+            </div>
+          </>
+        ) : (
+          renderBlockSequence(cvBlocks, true)
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* DEDICATED OFFSCREEN A4 PAGES FOR PDF EXPORT               */}
       {/* ========================================================= */}
       <div
         aria-hidden="true"
         style={{
           position: "fixed",
-          left: "-10000px",
+          left: "-12000px",
           top: "0px",
-          width: "794px",
+          width: `${A4_WIDTH_PX}px`,
           pointerEvents: "none",
           opacity: 1,
           zIndex: -1,
         }}
       >
-        {renderA4CvSheet(true)}
+        {effectivePages.map((pageIds, pageIdx) =>
+          renderSingleA4Page(pageIds, pageIdx, true)
+        )}
       </div>
     </div>
   );
