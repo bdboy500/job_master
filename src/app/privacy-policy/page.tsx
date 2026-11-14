@@ -647,6 +647,13 @@ export default function PrivacyPolicyPage() {
               প্রাইভেসি পলিসি (Privacy Policy)
             </Link>
             <span>•</span>
+            <Link
+              href="/terms"
+              className="hover:text-orange-600 transition-colors"
+            >
+              শর্তাবলী (Terms &amp; Conditions)
+            </Link>
+            <span>•</span>
             <a
               href="mailto:mobileseba247@gmail.com"
               className="hover:text-orange-600 transition-colors"

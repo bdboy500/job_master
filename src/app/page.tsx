@@ -6817,23 +6817,41 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Drawer Footer copyright & Privacy */}
+          {/* Drawer Footer copyright & Privacy / Terms */}
           <div className="p-4 pt-3 pb-24 md:pb-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-2">
-            <a
-              href="https://jobmaster.com.bd/privacy-policy"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                setDrawerOpen(false);
-                if (soundEnabled) quizAudio.playClick();
-              }}
-              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-2 px-3.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
-              id="drawer-footer-privacy-link"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#FF6A00]" />
-              <span>Privacy Policy (গোপনীয়তা নীতি)</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#FF6A00]" />
-            </a>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <a
+                href="https://jobmaster.com.bd/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  if (soundEnabled) quizAudio.playClick();
+                }}
+                className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-1.5 px-2.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
+                id="drawer-footer-privacy-link"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#FF6A00]" />
+                <span>Privacy Policy</span>
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </a>
+
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  if (soundEnabled) quizAudio.playClick();
+                }}
+                className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-1.5 px-2.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
+                id="drawer-footer-terms-link"
+              >
+                <FileText className="w-3.5 h-3.5 text-[#FF6A00]" />
+                <span>Terms &amp; Conditions</span>
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </a>
+            </div>
 
             {/* Server Latency & Database Connected Status */}
             <div className="flex items-center justify-center gap-2.5 text-[9.5px] font-bold text-slate-500 py-0.5">
