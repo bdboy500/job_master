@@ -29,16 +29,52 @@ export async function GET(request: NextRequest) {
       background: #f8fafc;
       color: #0f172a;
       text-align: center;
-      padding: 24px;
+      padding: 20px;
       box-sizing: border-box;
+    }
+    body.is-app-done {
+      justify-content: flex-start;
+      align-items: stretch;
+      padding: 10px 18px 24px;
+    }
+    .arrow-row {
+      display: none;
+      width: 100%;
+      justify-content: flex-start;
+      align-items: flex-start;
+      padding: 8px 0 8px 14px;
+      box-sizing: border-box;
+    }
+    .arrow-bounce {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: pointCross 1.05s ease-in-out infinite;
+    }
+    .arrow-emoji {
+      display: inline-block;
+      font-size: 38px;
+      line-height: 1;
+      transform: rotate(-32deg);
+      filter: drop-shadow(0 4px 10px rgba(249, 115, 22, 0.25));
+      user-select: none;
+    }
+    @keyframes pointCross {
+      0%, 100% {
+        transform: translate(0px, 0px) scale(1);
+      }
+      50% {
+        transform: translate(-6px, -9px) scale(1.08);
+      }
     }
     .card {
       background: white;
-      padding: 32px 24px;
-      border-radius: 24px;
+      padding: 28px 20px;
+      border-radius: 22px;
       box-shadow: 0 12px 32px -6px rgba(15, 23, 42, 0.1);
-      max-width: 370px;
+      max-width: 390px;
       width: 100%;
+      margin: 0 auto;
       border: 1px solid #e2e8f0;
       box-sizing: border-box;
     }
@@ -52,8 +88,8 @@ export async function GET(request: NextRequest) {
       margin: 0 auto 18px;
     }
     .check-badge {
-      width: 54px;
-      height: 54px;
+      width: 56px;
+      height: 56px;
       border-radius: 18px;
       background: #ecfdf5;
       color: #059669;
@@ -61,62 +97,35 @@ export async function GET(request: NextRequest) {
       display: none;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      font-weight: 900;
       margin: 0 auto 16px;
+    }
+    .check-badge svg {
+      width: 28px;
+      height: 28px;
+      display: block;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-    h2 { margin: 0 0 8px; font-size: 19px; font-weight: 800; color: #0f172a; line-height: 1.35; }
-    p { margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6; font-weight: 500; }
-    .actions {
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 22px;
-    }
-    .btn-primary {
-      background: #ff6a00;
-      color: #ffffff;
-      border: none;
-      border-radius: 14px;
-      padding: 13px 18px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-      width: 100%;
-    }
-    .btn-secondary {
-      background: #f1f5f9;
-      color: #475569;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 12.5px;
-      font-weight: 700;
-      text-decoration: none;
-      display: block;
-    }
-    .hint {
-      margin-top: 10px;
-      font-size: 11.5px;
-      color: #64748b;
-      font-weight: 600;
-    }
+    h2 { margin: 0 0 10px; font-size: 21px; font-weight: 800; color: #0f172a; line-height: 1.35; }
+    p { margin: 0; font-size: 14px; color: #475569; line-height: 1.55; font-weight: 600; }
   </style>
 </head>
 <body>
+  <div id="arrowRow" class="arrow-row" aria-hidden="true">
+    <div class="arrow-bounce">
+      <span class="arrow-emoji">⬆️</span>
+    </div>
+  </div>
   <div class="card">
     <div id="spinner" class="spinner"></div>
-    <div id="checkBadge" class="check-badge">✓</div>
+    <div id="checkBadge" class="check-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
     <h2 id="title">লগইন সম্পন্ন হচ্ছে...</h2>
     <p id="subtitle">অনুগ্রহ করে কয়েক মুহূর্ত অপেক্ষা করুন। আপনার অ্যাকাউন্টে সংযুক্ত করা হচ্ছে...</p>
-    <div id="actions" class="actions">
-      <button id="closeBtn" type="button" class="btn-primary">অ্যাপে ফিরে যান (✕)</button>
-      <a href="/" class="btn-secondary">ব্রাউজারেই ওপেন করুন</a>
-      <div id="hintText" class="hint">উপরের বাম কোণার ✕ বা মোবাইলের Back বাটনে চাপ দিলেই অ্যাপে ফিরে যাবেন।</div>
-    </div>
   </div>
   <script>
     (async function() {
@@ -197,31 +206,23 @@ export async function GET(request: NextRequest) {
       }
 
       function showReturnToAppUI() {
+        var arrowRow = document.getElementById("arrowRow");
         var spinner = document.getElementById("spinner");
         var checkBadge = document.getElementById("checkBadge");
         var title = document.getElementById("title");
         var subtitle = document.getElementById("subtitle");
-        var actions = document.getElementById("actions");
-        var closeBtn = document.getElementById("closeBtn");
-        var hintText = document.getElementById("hintText");
 
+        document.body.classList.add("is-app-done");
+        document.title = error ? "লগইন সম্পন্ন হয়নি - Job Master" : "এপে লগ ইন সম্পন্ন হয়েছে - Job Master";
+
+        if (arrowRow) arrowRow.style.display = "flex";
         if (spinner) spinner.style.display = "none";
         if (checkBadge) checkBadge.style.display = "flex";
-        if (title) title.textContent = error ? "লগইন সম্পন্ন হয়নি" : "অ্যাপে লগইন সম্পন্ন হয়েছে!";
+        if (title) title.textContent = error ? "লগইন সম্পন্ন হয়নি" : "এপে লগ ইন সম্পন্ন হয়েছে";
         if (subtitle) {
           subtitle.textContent = error
             ? (errorDescription || error)
-            : "আপনার Job Master অ্যাপের ভেতরে লগইন সফলভাবে যুক্ত হয়েছে। অনুগ্রহ করে উপরের ক্রস (✕) বা মোবাইলের Back বাটনে চাপ দিয়ে অ্যাপে ফিরে যান।";
-        }
-        if (actions) actions.style.display = "flex";
-        if (closeBtn) {
-          closeBtn.onclick = function() {
-            try { window.close(); } catch (e) {}
-            try { window.history.go(-3); } catch (e) {}
-            if (hintText) {
-              hintText.textContent = "ব্রাউজার ট্যাবটি বন্ধ করতে উপরের বাম কোণার (✕) বা মোবাইলের Back বাটনে চাপ দিন।";
-            }
-          };
+            : "উপরের বামে ক্রস এ ক্লিক করে অথবা ব্যাকে বাটনে ক্লিক করে এপে যান";
         }
       }
 
