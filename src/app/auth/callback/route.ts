@@ -51,13 +51,15 @@ export async function GET(request: NextRequest) {
       justify-content: center;
       animation: pointCross 1.05s ease-in-out infinite;
     }
-    .arrow-emoji {
-      display: inline-block;
-      font-size: 38px;
-      line-height: 1;
-      transform: rotate(-32deg);
-      filter: drop-shadow(0 4px 10px rgba(249, 115, 22, 0.25));
+    .arrow-icon {
+      display: block;
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      transform: rotate(-122deg);
+      mix-blend-mode: multiply;
       user-select: none;
+      -webkit-user-drag: none;
     }
     @keyframes pointCross {
       0%, 100% {
@@ -114,7 +116,7 @@ export async function GET(request: NextRequest) {
 <body>
   <div id="arrowRow" class="arrow-row" aria-hidden="true">
     <div class="arrow-bounce">
-      <span class="arrow-emoji">⬆️</span>
+      <img src="/assets/aistudio/icons8-arrow-240_40f90c81.png" alt="" class="arrow-icon" />
     </div>
   </div>
   <div class="card">
@@ -222,7 +224,7 @@ export async function GET(request: NextRequest) {
         if (subtitle) {
           subtitle.textContent = error
             ? (errorDescription || error)
-            : "উপরের বামে ক্রস এ ক্লিক করে অথবা ব্যাকে বাটনে ক্লিক করে এপে যান";
+            : "উপরের বামে ক্রস (X) ক্লিক করে এপে যান";
         }
       }
 
