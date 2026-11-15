@@ -7246,16 +7246,16 @@ export default function Home() {
               </a>
             </div>
 
-            {/* Server Latency & Database Connected Status */}
-            <div className="flex items-center justify-center gap-2.5 text-[9.5px] font-bold text-slate-500 py-0.5">
-              <span className="flex items-center gap-1.5">
+            {/* Latency & DB Connected Status */}
+            <div className="flex items-center justify-center gap-2 text-[8px] font-bold text-slate-500 py-0.5">
+              <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Server Latency: Normal</span>
+                <span>Latency: Normal</span>
               </span>
               <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span>Database: Connected {isUsingFallback && "(Fallback)"}</span>
+                <span>DB: Connected {isUsingFallback && "(Fallback)"}</span>
               </span>
             </div>
 
