@@ -789,6 +789,7 @@ export default function Home() {
   const [jobCircularPosts, setJobCircularPosts] = useState<JobCircularPost[]>([]);
   const [selectedCircularCategoryId, setSelectedCircularCategoryId] = useState<string>("all");
   const [circularSearchQuery, setCircularSearchQuery] = useState<string>("");
+  const [touchedCircularCardId, setTouchedCircularCardId] = useState<string | null>(null);
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
@@ -3877,18 +3878,29 @@ export default function Home() {
                     <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {activeCircularCats.map((cat) => {
                         const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
+                        const isTouched = touchedCircularCardId === cat.id;
                         return (
                           <button
                             key={cat.id}
                             type="button"
+                            onPointerDown={() => setTouchedCircularCardId(cat.id)}
+                            onPointerUp={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
+                            onPointerCancel={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
+                            onPointerLeave={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
+                            onTouchCancel={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
                             onClick={() => {
+                              setTouchedCircularCardId(null);
                               setSelectedCircularCategoryId(cat.id);
                               setCircularSearchQuery("");
                               setPreviousScreen("home");
                               setCurrentScreen("job-circulars");
                               if (soundEnabled) quizAudio.playClick();
                             }}
-                            className="w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs hover:shadow-md active:opacity-90 transition-shadow cursor-pointer overflow-hidden flex flex-col text-center"
+                            className={`group w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border cursor-pointer overflow-hidden flex flex-col text-center [-webkit-tap-highlight-color:transparent] transition-all duration-150 ease-out ${
+                              isTouched
+                                ? "scale-[0.95] border-[#FF6A00] ring-2 ring-[#FF6A00]/25 shadow-md"
+                                : "border-orange-200 shadow-xs hover:border-[#FF6A00]/70 hover:shadow-md active:scale-[0.95] active:border-[#FF6A00]"
+                            }`}
                           >
                             <div className="w-full h-[62px] sm:h-[68px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
                               {cat.imageUrl ? (
@@ -3900,17 +3912,34 @@ export default function Home() {
                                   loading="eager"
                                   decoding="async"
                                   referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover pointer-events-none select-none"
+                                  className={`w-full h-full object-cover pointer-events-none select-none transition-transform duration-200 ease-out ${
+                                    isTouched ? "scale-110" : "group-hover:scale-105 group-active:scale-110"
+                                  }`}
                                 />
                               ) : (
-                                <div className="relative w-10 h-10 flex items-center justify-center">
+                                <div className={`relative w-10 h-10 flex items-center justify-center transition-transform duration-200 ease-out ${
+                                  isTouched ? "scale-110" : "group-hover:scale-105 group-active:scale-110"
+                                }`}>
                                   <div className="w-8 h-8 bg-orange-200 rounded-full opacity-60" />
                                   <FallbackIcon className="w-4 h-4 text-[#FF6A00] relative z-10 stroke-[2px]" />
                                 </div>
                               )}
+                              <div
+                                className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-[#FF6A00]/20 via-[#FF6A00]/8 to-transparent transition-opacity duration-150 ${
+                                  isTouched ? "opacity-100" : "opacity-0 group-hover:opacity-60 group-active:opacity-100"
+                                }`}
+                              />
                             </div>
-                            <div className="w-full flex-1 bg-white px-1 flex items-center justify-center">
-                              <span className="text-[11px] sm:text-xs font-semibold text-slate-900 leading-tight line-clamp-1">
+                            <div
+                              className={`w-full flex-1 px-1 flex items-center justify-center transition-colors duration-150 ${
+                                isTouched ? "bg-orange-50/70" : "bg-white group-hover:bg-orange-50/40 group-active:bg-orange-50/70"
+                              }`}
+                            >
+                              <span
+                                className={`text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1 transition-colors duration-150 ${
+                                  isTouched ? "text-[#FF6A00]" : "text-slate-900 group-hover:text-[#FF6A00] group-active:text-[#FF6A00]"
+                                }`}
+                              >
                                 {cat.name}
                               </span>
                             </div>
