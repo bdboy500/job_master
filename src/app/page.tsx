@@ -3874,7 +3874,7 @@ export default function Home() {
                       </h3>
                     </div>
 
-                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {activeCircularCats.map((cat) => {
                         const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
                         return (
@@ -3888,17 +3888,19 @@ export default function Home() {
                               setCurrentScreen("job-circulars");
                               if (soundEnabled) quizAudio.playClick();
                             }}
-                            className="w-[80px] h-[85px] sm:w-[92px] sm:h-[96px] shrink-0 snap-start rounded-xl bg-white border border-orange-200 shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer overflow-hidden flex flex-col text-center"
+                            className="w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs hover:shadow-md active:opacity-90 transition-shadow cursor-pointer overflow-hidden flex flex-col text-center"
                           >
-                            <div className="w-full h-[58px] sm:h-[66px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
+                            <div className="w-full h-[62px] sm:h-[68px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
                               {cat.imageUrl ? (
                                 <img
                                   src={cat.imageUrl}
                                   alt={cat.name}
                                   width={80}
-                                  height={58}
+                                  height={62}
+                                  loading="eager"
+                                  decoding="async"
                                   referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover pointer-events-none select-none"
                                 />
                               ) : (
                                 <div className="relative w-10 h-10 flex items-center justify-center">
