@@ -3888,15 +3888,15 @@ export default function Home() {
                               setCurrentScreen("job-circulars");
                               if (soundEnabled) quizAudio.playClick();
                             }}
-                            className="w-20 sm:w-24 shrink-0 snap-start rounded-xl bg-white border border-orange-200 shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer overflow-hidden flex flex-col text-center"
+                            className="w-[80px] h-[85px] sm:w-[92px] sm:h-[96px] shrink-0 snap-start rounded-xl bg-white border border-orange-200 shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer overflow-hidden flex flex-col text-center"
                           >
-                            <div className="w-20 sm:w-24 h-14 sm:h-16 bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
+                            <div className="w-full h-[58px] sm:h-[66px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
                               {cat.imageUrl ? (
                                 <img
                                   src={cat.imageUrl}
                                   alt={cat.name}
                                   width={80}
-                                  height={56}
+                                  height={58}
                                   referrerPolicy="no-referrer"
                                   className="w-full h-full object-cover"
                                 />
@@ -3907,7 +3907,7 @@ export default function Home() {
                                 </div>
                               )}
                             </div>
-                            <div className="w-full bg-white px-1 py-1.5 flex items-center justify-center">
+                            <div className="w-full flex-1 bg-white px-1 flex items-center justify-center">
                               <span className="text-[11px] sm:text-xs font-semibold text-slate-900 leading-tight line-clamp-1">
                                 {cat.name}
                               </span>
