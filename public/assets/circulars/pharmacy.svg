@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="54" viewBox="0 0 160 116" fill="none">
+  <rect width="160" height="116" fill="#FFF4EC"/>
+  <defs>
+    <linearGradient id="bgPharm" x1="20" y1="15" x2="140" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE0C7"/>
+      <stop offset="100%" stop-color="#FFB17A"/>
+    </linearGradient>
+  </defs>
+  <path d="M22 45C17 24 41 14 66 21C88 27 104 11 127 21C146 29 144 62 130 82C116 102 82 106 55 96C34 88 27 66 22 45Z" fill="url(#bgPharm)" opacity="0.9"/>
+  <circle cx="117" cy="18" r="7.5" fill="#FF9E5E" opacity="0.7"/>
+  <circle cx="24" cy="77" r="5" fill="#FF9E5E" opacity="0.55"/>
+  <circle cx="122" cy="94" r="4" fill="#FF8438" opacity="0.65"/>
+  <!-- Lab Flasks & Beaker -->
+  <rect x="38" y="29" width="28" height="27" rx="3" fill="#FFFDF9" stroke="#FDBA74" stroke-width="1.5"/>
+  <rect x="42" y="34" width="20" height="17" rx="1.5" fill="#FFEDD5"/>
+  <!-- Conical Flask 1 -->
+  <path d="M75 30H83V38L91 56H67L75 38Z" fill="#FFFDF9" stroke="#1E293B" stroke-width="1.5"/>
+  <path d="M70 48H88L91 56H67Z" fill="#FF6A00"/>
+  <!-- Conical Flask 2 -->
+  <path d="M98 33H105V40L111 56H92L98 40Z" fill="#FFFDF9" stroke="#1E293B" stroke-width="1.5"/>
+  <path d="M94 49H109L111 56H92Z" fill="#F59E0B"/>
+  <!-- Scientist + Medical Plus Badge -->
+  <circle cx="122" cy="52" r="5" fill="#FDBA74"/>
+  <rect x="116" y="58" width="12" height="16" rx="3" fill="#FFFFFF" stroke="#FF6A00" stroke-width="1.4"/>
+  <circle cx="131" cy="67" r="6" fill="#FF6A00"/>
+  <rect x="129.8" y="63.5" width="2.4" height="7" rx="0.8" fill="#FFFFFF"/>
+  <rect x="127.5" y="65.8" width="7" height="2.4" rx="0.8" fill="#FFFFFF"/>
+  <!-- Capsules & Pills Bottom -->
+  <g transform="translate(46,72) rotate(-25)">
+    <rect width="12" height="22" rx="6" fill="#FF6A00"/>
+    <path d="M0 11H12V16C12 19.3 9.3 22 6 22C2.7 22 0 19.3 0 16V11Z" fill="#FFFFFF"/>
+  </g>
+  <g transform="translate(65,67) rotate(18)">
+    <rect width="12" height="22" rx="6" fill="#EA580C"/>
+    <path d="M0 11H12V16C12 19.3 9.3 22 6 22C2.7 22 0 19.3 0 16V11Z" fill="#FEF3C7"/>
+  </g>
+  <g transform="translate(88,73) rotate(55)">
+    <rect width="11" height="20" rx="5.5" fill="#F59E0B"/>
+    <path d="M0 10H11V14.5C11 17.5 8.5 20 5.5 20C2.5 20 0 17.5 0 14.5V10Z" fill="#FFFFFF"/>
+  </g>
+</svg>

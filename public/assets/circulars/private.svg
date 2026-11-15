@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="54" viewBox="0 0 160 116" fill="none">
+  <rect width="160" height="116" fill="#FFF4EC"/>
+  <defs>
+    <linearGradient id="bgPriv" x1="25" y1="15" x2="140" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE0C7"/>
+      <stop offset="100%" stop-color="#FFB17A"/>
+    </linearGradient>
+  </defs>
+  <path d="M22 46C15 24 38 14 63 21C85 27 104 12 126 22C146 31 144 62 130 82C116 101 82 106 55 96C34 88 29 68 22 46Z" fill="url(#bgPriv)" opacity="0.9"/>
+  <circle cx="116" cy="18" r="7.5" fill="#FF9E5E" opacity="0.7"/>
+  <circle cx="24" cy="78" r="5" fill="#FF9E5E" opacity="0.55"/>
+  <circle cx="126" cy="93" r="4" fill="#FF8438" opacity="0.65"/>
+  <!-- Left candidate seated -->
+  <rect x="34" y="60" width="8" height="28" rx="3" fill="#475569"/>
+  <rect x="34" y="71" width="17" height="5" rx="2" fill="#334155"/>
+  <circle cx="48" cy="40" r="7.5" fill="#FDBA74"/>
+  <path d="M41 37C41 32 53 31 55 37C51 35 44 35 41 37Z" fill="#7C2D12"/>
+  <path d="M42 50C42 47 54 47 55 54L59 71H43Z" fill="#FF6A00"/>
+  <!-- Right interviewer seated -->
+  <rect x="115" y="60" width="8" height="28" rx="3" fill="#334155"/>
+  <rect x="99" y="71" width="18" height="5" rx="2" fill="#475569"/>
+  <circle cx="106" cy="39" r="7.5" fill="#FED7AA"/>
+  <path d="M99 37C99 31 113 31 113 37C109 34 103 34 99 37Z" fill="#1E293B"/>
+  <path d="M97 53C99 47 112 47 113 54L113 71H94Z" fill="#1E293B"/>
+  <!-- Office Desk -->
+  <rect x="52" y="63" width="54" height="6" rx="2.5" fill="#EA580C"/>
+  <rect x="57" y="69" width="4" height="21" rx="1.5" fill="#9A3412"/>
+  <rect x="97" y="69" width="4" height="21" rx="1.5" fill="#9A3412"/>
+  <!-- Laptop & Paper on Desk -->
+  <path d="M62 63L65 53H78L75 63Z" fill="#334155"/>
+  <rect x="81" y="59" width="13" height="4" rx="1" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1"/>
+  <!-- Plant on right -->
+  <rect x="126" y="77" width="10" height="12" rx="2" fill="#F59E0B"/>
+  <path d="M131 77C126 71 126 63 131 59C136 63 136 71 131 77Z" fill="#16A34A"/>
+  <path d="M131 77C123 73 121 67 125 63C129 66 131 72 131 77Z" fill="#22C55E"/>
+</svg>

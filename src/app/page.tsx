@@ -72,7 +72,11 @@ import {
   WifiOff,
   Share2,
   MessageCircle,
-  Mail
+  Mail,
+  Building2,
+  Landmark,
+  HeartHandshake,
+  Shield
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -80,6 +84,7 @@ import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
+import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularsFromDb, subscribeToJobCirculars } from "../lib/job_circulars";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings } from "../lib/app_settings";
 import { questionMatchesSearch } from "../lib/search_normalizer";
 import { quizAudio } from "../lib/audio";
@@ -473,13 +478,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -780,6 +785,10 @@ export default function Home() {
   const [coursesList, setCoursesList] = useState<CourseItem[]>([]);
   const [prepSubjectsList, setPrepSubjectsList] = useState<PrepSubjectItem[]>([]);
   const [proSectionList, setProSectionList] = useState<ProSectionItem[]>(getCachedProSection());
+  const [jobCircularCategories, setJobCircularCategories] = useState<JobCircularCategory[]>(DEFAULT_JOB_CIRCULAR_CATEGORIES);
+  const [jobCircularPosts, setJobCircularPosts] = useState<JobCircularPost[]>([]);
+  const [selectedCircularCategoryId, setSelectedCircularCategoryId] = useState<string>("all");
+  const [circularSearchQuery, setCircularSearchQuery] = useState<string>("");
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
@@ -1341,6 +1350,15 @@ export default function Home() {
         setPrepSubjectsList(cachedPrep);
       }
 
+      const cachedCircCats = getCachedJobCircularCategories();
+      if (cachedCircCats && cachedCircCats.length > 0) {
+        setJobCircularCategories(cachedCircCats);
+      }
+      const cachedCircPosts = getCachedJobCircularPosts();
+      if (cachedCircPosts && cachedCircPosts.length > 0) {
+        setJobCircularPosts(cachedCircPosts);
+      }
+
       fetchAppSettingsFromDb().then(settings => {
         if (settings) setAppSettings(settings);
       });
@@ -1404,10 +1422,25 @@ export default function Home() {
         (updatedPro) => setProSectionList(updatedPro)
       );
 
+      fetchJobCircularsFromDb().then(({ categories, posts }) => {
+        if (categories && categories.length > 0) setJobCircularCategories(categories);
+        if (posts) setJobCircularPosts(posts);
+      });
+
+      const unsubCirculars = subscribeToJobCirculars(
+        (updatedCats) => {
+          if (updatedCats && updatedCats.length > 0) setJobCircularCategories(updatedCats);
+        },
+        (updatedPosts) => {
+          if (updatedPosts) setJobCircularPosts(updatedPosts);
+        }
+      );
+
       return () => {
         if (unsubscribe) unsubscribe();
         if (unsubPkgs) unsubPkgs();
         if (unsubCoursesPrep) unsubCoursesPrep();
+        if (unsubCirculars) unsubCirculars();
         if (unsubAppSettings) unsubAppSettings();
       };
     }
@@ -2842,6 +2875,14 @@ export default function Home() {
         return true;
       }
 
+      if (view === "job-circulars" || view === "job_circulars" || view === "circulars") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        if (id) setSelectedCircularCategoryId(id);
+        setCurrentScreen("job-circulars");
+        return true;
+      }
+
       if (view === "search") {
         initialDeepLinkHandledRef.current = true;
         pendingDeepLinkRef.current = null;
@@ -3204,7 +3245,7 @@ export default function Home() {
                 } else if (currentScreen === "auth") {
                   setDrawerOpen(false);
                   handleCloseAuthScreen();
-                } else if (currentScreen === "daily-quick-test" || currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "privacy-policy" || currentScreen === "contact") {
+                } else if (currentScreen === "daily-quick-test" || currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "privacy-policy" || currentScreen === "contact") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
                 } else {
@@ -3215,7 +3256,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" || currentScreen === "daily-quick-test" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" || currentScreen === "daily-quick-test" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -3296,6 +3337,10 @@ export default function Home() {
                     <>
                       Notice <span className="text-[#FF6A00]">Board</span>
                     </>
+                  ) : currentScreen === "job-circulars" ? (
+                    <>
+                      চাকরির <span className="text-[#FF6A00]">বিজ্ঞপ্তি</span>
+                    </>
                   ) : currentScreen === "privacy-policy" ? (
                     <>
                       Privacy <span className="text-[#FF6A00]">Policy</span>
@@ -3330,7 +3375,7 @@ export default function Home() {
                     : currentScreen === "prep-sub" 
                     ? `SELECT ${selectedPrepSubject} SUBJECT` 
                     : currentScreen === "prep-sub-detail" && selectedPrepSubSubject 
-                    ? `${selectedPrepSubject} • ${selectedPrepSubSubject.sub}` 
+                    ? `${selectedPrepSubSubject.name} • ${selectedPrepSubSubject.sub}` 
                     : currentScreen === "quiz" 
                     ? (activeQuizSubtitle || "Live Exam") 
                     : currentScreen === "all-live-exams"
@@ -3343,6 +3388,8 @@ export default function Home() {
                     ? "TOP PERFORMERS & RANKINGS"
                     : currentScreen === "notice"
                     ? "NOTICES & ANNOUNCEMENTS"
+                    : currentScreen === "job-circulars"
+                    ? "JOB CIRCULARS & NOTICES"
                     : currentScreen === "privacy-policy"
                     ? "গোপনীয়তা নীতি ও ডেটা সুরক্ষা"
                     : currentScreen === "contact"
@@ -3785,7 +3832,82 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* General Quiz Game Live Banner - Solid Orange Layout (Placed directly below Our Courses) */}
+              {/* চাকরির বিজ্ঞপ্তি (Job Circulars Horizontal Scroll Section - Directly below Our Courses) */}
+              {(() => {
+                const activeCircularCats = [...jobCircularCategories]
+                  .filter((c) => c.active !== false)
+                  .sort((a, b) => (a.serial || 99) - (b.serial || 99));
+
+                if (activeCircularCats.length === 0) return null;
+
+                const circularFallbackIcons: Record<string, any> = {
+                  Landmark,
+                  Building2,
+                  Briefcase,
+                  HeartHandshake,
+                  ShieldCheck,
+                  Shield,
+                  GraduationCap,
+                  FlaskConical,
+                  FileText,
+                  Newspaper,
+                };
+
+                return (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
+                        চাকরির বিজ্ঞপ্তি
+                      </h3>
+                    </div>
+
+                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                      {activeCircularCats.map((cat) => {
+                        const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCircularCategoryId(cat.id);
+                              setCircularSearchQuery("");
+                              setPreviousScreen("home");
+                              setCurrentScreen("job-circulars");
+                              if (soundEnabled) quizAudio.playClick();
+                            }}
+                            className="w-20 sm:w-24 shrink-0 snap-start rounded-xl bg-white border border-orange-200 shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer overflow-hidden flex flex-col text-center"
+                          >
+                            <div className="w-20 sm:w-24 h-14 sm:h-16 bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
+                              {cat.imageUrl ? (
+                                <img
+                                  src={cat.imageUrl}
+                                  alt={cat.name}
+                                  width={80}
+                                  height={56}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="relative w-10 h-10 flex items-center justify-center">
+                                  <div className="w-8 h-8 bg-orange-200 rounded-full opacity-60" />
+                                  <FallbackIcon className="w-4 h-4 text-[#FF6A00] relative z-10 stroke-[2px]" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="w-full bg-white px-1 py-1.5 flex items-center justify-center">
+                              <span className="text-[11px] sm:text-xs font-semibold text-slate-900 leading-tight line-clamp-1">
+                                {cat.name}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* General Quiz Game Live Banner - Solid Orange Layout (Placed directly below Our Courses & Job Circulars) */}
               <div className="bg-[#FF6A00] rounded-2xl p-4 sm:p-4.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 my-2 sm:my-2.5">
                 <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
                   {/* LEFT SIDE: Title and Subtitle */}
@@ -5780,6 +5902,200 @@ export default function Home() {
 
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* JOB CIRCULARS ("চাকরির বিজ্ঞপ্তি") SCREEN                   */}
+          {/* ========================================================= */}
+          {currentScreen === "job-circulars" && (
+            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-4 animate-fade-in pb-16 text-left">
+              {(() => {
+                const activeCats = [...jobCircularCategories]
+                  .filter((c) => c.active !== false)
+                  .sort((a, b) => (a.serial || 99) - (b.serial || 99));
+
+                const activeCategoryObj = activeCats.find((c) => c.id === selectedCircularCategoryId) || null;
+                const query = circularSearchQuery.trim().toLowerCase();
+
+                const visiblePosts = jobCircularPosts
+                  .filter((post) => post.active !== false)
+                  .filter((post) =>
+                    selectedCircularCategoryId === "all"
+                      ? true
+                      : post.categoryId === selectedCircularCategoryId
+                  )
+                  .filter((post) => {
+                    if (!query) return true;
+                    return (
+                      post.title.toLowerCase().includes(query) ||
+                      (post.organization || "").toLowerCase().includes(query) ||
+                      (post.description || "").toLowerCase().includes(query)
+                    );
+                  });
+
+                return (
+                  <>
+                    {/* Header Banner */}
+                    <div className="bg-gradient-to-r from-[#FF6A00] to-[#FF8A3D] rounded-2xl p-4 sm:p-5 text-white shadow-md shadow-orange-500/15 flex items-center justify-between gap-3">
+                      <div className="space-y-1 min-w-0">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 block">
+                          সর্বশেষ নিয়োগ বিজ্ঞপ্তি
+                        </span>
+                        <h3 className="text-lg sm:text-xl font-black leading-tight truncate">
+                          {activeCategoryObj ? `${activeCategoryObj.name} চাকরির বিজ্ঞপ্তি` : "সকল চাকরির বিজ্ঞপ্তি"}
+                        </h3>
+                        <p className="text-xs font-semibold text-white/90">
+                          {visiblePosts.length > 0
+                            ? `${visiblePosts.length} টি সক্রিয় নিয়োগ বিজ্ঞপ্তি পাওয়া গেছে`
+                            : "ক্যাটাগরি অনুযায়ী নিয়োগ বিজ্ঞপ্তি ও আবেদনের সময়সূচি দেখুন"}
+                        </p>
+                      </div>
+                      {activeCategoryObj?.imageUrl ? (
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden bg-[#FFF5EE] border-2 border-white/40 shrink-0 shadow-sm">
+                          <img
+                            src={activeCategoryObj.imageUrl}
+                            alt={activeCategoryObj.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+                          <Newspaper className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Horizontal Category Selector */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCircularCategoryId("all");
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap border transition-all cursor-pointer shrink-0 ${
+                          selectedCircularCategoryId === "all"
+                            ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-orange-200 hover:text-[#FF6A00]"
+                        }`}
+                      >
+                        সকল ক্যাটাগরি
+                      </button>
+                      {activeCats.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCircularCategoryId(cat.id);
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap border transition-all cursor-pointer shrink-0 ${
+                            selectedCircularCategoryId === cat.id
+                              ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-xs"
+                              : "bg-white text-slate-700 border-slate-200 hover:border-orange-200 hover:text-[#FF6A00]"
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={circularSearchQuery}
+                        onChange={(e) => setCircularSearchQuery(e.target.value)}
+                        placeholder="প্রতিষ্ঠান বা পদের নাম দিয়ে খুঁজুন..."
+                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none shadow-2xs"
+                      />
+                    </div>
+
+                    {/* Circular Posts List */}
+                    {visiblePosts.length === 0 ? (
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center space-y-2.5 shadow-2xs">
+                        <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#FF6A00] flex items-center justify-center mx-auto">
+                          <Newspaper className="w-6 h-6" />
+                        </div>
+                        <h4 className="font-extrabold text-sm text-slate-800">
+                          এই ক্যাটাগরিতে এখনো কোনো বিজ্ঞপ্তি প্রকাশ হয়নি
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+                          অ্যাডমিন প্যানেল থেকে নতুন চাকরির বিজ্ঞপ্তি যুক্ত করা হলে সাথে সাথে এখানে দেখতে পাবেন।
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {visiblePosts.map((post) => {
+                          const postCat = jobCircularCategories.find((c) => c.id === post.categoryId);
+                          return (
+                            <div
+                              key={post.id}
+                              className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-orange-200 transition-all"
+                            >
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">
+                                  {postCat?.name || "নিয়োগ বিজ্ঞপ্তি"}
+                                </span>
+                                {post.deadline && (
+                                  <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>শেষ তারিখ: {post.deadline}</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
+                                {post.title}
+                              </h4>
+
+                              {(post.organization || post.vacancies) && (
+                                <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-600">
+                                  {post.organization && (
+                                    <span className="flex items-center gap-1">
+                                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                                      {post.organization}
+                                    </span>
+                                  )}
+                                  {post.vacancies && (
+                                    <span className="flex items-center gap-1 text-emerald-700">
+                                      <Users className="w-3.5 h-3.5 text-emerald-500" />
+                                      পদসংখ্যা: {post.vacancies}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {post.description && (
+                                <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-line">
+                                  {post.description}
+                                </p>
+                              )}
+
+                              {post.applyUrl && (
+                                <div className="pt-1">
+                                  <a
+                                    href={post.applyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FF6A00] hover:bg-[#E05E00] text-white text-xs font-extrabold transition-all shadow-xs"
+                                  >
+                                    <span>আবেদন / বিস্তারিত দেখুন</span>
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="54" viewBox="0 0 160 116" fill="none">
+  <rect width="160" height="116" fill="#FFF4EC"/>
+  <defs>
+    <linearGradient id="bgDef" x1="20" y1="15" x2="140" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE0C7"/>
+      <stop offset="100%" stop-color="#FFB17A"/>
+    </linearGradient>
+  </defs>
+  <path d="M22 45C17 24 41 14 66 21C88 27 104 11 127 21C146 29 144 62 130 82C116 102 82 106 55 96C34 88 27 66 22 45Z" fill="url(#bgDef)" opacity="0.9"/>
+  <circle cx="117" cy="18" r="7.5" fill="#FF9E5E" opacity="0.7"/>
+  <circle cx="24" cy="77" r="5" fill="#FF9E5E" opacity="0.55"/>
+  <circle cx="122" cy="94" r="4" fill="#FF8438" opacity="0.65"/>
+  <!-- Defense / Police HQ Arch Gate -->
+  <rect x="37" y="34" width="46" height="8" rx="1.5" fill="#1E293B"/>
+  <circle cx="60" cy="31" r="4.5" fill="#FF6A00" stroke="#1E293B" stroke-width="1.5"/>
+  <rect x="40" y="42" width="40" height="34" fill="#9A3412"/>
+  <path d="M51 76V55C51 49 69 49 69 55V76Z" fill="#FED7AA"/>
+  <rect x="35" y="76" width="50" height="5" rx="1.5" fill="#475569"/>
+  <!-- Defense / Police Officer -->
+  <path d="M97 38C97 33 111 33 111 38L113 42H95Z" fill="#1E293B"/>
+  <rect x="97" y="40" width="14" height="2.5" fill="#FF6A00"/>
+  <circle cx="104" cy="47" r="6" fill="#FDBA74"/>
+  <path d="M94 56C94 53 114 53 114 56L116 76H92Z" fill="#1E293B"/>
+  <rect x="92" y="68" width="24" height="3.5" fill="#EA580C"/>
+  <!-- Officer Shield Badge on chest -->
+  <path d="M107 58L111 59.5V63C111 65.5 107 67 107 67C107 67 103 65.5 103 63V59.5Z" fill="#FF6A00"/>
+  <rect x="95" y="76" width="7" height="14" rx="1.5" fill="#0F172A"/>
+  <rect x="106" y="76" width="7" height="14" rx="1.5" fill="#0F172A"/>
+  <!-- Shield Accent on Left Bottom -->
+  <path d="M77 77L85 80V86C85 90 77 93 77 93C77 93 69 90 69 86V80Z" fill="#FF6A00" stroke="#FFFDF9" stroke-width="1.5"/>
+</svg>

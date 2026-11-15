@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="54" viewBox="0 0 160 116" fill="none">
+  <rect width="160" height="116" fill="#FFF4EC"/>
+  <defs>
+    <linearGradient id="bgMin" x1="20" y1="15" x2="140" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE0C7"/>
+      <stop offset="100%" stop-color="#FFB17A"/>
+    </linearGradient>
+  </defs>
+  <path d="M23 44C17 24 41 13 66 20C88 26 105 11 127 21C146 30 144 62 130 82C116 102 82 106 55 96C34 88 29 65 23 44Z" fill="url(#bgMin)" opacity="0.9"/>
+  <circle cx="116" cy="18" r="7.5" fill="#FF9E5E" opacity="0.7"/>
+  <circle cx="24" cy="77" r="5" fill="#FF9E5E" opacity="0.55"/>
+  <circle cx="122" cy="94" r="4" fill="#FF8438" opacity="0.65"/>
+  <!-- Clean Ministry Building Line/Flat Emblem -->
+  <polygon points="80,26 42,46 118,46" fill="#FFF7ED" stroke="#1E293B" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="80" cy="37.5" r="3.5" fill="#FF6A00"/>
+  <rect x="46" y="46" width="68" height="6" rx="1" fill="#FF6A00" stroke="#1E293B" stroke-width="2.2"/>
+  <rect x="52" y="52" width="8" height="27" fill="#FFFDF9" stroke="#1E293B" stroke-width="2.2"/>
+  <rect x="76" y="52" width="8" height="27" fill="#FFFDF9" stroke="#1E293B" stroke-width="2.2"/>
+  <rect x="100" y="52" width="8" height="27" fill="#FFFDF9" stroke="#1E293B" stroke-width="2.2"/>
+  <rect x="44" y="79" width="72" height="5" rx="1" fill="#FDBA74" stroke="#1E293B" stroke-width="2.2"/>
+  <rect x="39" y="84" width="82" height="5.5" rx="1.5" fill="#FF6A00" stroke="#1E293B" stroke-width="2.2"/>
+</svg>

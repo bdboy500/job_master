@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="54" viewBox="0 0 160 116" fill="none">
+  <rect width="160" height="116" fill="#FFF4EC"/>
+  <defs>
+    <linearGradient id="bgGovt" x1="20" y1="15" x2="140" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE0C7"/>
+      <stop offset="100%" stop-color="#FFB17A"/>
+    </linearGradient>
+  </defs>
+  <path d="M24 44C18 24 42 13 65 20C84 26 98 11 120 18C144 26 146 56 134 77C121 99 88 108 60 98C36 90 31 65 24 44Z" fill="url(#bgGovt)" opacity="0.9"/>
+  <circle cx="118" cy="18" r="8" fill="#FF9E5E" opacity="0.7"/>
+  <circle cx="24" cy="76" r="5" fill="#FF9E5E" opacity="0.55"/>
+  <circle cx="122" cy="94" r="4" fill="#FF8438" opacity="0.65"/>
+  <!-- Megaphone on left -->
+  <g transform="translate(32,42) rotate(-14)">
+    <path d="M4 11L21 4V22L4 15V11Z" fill="#FF6A00"/>
+    <rect x="2" y="10" width="4" height="6" rx="1.5" fill="#EA580C"/>
+    <rect x="7" y="15" width="3.5" height="8" rx="1" fill="#9A3412"/>
+    <path d="M24 9C26 11 26 15 24 17" stroke="#FF6A00" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <!-- Document sheet -->
+  <rect x="33" y="65" width="18" height="22" rx="2.5" fill="#FFFDF9" stroke="#FDBA74" stroke-width="1.5"/>
+  <line x1="37" y1="71" x2="47" y2="71" stroke="#FB923C" stroke-width="2" stroke-linecap="round"/>
+  <line x1="37" y1="76" x2="47" y2="76" stroke="#FDBA74" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="37" y1="81" x2="44" y2="81" stroke="#FDBA74" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Podium speaker -->
+  <circle cx="79" cy="36" r="8.5" fill="#FDBA74"/>
+  <path d="M71 34C71 29 87 28 87 34C87 31 83 28 79 28C74 28 71 31 71 34Z" fill="#1E293B"/>
+  <path d="M64 68C64 53 70 46 79 46C88 46 94 53 94 68Z" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2"/>
+  <path d="M77 46L79 58L81 46Z" fill="#FF6A00"/>
+  <!-- Raised pointing arm -->
+  <path d="M92 54L103 41" stroke="#FDBA74" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Podium desk -->
+  <rect x="57" y="68" width="44" height="22" rx="4" fill="#F59E0B"/>
+  <rect x="55" y="66" width="48" height="5" rx="2" fill="#D97706"/>
+  <!-- Mic -->
+  <path d="M92 66V57L87 54" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="86" cy="53" r="2.2" fill="#1E293B"/>
+  <!-- Right chart card & clock -->
+  <circle cx="101" cy="31" r="7" fill="#FFFFFF" stroke="#FF6A00" stroke-width="1.8"/>
+  <path d="M101 27V31L104 33" stroke="#FF6A00" stroke-width="1.8" stroke-linecap="round"/>
+  <rect x="104" y="64" width="22" height="19" rx="2.5" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.3"/>
+  <rect x="108" y="75" width="3" height="5" rx="0.8" fill="#FF6A00"/>
+  <rect x="113" y="71" width="3" height="9" rx="0.8" fill="#FB923C"/>
+  <rect x="118" y="68" width="3" height="12" rx="0.8" fill="#EA580C"/>
+</svg>

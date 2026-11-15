@@ -1,7 +1,7 @@
 // Job Master Performance-First & Offline-Resilient PWA Service Worker
-const SHELL_CACHE = 'jobmaster-shell-v8';
-const STATIC_CACHE = 'jobmaster-static-v8';
-const DATA_CACHE = 'jobmaster-data-v8';
+const SHELL_CACHE = 'jobmaster-shell-v10';
+const STATIC_CACHE = 'jobmaster-static-v10';
+const DATA_CACHE = 'jobmaster-data-v10';
 const VALID_CACHES = [SHELL_CACHE, STATIC_CACHE, DATA_CACHE];
 
 const ESSENTIAL_ASSETS = [
@@ -17,6 +17,7 @@ const PUBLIC_DATA_ROUTES = [
   '/api/prep-subjects',
   '/api/pro-section',
   '/api/app-settings',
+  '/api/job-circulars',
 ];
 
 // Install: Pre-cache core app shell & icons and activate immediately
@@ -150,18 +151,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Immutable Next.js Static Bundles, Fonts, CSS, JS, and Images: Cache-First (0ms on repeat loads)
+  // 3. Next.js Static Bundles, Fonts, CSS, JS, and Images:
+  //    CSS/JSON use Stale-While-Revalidate (0ms cached load + background update),
+  //    while fonts/images/JS chunks stay Cache-First.
   const isNextStatic = url.pathname.startsWith('/_next/static/');
   const isStaticAsset = /\.(js|css|woff2|woff|ttf|png|jpg|jpeg|webp|svg|ico|json)$/i.test(url.pathname);
+  const shouldBgRevalidate = url.pathname.endsWith('.css') || url.pathname.endsWith('.json') || url.pathname.includes('root-of-the-server');
 
   if (isNextStatic || isStaticAsset) {
     event.respondWith(
       caches.open(STATIC_CACHE).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
-            // Revalidate non-hashed static assets (like manifest.json) quietly in background
-            if (!isNextStatic && url.pathname.endsWith('.json')) {
-              fetch(event.request)
+            if (shouldBgRevalidate) {
+              fetch(event.request, { cache: 'reload' })
                 .then((res) => {
                   if (res && res.status === 200) {
                     cache.put(event.request, res.clone()).catch(() => {});
@@ -172,7 +175,7 @@ self.addEventListener('fetch', (event) => {
             return cachedResponse;
           }
 
-          return fetch(event.request).then((networkResponse) => {
+          return fetch(event.request, shouldBgRevalidate ? { cache: 'reload' } : undefined).then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
               cache.put(event.request, networkResponse.clone()).catch(() => {});
             }

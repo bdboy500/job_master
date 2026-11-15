@@ -6,13 +6,16 @@ const nextConfig = {
     unoptimized: true,
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production';
     return [
       {
         source: '/_next/static/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: isProd
+              ? 'public, max-age=31536000, immutable'
+              : 'no-cache, must-revalidate',
           },
         ],
       },

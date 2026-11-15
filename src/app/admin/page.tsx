@@ -75,7 +75,8 @@ import {
   KeyRound,
   EyeOff,
   RotateCw,
-  Smartphone
+  Smartphone,
+  Upload
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -108,6 +109,17 @@ import {
   subscribeToCoursesAndPrep,
   sanitizeSubSubjects
 } from "../../lib/courses_and_subjects";
+import {
+  JobCircularCategory,
+  JobCircularPost,
+  CIRCULAR_ARTWORK_PRESETS,
+  getCachedJobCircularCategories,
+  getCachedJobCircularPosts,
+  fetchJobCircularsFromDb,
+  saveJobCircularCategoriesToDb,
+  saveJobCircularPostsToDb,
+  subscribeToJobCirculars
+} from "../../lib/job_circulars";
 import {
   AdminRole,
   AdminAccountStatus,
@@ -488,7 +500,7 @@ export default function AdminPage() {
   const [newStaffRole, setNewStaffRole] = useState<AdminRole>("editor");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "switches" | "leaderboard" | "notifications" | "staff">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "job_circulars" | "switches" | "leaderboard" | "notifications" | "staff">("questions");
 
   // Leaderboard Admin Management State
   const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
@@ -562,6 +574,28 @@ export default function AdminPage() {
   const [proFormText, setProFormText] = useState<string>("text-purple-600");
   const [proFormActive, setProFormActive] = useState<boolean>(true);
   const [proFormSubSubjects, setProFormSubSubjects] = useState<SubCategoryItem[]>([]);
+
+  // Job Circulars Management State
+  const [circularCategories, setCircularCategories] = useState<JobCircularCategory[]>(getCachedJobCircularCategories());
+  const [circularPosts, setCircularPosts] = useState<JobCircularPost[]>(getCachedJobCircularPosts());
+  const [editingCircularCatId, setEditingCircularCatId] = useState<string | null>(null);
+  const [circularCatSerial, setCircularCatSerial] = useState<number>(9);
+  const [circularCatName, setCircularCatName] = useState<string>("");
+  const [circularCatImageUrl, setCircularCatImageUrl] = useState<string>("/assets/circulars/govt.svg");
+  const [circularCatIcon, setCircularCatIcon] = useState<string>("Briefcase");
+  const [circularCatActive, setCircularCatActive] = useState<boolean>(true);
+  const [confirmDeleteCircularCatId, setConfirmDeleteCircularCatId] = useState<string | null>(null);
+
+  const [editingCircularPostId, setEditingCircularPostId] = useState<string | null>(null);
+  const [circularPostCategoryId, setCircularPostCategoryId] = useState<string>("circ-govt");
+  const [circularPostTitle, setCircularPostTitle] = useState<string>("");
+  const [circularPostOrganization, setCircularPostOrganization] = useState<string>("");
+  const [circularPostVacancies, setCircularPostVacancies] = useState<string>("");
+  const [circularPostDeadline, setCircularPostDeadline] = useState<string>("");
+  const [circularPostApplyUrl, setCircularPostApplyUrl] = useState<string>("");
+  const [circularPostDescription, setCircularPostDescription] = useState<string>("");
+  const [circularPostActive, setCircularPostActive] = useState<boolean>(true);
+  const [confirmDeleteCircularPostId, setConfirmDeleteCircularPostId] = useState<string | null>(null);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -1105,10 +1139,18 @@ export default function AdminPage() {
     fetchProSectionFromDb().then((pro) => {
       if (pro) setProSectionList(pro);
     });
+    fetchJobCircularsFromDb().then(({ categories, posts }) => {
+      if (categories && categories.length > 0) {
+        setCircularCategories(categories);
+        if (!editingCircularCatId) setCircularCatSerial(categories.length + 1);
+      }
+      if (posts) setCircularPosts(posts);
+    });
     fetchLeaderboard().then((lbUsers) => {
       if (lbUsers) setAdminLeaderboardUsers(lbUsers);
     });
     const unsubCoursesPrep = subscribeToCoursesAndPrep(setCoursesList, setPrepSubjectsList, setProSectionList);
+    const unsubCirculars = subscribeToJobCirculars(setCircularCategories, setCircularPosts);
 
     return () => {
       clearInterval(sessionInterval);
@@ -1117,6 +1159,7 @@ export default function AdminPage() {
       unsubExams();
       unsubPkgs();
       unsubCoursesPrep();
+      unsubCirculars();
       unsubAppSettings();
     };
   }, []);
@@ -1605,6 +1648,187 @@ export default function AdminPage() {
     setProSectionList(newList);
     await saveProSectionToDb(newList);
     triggerNotification("success", "প্রো সেকশন সিরিয়াল আপডেট করা হয়েছে!");
+  };
+
+  // Job Circulars CRUD & Reorder Handlers
+  const handleCircularImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 360;
+        const maxH = 270;
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#FFF5EE";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          setCircularCatImageUrl(dataUrl);
+          triggerNotification("success", "ছবি আপলোড এবং অপটিমাইজ সম্পন্ন হয়েছে!");
+        }
+      };
+      if (typeof reader.result === "string") {
+        img.src = reader.result;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveCircularCat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!circularCatName.trim()) {
+      triggerNotification("error", "দয়া করে সাবজেক্ট / ক্যাটাগরির নাম লিখুন।");
+      return;
+    }
+
+    const newCat: JobCircularCategory = {
+      id: editingCircularCatId || `circ_${Date.now()}`,
+      name: circularCatName.trim(),
+      imageUrl: circularCatImageUrl.trim(),
+      icon: circularCatIcon || "Briefcase",
+      serial: Number(circularCatSerial) || (circularCategories.length + 1),
+      active: circularCatActive,
+    };
+
+    const updated = [...circularCategories];
+    if (editingCircularCatId) {
+      const idx = updated.findIndex((c) => c.id === editingCircularCatId);
+      if (idx >= 0) updated[idx] = newCat;
+      else updated.push(newCat);
+    } else {
+      updated.push(newCat);
+    }
+    updated.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    updated.forEach((c, idx) => { c.serial = idx + 1; });
+
+    setCircularCategories(updated);
+    await saveJobCircularCategoriesToDb(updated);
+    triggerNotification("success", editingCircularCatId ? "ক্যাটাগরি আপডেট করা হয়েছে!" : "নতুন ক্যাটাগরি যোগ করা হয়েছে!");
+    handleCancelCircularCatEdit(updated.length + 1);
+  };
+
+  const handleCancelCircularCatEdit = (nextSerial?: number) => {
+    setEditingCircularCatId(null);
+    setCircularCatSerial(nextSerial ?? circularCategories.length + 1);
+    setCircularCatName("");
+    setCircularCatImageUrl("/assets/circulars/govt.svg");
+    setCircularCatIcon("Briefcase");
+    setCircularCatActive(true);
+  };
+
+  const handleEditCircularCat = (cat: JobCircularCategory) => {
+    setEditingCircularCatId(cat.id);
+    setCircularCatSerial(cat.serial || 1);
+    setCircularCatName(cat.name || "");
+    setCircularCatImageUrl(cat.imageUrl || "");
+    setCircularCatIcon(cat.icon || "Briefcase");
+    setCircularCatActive(cat.active !== false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDeleteCircularCat = async (id: string, name: string) => {
+    const updated = circularCategories
+      .filter((c) => c.id !== id)
+      .map((c, idx) => ({ ...c, serial: idx + 1 }));
+    setCircularCategories(updated);
+    setConfirmDeleteCircularCatId(null);
+    await saveJobCircularCategoriesToDb(updated);
+    triggerNotification("success", `"${name}" ডিলিট করা হয়েছে।`);
+    if (editingCircularCatId === id) handleCancelCircularCatEdit(updated.length + 1);
+  };
+
+  const handleToggleCircularCatActive = async (id: string) => {
+    const updated = circularCategories.map((c) =>
+      c.id === id ? { ...c, active: c.active === false } : c
+    );
+    setCircularCategories(updated);
+    await saveJobCircularCategoriesToDb(updated);
+    triggerNotification("success", "ক্যাটাগরি স্ট্যাটাস আপডেট করা হয়েছে!");
+  };
+
+  const handleMoveCircularCatSerial = async (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= circularCategories.length) return;
+    const newList = [...circularCategories];
+    const temp = newList[index];
+    newList[index] = newList[targetIdx];
+    newList[targetIdx] = temp;
+    newList.forEach((item, idx) => { item.serial = idx + 1; });
+    setCircularCategories(newList);
+    await saveJobCircularCategoriesToDb(newList);
+    triggerNotification("success", "সাবজেক্টের সিরিয়াল পরিবর্তন সেভ হয়েছে!");
+  };
+
+  const handleSaveCircularPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!circularPostTitle.trim() || !circularPostCategoryId) {
+      triggerNotification("error", "শিরোনাম ও ক্যাটাগরি নির্বাচন করুন।");
+      return;
+    }
+    const existing = editingCircularPostId ? circularPosts.find((p) => p.id === editingCircularPostId) : null;
+    const post: JobCircularPost = {
+      id: editingCircularPostId || `circ_post_${Date.now()}`,
+      categoryId: circularPostCategoryId,
+      title: circularPostTitle.trim(),
+      organization: circularPostOrganization.trim(),
+      vacancies: circularPostVacancies.trim(),
+      deadline: circularPostDeadline.trim(),
+      applyUrl: circularPostApplyUrl.trim(),
+      description: circularPostDescription.trim(),
+      publishedAt: existing?.publishedAt || new Date().toISOString(),
+      active: circularPostActive,
+    };
+
+    const updated = editingCircularPostId
+      ? circularPosts.map((p) => (p.id === editingCircularPostId ? post : p))
+      : [post, ...circularPosts];
+
+    setCircularPosts(updated);
+    await saveJobCircularPostsToDb(updated);
+    triggerNotification("success", editingCircularPostId ? "বিজ্ঞপ্তি আপডেট হয়েছে!" : "নতুন চাকরির বিজ্ঞপ্তি প্রকাশ হয়েছে!");
+    handleCancelCircularPostEdit();
+  };
+
+  const handleCancelCircularPostEdit = () => {
+    setEditingCircularPostId(null);
+    setCircularPostCategoryId(circularCategories[0]?.id || "circ-govt");
+    setCircularPostTitle("");
+    setCircularPostOrganization("");
+    setCircularPostVacancies("");
+    setCircularPostDeadline("");
+    setCircularPostApplyUrl("");
+    setCircularPostDescription("");
+    setCircularPostActive(true);
+  };
+
+  const handleEditCircularPost = (post: JobCircularPost) => {
+    setEditingCircularPostId(post.id);
+    setCircularPostCategoryId(post.categoryId || circularCategories[0]?.id || "");
+    setCircularPostTitle(post.title || "");
+    setCircularPostOrganization(post.organization || "");
+    setCircularPostVacancies(post.vacancies || "");
+    setCircularPostDeadline(post.deadline || "");
+    setCircularPostApplyUrl(post.applyUrl || "");
+    setCircularPostDescription(post.description || "");
+    setCircularPostActive(post.active !== false);
+  };
+
+  const handleDeleteCircularPost = async (id: string) => {
+    const updated = circularPosts.filter((p) => p.id !== id);
+    setCircularPosts(updated);
+    setConfirmDeleteCircularPostId(null);
+    await saveJobCircularPostsToDb(updated);
+    triggerNotification("success", "বিজ্ঞপ্তি ডিলিট করা হয়েছে।");
+    if (editingCircularPostId === id) handleCancelCircularPostEdit();
   };
 
   const handleMoveCourseSubSubjectInList = async (courseIndex: number, subIndex: number, direction: "up" | "down") => {
@@ -3588,6 +3812,18 @@ export default function AdminPage() {
                   <Briefcase className={`w-4 h-4 ${activeTab === "pro_section" ? "text-white" : "text-[#FF6A00]"}`} />
                   <span>প্রো সেকশন ({proSectionList.length})</span>
                 </button>
+
+                <button
+                  onClick={() => setActiveTab("job_circulars")}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                    activeTab === "job_circulars"
+                      ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                      : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                  }`}
+                >
+                  <Newspaper className={`w-4 h-4 ${activeTab === "job_circulars" ? "text-white" : "text-[#FF6A00]"}`} />
+                  <span>চাকরির বিজ্ঞপ্তি ({circularCategories.length})</span>
+                </button>
               </>
             )}
 
@@ -3770,6 +4006,18 @@ export default function AdminPage() {
                 >
                   <Briefcase className="w-4 h-4" />
                   <span>প্রো সেকশন ({proSectionList.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab("job_circulars")}
+                  className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                    activeTab === "job_circulars"
+                      ? "bg-orange-50 text-[#FF6A00]"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  <Newspaper className="w-4 h-4" />
+                  <span>চাকরির বিজ্ঞপ্তি ({circularCategories.length})</span>
                 </button>
               </>
             )}
@@ -7866,6 +8114,517 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW: JOB CIRCULARS ("চাকরির বিজ্ঞপ্তি") MANAGEMENT          */}
+          {/* ========================================================= */}
+          {activeTab === "job_circulars" && (
+            <div className="space-y-8 animate-fade-in text-left">
+              {/* Part 1: Category / Subject Horizontal Cards CRUD + Reordering */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Column: Add / Edit Category Form */}
+                <div className="lg:col-span-5 bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                      <Newspaper className="w-4 h-4 text-[#FF6A00]" />
+                      <span>{editingCircularCatId ? "বিজ্ঞপ্তি সাবজেক্ট এডিট করুন" : "নতুন বিজ্ঞপ্তি সাবজেক্ট যোগ করুন"}</span>
+                    </h3>
+                    {editingCircularCatId && (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelCircularCatEdit()}
+                        className="text-[10px] font-extrabold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg hover:bg-rose-100 cursor-pointer"
+                      >
+                        বাতিল করুন
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSaveCircularCat} className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1 col-span-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">সিরিয়াল</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={circularCatSerial}
+                          onChange={(e) => setCircularCatSerial(parseInt(e.target.value) || 1)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">সাবজেক্ট / ক্যাটাগরির নাম</label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: সরকারি, ব্যাংক, রেলওয়ে"
+                          value={circularCatName}
+                          onChange={(e) => setCircularCatName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Visual Card Preview */}
+                    <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 flex items-center gap-4">
+                      <div className="w-[104px] shrink-0 rounded-2xl bg-white border border-orange-100 shadow-xs overflow-hidden flex flex-col text-center">
+                        <div className="w-full h-[76px] bg-[#FFF5EE] flex items-center justify-center overflow-hidden">
+                          {circularCatImageUrl ? (
+                            <img
+                              src={circularCatImageUrl}
+                              alt="Preview"
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Briefcase className="w-6 h-6 text-[#FF6A00]" />
+                          )}
+                        </div>
+                        <div className="bg-white px-2 py-2 flex items-center justify-center">
+                          <span className="text-xs font-black text-slate-900 line-clamp-1">
+                            {circularCatName.trim() || "সাবজেক্ট নাম"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-slate-600 flex-1 min-w-0">
+                        <p className="font-extrabold text-slate-800">হোম কার্ড প্রিভিউ</p>
+                        <p className="text-[11px] leading-snug text-slate-500">
+                          নিচের রেডিমেড অরেঞ্জ-থিম ছবি থেকে বেছে নিন অথবা নিজস্ব ছবি আপলোড / লিংক দিন।
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Preset Artwork Picker */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        রেডিমেড ইলাস্ট্রেশন বাছাই করুন
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {CIRCULAR_ARTWORK_PRESETS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => {
+                              setCircularCatImageUrl(preset.imageUrl);
+                              setCircularCatIcon(preset.icon);
+                            }}
+                            className={`rounded-xl border p-1 transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                              circularCatImageUrl === preset.imageUrl
+                                ? "border-[#FF6A00] bg-orange-50 ring-2 ring-[#FF6A00]/20"
+                                : "border-slate-200 bg-white hover:border-orange-200"
+                            }`}
+                          >
+                            <img
+                              src={preset.imageUrl}
+                              alt={preset.label}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-11 object-cover rounded-lg bg-[#FFF5EE]"
+                            />
+                            <span className="text-[9px] font-extrabold text-slate-700 line-clamp-1">
+                              {preset.label.split(" ")[0]}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Custom Image URL or Upload */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        অথবা নিজস্ব ইমেজ লিংক / আপলোড
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="/assets/circulars/govt.svg বা https://..."
+                          value={circularCatImageUrl}
+                          onChange={(e) => setCircularCatImageUrl(e.target.value)}
+                          className="flex-1 bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none min-w-0"
+                        />
+                        <label className="px-3 py-2 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] border border-orange-200 rounded-2xl text-xs font-extrabold cursor-pointer flex items-center gap-1 shrink-0">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>আপলোড</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCircularImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 items-center">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">ফলব্যাক আইকন</label>
+                        <select
+                          value={circularCatIcon}
+                          onChange={(e) => setCircularCatIcon(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        >
+                          {["Landmark", "Building2", "Briefcase", "HeartHandshake", "ShieldCheck", "Shield", "GraduationCap", "FlaskConical", "Newspaper", "FileText"].map((ic) => (
+                            <option key={ic} value={ic}>{ic}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">স্ট্যাটাস</label>
+                        <button
+                          type="button"
+                          onClick={() => setCircularCatActive(!circularCatActive)}
+                          className={`w-full py-2.5 rounded-2xl text-xs font-extrabold transition-all cursor-pointer border ${
+                            circularCatActive
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
+                        >
+                          {circularCatActive ? "সক্রিয় (দেখাবে)" : "নিষ্ক্রিয় (লুকানো)"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#FF6A00] hover:bg-[#E05E00] text-white font-extrabold text-xs py-3 rounded-2xl transition-all cursor-pointer shadow-md shadow-orange-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5px]" />
+                      <span>{editingCircularCatId ? "সাবজেক্ট আপডেট করুন" : "নতুন সাবজেক্ট যোগ করুন"}</span>
+                    </button>
+                  </form>
+                </div>
+
+                {/* Right Column: Existing Categories List + Serial Reordering */}
+                <div className="lg:col-span-7 bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-[#FF6A00]" />
+                        <span>বিজ্ঞপ্তি সাবজেক্ট তালিকা ও ক্রমবিন্যাস ({circularCategories.length} টি)</span>
+                      </h3>
+                      <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                        উপরে/নিচে তীর বাটন দিয়ে ডানে-বামে দেখানোর সিরিয়াল পরিবর্তন করুন
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {circularCategories.map((cat, idx) => (
+                      <div
+                        key={cat.id}
+                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                          cat.active === false
+                            ? "bg-slate-50/70 border-slate-200 opacity-65"
+                            : "bg-slate-50 border-slate-200/80 hover:border-orange-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200/80 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveCircularCatSerial(idx, "up")}
+                              disabled={idx === 0}
+                              className="p-1 hover:bg-orange-50 hover:text-[#FF6A00] text-slate-600 disabled:opacity-25 rounded-lg cursor-pointer"
+                              title="আগে নিন"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-[11px] font-black text-slate-700 min-w-[22px] text-center">
+                              #{idx + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveCircularCatSerial(idx, "down")}
+                              disabled={idx === circularCategories.length - 1}
+                              className="p-1 hover:bg-orange-50 hover:text-[#FF6A00] text-slate-600 disabled:opacity-25 rounded-lg cursor-pointer"
+                              title="পরে নিন"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="w-12 h-10 rounded-xl overflow-hidden bg-[#FFF5EE] border border-orange-100 shrink-0 flex items-center justify-center">
+                            {cat.imageUrl ? (
+                              <img
+                                src={cat.imageUrl}
+                                alt={cat.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Briefcase className="w-4 h-4 text-[#FF6A00]" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-extrabold text-sm text-slate-900 truncate">{cat.name}</span>
+                              {cat.active === false && (
+                                <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                                  লুকানো
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-400">
+                              {circularPosts.filter((p) => p.categoryId === cat.id).length} টি বিজ্ঞপ্তি
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCircularCatActive(cat.id)}
+                            className={`px-2 py-1.5 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all ${
+                              cat.active === false
+                                ? "bg-slate-200 text-slate-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}
+                          >
+                            {cat.active === false ? "চালু করুন" : "সক্রিয়"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleEditCircularCat(cat)}
+                            className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>এডিট</span>
+                          </button>
+
+                          {confirmDeleteCircularCatId === cat.id ? (
+                            <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-1 rounded-xl border border-rose-200">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCircularCat(cat.id, cat.name)}
+                                className="px-2 py-0.5 bg-rose-600 text-white text-[10px] font-black rounded-lg cursor-pointer"
+                              >
+                                ডিলিট
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteCircularCatId(null)}
+                                className="px-1.5 py-0.5 text-slate-600 text-[10px] font-bold cursor-pointer"
+                              >
+                                না
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteCircularCatId(cat.id)}
+                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                              title="ডিলিট করুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Part 2: Circular Notices / Posts Management under Categories */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-5 bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#FF6A00]" />
+                      <span>{editingCircularPostId ? "বিজ্ঞপ্তি এডিট করুন" : "নতুন চাকরির বিজ্ঞপ্তি পোস্ট করুন"}</span>
+                    </h3>
+                    {editingCircularPostId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelCircularPostEdit}
+                        className="text-[10px] font-extrabold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg hover:bg-rose-100 cursor-pointer"
+                      >
+                        বাতিল
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSaveCircularPost} className="space-y-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">সাবজেক্ট / ক্যাটাগরি</label>
+                      <select
+                        value={circularPostCategoryId}
+                        onChange={(e) => setCircularPostCategoryId(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        required
+                      >
+                        {circularCategories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">বিজ্ঞপ্তির শিরোনাম</label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: বাংলাদেশ ব্যাংক অফিসার (জেনারেল) নিয়োগ ২০২৬"
+                        value={circularPostTitle}
+                        onChange={(e) => setCircularPostTitle(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">প্রতিষ্ঠানের নাম</label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: বাংলাদেশ ব্যাংক / গণপ্রজাতন্ত্রী বাংলাদেশ সরকার"
+                        value={circularPostOrganization}
+                        onChange={(e) => setCircularPostOrganization(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">পদসংখ্যা</label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: ৩২০ জন"
+                          value={circularPostVacancies}
+                          onChange={(e) => setCircularPostVacancies(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">আবেদনের শেষ তারিখ</label>
+                        <input
+                          type="text"
+                          placeholder="যেমন: ৩০ নভেম্বর ২০২৬"
+                          value={circularPostDeadline}
+                          onChange={(e) => setCircularPostDeadline(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">আবেদন বা পিডিএফ লিংক (ঐচ্ছিক)</label>
+                      <input
+                        type="text"
+                        placeholder="https://..."
+                        value={circularPostApplyUrl}
+                        onChange={(e) => setCircularPostApplyUrl(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">বিস্তারিত তথ্য</label>
+                      <textarea
+                        rows={3}
+                        placeholder="যোগ্যতা, বয়সসীমা ও আবেদন প্রক্রিয়া..."
+                        value={circularPostDescription}
+                        onChange={(e) => setCircularPostDescription(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#FF6A00] hover:bg-[#E05E00] text-white font-extrabold text-xs py-3 rounded-2xl transition-all cursor-pointer shadow-md shadow-orange-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5px]" />
+                      <span>{editingCircularPostId ? "বিজ্ঞপ্তি আপডেট করুন" : "বিজ্ঞপ্তি প্রকাশ করুন"}</span>
+                    </button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-7 bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                      <Megaphone className="w-4 h-4 text-[#FF6A00]" />
+                      <span>প্রকাশিত চাকরির বিজ্ঞপ্তি ({circularPosts.length} টি)</span>
+                    </h3>
+                  </div>
+
+                  {circularPosts.length === 0 ? (
+                    <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500 font-semibold">
+                      এখনো কোনো চাকরির বিজ্ঞপ্তি পোস্ট করা হয়নি। বামের ফর্ম থেকে বিজ্ঞপ্তি যোগ করুন।
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {circularPosts.map((post) => {
+                        const catObj = circularCategories.find((c) => c.id === post.categoryId);
+                        return (
+                          <div
+                            key={post.id}
+                            className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-start justify-between gap-3"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                                  {catObj?.name || "অজানা"}
+                                </span>
+                                {post.deadline && (
+                                  <span className="text-[10px] font-bold text-rose-600">
+                                    শেষ: {post.deadline}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">
+                                {post.title}
+                              </p>
+                              {post.organization && (
+                                <p className="text-[11px] font-semibold text-slate-500">{post.organization}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditCircularPost(post)}
+                                className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#FF6A00] font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>এডিট</span>
+                              </button>
+                              {confirmDeleteCircularPostId === post.id ? (
+                                <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-1 rounded-xl border border-rose-200">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCircularPost(post.id)}
+                                    className="px-2 py-0.5 bg-rose-600 text-white text-[10px] font-black rounded-lg cursor-pointer"
+                                  >
+                                    ডিলিট
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteCircularPostId(null)}
+                                    className="px-1.5 py-0.5 text-slate-600 text-[10px] font-bold cursor-pointer"
+                                  >
+                                    না
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteCircularPostId(post.id)}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
