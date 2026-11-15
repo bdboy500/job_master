@@ -116,7 +116,15 @@ const CvMakerView = dynamic(() => import("../components/CvMakerView"), {
   ),
   ssr: false
 });
-import CourseExamRoutineView from "../components/CourseExamRoutineView";
+const CourseExamRoutineView = dynamic(() => import("../components/CourseExamRoutineView"), {
+  loading: () => (
+    <div className="bg-white border border-slate-100 rounded-[2rem] p-8 flex flex-col items-center justify-center gap-3 shadow-2xs">
+      <Loader2 className="w-7 h-7 animate-spin text-[#FF6A00]" />
+      <p className="text-xs font-black text-slate-500">কোর্স ও রুটিন লোড হচ্ছে...</p>
+    </div>
+  ),
+  ssr: false,
+});
 
 // Type definition for routine items
 interface RoutineItem {

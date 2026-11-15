@@ -1,16 +1,12 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-/* Bengali Digits (০-৯) rendered exclusively in Anek Bangla */
+/* Bengali Digits (০-৯) rendered in self-hosted Anek Bangla */
 @font-face {
   font-family: 'BanglaAnekDigits';
   src: local('Anek Bangla'), local('AnekBangla-Regular');
   unicode-range: U+09E6-09EF;
   font-display: swap;
-}
-
-:root {
-  --font-anek-bangla: "Anek Bangla";
 }
 
 @theme {

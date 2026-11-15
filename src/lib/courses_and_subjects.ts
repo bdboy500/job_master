@@ -431,9 +431,12 @@ export async function fetchCoursesFromDb(forceRefresh = false): Promise<CourseIt
 
   coursesInFlightPromise = (async () => {
     try {
-      // 1. Try Server API Route (/api/courses)
+      // 1. Try Server API Route (/api/courses) with fast timeout guard
       try {
-        const res = await fetch("/api/courses");
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+        const res = await fetch("/api/courses", controller ? { signal: controller.signal } : undefined);
+        if (timer) clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
           const courses: CourseItem[] = data.courses || [];
@@ -569,9 +572,12 @@ export async function fetchPrepSubjectsFromDb(forceRefresh = false): Promise<Pre
 
   prepSubjectsInFlightPromise = (async () => {
     try {
-      // 1. Try Server API Route (/api/prep-subjects)
+      // 1. Try Server API Route (/api/prep-subjects) with fast timeout guard
       try {
-        const res = await fetch("/api/prep-subjects");
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+        const res = await fetch("/api/prep-subjects", controller ? { signal: controller.signal } : undefined);
+        if (timer) clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
           const prepSubjects: PrepSubjectItem[] = data.prepSubjects || [];
@@ -716,7 +722,10 @@ export async function fetchProSectionFromDb(forceRefresh = false): Promise<ProSe
 
   proSectionInFlightPromise = (async () => {
     try {
-      const res = await fetch("/api/pro-section");
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+      const res = await fetch("/api/pro-section", controller ? { signal: controller.signal } : undefined);
+      if (timer) clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
         const items: ProSectionItem[] = data.proSection || [];

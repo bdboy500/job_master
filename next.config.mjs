@@ -1,11 +1,34 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  compress: true,
   images: {
     unoptimized: true,
   },
   async headers() {
     return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
       {
         source: '/manifest.json',
         headers: [
@@ -16,6 +39,10 @@ const nextConfig = {
           {
             key: 'Access-Control-Allow-Origin',
             value: '*',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, stale-while-revalidate=86400',
           },
         ],
       },
@@ -54,7 +81,7 @@ const nextConfig = {
         ],
       },
       {
-        source: '/:path*.(png|jpg|jpeg|svg|webp|ico)',
+        source: '/:path*.(png|jpg|jpeg|svg|webp|ico|woff|woff2|ttf)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',

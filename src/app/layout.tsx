@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Hind_Siliguri, Poppins } from "next/font/google";
+import { Anek_Bangla, Hind_Siliguri, Poppins } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "../components/ClientProviders";
 
+const anekBangla = Anek_Bangla({
+  subsets: ["bengali", "latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-anek-bangla",
+});
+
 const hindSiliguri = Hind_Siliguri({
   subsets: ["bengali", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
   variable: "--font-hind-siliguri",
 });
@@ -185,14 +192,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className={`${hindSiliguri.variable} ${poppins.variable}`}>
+    <html lang="bn" className={`${anekBangla.variable} ${hindSiliguri.variable} ${poppins.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Hind+Siliguri:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap"
-        />
+        <link rel="dns-prefetch" href="https://cqwssqcpxrwkivrrmuou.supabase.co" />
+        <link rel="preconnect" href="https://cqwssqcpxrwkivrrmuou.supabase.co" crossOrigin="anonymous" />
       </head>
       <body className="antialiased min-h-full h-full">
         {/* Google tag (gtag.js) */}
@@ -216,7 +219,7 @@ export default function RootLayout({
         {/* Google AdSense Verification */}
         <Script
           id="google-adsense"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5102509921466107"
           crossOrigin="anonymous"
         />
