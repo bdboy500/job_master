@@ -224,6 +224,9 @@ export function buildUrlSearchString(navState: {
     case "job-circulars":
       params.set("view", "job-circulars");
       break;
+    case "cv-maker":
+      params.set("view", "cv-maker");
+      break;
     case "search":
       params.set("view", "search");
       if (navState.searchQuery) params.set("q", navState.searchQuery);
@@ -684,6 +687,7 @@ export function useAppNavigationHistory(
         navState.currentScreen === "search" ||
         navState.currentScreen === "notice" ||
         navState.currentScreen === "job-circulars" ||
+        navState.currentScreen === "cv-maker" ||
         navState.currentScreen === "all-live-exams" ||
         navState.currentScreen === "rankings" ||
         navState.currentScreen === "privacy-policy" ||

@@ -478,13 +478,13 @@ const ALL_COURSES_DATA = [
 
 export default function Home() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "cv-maker" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any | null>(null);
-  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
+  const [previousScreen, setPreviousScreen] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "cv-maker" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [courseOriginScreen, setCourseOriginScreen] = useState<"home" | "courses" | "search">("home");
   const [selectedPrepSubject, setSelectedPrepSubject] = useState<string>("");
-  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
+  const [prepSubjectOrigin, setPrepSubjectOrigin] = useState<"home" | "quiz" | "courses" | "routine" | "tests" | "profile" | "course-detail" | "prep-sub" | "prep-sub-detail" | "prep-all-subjects" | "packages" | "search" | "notice" | "job-circulars" | "cv-maker" | "all-live-exams" | "rankings" | "privacy-policy" | "contact" | "auth" | "daily-quick-test">("home");
   const [selectedPrepSubSubject, setSelectedPrepSubSubject] = useState<{ id?: string; name: string; sub: string; questions: Question[]; subCategories2?: any[] } | null>(null);
   const [selectedLevel3Topic, setSelectedLevel3Topic] = useState<string | null>(null);
   const [selectedPrepExamTypeFilter, setSelectedPrepExamTypeFilter] = useState<"daily" | "weekly" | "subject" | null>(null);
@@ -2883,6 +2883,13 @@ export default function Home() {
         return true;
       }
 
+      if (view === "cv-maker" || view === "cv_maker" || view === "cv") {
+        initialDeepLinkHandledRef.current = true;
+        pendingDeepLinkRef.current = null;
+        setCurrentScreen("cv-maker");
+        return true;
+      }
+
       if (view === "search") {
         initialDeepLinkHandledRef.current = true;
         pendingDeepLinkRef.current = null;
@@ -3245,7 +3252,7 @@ export default function Home() {
                 } else if (currentScreen === "auth") {
                   setDrawerOpen(false);
                   handleCloseAuthScreen();
-                } else if (currentScreen === "daily-quick-test" || currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "privacy-policy" || currentScreen === "contact") {
+                } else if (currentScreen === "daily-quick-test" || currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "cv-maker" || currentScreen === "privacy-policy" || currentScreen === "contact") {
                   setDrawerOpen(false);
                   setCurrentScreen("home");
                 } else {
@@ -3256,7 +3263,7 @@ export default function Home() {
               className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 active:scale-95 transition-all z-50 relative cursor-pointer"
               id="menu-toggle-button"
             >
-              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" || currentScreen === "daily-quick-test" ? (
+              {currentScreen === "all-live-exams" || currentScreen === "course-detail" || currentScreen === "courses" || currentScreen === "prep-all-subjects" || currentScreen === "prep-sub" || currentScreen === "prep-sub-detail" || currentScreen === "quiz" || currentScreen === "search" || currentScreen === "profile" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "cv-maker" || currentScreen === "packages" || currentScreen === "privacy-policy" || currentScreen === "contact" || currentScreen === "auth" || currentScreen === "daily-quick-test" ? (
                 <ArrowLeft className="w-6 h-6 stroke-[2.2px]" />
               ) : drawerOpen ? (
                 <X className="w-6 h-6 stroke-[2.2px] text-orange-600 animate-spin-once" />
@@ -3341,6 +3348,10 @@ export default function Home() {
                     <>
                       চাকরির <span className="text-[#FF6A00]">বিজ্ঞপ্তি</span>
                     </>
+                  ) : currentScreen === "cv-maker" ? (
+                    <>
+                      CV <span className="text-[#FF6A00]">Maker</span>
+                    </>
                   ) : currentScreen === "privacy-policy" ? (
                     <>
                       Privacy <span className="text-[#FF6A00]">Policy</span>
@@ -3390,6 +3401,8 @@ export default function Home() {
                     ? "NOTICES & ANNOUNCEMENTS"
                     : currentScreen === "job-circulars"
                     ? "JOB CIRCULARS & NOTICES"
+                    : currentScreen === "cv-maker"
+                    ? "PROFESSIONAL RESUME BUILDER"
                     : currentScreen === "privacy-policy"
                     ? "গোপনীয়তা নীতি ও ডেটা সুরক্ষা"
                     : currentScreen === "contact"
@@ -3907,45 +3920,62 @@ export default function Home() {
                 );
               })()}
 
-              {/* General Quiz Game Live Banner - Solid Orange Layout (Placed directly below Our Courses & Job Circulars) */}
-              <div className="bg-[#FF6A00] rounded-2xl p-4 sm:p-4.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 my-2 sm:my-2.5">
-                <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
-                  {/* LEFT SIDE: Title and Subtitle */}
-                  <div className="flex flex-col items-start space-y-0.5 flex-1 min-w-0">
-                    <h3 className="text-[13px] min-[360px]:text-sm sm:text-base md:text-lg font-black tracking-tight leading-tight text-white">
+              {/* Live Quiz Game + CV Maker Two-Column Action Cards Row */}
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 items-stretch my-1.5 sm:my-2">
+                {/* LEFT CARD: Live Quiz Game */}
+                <div className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2">
+                  <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
+                    <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full">
                       Live Quiz Game
                     </h3>
-                    <p className="text-white/90 text-[10px] min-[360px]:text-[11px] sm:text-xs font-bold tracking-normal truncate max-w-full">
-                      কুইজ খেলে Gift জিতুন
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => startQuizFlow("Live Quiz Game", "লাইভ কুইজ")}
+                      className="animate-quiz-cta w-fit max-w-full self-start bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1 border border-white/80"
+                    >
+                      <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon shrink-0" />
+                      <span className="font-black leading-[1.2] truncate">Start Quiz</span>
+                    </button>
                   </div>
 
-                  {/* RIGHT SIDE: Share & Start Quiz CTA buttons */}
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <button 
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShareLink({
-                          view: "live-quiz",
-                          title: "JobMaster Live Quiz Game",
-                          text: "JobMaster Live Quiz খেলে পুরষ্কার জিতুন! এখনই যোগ দিন।"
-                        });
-                      }}
-                      title="কুইজ লিংক শেয়ার করুন"
-                      className="bg-white/20 hover:bg-white/30 text-white px-2 py-1 min-[360px]:px-2.5 min-[360px]:py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1 border border-white/30 text-[10px] min-[360px]:text-[11px] sm:text-xs font-extrabold"
-                    >
-                      <Share2 className="w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5" />
-                      <span>Share</span>
-                    </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShareLink({
+                        view: "live-quiz",
+                        title: "JobMaster Live Quiz Game",
+                        text: "JobMaster Live Quiz খেলুন!"
+                      });
+                    }}
+                    title="কুইজ লিংক শেয়ার করুন"
+                    className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-xl active:scale-95 transition-all cursor-pointer border border-white/30 shrink-0 flex items-center justify-center self-center"
+                  >
+                    <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
 
-                    <button 
-                      onClick={() => startQuizFlow("Live Quiz Game", "কুইজ খেলে Gift জিতুন")}
-                      className="animate-quiz-cta bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-xs min-[360px]:text-xs sm:text-sm px-3 sm:px-4.5 py-1.5 min-[360px]:py-2 sm:py-2.5 rounded-xl sm:rounded-2xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 border border-white/80"
-                    >
-                      <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon" />
-                      <span className="font-black">Start Quiz</span>
-                    </button>
+                {/* RIGHT CARD: CV Maker (Theme Color Background) */}
+                <div
+                  onClick={() => {
+                    setPreviousScreen("home");
+                    setCurrentScreen("cv-maker");
+                    if (soundEnabled) quizAudio.playClick();
+                  }}
+                  className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-[0.98] transition-all text-left"
+                >
+                  <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
+                    <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full">
+                      CV Maker
+                    </h3>
+                    <div className="w-fit max-w-full self-start bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-0.5 border border-white/80">
+                      <span className="font-black leading-[1.2] translate-y-[1px] truncate">সিভি তৈরি করুন</span>
+                      <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5px] shrink-0" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white/20 text-white p-1.5 rounded-xl border border-white/30 flex items-center justify-center shrink-0 self-center">
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
                   </div>
                 </div>
               </div>
@@ -4786,29 +4816,32 @@ export default function Home() {
           )}
 
           {/* ========================================================= */}
+          {/* DEDICATED CV MAKER SCREEN (Moved from Pro Feature)         */}
+          {/* ========================================================= */}
+          {currentScreen === "cv-maker" && (
+            <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
+              <CvMakerView
+                initialName={
+                  profileName && profileName !== "Guest User"
+                    ? profileName
+                    : currentUser?.full_name || ""
+                }
+                initialEmail={
+                  currentUser?.email ||
+                  (profileEmail && profileEmail !== "guest@jobmaster.com" ? profileEmail : "")
+                }
+                soundEnabled={soundEnabled}
+                quizAudio={quizAudio}
+              />
+            </div>
+          )}
+
+          {/* ========================================================= */}
           {/* PREPARATION HUB SUB-SUBJECTS SCREEN                        */}
           {/* ========================================================= */}
           {currentScreen === "prep-sub" && (
             <div className="px-1.5 sm:px-2.5 pt-1 sm:pt-1.5 pb-10 animate-fade-in text-left space-y-2.5 sm:space-y-3">
-              {(isCurrentSubjectProFeature &&
-                (selectedPrepSubject.toLowerCase().includes("সিভি") ||
-                  selectedPrepSubject.toLowerCase().includes("cv") ||
-                  selectedPrepSubject.toLowerCase().includes("resume"))) ? (
-                <CvMakerView
-                  initialName={
-                    profileName && profileName !== "Guest User"
-                      ? profileName
-                      : currentUser?.full_name || ""
-                  }
-                  initialEmail={
-                    currentUser?.email ||
-                    (profileEmail && profileEmail !== "guest@jobmaster.com" ? profileEmail : "")
-                  }
-                  soundEnabled={soundEnabled}
-                  quizAudio={quizAudio}
-                />
-              ) : (
-              /* Sub-subjects grid */
+              {/* Sub-subjects grid */}
               <div className="space-y-2.5 pt-0.5">
                 <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                     {(() => {
@@ -5162,7 +5195,6 @@ export default function Home() {
                   })()}
                 </div>
               </div>
-              )}
             </div>
           )}
 
