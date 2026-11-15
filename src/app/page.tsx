@@ -3648,10 +3648,9 @@ export default function Home() {
                 ) : liveExamsList.length === 0 ? null : (
                   (() => {
                     const displayList = liveExamsList.length > 1 ? [...liveExamsList, liveExamsList[0]] : liveExamsList;
-                    const activeIndex = activeLiveExamIndex % liveExamsList.length;
 
                     return (
-                      <div className="space-y-2.5">
+                      <div>
                         {/* Smooth Sliding Carousel Container with Tap & Hold & Swipe Gesture */}
                         <div 
                           className="overflow-hidden rounded-3xl w-full select-none"
@@ -3754,29 +3753,6 @@ export default function Home() {
                             })}
                           </div>
                         </div>
-
-                        {/* Orange Dot Indicators */}
-                        {liveExamsList.length > 1 && (
-                          <div className="flex items-center justify-center gap-1.5 pt-0.5">
-                            {liveExamsList.map((_, idx) => (
-                              <button
-                                key={idx}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsLiveTransitioning(true);
-                                  setActiveLiveExamIndex(idx);
-                                  resetLiveAutoPlay();
-                                }}
-                                className={`transition-all duration-300 cursor-pointer ${
-                                  idx === activeIndex
-                                    ? "w-6 h-2 bg-[#FF6A00] rounded-full shadow-2xs"
-                                    : "w-2 h-2 bg-orange-200 hover:bg-orange-300 rounded-full"
-                                }`}
-                                title={`Live Exam ${idx + 1}`}
-                              />
-                            ))}
-                          </div>
-                        )}
                       </div>
                     );
                   })()
