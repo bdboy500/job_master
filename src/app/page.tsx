@@ -789,7 +789,6 @@ export default function Home() {
   const [jobCircularPosts, setJobCircularPosts] = useState<JobCircularPost[]>([]);
   const [selectedCircularCategoryId, setSelectedCircularCategoryId] = useState<string>("all");
   const [circularSearchQuery, setCircularSearchQuery] = useState<string>("");
-  const [touchedCircularCardId, setTouchedCircularCardId] = useState<string | null>(null);
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
   const [activeExamSection, setActiveExamSection] = useState<"daily" | "weekly" | "subject" | "special" | null>(null);
@@ -3851,32 +3850,27 @@ export default function Home() {
                       </h3>
                     </div>
 
-                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 [touch-action:pan-x_pan-y] overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {activeCircularCats.map((cat) => {
                         const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
-                        const isTouched = touchedCircularCardId === cat.id;
                         return (
                           <button
                             key={cat.id}
                             type="button"
-                            onPointerDown={() => setTouchedCircularCardId(cat.id)}
-                            onPointerUp={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
-                            onPointerCancel={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
-                            onPointerLeave={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
-                            onTouchCancel={() => setTouchedCircularCardId((prev) => (prev === cat.id ? null : prev))}
-                            onClick={() => {
-                              setTouchedCircularCardId(null);
+                            onPointerDown={(e) => e.currentTarget.setAttribute("data-touched", "1")}
+                            onPointerUp={(e) => e.currentTarget.removeAttribute("data-touched")}
+                            onPointerCancel={(e) => e.currentTarget.removeAttribute("data-touched")}
+                            onPointerLeave={(e) => e.currentTarget.removeAttribute("data-touched")}
+                            onTouchCancel={(e) => e.currentTarget.removeAttribute("data-touched")}
+                            onClick={(e) => {
+                              e.currentTarget.removeAttribute("data-touched");
                               setSelectedCircularCategoryId(cat.id);
                               setCircularSearchQuery("");
                               setPreviousScreen("home");
                               setCurrentScreen("job-circulars");
                               if (soundEnabled) quizAudio.playClick();
                             }}
-                            className={`group w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border cursor-pointer overflow-hidden flex flex-col text-center [-webkit-tap-highlight-color:transparent] transition-all duration-150 ease-out ${
-                              isTouched
-                                ? "scale-[0.95] border-[#FF6A00] ring-2 ring-[#FF6A00]/25 shadow-md"
-                                : "border-orange-200 shadow-xs hover:border-[#FF6A00]/70 hover:shadow-md active:scale-[0.95] active:border-[#FF6A00]"
-                            }`}
+                            className="group w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs hover:border-[#FF6A00]/70 hover:shadow-md active:scale-[0.95] active:border-[#FF6A00] data-[touched=1]:scale-[0.95] data-[touched=1]:border-[#FF6A00] data-[touched=1]:ring-2 data-[touched=1]:ring-[#FF6A00]/25 data-[touched=1]:shadow-md cursor-pointer overflow-hidden flex flex-col text-center [-webkit-tap-highlight-color:transparent] transition-all duration-150 ease-out [touch-action:pan-x_pan-y]"
                           >
                             <div className="w-full h-[62px] sm:h-[68px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
                               {cat.imageUrl ? (
@@ -3888,34 +3882,18 @@ export default function Home() {
                                   loading="eager"
                                   decoding="async"
                                   referrerPolicy="no-referrer"
-                                  className={`w-full h-full object-cover pointer-events-none select-none transition-transform duration-200 ease-out ${
-                                    isTouched ? "scale-110" : "group-hover:scale-105 group-active:scale-110"
-                                  }`}
+                                  className="w-full h-full object-cover pointer-events-none select-none transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-110 group-data-[touched=1]:scale-110"
                                 />
                               ) : (
-                                <div className={`relative w-10 h-10 flex items-center justify-center transition-transform duration-200 ease-out ${
-                                  isTouched ? "scale-110" : "group-hover:scale-105 group-active:scale-110"
-                                }`}>
+                                <div className="relative w-10 h-10 flex items-center justify-center transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-110 group-data-[touched=1]:scale-110">
                                   <div className="w-8 h-8 bg-orange-200 rounded-full opacity-60" />
                                   <FallbackIcon className="w-4 h-4 text-[#FF6A00] relative z-10 stroke-[2px]" />
                                 </div>
                               )}
-                              <div
-                                className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-[#FF6A00]/20 via-[#FF6A00]/8 to-transparent transition-opacity duration-150 ${
-                                  isTouched ? "opacity-100" : "opacity-0 group-hover:opacity-60 group-active:opacity-100"
-                                }`}
-                              />
+                              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#FF6A00]/20 via-[#FF6A00]/8 to-transparent transition-opacity duration-150 opacity-0 group-hover:opacity-60 group-active:opacity-100 group-data-[touched=1]:opacity-100" />
                             </div>
-                            <div
-                              className={`w-full flex-1 px-1 flex items-center justify-center transition-colors duration-150 ${
-                                isTouched ? "bg-orange-50/70" : "bg-white group-hover:bg-orange-50/40 group-active:bg-orange-50/70"
-                              }`}
-                            >
-                              <span
-                                className={`text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1 transition-colors duration-150 ${
-                                  isTouched ? "text-[#FF6A00]" : "text-slate-900 group-hover:text-[#FF6A00] group-active:text-[#FF6A00]"
-                                }`}
-                              >
+                            <div className="w-full flex-1 px-1 flex items-center justify-center transition-colors duration-150 bg-white group-hover:bg-orange-50/40 group-active:bg-orange-50/70 group-data-[touched=1]:bg-orange-50/70">
+                              <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1 transition-colors duration-150 text-slate-900 group-hover:text-[#FF6A00] group-active:text-[#FF6A00] group-data-[touched=1]:text-[#FF6A00]">
                                 {cat.name}
                               </span>
                             </div>
@@ -3930,14 +3908,20 @@ export default function Home() {
               {/* Live Quiz Game + CV Maker Two-Column Action Cards Row */}
               <div className="grid grid-cols-2 gap-2.5 sm:gap-3 items-stretch my-1.5 sm:my-2">
                 {/* LEFT CARD: Live Quiz Game */}
-                <div className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2">
+                <div
+                  onClick={() => startQuizFlow("Live Quiz Game", "লাইভ কুইজ")}
+                  className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-[0.98] transition-all"
+                >
                   <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
                     <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full">
                       Live Quiz Game
                     </h3>
                     <button
                       type="button"
-                      onClick={() => startQuizFlow("Live Quiz Game", "লাইভ কুইজ")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startQuizFlow("Live Quiz Game", "লাইভ কুইজ");
+                      }}
                       className="animate-quiz-cta w-fit max-w-full self-start bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1 border border-white/80"
                     >
                       <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon shrink-0" />
