@@ -3850,27 +3850,21 @@ export default function Home() {
                       </h3>
                     </div>
 
-                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 [touch-action:pan-x_pan-y] overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {activeCircularCats.map((cat) => {
                         const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
                         return (
                           <button
                             key={cat.id}
                             type="button"
-                            onPointerDown={(e) => e.currentTarget.setAttribute("data-touched", "1")}
-                            onPointerUp={(e) => e.currentTarget.removeAttribute("data-touched")}
-                            onPointerCancel={(e) => e.currentTarget.removeAttribute("data-touched")}
-                            onPointerLeave={(e) => e.currentTarget.removeAttribute("data-touched")}
-                            onTouchCancel={(e) => e.currentTarget.removeAttribute("data-touched")}
-                            onClick={(e) => {
-                              e.currentTarget.removeAttribute("data-touched");
+                            onClick={() => {
                               setSelectedCircularCategoryId(cat.id);
                               setCircularSearchQuery("");
                               setPreviousScreen("home");
                               setCurrentScreen("job-circulars");
                               if (soundEnabled) quizAudio.playClick();
                             }}
-                            className="group w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs hover:border-[#FF6A00]/70 hover:shadow-md active:scale-[0.95] active:border-[#FF6A00] data-[touched=1]:scale-[0.95] data-[touched=1]:border-[#FF6A00] data-[touched=1]:ring-2 data-[touched=1]:ring-[#FF6A00]/25 data-[touched=1]:shadow-md cursor-pointer overflow-hidden flex flex-col text-center [-webkit-tap-highlight-color:transparent] transition-all duration-150 ease-out [touch-action:pan-x_pan-y]"
+                            className="w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs cursor-pointer overflow-hidden flex flex-col text-center [-webkit-tap-highlight-color:transparent]"
                           >
                             <div className="w-full h-[62px] sm:h-[68px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
                               {cat.imageUrl ? (
@@ -3882,18 +3876,17 @@ export default function Home() {
                                   loading="eager"
                                   decoding="async"
                                   referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover pointer-events-none select-none transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-110 group-data-[touched=1]:scale-110"
+                                  className="w-full h-full object-cover pointer-events-none select-none"
                                 />
                               ) : (
-                                <div className="relative w-10 h-10 flex items-center justify-center transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-110 group-data-[touched=1]:scale-110">
+                                <div className="relative w-10 h-10 flex items-center justify-center">
                                   <div className="w-8 h-8 bg-orange-200 rounded-full opacity-60" />
                                   <FallbackIcon className="w-4 h-4 text-[#FF6A00] relative z-10 stroke-[2px]" />
                                 </div>
                               )}
-                              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#FF6A00]/20 via-[#FF6A00]/8 to-transparent transition-opacity duration-150 opacity-0 group-hover:opacity-60 group-active:opacity-100 group-data-[touched=1]:opacity-100" />
                             </div>
-                            <div className="w-full flex-1 px-1 flex items-center justify-center transition-colors duration-150 bg-white group-hover:bg-orange-50/40 group-active:bg-orange-50/70 group-data-[touched=1]:bg-orange-50/70">
-                              <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1 transition-colors duration-150 text-slate-900 group-hover:text-[#FF6A00] group-active:text-[#FF6A00] group-data-[touched=1]:text-[#FF6A00]">
+                            <div className="w-full flex-1 bg-white px-1 flex items-center justify-center">
+                              <span className="text-[11px] sm:text-xs font-semibold text-slate-900 leading-tight line-clamp-1">
                                 {cat.name}
                               </span>
                             </div>
@@ -7212,7 +7205,7 @@ export default function Home() {
 
           {/* Drawer Footer copyright & Privacy / Terms */}
           <div className="p-4 pt-3 pb-24 md:pb-4 border-t border-slate-100 bg-slate-50 shrink-0 text-center space-y-2">
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
+            <div className="flex flex-nowrap items-center justify-center gap-1.5">
               <a
                 href="https://jobmaster.com.bd/privacy-policy"
                 target="_blank"
@@ -7221,12 +7214,12 @@ export default function Home() {
                   setDrawerOpen(false);
                   if (soundEnabled) quizAudio.playClick();
                 }}
-                className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-1.5 px-2.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
+                className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-1.5 px-2.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                 id="drawer-footer-privacy-link"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#FF6A00]" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
                 <span>Privacy Policy</span>
-                <ExternalLink className="w-3 h-3 text-slate-400" />
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
               </a>
 
               <a
@@ -7237,12 +7230,12 @@ export default function Home() {
                   setDrawerOpen(false);
                   if (soundEnabled) quizAudio.playClick();
                 }}
-                className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-1.5 px-2.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95"
+                className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-slate-700 hover:text-[#FF6A00] transition-colors py-1.5 px-2.5 rounded-xl hover:bg-orange-50 border border-slate-200/90 bg-white shadow-xs cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                 id="drawer-footer-terms-link"
               >
-                <FileText className="w-3.5 h-3.5 text-[#FF6A00]" />
-                <span>Terms &amp; Conditions</span>
-                <ExternalLink className="w-3 h-3 text-slate-400" />
+                <FileText className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                <span>T&amp;C</span>
+                <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
               </a>
             </div>
 

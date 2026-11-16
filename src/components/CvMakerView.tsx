@@ -19,7 +19,6 @@ import {
   MapPin,
   Globe,
   CheckCircle2,
-  Sparkles,
   RotateCcw,
   ChevronDown,
   ChevronUp,
@@ -1909,67 +1908,52 @@ export default function CvMakerView({
       )}
 
       {/* Top Action Header Bar */}
-      <div className="bg-white border border-purple-100/90 rounded-3xl p-4 shadow-2xs space-y-3">
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <div className="space-y-0.5">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/70 text-[10px] font-black">
-              <Sparkles className="w-3 h-3" />
-              <span>PRO CV MAKER</span>
-            </div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900">
-              প্রফেশনাল সিভি তৈরি ও PDF ডাউনলোড
-            </h2>
-            <p className="text-[11px] font-bold text-slate-500">
-              যেই তথ্যগুলো দিতে চান শুধু সেগুলো পূরণ করুন — খালি ঘর এক্সপোর্টে আসবে না।
-            </p>
-          </div>
+      <div className="bg-white border border-purple-100/90 rounded-3xl p-3 sm:p-4 shadow-2xs space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setCv((prev) => ({
+                ...SAMPLE_CV_DATA,
+                photoDataUrl: prev.photoDataUrl,
+                showPhoto: prev.showPhoto,
+              }));
+              showToast("success", "স্যাম্পল সিভি তথ্য লোড হয়েছে! এখন এডিট বা PDF ডাউনলোড করুন।");
+            }}
+            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 text-[11px] font-black transition-all active:scale-95 cursor-pointer"
+          >
+            ✨ স্যাম্পল দিয়ে দেখুন
+          </button>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setCv((prev) => ({
-                  ...SAMPLE_CV_DATA,
-                  photoDataUrl: prev.photoDataUrl,
-                  showPhoto: prev.showPhoto,
-                }));
-                showToast("success", "স্যাম্পল সিভি তথ্য লোড হয়েছে! এখন এডিট বা PDF ডাউনলোড করুন।");
-              }}
-              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 text-[11px] font-black transition-all active:scale-95 cursor-pointer"
-            >
-              ✨ স্যাম্পল দিয়ে দেখুন
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowResetConfirm(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-[11px] font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1"
-              title="সব তথ্য রিসেট করুন"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>রিসেট</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowResetConfirm(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-[11px] font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+            title="সব তথ্য রিসেট করুন"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>রিসেট</span>
+          </button>
         </div>
 
-        {/* Mode Switcher + Direct PDF Button */}
-        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 flex-wrap sm:flex-nowrap">
-          <div className="flex-1 grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-2xl min-w-[200px]">
+        {/* Single-Row Mode Switcher (Edit / প্রিভিউ দেখুন) + Download Button */}
+        <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-100 flex-nowrap">
+          <div className="flex-1 min-w-0 flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
             <button
               type="button"
               onClick={() => {
                 playClick();
                 setActiveMode("edit");
               }}
-              className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`py-2 px-2.5 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-black flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeMode === "edit"
                   ? "bg-white text-[#FF6A00] shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>তথ্য দিন (Edit)</span>
+              <Edit3 className="w-3.5 h-3.5 shrink-0" />
+              <span>Edit</span>
             </button>
 
             <button
@@ -1978,14 +1962,14 @@ export default function CvMakerView({
                 playClick();
                 setActiveMode("preview");
               }}
-              className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-black flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap ${
                 activeMode === "preview"
                   ? "bg-white text-purple-700 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <Eye className="w-3.5 h-3.5" />
-              <span>প্রিভিউ দেখুন</span>
+              <Eye className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">প্রিভিউ দেখুন</span>
             </button>
           </div>
 
@@ -1993,17 +1977,17 @@ export default function CvMakerView({
             type="button"
             disabled={isGeneratingPdf}
             onClick={handleDownloadPdf}
-            className="w-full sm:w-auto py-2.5 px-4 bg-[#FF6A00] hover:bg-[#e55f00] disabled:opacity-60 text-white rounded-2xl text-xs font-black shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            className="py-2.5 px-3 sm:px-4 bg-[#FF6A00] hover:bg-[#e55f00] disabled:opacity-60 text-white rounded-2xl text-[11px] sm:text-xs font-black shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 whitespace-nowrap"
           >
             {isGeneratingPdf ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>PDF তৈরি হচ্ছে...</span>
+                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin shrink-0" />
+                <span>তৈরি হচ্ছে...</span>
               </>
             ) : (
               <>
-                <Download className="w-4 h-4" />
-                <span>PDF ডাউনলোড করুন</span>
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>Download</span>
               </>
             )}
           </button>
