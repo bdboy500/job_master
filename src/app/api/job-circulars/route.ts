@@ -3,90 +3,23 @@ import { getSupabase } from "@/src/lib/supabase";
 import {
   DEFAULT_JOB_CIRCULAR_CATEGORIES,
   DEFAULT_JOB_CIRCULAR_POSTS,
-  JobCircularCategory,
   JobCircularPost,
   normalizeCircularCategories,
   normalizeCircularPosts,
 } from "@/src/lib/job_circulars";
-import fs from "fs";
-import path from "path";
+import {
+  CIRCULAR_PROJECT_DATA_FILE,
+  CIRCULAR_TMP_CACHE_FILE,
+  JobCircularsBundle,
+  getMemoryCircularsCache,
+  loadCircularsFromDiskFile,
+  loadCircularsFromKvStore,
+  saveCircularsToDiskFile,
+  saveCircularsToKvStore,
+  setMemoryCircularsCache,
+} from "@/src/lib/job_circulars_store";
 
 export const dynamic = "force-dynamic";
-
-export interface JobCircularsBundle {
-  categories: JobCircularCategory[];
-  posts: JobCircularPost[];
-}
-
-const PROJECT_DATA_FILE = path.join(process.cwd(), "src", "data", "job_circulars_data.json");
-const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_job_circulars_cache.json");
-const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_job_circulars_v1";
-
-export let memoryCircularsCache: JobCircularsBundle | null = null;
-
-export function setMemoryCircularsCache(bundle: JobCircularsBundle) {
-  memoryCircularsCache = bundle;
-}
-
-export function loadCircularsFromDiskFile(filePath: string): JobCircularsBundle | null {
-  try {
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.categories)) {
-        return {
-          categories: normalizeCircularCategories(parsed.categories),
-          posts: normalizeCircularPosts(parsed.posts || []),
-        };
-      }
-    }
-  } catch (e) {
-    console.warn(`Note reading job circulars disk file ${filePath}:`, e);
-  }
-  return null;
-}
-
-export function saveCircularsToDiskFile(filePath: string, bundle: JobCircularsBundle) {
-  try {
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(filePath, JSON.stringify(bundle, null, 2), "utf-8");
-  } catch (e) {
-    // Expected on read-only environments
-  }
-}
-
-export async function loadCircularsFromKvStore(): Promise<JobCircularsBundle | null> {
-  try {
-    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
-    if (res.ok) {
-      const parsed = await res.json();
-      if (parsed && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
-        return {
-          categories: normalizeCircularCategories(parsed.categories),
-          posts: normalizeCircularPosts(parsed.posts || []),
-        };
-      }
-    }
-  } catch (e) {
-    console.warn("Error reading job circulars from KV store:", e);
-  }
-  return null;
-}
-
-export async function saveCircularsToKvStore(bundle: JobCircularsBundle) {
-  try {
-    await fetch(CLOUD_KV_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bundle),
-    });
-  } catch (e) {
-    console.warn("Error writing job circulars to KV store:", e);
-  }
-}
 
 async function syncPostsToDedicatedSupabaseTable(posts: JobCircularPost[]) {
   try {
@@ -163,9 +96,9 @@ export async function GET() {
               : DEFAULT_JOB_CIRCULAR_CATEGORIES,
             posts: resolvedPosts,
           };
-          memoryCircularsCache = bundle;
-          saveCircularsToDiskFile(TMP_CACHE_FILE, bundle);
-          saveCircularsToDiskFile(PROJECT_DATA_FILE, bundle);
+          setMemoryCircularsCache(bundle);
+          saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, bundle);
+          saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, bundle);
           return NextResponse.json({
             ...bundle,
             source: hasTablePosts ? "supabase_job_circulars" : "supabase_app_config",
@@ -179,22 +112,24 @@ export async function GET() {
     // 2. Cloud KV Store
     const kvCached = await loadCircularsFromKvStore();
     if (kvCached && kvCached.categories.length > 0) {
-      memoryCircularsCache = kvCached;
-      saveCircularsToDiskFile(TMP_CACHE_FILE, kvCached);
+      setMemoryCircularsCache(kvCached);
+      saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, kvCached);
       return NextResponse.json({ ...kvCached, source: "kv" });
     }
 
     // 3. Local Disk Cache
     const diskCached =
-      loadCircularsFromDiskFile(TMP_CACHE_FILE) || loadCircularsFromDiskFile(PROJECT_DATA_FILE);
+      loadCircularsFromDiskFile(CIRCULAR_TMP_CACHE_FILE) ||
+      loadCircularsFromDiskFile(CIRCULAR_PROJECT_DATA_FILE);
     if (diskCached && diskCached.categories.length > 0) {
-      memoryCircularsCache = diskCached;
+      setMemoryCircularsCache(diskCached);
       return NextResponse.json({ ...diskCached, source: "disk" });
     }
 
     // 4. Memory Cache
-    if (memoryCircularsCache && memoryCircularsCache.categories.length > 0) {
-      return NextResponse.json({ ...memoryCircularsCache, source: "memory" });
+    const memCached = getMemoryCircularsCache();
+    if (memCached && memCached.categories.length > 0) {
+      return NextResponse.json({ ...memCached, source: "memory" });
     }
 
     // 5. Default Fallback
@@ -217,9 +152,9 @@ export async function POST(req: NextRequest) {
 
     // Load current bundle so partial updates (categories-only or posts-only) keep the other intact
     const currentFallback =
-      memoryCircularsCache ||
-      loadCircularsFromDiskFile(TMP_CACHE_FILE) ||
-      loadCircularsFromDiskFile(PROJECT_DATA_FILE) || {
+      getMemoryCircularsCache() ||
+      loadCircularsFromDiskFile(CIRCULAR_TMP_CACHE_FILE) ||
+      loadCircularsFromDiskFile(CIRCULAR_PROJECT_DATA_FILE) || {
         categories: DEFAULT_JOB_CIRCULAR_CATEGORIES,
         posts: DEFAULT_JOB_CIRCULAR_POSTS,
       };
@@ -237,9 +172,9 @@ export async function POST(req: NextRequest) {
       posts: nextPosts,
     };
 
-    memoryCircularsCache = bundle;
-    saveCircularsToDiskFile(TMP_CACHE_FILE, bundle);
-    saveCircularsToDiskFile(PROJECT_DATA_FILE, bundle);
+    setMemoryCircularsCache(bundle);
+    saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, bundle);
+    saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, bundle);
     await saveCircularsToKvStore(bundle);
 
     try {

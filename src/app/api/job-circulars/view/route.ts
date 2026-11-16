@@ -5,19 +5,17 @@ import {
   normalizeCircularPosts,
 } from "@/src/lib/job_circulars";
 import {
+  CIRCULAR_PROJECT_DATA_FILE,
+  CIRCULAR_TMP_CACHE_FILE,
+  getMemoryCircularsCache,
   loadCircularsFromDiskFile,
   loadCircularsFromKvStore,
-  memoryCircularsCache,
   saveCircularsToDiskFile,
   saveCircularsToKvStore,
   setMemoryCircularsCache,
-} from "../route";
-import path from "path";
+} from "@/src/lib/job_circulars_store";
 
 export const dynamic = "force-dynamic";
-
-const PROJECT_DATA_FILE = path.join(process.cwd(), "src", "data", "job_circulars_data.json");
-const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_job_circulars_cache.json");
 
 export async function POST(req: NextRequest) {
   try {
@@ -81,9 +79,9 @@ export async function POST(req: NextRequest) {
 
     // 3. Sync memory/disk/KV caches
     const currentBundle =
-      memoryCircularsCache ||
-      loadCircularsFromDiskFile(TMP_CACHE_FILE) ||
-      loadCircularsFromDiskFile(PROJECT_DATA_FILE) ||
+      getMemoryCircularsCache() ||
+      loadCircularsFromDiskFile(CIRCULAR_TMP_CACHE_FILE) ||
+      loadCircularsFromDiskFile(CIRCULAR_PROJECT_DATA_FILE) ||
       (await loadCircularsFromKvStore());
 
     if (currentBundle) {
@@ -106,8 +104,8 @@ export async function POST(req: NextRequest) {
         posts: updatedBundlePosts,
       };
       setMemoryCircularsCache(nextBundle);
-      saveCircularsToDiskFile(TMP_CACHE_FILE, nextBundle);
-      saveCircularsToDiskFile(PROJECT_DATA_FILE, nextBundle);
+      saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, nextBundle);
+      saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, nextBundle);
       await saveCircularsToKvStore(nextBundle);
     }
 

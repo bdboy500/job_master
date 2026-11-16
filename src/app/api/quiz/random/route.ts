@@ -83,7 +83,7 @@ function fisherYatesShuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-export function shuffleQuestionOptions(q: Question): Question {
+function shuffleQuestionOptions(q: Question): Question {
   const originalOptions = [...q.options];
   const correctOptionText = originalOptions[q.correctIndex] ?? originalOptions[0];
 
