@@ -45,7 +45,8 @@ async function syncPostsToDedicatedSupabaseTable(posts: JobCircularPost[]) {
     if (posts.length > 0) {
       const rows = posts.map((p) => ({
         id: p.id,
-        category_id: p.categoryId,
+        category_id:
+          p.categoryIds && p.categoryIds.length > 0 ? p.categoryIds.join(",") : p.categoryId,
         title: p.title,
         organization: p.organization || "",
         vacancies: p.vacancies || "",
@@ -66,8 +67,51 @@ async function syncPostsToDedicatedSupabaseTable(posts: JobCircularPost[]) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const categoriesOnly = req.nextUrl.searchParams.get("categoriesOnly") === "1";
+
+    // Lightweight categories-only mode for initial Home render (never queries or transfers circular posts)
+    if (categoriesOnly) {
+      try {
+        const supabase = getSupabase();
+        if (supabase) {
+          const { data: catRow } = await supabase
+            .from("app_config")
+            .select("value")
+            .eq("key", "job_circular_categories")
+            .maybeSingle();
+          if (catRow && Array.isArray(catRow.value) && catRow.value.length > 0) {
+            return NextResponse.json({
+              categories: normalizeCircularCategories(catRow.value),
+              source: "supabase_categories_only",
+            });
+          }
+        }
+      } catch (sbErr) {
+        console.warn("Supabase categories-only query note:", sbErr);
+      }
+
+      const kvCats = await loadCircularsFromKvStore();
+      if (kvCats && kvCats.categories.length > 0) {
+        return NextResponse.json({ categories: kvCats.categories, source: "kv_categories_only" });
+      }
+      const diskCats =
+        loadCircularsFromDiskFile(CIRCULAR_TMP_CACHE_FILE) ||
+        loadCircularsFromDiskFile(CIRCULAR_PROJECT_DATA_FILE);
+      if (diskCats && diskCats.categories.length > 0) {
+        return NextResponse.json({ categories: diskCats.categories, source: "disk_categories_only" });
+      }
+      const memCats = getMemoryCircularsCache();
+      if (memCats && memCats.categories.length > 0) {
+        return NextResponse.json({ categories: memCats.categories, source: "memory_categories_only" });
+      }
+      return NextResponse.json({
+        categories: DEFAULT_JOB_CIRCULAR_CATEGORIES,
+        source: "default_categories_only",
+      });
+    }
+
     // 1. Primary: Supabase (dedicated job_circulars table + app_config)
     try {
       const supabase = getSupabase();

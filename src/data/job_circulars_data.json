@@ -1,0 +1,88 @@
+{
+  "categories": [
+    {
+      "id": "circ-govt",
+      "name": "সরকারি",
+      "imageUrl": "/assets/circulars/govt.svg",
+      "icon": "Landmark",
+      "serial": 1,
+      "active": true
+    },
+    {
+      "id": "circ-private",
+      "name": "বেসরকারি",
+      "imageUrl": "/assets/circulars/private.svg",
+      "icon": "Building2",
+      "serial": 2,
+      "active": true
+    },
+    {
+      "id": "circ-bank",
+      "name": "ব্যাংক",
+      "imageUrl": "/assets/circulars/bank.svg",
+      "icon": "Briefcase",
+      "serial": 3,
+      "active": true
+    },
+    {
+      "id": "circ-ngo",
+      "name": "এনজিও",
+      "imageUrl": "/assets/circulars/ngo.svg",
+      "icon": "HeartHandshake",
+      "serial": 4,
+      "active": true
+    },
+    {
+      "id": "circ-ministry",
+      "name": "মন্ত্রণালয়",
+      "imageUrl": "/assets/circulars/ministry.svg",
+      "icon": "ShieldCheck",
+      "serial": 5,
+      "active": true
+    },
+    {
+      "id": "circ-defense",
+      "name": "ডিফেন্স",
+      "imageUrl": "/assets/circulars/defense.svg",
+      "icon": "Shield",
+      "serial": 6,
+      "active": true
+    },
+    {
+      "id": "circ-education",
+      "name": "শিক্ষা প্রতিষ্ঠান",
+      "imageUrl": "/assets/circulars/education.svg",
+      "icon": "GraduationCap",
+      "serial": 7,
+      "active": true
+    },
+    {
+      "id": "circ-pharmacy",
+      "name": "ফার্মাসি",
+      "imageUrl": "/assets/circulars/pharmacy.svg",
+      "icon": "FlaskConical",
+      "serial": 8,
+      "active": true
+    }
+  ],
+  "posts": [
+    {
+      "id": "circ_post_1794840956310",
+      "categoryId": "circ-defense",
+      "categoryIds": [
+        "circ-defense"
+      ],
+      "title": "বাংলাদেশ পুলিশের চাকরি",
+      "organization": "স্বরাষ্ট্র মন্ত্রণালয়",
+      "vacancies": "৩০০০",
+      "deadline": "৩০-নবেম্বর- ২০২৬",
+      "fileType": "pdf",
+      "fileUrl": "https://drive.google.com/file/d/1JuvYdKicXNUyKPqs7O0NeyIl7cRf_I1_/view?usp=drive_link",
+      "applyUrl": "https://gemini.google.com/app",
+      "description": "",
+      "views": 8,
+      "publishedAt": "2026-11-16T14:55:56.31+00:00",
+      "active": true
+    }
+  ]
+}

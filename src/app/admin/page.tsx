@@ -120,6 +120,11 @@ import {
   JOB_CIRCULARS_SUPABASE_SQL,
   extractGoogleDriveFileId,
   detectCircularFileType,
+  getCircularPostCategoryIds,
+  postMatchesCircularCategory,
+  formatBanglaDateFromISO,
+  formatCircularDeadlineDisplay,
+  parseBanglaDateToISO,
   getCachedJobCircularCategories,
   getCachedJobCircularPosts,
   fetchJobCircularsFromDb,
@@ -594,7 +599,7 @@ export default function AdminPage() {
   const [confirmDeleteCircularCatId, setConfirmDeleteCircularCatId] = useState<string | null>(null);
 
   const [editingCircularPostId, setEditingCircularPostId] = useState<string | null>(null);
-  const [circularPostCategoryId, setCircularPostCategoryId] = useState<string>("circ-govt");
+  const [circularPostCategoryIds, setCircularPostCategoryIds] = useState<string[]>(["circ-govt"]);
   const [circularPostTitle, setCircularPostTitle] = useState<string>("");
   const [circularPostOrganization, setCircularPostOrganization] = useState<string>("");
   const [circularPostVacancies, setCircularPostVacancies] = useState<string>("");
@@ -606,6 +611,7 @@ export default function AdminPage() {
   const [circularPostActive, setCircularPostActive] = useState<boolean>(true);
   const [confirmDeleteCircularPostId, setConfirmDeleteCircularPostId] = useState<string | null>(null);
   const [showCircularSqlBox, setShowCircularSqlBox] = useState<boolean>(false);
+  const circularDeadlineInputRef = useRef<HTMLInputElement | null>(null);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -1780,8 +1786,9 @@ export default function AdminPage() {
 
   const handleSaveCircularPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!circularPostTitle.trim() || !circularPostCategoryId) {
-      triggerNotification("error", "শিরোনাম ও ক্যাটাগরি নির্বাচন করুন।");
+    const cleanCatIds = circularPostCategoryIds.filter(Boolean);
+    if (!circularPostTitle.trim() || cleanCatIds.length === 0) {
+      triggerNotification("error", "শিরোনাম ও অন্তত একটি ক্যাটাগরি নির্বাচন করুন।");
       return;
     }
     const existing = editingCircularPostId ? circularPosts.find((p) => p.id === editingCircularPostId) : null;
@@ -1789,7 +1796,8 @@ export default function AdminPage() {
     const cleanApplyUrl = circularPostApplyUrl.trim();
     const post: JobCircularPost = {
       id: editingCircularPostId || `circ_post_${Date.now()}`,
-      categoryId: circularPostCategoryId,
+      categoryId: cleanCatIds[0],
+      categoryIds: cleanCatIds,
       title: circularPostTitle.trim(),
       organization: circularPostOrganization.trim(),
       vacancies: circularPostVacancies.trim(),
@@ -1816,7 +1824,7 @@ export default function AdminPage() {
 
   const handleCancelCircularPostEdit = () => {
     setEditingCircularPostId(null);
-    setCircularPostCategoryId(circularCategories[0]?.id || "circ-govt");
+    setCircularPostCategoryIds([circularCategories[0]?.id || "circ-govt"]);
     setCircularPostTitle("");
     setCircularPostOrganization("");
     setCircularPostVacancies("");
@@ -1830,7 +1838,8 @@ export default function AdminPage() {
 
   const handleEditCircularPost = (post: JobCircularPost) => {
     setEditingCircularPostId(post.id);
-    setCircularPostCategoryId(post.categoryId || circularCategories[0]?.id || "");
+    const ids = getCircularPostCategoryIds(post);
+    setCircularPostCategoryIds(ids.length > 0 ? ids : [circularCategories[0]?.id || ""]);
     setCircularPostTitle(post.title || "");
     setCircularPostOrganization(post.organization || "");
     setCircularPostVacancies(post.vacancies || "");
@@ -8400,7 +8409,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                               )}
                             </div>
                             <span className="text-[10px] font-semibold text-slate-400">
-                              {circularPosts.filter((p) => p.categoryId === cat.id).length} টি বিজ্ঞপ্তি
+                              {circularPosts.filter((p) => postMatchesCircularCategory(p, cat.id)).length} টি বিজ্ঞপ্তি
                             </span>
                           </div>
                         </div>
@@ -8481,18 +8490,52 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                   </div>
 
                   <form onSubmit={handleSaveCircularPost} className="space-y-3.5">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">সাবজেক্ট / ক্যাটাগরি</label>
-                      <select
-                        value={circularPostCategoryId}
-                        onChange={(e) => setCircularPostCategoryId(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
-                        required
-                      >
-                        {circularCategories.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between pl-1">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase">
+                          সাবজেক্ট / ক্যাটাগরি (একাধিক নির্বাচন করা যাবে)
+                        </label>
+                        <span className="text-[10px] font-black text-[#FF6A00]">
+                          {circularPostCategoryIds.length} টি নির্বাচিত
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {circularCategories.map((c) => {
+                          const isSelected = circularPostCategoryIds.includes(c.id);
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setCircularPostCategoryIds((prev) =>
+                                  prev.includes(c.id)
+                                    ? prev.filter((id) => id !== c.id)
+                                    : [...prev, c.id]
+                                );
+                              }}
+                              className={`px-2.5 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-2 text-left transition-all cursor-pointer ${
+                                isSelected
+                                  ? "bg-orange-50 border-[#FF6A00] text-[#FF6A00] shadow-2xs"
+                                  : "bg-slate-50 border-slate-200 text-slate-700 hover:border-orange-200"
+                              }`}
+                            >
+                              <span
+                                className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${
+                                  isSelected
+                                    ? "bg-[#FF6A00] border-[#FF6A00] text-white"
+                                    : "bg-white border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3px]" />}
+                              </span>
+                              <span className="truncate">{c.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] font-semibold text-slate-400 pl-1">
+                        উদাহরণ: &ldquo;ডিফেন্স&rdquo; ও &ldquo;সরকারি&rdquo; দুটোই সিলেক্ট করলে দুটি ক্যাটাগরিতেই বিজ্ঞপ্তিটি শো করবে।
+                      </p>
                     </div>
 
                     <div className="space-y-1">
@@ -8518,7 +8561,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-3">
                       <div className="space-y-1">
                         <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">পদসংখ্যা</label>
                         <input
@@ -8529,15 +8572,56 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                           className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">আবেদনের শেষ তারিখ</label>
-                        <input
-                          type="text"
-                          placeholder="যেমন: ৩০ নভেম্বর ২০২৬"
-                          value={circularPostDeadline}
-                          onChange={(e) => setCircularPostDeadline(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
-                        />
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                          আবেদনের শেষ তারিখ (ক্যালেন্ডার থেকে সিলেক্ট করুন)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div
+                            onClick={() => {
+                              try {
+                                circularDeadlineInputRef.current?.showPicker?.();
+                              } catch (e) {}
+                              circularDeadlineInputRef.current?.focus();
+                            }}
+                            className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 hover:border-[#FF6A00] focus-within:border-[#FF6A00] rounded-2xl px-3 py-2 cursor-pointer transition-colors"
+                          >
+                            <Calendar className="w-4 h-4 text-[#FF6A00] shrink-0" />
+                            <input
+                              ref={circularDeadlineInputRef}
+                              type="date"
+                              value={parseBanglaDateToISO(circularPostDeadline)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCircularPostDeadline(val ? formatBanglaDateFromISO(val) : "");
+                              }}
+                              className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                            />
+                          </div>
+                          {circularPostDeadline && (
+                            <button
+                              type="button"
+                              onClick={() => setCircularPostDeadline("")}
+                              title="তারিখ মুছুন"
+                              className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 cursor-pointer transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {circularPostDeadline && (
+                          <div className="bg-orange-50 border border-orange-200/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-extrabold text-[#9A3412] flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                              <span>বাংলা প্রিভিউ: {formatCircularDeadlineDisplay(circularPostDeadline)}</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-[#FF6A00] bg-white px-2 py-0.5 rounded-md border border-orange-200">
+                              সঠিক ফরম্যাট
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -8698,7 +8782,9 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       {[...circularPosts]
                         .sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0))
                         .map((post) => {
-                        const catObj = circularCategories.find((c) => c.id === post.categoryId);
+                        const catNames = getCircularPostCategoryIds(post)
+                          .map((cid) => circularCategories.find((c) => c.id === cid)?.name)
+                          .filter((name): name is string => Boolean(name));
                         const postFileType = detectCircularFileType(post.fileUrl || post.applyUrl, post.fileType);
                         const isDriveLink = Boolean(extractGoogleDriveFileId(post.fileUrl || post.applyUrl));
                         return (
@@ -8719,17 +8805,22 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                 >
                                   {postFileType === "image" ? "PNG/IMG" : "PDF"}
                                 </span>
-                                <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
-                                  {catObj?.name || "অজানা"}
-                                </span>
+                                {(catNames.length > 0 ? catNames : ["অজানা"]).map((cName) => (
+                                  <span
+                                    key={cName}
+                                    className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200"
+                                  >
+                                    {cName}
+                                  </span>
+                                ))}
                                 {post.deadline && (
                                   <span className="text-[10px] font-bold text-rose-600">
-                                    শেষ তারিখ: {post.deadline}
+                                    শেষ তারিখ: {formatCircularDeadlineDisplay(post.deadline)}
                                   </span>
                                 )}
-                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
-                                  <Eye className="w-3 h-3" />
-                                  <span>{post.views ?? 0}</span>
+                                <span className="text-[10px] font-extrabold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                  <Eye className="w-3 h-3 text-[#FF6A00]" />
+                                  <span>রিয়েল ভিউ: {post.views ?? 0}</span>
                                 </span>
                                 {isDriveLink && (
                                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">

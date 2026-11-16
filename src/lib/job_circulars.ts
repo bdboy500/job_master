@@ -14,6 +14,7 @@ export type CircularFileType = "pdf" | "image";
 export interface JobCircularPost {
   id: string;
   categoryId: string;
+  categoryIds?: string[];
   title: string;
   organization: string;
   vacancies?: string;
@@ -217,6 +218,116 @@ export function getCircularPreviewUrl(url?: string | null, fileType?: CircularFi
   return cleanUrl;
 }
 
+export function toBanglaDigits(input: string | number): string {
+  const bnNums = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+  return String(input ?? "").replace(/\d/g, (d) => bnNums[Number(d)] ?? d);
+}
+
+export const BANGLA_MONTH_NAMES = [
+  "জানুয়ারি",
+  "ফেব্রুয়ারি",
+  "মার্চ",
+  "এপ্রিল",
+  "মে",
+  "জুন",
+  "জুলাই",
+  "আগস্ট",
+  "সেপ্টেম্বর",
+  "অক্টোবর",
+  "নভেম্বর",
+  "ডিসেম্বর",
+] as const;
+
+export function formatBanglaDateFromISO(isoDate?: string | null): string {
+  const clean = (isoDate || "").trim();
+  const match = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return clean;
+  const year = Number(match[1]);
+  const monthIdx = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  if (monthIdx < 0 || monthIdx > 11 || day < 1 || day > 31) return clean;
+  return `${toBanglaDigits(day)} ${BANGLA_MONTH_NAMES[monthIdx]} ${toBanglaDigits(year)}`;
+}
+
+export function formatCircularDeadlineDisplay(deadline?: string | null): string {
+  const clean = (deadline || "").trim();
+  if (!clean) return "নির্ধারিত নয়";
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(clean)) {
+    return formatBanglaDateFromISO(clean);
+  }
+  return clean;
+}
+
+export function parseBanglaDateToISO(dateStr?: string | null): string {
+  const clean = (dateStr || "").trim();
+  if (!clean) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+
+  // Convert Bengali digits back to English digits for parsing
+  const bnToEn: Record<string, string> = {
+    "০": "0",
+    "১": "1",
+    "২": "2",
+    "৩": "3",
+    "৪": "4",
+    "৫": "5",
+    "৬": "6",
+    "৭": "7",
+    "৮": "8",
+    "৯": "9",
+  };
+  const enStr = clean.replace(/[০-৯]/g, (d) => bnToEn[d] ?? d).replace(/,/g, " ");
+
+  const isoMatch = enStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  }
+
+  for (let i = 0; i < BANGLA_MONTH_NAMES.length; i++) {
+    const monthName = BANGLA_MONTH_NAMES[i];
+    if (enStr.includes(monthName)) {
+      const nums = enStr.match(/\d+/g);
+      if (nums && nums.length >= 2) {
+        const dayNum = Number(nums[0]);
+        const yearNum = Number(nums[nums.length - 1]);
+        if (dayNum >= 1 && dayNum <= 31 && yearNum >= 1900) {
+          return `${String(yearNum).padStart(4, "0")}-${String(i + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+        }
+      }
+    }
+  }
+  return "";
+}
+
+// Live-Exam-style time-by-time public view counter:
+// প্রথম ঘণ্টায় ১০+, প্রতি ঘণ্টায় +১০ (২৪ ঘণ্টায় ২৪০+), এরপর প্রতি ১ দিনে +১০ + রিয়েল ক্লিক ভিউ
+export function getCircularPublicViewDisplay(
+  publishedAt?: string | null,
+  realViews = 0,
+  _tick?: number
+): string {
+  let startMs = 0;
+  if (publishedAt) {
+    const parsed = Date.parse(publishedAt);
+    if (!Number.isNaN(parsed)) startMs = parsed;
+  }
+  if (!startMs) startMs = Date.now();
+
+  const elapsedMs = Math.max(0, Date.now() - startMs);
+  const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
+
+  let baseCount = 10;
+  if (elapsedHours < 24) {
+    baseCount = (elapsedHours + 1) * 10;
+  } else {
+    const additionalDays = Math.floor((elapsedHours - 24) / 24) + 1;
+    baseCount = 240 + additionalDays * 10;
+  }
+
+  const total = baseCount + Math.max(0, Number(realViews) || 0);
+  return `${toBanglaDigits(total)}+`;
+}
+
 export function getCircularDownloadUrl(
   url?: string | null,
   title?: string,
@@ -245,6 +356,24 @@ export function normalizeCircularCategories(raw: any): JobCircularCategory[] {
   return cleaned;
 }
 
+export function getCircularPostCategoryIds(post: JobCircularPost): string[] {
+  const fromArr = Array.isArray(post.categoryIds)
+    ? post.categoryIds.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const fromSingle = post.categoryId
+    ? String(post.categoryId)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  return Array.from(new Set([...fromArr, ...fromSingle]));
+}
+
+export function postMatchesCircularCategory(post: JobCircularPost, categoryId: string): boolean {
+  if (!categoryId || categoryId === "all") return true;
+  return getCircularPostCategoryIds(post).includes(categoryId);
+}
+
 export function normalizeCircularPosts(raw: any): JobCircularPost[] {
   if (!Array.isArray(raw)) return [];
   const normalized = raw
@@ -253,9 +382,22 @@ export function normalizeCircularPosts(raw: any): JobCircularPost[] {
       const fileUrl = String(p.fileUrl ?? p.file_url ?? "").trim();
       const applyUrl = String(p.applyUrl ?? p.apply_url ?? "").trim();
       const effectiveUrl = fileUrl || applyUrl;
+      const arrIds: string[] = Array.isArray(p.categoryIds)
+        ? p.categoryIds
+        : Array.isArray(p.category_ids)
+        ? p.category_ids
+        : [];
+      const rawIdStr = String(p.categoryId ?? p.category_id ?? "").trim();
+      const splitIds = rawIdStr
+        ? rawIdStr.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const categoryIds = Array.from(
+        new Set([...arrIds.map((s) => String(s).trim()).filter(Boolean), ...splitIds])
+      );
       return {
         id: String(p.id || `post_${Date.now()}_${idx}`),
-        categoryId: String(p.categoryId ?? p.category_id ?? ""),
+        categoryId: categoryIds[0] || "",
+        categoryIds,
         title: String(p.title || "").trim(),
         organization: String(p.organization || "").trim(),
         vacancies: p.vacancies ? String(p.vacancies).trim() : "",
@@ -330,6 +472,32 @@ function writeLocalCircularsCache(categories?: JobCircularCategory[], posts?: Jo
       } catch (e) {}
     }
   } catch (e) {}
+}
+
+export async function fetchJobCircularCategoriesOnlyFromDb(): Promise<JobCircularCategory[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch("/api/job-circulars?categoriesOnly=1", {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const categories =
+        Array.isArray(data?.categories) && data.categories.length > 0
+          ? normalizeCircularCategories(data.categories)
+          : DEFAULT_JOB_CIRCULAR_CATEGORIES;
+      writeLocalCircularsCache(categories, undefined);
+      return categories;
+    }
+  } catch (err) {
+    console.warn("fetchJobCircularCategoriesOnlyFromDb note:", err);
+  } finally {
+    clearTimeout(timer);
+  }
+  return getCachedJobCircularCategories();
 }
 
 export async function fetchJobCircularsFromDb(): Promise<{
@@ -442,19 +610,25 @@ export async function incrementJobCircularViewCount(postId: string): Promise<num
 }
 
 export function subscribeToJobCirculars(
-  onCategoriesUpdate: (categories: JobCircularCategory[]) => void,
+  onCategoriesUpdate?: (categories: JobCircularCategory[]) => void,
   onPostsUpdate?: (posts: JobCircularPost[]) => void
 ): () => void {
   if (typeof window === "undefined") return () => {};
 
+  const includePosts = Boolean(onPostsUpdate);
+
   const handleCustomEvent = (e: Event) => {
     const detail = (e as CustomEvent)?.detail;
-    if (detail?.categories) onCategoriesUpdate(normalizeCircularCategories(detail.categories));
-    if (detail?.posts && onPostsUpdate) onPostsUpdate(normalizeCircularPosts(detail.posts));
+    if (detail?.categories && onCategoriesUpdate) {
+      onCategoriesUpdate(normalizeCircularCategories(detail.categories));
+    }
+    if (detail?.posts && onPostsUpdate) {
+      onPostsUpdate(normalizeCircularPosts(detail.posts));
+    }
   };
 
   const handleStorageEvent = (e: StorageEvent) => {
-    if (e.key === CATEGORIES_CACHE_KEY && e.newValue) {
+    if (e.key === CATEGORIES_CACHE_KEY && e.newValue && onCategoriesUpdate) {
       try {
         onCategoriesUpdate(normalizeCircularCategories(JSON.parse(e.newValue)));
       } catch (err) {}
@@ -474,8 +648,12 @@ export function subscribeToJobCirculars(
     try {
       bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
       bc.onmessage = (msg) => {
-        if (msg?.data?.categories) onCategoriesUpdate(normalizeCircularCategories(msg.data.categories));
-        if (msg?.data?.posts && onPostsUpdate) onPostsUpdate(normalizeCircularPosts(msg.data.posts));
+        if (msg?.data?.categories && onCategoriesUpdate) {
+          onCategoriesUpdate(normalizeCircularCategories(msg.data.categories));
+        }
+        if (msg?.data?.posts && onPostsUpdate) {
+          onPostsUpdate(normalizeCircularPosts(msg.data.posts));
+        }
       };
     } catch (e) {}
   }
@@ -484,8 +662,12 @@ export function subscribeToJobCirculars(
   try {
     const supabase = getSupabase();
     if (supabase) {
-      sbChannel = supabase
-        .channel("app_config_job_circulars_rt")
+      const channelName = includePosts
+        ? "app_config_job_circulars_posts_rt"
+        : "app_config_job_circulars_cats_rt";
+
+      let channelBuilder = supabase
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
@@ -496,18 +678,20 @@ export function subscribeToJobCirculars(
           (payload: any) => {
             const key = payload?.new?.key;
             const val = payload?.new?.value;
-            if (key === "job_circular_categories" && Array.isArray(val)) {
+            if (key === "job_circular_categories" && Array.isArray(val) && onCategoriesUpdate) {
               const norm = normalizeCircularCategories(val);
               writeLocalCircularsCache(norm, undefined);
               onCategoriesUpdate(norm);
-            } else if (key === "job_circular_posts" && Array.isArray(val)) {
+            } else if (key === "job_circular_posts" && Array.isArray(val) && onPostsUpdate) {
               const normPosts = normalizeCircularPosts(val);
               writeLocalCircularsCache(undefined, normPosts);
-              if (onPostsUpdate) onPostsUpdate(normPosts);
+              onPostsUpdate(normPosts);
             }
           }
-        )
-        .on(
+        );
+
+      if (includePosts) {
+        channelBuilder = channelBuilder.on(
           "postgres_changes",
           {
             event: "*",
@@ -519,8 +703,10 @@ export function subscribeToJobCirculars(
               if (onPostsUpdate) onPostsUpdate(posts);
             });
           }
-        )
-        .subscribe();
+        );
+      }
+
+      sbChannel = channelBuilder.subscribe();
     }
   } catch (e) {}
 
