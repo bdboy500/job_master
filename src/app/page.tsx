@@ -76,7 +76,9 @@ import {
   Building2,
   Landmark,
   HeartHandshake,
-  Shield
+  Shield,
+  Eye,
+  Image as ImageIcon
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -84,7 +86,7 @@ import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
-import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularsFromDb, subscribeToJobCirculars } from "../lib/job_circulars";
+import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount } from "../lib/job_circulars";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings } from "../lib/app_settings";
 import { questionMatchesSearch } from "../lib/search_normalizer";
 import { quizAudio } from "../lib/audio";
@@ -788,6 +790,7 @@ export default function Home() {
   const [jobCircularCategories, setJobCircularCategories] = useState<JobCircularCategory[]>(DEFAULT_JOB_CIRCULAR_CATEGORIES);
   const [jobCircularPosts, setJobCircularPosts] = useState<JobCircularPost[]>([]);
   const [selectedCircularCategoryId, setSelectedCircularCategoryId] = useState<string>("all");
+  const [selectedCircularPost, setSelectedCircularPost] = useState<JobCircularPost | null>(null);
   const [circularSearchQuery, setCircularSearchQuery] = useState<string>("");
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
@@ -2879,6 +2882,7 @@ export default function Home() {
         initialDeepLinkHandledRef.current = true;
         pendingDeepLinkRef.current = null;
         if (id) setSelectedCircularCategoryId(id);
+        setSelectedCircularPost(null);
         setCurrentScreen("job-circulars");
         return true;
       }
@@ -3252,8 +3256,12 @@ export default function Home() {
                 } else if (currentScreen === "auth") {
                   setDrawerOpen(false);
                   handleCloseAuthScreen();
+                } else if (currentScreen === "job-circulars" && selectedCircularPost) {
+                  setDrawerOpen(false);
+                  setSelectedCircularPost(null);
                 } else if (currentScreen === "daily-quick-test" || currentScreen === "search" || currentScreen === "routine" || currentScreen === "tests" || currentScreen === "rankings" || currentScreen === "notice" || currentScreen === "job-circulars" || currentScreen === "cv-maker" || currentScreen === "privacy-policy" || currentScreen === "contact") {
                   setDrawerOpen(false);
+                  setSelectedCircularPost(null);
                   setCurrentScreen("home");
                 } else {
                   setDrawerOpen(!drawerOpen);
@@ -3859,6 +3867,7 @@ export default function Home() {
                             type="button"
                             onClick={() => {
                               setSelectedCircularCategoryId(cat.id);
+                              setSelectedCircularPost(null);
                               setCircularSearchQuery("");
                               setPreviousScreen("home");
                               setCurrentScreen("job-circulars");
@@ -3876,7 +3885,7 @@ export default function Home() {
                                   loading="eager"
                                   decoding="async"
                                   referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover pointer-events-none select-none"
+                                  className="w-full h-full object-cover block pointer-events-none select-none"
                                 />
                               ) : (
                                 <div className="relative w-10 h-10 flex items-center justify-center">
@@ -5925,7 +5934,7 @@ export default function Home() {
           {/* JOB CIRCULARS ("চাকরির বিজ্ঞপ্তি") SCREEN                   */}
           {/* ========================================================= */}
           {currentScreen === "job-circulars" && (
-            <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-4 animate-fade-in pb-16 text-left">
+            <div className="px-1.5 sm:px-2.5 py-2.5 sm:py-4 space-y-3.5 animate-fade-in pb-16 text-left">
               {(() => {
                 const activeCats = [...jobCircularCategories]
                   .filter((c) => c.active !== false)
@@ -5934,7 +5943,7 @@ export default function Home() {
                 const activeCategoryObj = activeCats.find((c) => c.id === selectedCircularCategoryId) || null;
                 const query = circularSearchQuery.trim().toLowerCase();
 
-                const visiblePosts = jobCircularPosts
+                const visiblePosts = [...jobCircularPosts]
                   .filter((post) => post.active !== false)
                   .filter((post) =>
                     selectedCircularCategoryId === "all"
@@ -5948,41 +5957,166 @@ export default function Home() {
                       (post.organization || "").toLowerCase().includes(query) ||
                       (post.description || "").toLowerCase().includes(query)
                     );
-                  });
+                  })
+                  .sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0));
 
-                return (
-                  <>
-                    {/* Header Banner */}
-                    <div className="bg-gradient-to-r from-[#FF6A00] to-[#FF8A3D] rounded-2xl p-4 sm:p-5 text-white shadow-md shadow-orange-500/15 flex items-center justify-between gap-3">
-                      <div className="space-y-1 min-w-0">
-                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 block">
-                          সর্বশেষ নিয়োগ বিজ্ঞপ্তি
-                        </span>
-                        <h3 className="text-lg sm:text-xl font-black leading-tight truncate">
-                          {activeCategoryObj ? `${activeCategoryObj.name} চাকরির বিজ্ঞপ্তি` : "সকল চাকরির বিজ্ঞপ্তি"}
-                        </h3>
-                        <p className="text-xs font-semibold text-white/90">
-                          {visiblePosts.length > 0
-                            ? `${visiblePosts.length} টি সক্রিয় নিয়োগ বিজ্ঞপ্তি পাওয়া গেছে`
-                            : "ক্যাটাগরি অনুযায়ী নিয়োগ বিজ্ঞপ্তি ও আবেদনের সময়সূচি দেখুন"}
-                        </p>
-                      </div>
-                      {activeCategoryObj?.imageUrl ? (
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden bg-[#FFF5EE] border-2 border-white/40 shrink-0 shadow-sm">
-                          <img
-                            src={activeCategoryObj.imageUrl}
-                            alt={activeCategoryObj.name}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
+                const activeDetailPost = selectedCircularPost
+                  ? jobCircularPosts.find((p) => p.id === selectedCircularPost.id) || selectedCircularPost
+                  : null;
+
+                if (activeDetailPost) {
+                  const detailCat = jobCircularCategories.find((c) => c.id === activeDetailPost.categoryId);
+                  const mediaUrl = (activeDetailPost.fileUrl || "").trim() ||
+                    ((activeDetailPost.applyUrl || "").includes("drive.google.com") || /\.(pdf|png|jpe?g|webp)(\?|$)/i.test(activeDetailPost.applyUrl || "")
+                      ? (activeDetailPost.applyUrl || "").trim()
+                      : "");
+                  const fileType = detectCircularFileType(mediaUrl || activeDetailPost.applyUrl, activeDetailPost.fileType);
+                  const previewSrc = mediaUrl ? getCircularPreviewUrl(mediaUrl, fileType) : "";
+                  const downloadHref = mediaUrl ? getCircularDownloadUrl(mediaUrl, activeDetailPost.title, fileType) : "";
+
+                  return (
+                    <div className="space-y-3.5 animate-fade-in">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCircularPost(null);
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-orange-200 text-[#FF6A00] hover:bg-orange-50 text-xs font-extrabold cursor-pointer shadow-2xs transition-colors"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          <span>তালিকায় ফিরে যান</span>
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-black text-[#FF6A00] bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200">
+                            {detailCat?.name || "নিয়োগ বিজ্ঞপ্তি"}
+                          </span>
+                          <span
+                            className={`text-[11px] font-black text-white px-2.5 py-1 rounded-lg ${
+                              fileType === "image" ? "bg-indigo-600" : "bg-[#FF6A00]"
+                            }`}
+                          >
+                            {fileType === "image" ? "IMAGE" : "PDF"}
+                          </span>
                         </div>
-                      ) : (
-                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-                          <Newspaper className="w-6 h-6 text-white" />
+                      </div>
+
+                      <div className="bg-white border border-orange-100 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                        <div className="space-y-1.5">
+                          <h3 className="font-black text-base sm:text-lg text-slate-900 leading-snug">
+                            {activeDetailPost.title}
+                          </h3>
+                          {activeDetailPost.organization && (
+                            <p className="text-xs sm:text-sm font-bold text-[#FF6A00] flex items-center gap-1.5">
+                              <Building2 className="w-4 h-4 shrink-0" />
+                              <span>{activeDetailPost.organization}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-orange-50/60 border border-orange-100 rounded-xl p-3 text-xs font-bold">
+                          <div className="text-slate-700 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                            <span>আবেদনের শেষ তারিখঃ {activeDetailPost.deadline || "নির্ধারিত নয়"}</span>
+                          </div>
+                          {activeDetailPost.vacancies && (
+                            <div className="text-slate-700 flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>পদসংখ্যাঃ {activeDetailPost.vacancies}</span>
+                            </div>
+                          )}
+                          <div className="text-slate-600 flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>মোট ভিউঃ {activeDetailPost.views ?? 0}</span>
+                          </div>
+                        </div>
+
+                        {activeDetailPost.description && (
+                          <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-line bg-slate-50/70 rounded-xl p-3 border border-slate-100">
+                            {activeDetailPost.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                          {downloadHref && (
+                            <a
+                              href={downloadHref}
+                              download
+                              onClick={() => {
+                                if (soundEnabled) quizAudio.playClick();
+                              }}
+                              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#FF6A00] hover:bg-[#E05E00] text-white text-xs sm:text-sm font-black shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all"
+                            >
+                              <Download className="w-4 h-4 shrink-0" />
+                              <span>১ ক্লিকে ডাউনলোড করুন ({fileType === "image" ? "Image" : "PDF"})</span>
+                            </a>
+                          )}
+
+                          {activeDetailPost.applyUrl && (
+                            <a
+                              href={activeDetailPost.applyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-extrabold shadow-xs transition-all"
+                            >
+                              <span>আবেদন লিংক দেখুন</span>
+                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {previewSrc && (
+                        <div className="bg-white border border-orange-100 rounded-2xl p-3 sm:p-4 shadow-xs space-y-2.5">
+                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                            <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-800">
+                              {fileType === "image" ? (
+                                <ImageIcon className="w-4 h-4 text-[#FF6A00]" />
+                              ) : (
+                                <FileText className="w-4 h-4 text-[#FF6A00]" />
+                              )}
+                              <span>সার্কুলার প্রিভিউ</span>
+                            </div>
+                            {downloadHref && (
+                              <a
+                                href={downloadHref}
+                                download
+                                className="text-[11px] font-extrabold text-[#FF6A00] hover:underline flex items-center gap-1"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>ডাউনলোড</span>
+                              </a>
+                            )}
+                          </div>
+
+                          {fileType === "image" ? (
+                            <img
+                              src={previewSrc}
+                              alt={activeDetailPost.title}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-auto max-h-[75vh] object-contain rounded-xl bg-slate-50 border border-slate-100"
+                            />
+                          ) : (
+                            <iframe
+                              src={previewSrc}
+                              title={activeDetailPost.title}
+                              className="w-full h-[500px] sm:h-[640px] rounded-xl border border-slate-200 bg-slate-50"
+                              allow="autoplay"
+                            />
+                          )}
+
+                          <p className="text-[11px] font-semibold text-slate-500 text-center">
+                            ফাইল প্রিভিউ লোড হতে দেরি হলে উপরের &ldquo;১ ক্লিকে ডাউনলোড করুন&rdquo; বাটনে ক্লিক করুন।
+                          </p>
                         </div>
                       )}
                     </div>
+                  );
+                }
 
+                return (
+                  <>
                     {/* Horizontal Category Selector */}
                     <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       <button
@@ -5997,7 +6131,7 @@ export default function Home() {
                             : "bg-white text-slate-700 border-slate-200 hover:border-orange-200 hover:text-[#FF6A00]"
                         }`}
                       >
-                        সকল ক্যাটাগরি
+                        সকল ({jobCircularPosts.filter((p) => p.active !== false).length})
                       </button>
                       {activeCats.map((cat) => (
                         <button
@@ -6025,12 +6159,16 @@ export default function Home() {
                         type="text"
                         value={circularSearchQuery}
                         onChange={(e) => setCircularSearchQuery(e.target.value)}
-                        placeholder="প্রতিষ্ঠান বা পদের নাম দিয়ে খুঁজুন..."
-                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none shadow-2xs"
+                        placeholder={
+                          activeCategoryObj
+                            ? `${activeCategoryObj.name} বিভাগে পদ বা প্রতিষ্ঠানের নাম খুঁজুন...`
+                            : "প্রতিষ্ঠান বা পদের নাম দিয়ে খুঁজুন..."
+                        }
+                        className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none shadow-2xs"
                       />
                     </div>
 
-                    {/* Circular Posts List */}
+                    {/* Circular Posts List matching reference card format & JobMaster #FF6A00 theme */}
                     {visiblePosts.length === 0 ? (
                       <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center space-y-2.5 shadow-2xs">
                         <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#FF6A00] flex items-center justify-center mx-auto">
@@ -6044,67 +6182,63 @@ export default function Home() {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-2.5">
                         {visiblePosts.map((post) => {
-                          const postCat = jobCircularCategories.find((c) => c.id === post.categoryId);
+                          const effectiveUrl = (post.fileUrl || post.applyUrl || "").trim();
+                          const fileType = detectCircularFileType(effectiveUrl, post.fileType);
+                          const isImage = fileType === "image";
+
                           return (
-                            <div
+                            <button
                               key={post.id}
-                              className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-2.5 hover:border-orange-200 transition-all"
+                              type="button"
+                              onClick={() => {
+                                setSelectedCircularPost(post);
+                                setJobCircularPosts((prev) =>
+                                  prev.map((p) => (p.id === post.id ? { ...p, views: (p.views || 0) + 1 } : p))
+                                );
+                                incrementJobCircularViewCount(post.id);
+                                if (soundEnabled) quizAudio.playClick();
+                              }}
+                              className="w-full text-left bg-white border border-orange-100 hover:border-[#FF6A00]/60 rounded-2xl p-3 sm:p-3.5 shadow-xs flex items-center gap-3 transition-colors cursor-pointer"
                             >
-                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">
-                                  {postCat?.name || "নিয়োগ বিজ্ঞপ্তি"}
+                              {/* Left Document Badge (Folded Page + PDF / IMG Pill matching reference card) */}
+                              <div className="w-[54px] h-[62px] shrink-0 relative flex items-center justify-end pr-0.5">
+                                <div className="w-[44px] h-[56px] bg-slate-100 border border-slate-200/90 rounded-lg relative overflow-hidden flex flex-col items-end">
+                                  <div className="w-3.5 h-3.5 bg-slate-200 rounded-bl-md" />
+                                  <div className="w-full px-1.5 pt-1 space-y-1 opacity-45">
+                                    <div className="h-1 bg-slate-300 rounded-full w-3/4" />
+                                    <div className="h-1 bg-slate-300 rounded-full w-full" />
+                                  </div>
+                                </div>
+                                <span
+                                  className={`absolute left-0 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md text-[10px] font-black tracking-wide text-white shadow-xs ${
+                                    isImage ? "bg-indigo-600" : "bg-[#FF6A00]"
+                                  }`}
+                                >
+                                  {isImage ? "PNG" : "PDF"}
                                 </span>
-                                {post.deadline && (
-                                  <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    <span>শেষ তারিখ: {post.deadline}</span>
-                                  </span>
-                                )}
                               </div>
 
-                              <h4 className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
-                                {post.title}
-                              </h4>
-
-                              {(post.organization || post.vacancies) && (
-                                <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-600">
-                                  {post.organization && (
-                                    <span className="flex items-center gap-1">
-                                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                                      {post.organization}
-                                    </span>
-                                  )}
-                                  {post.vacancies && (
-                                    <span className="flex items-center gap-1 text-emerald-700">
-                                      <Users className="w-3.5 h-3.5 text-emerald-500" />
-                                      পদসংখ্যা: {post.vacancies}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              {post.description && (
-                                <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-line">
-                                  {post.description}
+                              {/* Right Stacked Circular Details */}
+                              <div className="flex-1 min-w-0 space-y-0.5">
+                                <h4 className="font-extrabold text-[13.5px] sm:text-[15px] text-slate-900 leading-snug line-clamp-2">
+                                  {post.title}
+                                </h4>
+                                {post.organization && (
+                                  <p className="text-[12px] sm:text-[13px] font-bold text-[#FF6A00] leading-snug line-clamp-1">
+                                    {post.organization}
+                                  </p>
+                                )}
+                                <p className="text-[11.5px] sm:text-xs font-bold text-[#9A3412] leading-snug">
+                                  আবেদনের শেষ তারিখঃ {post.deadline || "নির্ধারিত নয়"}
                                 </p>
-                              )}
-
-                              {post.applyUrl && (
-                                <div className="pt-1">
-                                  <a
-                                    href={post.applyUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FF6A00] hover:bg-[#E05E00] text-white text-xs font-extrabold transition-all shadow-xs"
-                                  >
-                                    <span>আবেদন / বিস্তারিত দেখুন</span>
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </a>
-                                </div>
-                              )}
-                            </div>
+                                <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 pt-0.5">
+                                  <Eye className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>মোট ভিউঃ {post.views ?? 0}</span>
+                                </p>
+                              </div>
+                            </button>
                           );
                         })}
                       </div>

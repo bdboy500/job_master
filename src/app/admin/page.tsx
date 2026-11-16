@@ -76,7 +76,10 @@ import {
   EyeOff,
   RotateCw,
   Smartphone,
-  Upload
+  Upload,
+  Image as ImageIcon,
+  ExternalLink,
+  Copy
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question } from "../../data";
@@ -112,7 +115,11 @@ import {
 import {
   JobCircularCategory,
   JobCircularPost,
+  CircularFileType,
   CIRCULAR_ARTWORK_PRESETS,
+  JOB_CIRCULARS_SUPABASE_SQL,
+  extractGoogleDriveFileId,
+  detectCircularFileType,
   getCachedJobCircularCategories,
   getCachedJobCircularPosts,
   fetchJobCircularsFromDb,
@@ -592,10 +599,13 @@ export default function AdminPage() {
   const [circularPostOrganization, setCircularPostOrganization] = useState<string>("");
   const [circularPostVacancies, setCircularPostVacancies] = useState<string>("");
   const [circularPostDeadline, setCircularPostDeadline] = useState<string>("");
+  const [circularPostFileType, setCircularPostFileType] = useState<CircularFileType>("pdf");
+  const [circularPostFileUrl, setCircularPostFileUrl] = useState<string>("");
   const [circularPostApplyUrl, setCircularPostApplyUrl] = useState<string>("");
   const [circularPostDescription, setCircularPostDescription] = useState<string>("");
   const [circularPostActive, setCircularPostActive] = useState<boolean>(true);
   const [confirmDeleteCircularPostId, setConfirmDeleteCircularPostId] = useState<string | null>(null);
+  const [showCircularSqlBox, setShowCircularSqlBox] = useState<boolean>(false);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -1775,6 +1785,8 @@ export default function AdminPage() {
       return;
     }
     const existing = editingCircularPostId ? circularPosts.find((p) => p.id === editingCircularPostId) : null;
+    const cleanFileUrl = circularPostFileUrl.trim();
+    const cleanApplyUrl = circularPostApplyUrl.trim();
     const post: JobCircularPost = {
       id: editingCircularPostId || `circ_post_${Date.now()}`,
       categoryId: circularPostCategoryId,
@@ -1782,19 +1794,23 @@ export default function AdminPage() {
       organization: circularPostOrganization.trim(),
       vacancies: circularPostVacancies.trim(),
       deadline: circularPostDeadline.trim(),
-      applyUrl: circularPostApplyUrl.trim(),
+      fileType: detectCircularFileType(cleanFileUrl || cleanApplyUrl, circularPostFileType),
+      fileUrl: cleanFileUrl,
+      applyUrl: cleanApplyUrl,
       description: circularPostDescription.trim(),
+      views: existing?.views ?? 0,
       publishedAt: existing?.publishedAt || new Date().toISOString(),
       active: circularPostActive,
     };
 
-    const updated = editingCircularPostId
+    const updated = (editingCircularPostId
       ? circularPosts.map((p) => (p.id === editingCircularPostId ? post : p))
-      : [post, ...circularPosts];
+      : [post, ...circularPosts]
+    ).sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0));
 
     setCircularPosts(updated);
     await saveJobCircularPostsToDb(updated);
-    triggerNotification("success", editingCircularPostId ? "বিজ্ঞপ্তি আপডেট হয়েছে!" : "নতুন চাকরির বিজ্ঞপ্তি প্রকাশ হয়েছে!");
+    triggerNotification("success", editingCircularPostId ? "বিজ্ঞপ্তি আপডেট ও Supabase-এ সেভ হয়েছে!" : "নতুন চাকরির বিজ্ঞপ্তি প্রকাশ ও সেভ হয়েছে!");
     handleCancelCircularPostEdit();
   };
 
@@ -1805,6 +1821,8 @@ export default function AdminPage() {
     setCircularPostOrganization("");
     setCircularPostVacancies("");
     setCircularPostDeadline("");
+    setCircularPostFileType("pdf");
+    setCircularPostFileUrl("");
     setCircularPostApplyUrl("");
     setCircularPostDescription("");
     setCircularPostActive(true);
@@ -1817,9 +1835,20 @@ export default function AdminPage() {
     setCircularPostOrganization(post.organization || "");
     setCircularPostVacancies(post.vacancies || "");
     setCircularPostDeadline(post.deadline || "");
+    setCircularPostFileType(post.fileType || detectCircularFileType(post.fileUrl || post.applyUrl));
+    setCircularPostFileUrl(post.fileUrl || "");
     setCircularPostApplyUrl(post.applyUrl || "");
     setCircularPostDescription(post.description || "");
     setCircularPostActive(post.active !== false);
+  };
+
+  const handleToggleCircularPostActive = async (id: string) => {
+    const updated = circularPosts.map((p) =>
+      p.id === id ? { ...p, active: p.active === false } : p
+    );
+    setCircularPosts(updated);
+    await saveJobCircularPostsToDb(updated);
+    triggerNotification("success", "বিজ্ঞপ্তির স্ট্যাটাস আপডেট হয়েছে!");
   };
 
   const handleDeleteCircularPost = async (id: string) => {
@@ -8170,24 +8199,24 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       </div>
                     </div>
 
-                    {/* Visual Card Preview */}
+                    {/* Visual Card Preview (Exact 80px × 90px Home Ratio) */}
                     <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 flex items-center gap-4">
-                      <div className="w-[104px] shrink-0 rounded-2xl bg-white border border-orange-100 shadow-xs overflow-hidden flex flex-col text-center">
-                        <div className="w-full h-[76px] bg-[#FFF5EE] flex items-center justify-center overflow-hidden">
+                      <div className="w-[80px] h-[90px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs overflow-hidden flex flex-col text-center">
+                        <div className="w-full h-[62px] bg-orange-50 flex items-center justify-center overflow-hidden shrink-0">
                           {circularCatImageUrl ? (
                             <img
                               src={circularCatImageUrl}
                               alt="Preview"
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover block"
                             />
                           ) : (
-                            <Briefcase className="w-6 h-6 text-[#FF6A00]" />
+                            <Briefcase className="w-5 h-5 text-[#FF6A00]" />
                           )}
                         </div>
-                        <div className="bg-white px-2 py-2 flex items-center justify-center">
-                          <span className="text-xs font-black text-slate-900 line-clamp-1">
-                            {circularCatName.trim() || "সাবজেক্ট নাম"}
+                        <div className="w-full flex-1 bg-white px-1 flex items-center justify-center">
+                          <span className="text-[11px] font-semibold text-slate-900 leading-tight line-clamp-1">
+                            {circularCatName.trim() || "সাবজেক্ট"}
                           </span>
                         </div>
                       </div>
@@ -8512,8 +8541,64 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       </div>
                     </div>
 
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        ফাইলের ধরন ও Google Drive লিংক (PDF / Image)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCircularPostFileType("pdf")}
+                          className={`py-2 px-3 rounded-xl text-xs font-extrabold border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                            circularPostFileType === "pdf"
+                              ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>PDF ফাইল</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCircularPostFileType("image")}
+                          className={`py-2 px-3 rounded-xl text-xs font-extrabold border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                            circularPostFileType === "image"
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          <span>Image (PNG/JPG)</span>
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="https://drive.google.com/file/d/.../view বা সরাসরি ফাইল লিংক"
+                        value={circularPostFileUrl}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCircularPostFileUrl(val);
+                          if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(val)) {
+                            setCircularPostFileType("image");
+                          } else if (/\.pdf(\?|$)/i.test(val)) {
+                            setCircularPostFileType("pdf");
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                      />
+                      {extractGoogleDriveFileId(circularPostFileUrl) ? (
+                        <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-2.5 py-1.5">
+                          Google Drive ফাইল শনাক্ত হয়েছে — ওয়েবসাইটে প্রিভিউ এবং ১-ক্লিক ডাউনলোড কাজ করবে (শেয়ার সেটিংস &ldquo;Anyone with the link&rdquo; রাখুন)।
+                        </p>
+                      ) : (
+                        <p className="text-[10px] font-semibold text-slate-400 pl-1">
+                          গুগল ড্রাইভ শেয়ার লিংক দিলে ইউজার সার্কুলারের ভেতর থেকেই প্রিভিউ ও ১ ক্লিকে ডাউনলোড করতে পারবে।
+                        </p>
+                      )}
+                    </div>
+
                     <div className="space-y-1">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">আবেদন বা পিডিএফ লিংক (ঐচ্ছিক)</label>
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">অনলাইন আবেদন লিংক (ঐচ্ছিক)</label>
                       <input
                         type="text"
                         placeholder="https://..."
@@ -8524,7 +8609,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">বিস্তারিত তথ্য</label>
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">বিস্তারিত তথ্য (ঐচ্ছিক)</label>
                       <textarea
                         rows={3}
                         placeholder="যোগ্যতা, বয়সসীমা ও আবেদন প্রক্রিয়া..."
@@ -8532,6 +8617,21 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                         onChange={(e) => setCircularPostDescription(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
                       />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl px-3 py-2">
+                      <span className="text-xs font-extrabold text-slate-700">ওয়েবসাইটে প্রকাশের অবস্থা</span>
+                      <button
+                        type="button"
+                        onClick={() => setCircularPostActive(!circularPostActive)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all border ${
+                          circularPostActive
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-200 text-slate-600 border-slate-300"
+                        }`}
+                      >
+                        {circularPostActive ? "সক্রিয় (দেখাবে)" : "লুকানো"}
+                      </button>
                     </div>
 
                     <button
@@ -8545,12 +8645,49 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                 </div>
 
                 <div className="lg:col-span-7 bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
-                      <Megaphone className="w-4 h-4 text-[#FF6A00]" />
-                      <span>প্রকাশিত চাকরির বিজ্ঞপ্তি ({circularPosts.length} টি)</span>
-                    </h3>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                        <Megaphone className="w-4 h-4 text-[#FF6A00]" />
+                        <span>প্রকাশিত চাকরির বিজ্ঞপ্তি ({circularPosts.length} টি)</span>
+                      </h3>
+                      <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                        সর্বশেষ যোগ করা বিজ্ঞপ্তি সবার উপরে দেখাবে
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCircularSqlBox(!showCircularSqlBox)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <Database className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{showCircularSqlBox ? "SQL বন্ধ করুন" : "Supabase SQL কোড"}</span>
+                    </button>
                   </div>
+
+                  {showCircularSqlBox && (
+                    <div className="bg-slate-900 text-slate-100 rounded-2xl p-4 space-y-2.5 border border-slate-800">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-extrabold text-amber-300">
+                          Supabase SQL Editor-এ একবার রান করুন (job_circulars + app_config)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(JOB_CIRCULARS_SUPABASE_SQL);
+                            triggerNotification("success", "Supabase SQL কোড কপি করা হয়েছে!");
+                          }}
+                          className="px-3 py-1 rounded-lg bg-[#FF6A00] hover:bg-[#E05E00] text-white text-[11px] font-black flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>SQL কপি করুন</span>
+                        </button>
+                      </div>
+                      <pre className="text-[11px] font-mono text-emerald-300 overflow-x-auto max-h-56 p-2 bg-slate-950 rounded-xl border border-slate-800 leading-relaxed">
+                        {JOB_CIRCULARS_SUPABASE_SQL}
+                      </pre>
+                    </div>
+                  )}
 
                   {circularPosts.length === 0 ? (
                     <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500 font-semibold">
@@ -8558,21 +8695,45 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                     </div>
                   ) : (
                     <div className="space-y-2.5">
-                      {circularPosts.map((post) => {
+                      {[...circularPosts]
+                        .sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0))
+                        .map((post) => {
                         const catObj = circularCategories.find((c) => c.id === post.categoryId);
+                        const postFileType = detectCircularFileType(post.fileUrl || post.applyUrl, post.fileType);
+                        const isDriveLink = Boolean(extractGoogleDriveFileId(post.fileUrl || post.applyUrl));
                         return (
                           <div
                             key={post.id}
-                            className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-start justify-between gap-3"
+                            className={`p-3.5 border rounded-2xl flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap ${
+                              post.active === false
+                                ? "bg-slate-50/60 border-slate-200 opacity-70"
+                                : "bg-slate-50 border-slate-200/80"
+                            }`}
                           >
-                            <div className="space-y-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`text-[10px] font-black text-white px-2 py-0.5 rounded-md ${
+                                    postFileType === "image" ? "bg-indigo-600" : "bg-[#FF6A00]"
+                                  }`}
+                                >
+                                  {postFileType === "image" ? "PNG/IMG" : "PDF"}
+                                </span>
                                 <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
                                   {catObj?.name || "অজানা"}
                                 </span>
                                 {post.deadline && (
                                   <span className="text-[10px] font-bold text-rose-600">
-                                    শেষ: {post.deadline}
+                                    শেষ তারিখ: {post.deadline}
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
+                                  <Eye className="w-3 h-3" />
+                                  <span>{post.views ?? 0}</span>
+                                </span>
+                                {isDriveLink && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                                    Drive যুক্ত
                                   </span>
                                 )}
                               </div>
@@ -8580,11 +8741,22 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                 {post.title}
                               </p>
                               {post.organization && (
-                                <p className="text-[11px] font-semibold text-slate-500">{post.organization}</p>
+                                <p className="text-[11px] font-bold text-[#FF6A00]">{post.organization}</p>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCircularPostActive(post.id)}
+                                className={`px-2 py-1.5 rounded-xl text-[11px] font-extrabold cursor-pointer ${
+                                  post.active === false
+                                    ? "bg-slate-200 text-slate-700"
+                                    : "bg-emerald-50 text-emerald-700"
+                                }`}
+                              >
+                                {post.active === false ? "চালু করুন" : "সক্রিয়"}
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleEditCircularPost(post)}

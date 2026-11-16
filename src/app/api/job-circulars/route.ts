@@ -13,7 +13,7 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-interface JobCircularsBundle {
+export interface JobCircularsBundle {
   categories: JobCircularCategory[];
   posts: JobCircularPost[];
 }
@@ -22,9 +22,13 @@ const PROJECT_DATA_FILE = path.join(process.cwd(), "src", "data", "job_circulars
 const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_job_circulars_cache.json");
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_job_circulars_v1";
 
-let memoryCircularsCache: JobCircularsBundle | null = null;
+export let memoryCircularsCache: JobCircularsBundle | null = null;
 
-function loadFromDiskFile(filePath: string): JobCircularsBundle | null {
+export function setMemoryCircularsCache(bundle: JobCircularsBundle) {
+  memoryCircularsCache = bundle;
+}
+
+export function loadCircularsFromDiskFile(filePath: string): JobCircularsBundle | null {
   try {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, "utf-8");
@@ -42,7 +46,7 @@ function loadFromDiskFile(filePath: string): JobCircularsBundle | null {
   return null;
 }
 
-function saveToDiskFile(filePath: string, bundle: JobCircularsBundle) {
+export function saveCircularsToDiskFile(filePath: string, bundle: JobCircularsBundle) {
   try {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
@@ -54,7 +58,7 @@ function saveToDiskFile(filePath: string, bundle: JobCircularsBundle) {
   }
 }
 
-async function loadFromKvStore(): Promise<JobCircularsBundle | null> {
+export async function loadCircularsFromKvStore(): Promise<JobCircularsBundle | null> {
   try {
     const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
     if (res.ok) {
@@ -72,7 +76,7 @@ async function loadFromKvStore(): Promise<JobCircularsBundle | null> {
   return null;
 }
 
-async function saveToKvStore(bundle: JobCircularsBundle) {
+export async function saveCircularsToKvStore(bundle: JobCircularsBundle) {
   try {
     await fetch(CLOUD_KV_URL, {
       method: "POST",
@@ -84,31 +88,88 @@ async function saveToKvStore(bundle: JobCircularsBundle) {
   }
 }
 
+async function syncPostsToDedicatedSupabaseTable(posts: JobCircularPost[]) {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const { data: existingRows, error: checkErr } = await supabase
+      .from("job_circulars")
+      .select("id");
+
+    // Silently skip if user hasn't created the dedicated job_circulars table yet (app_config still holds everything!)
+    if (checkErr) return;
+
+    const keepIds = new Set(posts.map((p) => p.id));
+    const toDeleteIds = (existingRows || [])
+      .map((r: any) => String(r.id))
+      .filter((id) => !keepIds.has(id));
+
+    if (toDeleteIds.length > 0) {
+      await supabase.from("job_circulars").delete().in("id", toDeleteIds);
+    }
+
+    if (posts.length > 0) {
+      const rows = posts.map((p) => ({
+        id: p.id,
+        category_id: p.categoryId,
+        title: p.title,
+        organization: p.organization || "",
+        vacancies: p.vacancies || "",
+        deadline: p.deadline || "",
+        file_type: p.fileType || "pdf",
+        file_url: p.fileUrl || "",
+        apply_url: p.applyUrl || "",
+        description: p.description || "",
+        views: p.views ?? 0,
+        active: p.active !== false,
+        published_at: p.publishedAt || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      await supabase.from("job_circulars").upsert(rows, { onConflict: "id" });
+    }
+  } catch (e) {
+    // Fallback gracefully to app_config
+  }
+}
+
 export async function GET() {
   try {
-    // 1. Primary: Supabase app_config
+    // 1. Primary: Supabase (dedicated job_circulars table + app_config)
     try {
       const supabase = getSupabase();
       if (supabase) {
-        const [{ data: catRow }, { data: postRow }] = await Promise.all([
-          supabase.from("app_config").select("value").eq("key", "job_circular_categories").maybeSingle(),
-          supabase.from("app_config").select("value").eq("key", "job_circular_posts").maybeSingle(),
-        ]);
+        const [{ data: catRow }, { data: postRow }, { data: tableRows, error: tableErr }] =
+          await Promise.all([
+            supabase.from("app_config").select("value").eq("key", "job_circular_categories").maybeSingle(),
+            supabase.from("app_config").select("value").eq("key", "job_circular_posts").maybeSingle(),
+            supabase.from("job_circulars").select("*").order("published_at", { ascending: false }),
+          ]);
 
         const hasCats = catRow && Array.isArray(catRow.value) && catRow.value.length > 0;
-        const hasPosts = postRow && Array.isArray(postRow.value);
+        const hasTablePosts = !tableErr && Array.isArray(tableRows) && tableRows.length > 0;
+        const hasConfigPosts = postRow && Array.isArray(postRow.value);
 
-        if (hasCats || hasPosts) {
+        if (hasCats || hasTablePosts || hasConfigPosts) {
+          const resolvedPosts = hasTablePosts
+            ? normalizeCircularPosts(tableRows)
+            : hasConfigPosts
+            ? normalizeCircularPosts(postRow.value)
+            : DEFAULT_JOB_CIRCULAR_POSTS;
+
           const bundle: JobCircularsBundle = {
             categories: hasCats
               ? normalizeCircularCategories(catRow.value)
               : DEFAULT_JOB_CIRCULAR_CATEGORIES,
-            posts: hasPosts ? normalizeCircularPosts(postRow.value) : DEFAULT_JOB_CIRCULAR_POSTS,
+            posts: resolvedPosts,
           };
           memoryCircularsCache = bundle;
-          saveToDiskFile(TMP_CACHE_FILE, bundle);
-          saveToDiskFile(PROJECT_DATA_FILE, bundle);
-          return NextResponse.json({ ...bundle, source: "supabase_app_config" });
+          saveCircularsToDiskFile(TMP_CACHE_FILE, bundle);
+          saveCircularsToDiskFile(PROJECT_DATA_FILE, bundle);
+          return NextResponse.json({
+            ...bundle,
+            source: hasTablePosts ? "supabase_job_circulars" : "supabase_app_config",
+          });
         }
       }
     } catch (sbErr) {
@@ -116,15 +177,16 @@ export async function GET() {
     }
 
     // 2. Cloud KV Store
-    const kvCached = await loadFromKvStore();
+    const kvCached = await loadCircularsFromKvStore();
     if (kvCached && kvCached.categories.length > 0) {
       memoryCircularsCache = kvCached;
-      saveToDiskFile(TMP_CACHE_FILE, kvCached);
+      saveCircularsToDiskFile(TMP_CACHE_FILE, kvCached);
       return NextResponse.json({ ...kvCached, source: "kv" });
     }
 
     // 3. Local Disk Cache
-    const diskCached = loadFromDiskFile(TMP_CACHE_FILE) || loadFromDiskFile(PROJECT_DATA_FILE);
+    const diskCached =
+      loadCircularsFromDiskFile(TMP_CACHE_FILE) || loadCircularsFromDiskFile(PROJECT_DATA_FILE);
     if (diskCached && diskCached.categories.length > 0) {
       memoryCircularsCache = diskCached;
       return NextResponse.json({ ...diskCached, source: "disk" });
@@ -156,8 +218,8 @@ export async function POST(req: NextRequest) {
     // Load current bundle so partial updates (categories-only or posts-only) keep the other intact
     const currentFallback =
       memoryCircularsCache ||
-      loadFromDiskFile(TMP_CACHE_FILE) ||
-      loadFromDiskFile(PROJECT_DATA_FILE) || {
+      loadCircularsFromDiskFile(TMP_CACHE_FILE) ||
+      loadCircularsFromDiskFile(PROJECT_DATA_FILE) || {
         categories: DEFAULT_JOB_CIRCULAR_CATEGORIES,
         posts: DEFAULT_JOB_CIRCULAR_POSTS,
       };
@@ -176,9 +238,9 @@ export async function POST(req: NextRequest) {
     };
 
     memoryCircularsCache = bundle;
-    saveToDiskFile(TMP_CACHE_FILE, bundle);
-    saveToDiskFile(PROJECT_DATA_FILE, bundle);
-    await saveToKvStore(bundle);
+    saveCircularsToDiskFile(TMP_CACHE_FILE, bundle);
+    saveCircularsToDiskFile(PROJECT_DATA_FILE, bundle);
+    await saveCircularsToKvStore(bundle);
 
     try {
       const supabase = getSupabase();
@@ -200,6 +262,10 @@ export async function POST(req: NextRequest) {
         }
         if (upserts.length > 0) {
           await supabase.from("app_config").upsert(upserts, { onConflict: "key" });
+        }
+
+        if (Array.isArray(body?.posts)) {
+          await syncPostsToDedicatedSupabaseTable(nextPosts);
         }
       }
     } catch (sbErr) {
