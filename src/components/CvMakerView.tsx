@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { triggerAndroidInterstitialAd } from "../lib/android_bridge";
 import {
   User,
   Camera,
@@ -1074,6 +1075,7 @@ export default function CvMakerView({
       return;
     }
 
+    triggerAndroidInterstitialAd("download_cv_pdf");
     setIsGeneratingPdf(true);
     playClick();
 

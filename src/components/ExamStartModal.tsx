@@ -5,6 +5,7 @@ import { X, Clock, HelpCircle, CheckCircle2, AlertTriangle, ShieldCheck, WifiOff
 import { ExamPaper, getExamStatus } from "../lib/exams";
 import MathRenderer from "./MathRenderer";
 import { useExamExitProtection } from "../hooks/useBackButton";
+import { triggerAndroidInterstitialAd } from "../lib/android_bridge";
 
 interface ExamStartModalProps {
   paper: ExamPaper | null;
@@ -116,6 +117,7 @@ export default function ExamStartModal({
   // Submit Exam
   const handleFinalSubmit = useCallback(() => {
     if (isSubmitted || !paper) return;
+    triggerAndroidInterstitialAd("submit_exam");
     setIsSubmitted(true);
     setShowConfirmSubmit(false);
 

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { ExamPaper, getExamStatus, fetchExamPaperById } from "../lib/exams";
 import MathRenderer from "./MathRenderer";
+import { triggerAndroidInterstitialAd } from "../lib/android_bridge";
 
 interface CourseExamRoutineViewProps {
   courseName: string;
@@ -151,6 +152,7 @@ export default function CourseExamRoutineView({
   };
 
   const handleOpenPaperQuestions = async (paper: ExamPaper) => {
+    triggerAndroidInterstitialAd("open_question_paper");
     loadingPaperIdRef.current = paper.id;
     setSelectedQuestionsPaper(paper);
     setRevealedAnswers({});
@@ -504,6 +506,7 @@ export default function CourseExamRoutineView({
                         <button
                           type="button"
                           onClick={() => {
+                            triggerAndroidInterstitialAd("view_exam_result");
                             onViewLeaderboard(paper);
                             playClick();
                           }}
@@ -600,6 +603,7 @@ export default function CourseExamRoutineView({
                         <button
                           type="button"
                           onClick={() => {
+                            triggerAndroidInterstitialAd("view_exam_result");
                             onViewLeaderboard(paper);
                             playClick();
                           }}

@@ -97,6 +97,7 @@ import { useModalHistory, useExamExitProtection, useAppNavigationHistory, genera
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { updateUsernameOnServer, changeUserPasswordOnServer } from "../lib/user_auth";
 import { useOneSignal } from "../hooks/useOneSignal";
+import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd } from "../lib/android_bridge";
 
 // Code-split heavy interactive modals & components via next/dynamic
 const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { 
@@ -1908,6 +1909,7 @@ export default function Home() {
     }
 
     const duration = fullPaper.totalDurationSeconds || (fullPaper.questions?.length || fullPaper.questionCount || 10) * 36;
+    triggerAndroidInterstitialAd("start_exam");
     setTakingExamModal(fullPaper);
     setExamUserAnswers({});
     setExamSubmitted(false);
@@ -1993,6 +1995,7 @@ export default function Home() {
     const secs = timeTakenSecs % 60;
     const timeTakenFormatted = `${mins > 0 ? `${mins} মি: ` : ""}${secs} সে:`;
 
+    triggerAndroidInterstitialAd("submit_exam");
     setExamSubmitted(true);
     setExamResultSummary({
       totalQuestions,
@@ -2246,6 +2249,8 @@ export default function Home() {
       triggerOfflineWarning();
       return;
     }
+
+    triggerAndroidInterstitialAd("start_quiz");
 
     setActiveQuizTitle(title);
     setActiveQuizSubtitle(subtitle);
@@ -3011,6 +3016,13 @@ export default function Home() {
 
   // Handle loading next question
   const handleNext = () => {
+    const nextClickCount = currentQuestionIndex + 1;
+    if (nextClickCount === 3) {
+      triggerAndroidInterstitialAd("quiz_next_3");
+    } else if (nextClickCount === 6) {
+      triggerAndroidInterstitialAd("quiz_next_6");
+    }
+
     setSelectedOptionIndex(null);
     setIsSubmitted(false);
     setTimeLeft(30);
@@ -3077,6 +3089,7 @@ export default function Home() {
     }
 
     if (soundEnabled) quizAudio.playClick();
+    triggerAndroidRewardedAd("quiz_replay_reward");
 
     // Immediately show quiz screen with skeleton loader!
     setLoading(true);
@@ -4355,7 +4368,10 @@ export default function Home() {
                       আবার খেলুন
                     </button>
                     <button
-                      onClick={() => setCurrentScreen("rankings")}
+                      onClick={() => {
+                        triggerAndroidRewardedAd("quiz_rankings_reward");
+                        setCurrentScreen("rankings");
+                      }}
                       className="py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                     >
                       <Trophy className="w-4 h-4 text-amber-400" />
@@ -4413,7 +4429,10 @@ export default function Home() {
                       <RotateCcw className="w-4 h-4" /> আবার খেলুন
                     </button>
                     <button
-                      onClick={() => setCurrentScreen("rankings")}
+                      onClick={() => {
+                        triggerAndroidRewardedAd("quiz_rankings_reward");
+                        setCurrentScreen("rankings");
+                      }}
                       className="py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
                     >
                       <Trophy className="w-4 h-4 text-amber-400" />
@@ -6082,6 +6101,7 @@ export default function Home() {
                               href={downloadHref}
                               download
                               onClick={() => {
+                                triggerAndroidInterstitialAd("download_circular");
                                 if (soundEnabled) quizAudio.playClick();
                               }}
                               className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#FF6A00] hover:bg-[#E05E00] text-white text-xs sm:text-sm font-black shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all"
@@ -6120,6 +6140,10 @@ export default function Home() {
                               <a
                                 href={downloadHref}
                                 download
+                                onClick={() => {
+                                  triggerAndroidInterstitialAd("download_circular");
+                                  if (soundEnabled) quizAudio.playClick();
+                                }}
                                 className="text-[11px] font-extrabold text-[#FF6A00] hover:underline flex items-center gap-1"
                               >
                                 <Download className="w-3 h-3" />
@@ -8636,6 +8660,7 @@ export default function Home() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
+                        triggerAndroidInterstitialAd("view_exam_result");
                         const paper = takingExamModal;
                         setViewingAnswerSheetData({
                           paper,
