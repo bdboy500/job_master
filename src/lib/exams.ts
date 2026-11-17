@@ -62,6 +62,35 @@ export function isQuestionBankPaper(paper: Partial<ExamPaper> | null | undefined
   return false;
 }
 
+export const QUESTION_BANK_SUBJECT = "Question Bank";
+
+export const QUESTION_BANK_SUBJECT_VARIANTS = [
+  "Question Bank",
+  "question bank",
+  "Question bank",
+  "question_bank",
+  "Question_Bank",
+  "প্রশ্ন ব্যাংক",
+  "প্রশ্নব্যাংক"
+];
+
+export function isQuestionBankSubject(subjectName?: string | null): boolean {
+  if (!subjectName) return false;
+  const normalized = String(subjectName)
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+  return (
+    normalized === "question bank" ||
+    normalized.includes("question bank") ||
+    normalized === "প্রশ্ন ব্যাংক" ||
+    normalized === "প্রশ্নব্যাংক" ||
+    normalized.includes("প্রশ্ন ব্যাংক") ||
+    normalized.includes("প্রশ্নব্যাংক")
+  );
+}
+
 export function formatQuestionBankDisplayDate(year: number | string, month?: number | string): string {
   const cleanYearEn = toEnglishDigits(String(year || "")).replace(/\D/g, "");
   const yearBn = cleanYearEn ? toBanglaDigits(cleanYearEn) : "";

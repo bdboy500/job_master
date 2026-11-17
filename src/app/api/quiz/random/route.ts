@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/src/lib/supabase";
 import { QUIZ_QUESTIONS, Question } from "@/src/data";
+import { isQuestionBankSubject } from "@/src/lib/exams";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 function isSubjectMatch(subjectName: string, targetSubject: string): boolean {
   if (!subjectName) return false;
+  if (isQuestionBankSubject(subjectName)) {
+    return isQuestionBankSubject(targetSubject);
+  }
+  if (isQuestionBankSubject(targetSubject)) return false;
+
   const s = subjectName.trim().toLowerCase();
   const t = targetSubject.trim().toLowerCase();
 
@@ -126,9 +132,9 @@ export async function GET(req: NextRequest) {
 
     let candidatePool: Question[] = [];
 
-    if (isLiveQuiz) {
+      if (isLiveQuiz) {
       // 1. Check in-memory server cache for Live Quiz GK questions (0 egress, sub-10ms response)
-      const cacheKey = "live_quiz_gk";
+      const cacheKey = "v2_live_quiz_gk";
       const cached = serverQuizCache.get(cacheKey);
 
       if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.questions.length > 0) {
@@ -153,7 +159,9 @@ export async function GET(req: NextRequest) {
               ]);
 
             if (!error && data && data.length > 0) {
-              fetchedGk = data.map(normalizeRawQuestion);
+              fetchedGk = data
+                .map(normalizeRawQuestion)
+                .filter(q => !isQuestionBankSubject(q.subject));
             }
           }
         } catch (e) {
@@ -162,6 +170,7 @@ export async function GET(req: NextRequest) {
 
         const fallbackGkQuestions = QUIZ_QUESTIONS.filter(q => {
           const subj = q.subject || q.subjectName || "";
+          if (isQuestionBankSubject(subj)) return false;
           return isSubjectMatch(subj, "General Knowledge(GK)");
         }).map(normalizeRawQuestion);
 
@@ -171,6 +180,7 @@ export async function GET(req: NextRequest) {
         const merged: Question[] = [];
 
         for (const q of fetchedGk) {
+          if (isQuestionBankSubject(q.subject)) continue;
           const textKey = q.question.trim().toLowerCase();
           if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
             seenIds.add(q.id);
@@ -180,6 +190,7 @@ export async function GET(req: NextRequest) {
         }
 
         for (const q of fallbackGkQuestions) {
+          if (isQuestionBankSubject(q.subject)) continue;
           const textKey = q.question.trim().toLowerCase();
           if (!seenIds.has(q.id) && !seenTexts.has(textKey)) {
             seenIds.add(q.id);
@@ -197,7 +208,16 @@ export async function GET(req: NextRequest) {
       }
     } else {
       const subject = searchParams.get("subject") || "all";
-      const cacheKey = `subject_${subject.toLowerCase()}`;
+      if (isQuestionBankSubject(subject)) {
+        return NextResponse.json({
+          questions: [],
+          totalPoolCount: 0,
+          unseenCountRemaining: 0,
+          cycleReset: false
+        });
+      }
+
+      const cacheKey = `v2_subject_${subject.toLowerCase()}`;
       const cached = serverQuizCache.get(cacheKey);
 
       if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.questions.length > 0) {
@@ -210,6 +230,10 @@ export async function GET(req: NextRequest) {
             let query = supabase
               .from("questions")
               .select("id, subjectName, questionText, options, correctOptionIndex, explanation")
+              .not("subjectName", "ilike", "%question bank%")
+              .not("subjectName", "ilike", "%question_bank%")
+              .not("subjectName", "ilike", "%প্রশ্ন ব্যাংক%")
+              .not("subjectName", "ilike", "%প্রশ্নব্যাংক%")
               .limit(60);
 
             if (subject !== "all" && subject.trim() !== "") {
@@ -218,7 +242,9 @@ export async function GET(req: NextRequest) {
 
             const { data, error } = await query;
             if (!error && data && data.length > 0) {
-              fetched = data.map(normalizeRawQuestion);
+              fetched = data
+                .map(normalizeRawQuestion)
+                .filter(q => !isQuestionBankSubject(q.subject));
             }
           }
         } catch (e) {
@@ -226,22 +252,28 @@ export async function GET(req: NextRequest) {
         }
 
         const fallback = QUIZ_QUESTIONS.filter(q => {
+          if (isQuestionBankSubject(q.subject || q.subjectName || "")) return false;
           if (subject === "all") return true;
           return isSubjectMatch(q.subject || "", subject);
         }).map(normalizeRawQuestion);
 
-        const merged = fetched.length > 0 ? fetched : fallback;
+        const merged = (fetched.length > 0 ? fetched : fallback).filter(
+          q => !isQuestionBankSubject(q.subject)
+        );
         if (merged.length > 0) {
           serverQuizCache.set(cacheKey, { questions: merged, timestamp: Date.now() });
         }
-        candidatePool = merged.length > 0 ? merged : QUIZ_QUESTIONS.map(normalizeRawQuestion);
+        candidatePool = (merged.length > 0 ? merged : QUIZ_QUESTIONS.map(normalizeRawQuestion)).filter(
+          q => !isQuestionBankSubject(q.subject)
+        );
       }
     }
 
-    // Step A: Deduplicate candidate pool
+    // Step A: Deduplicate candidate pool (strictly excluding Question Bank questions)
     const uniqueCandidates: Question[] = [];
     const dedupKeys = new Set<string>();
     for (const q of candidatePool) {
+      if (isQuestionBankSubject(q.subject)) continue;
       const key = `${q.id}:::${q.question.trim().toLowerCase()}`;
       if (!dedupKeys.has(key)) {
         dedupKeys.add(key);

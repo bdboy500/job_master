@@ -91,7 +91,7 @@ import {
   deleteUserProfileFromDb, 
   UserProfile 
 } from "../../lib/user_profiles";
-import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, QB_MONTH_NAMES, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, isQuestionBankSubject, QUESTION_BANK_SUBJECT, QUESTION_BANK_SUBJECT_VARIANTS, QB_MONTH_NAMES, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { PaymentTransaction, UserSubscription, SUBSCRIPTIONS_BKASH_SUPABASE_SQL, formatSubscriptionDateBn } from "../../lib/subscriptions";
 import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
@@ -298,14 +298,24 @@ function normalizeQuestion(q: any): Question {
 }
 
 function matchesSubject(questionSubject: string, targetSubjects: string[]): boolean {
-  if (!targetSubjects || targetSubjects.length === 0 || targetSubjects.includes("All")) return true;
-  
   const qSub = (questionSubject || "").toLowerCase().trim();
+  if (!targetSubjects || targetSubjects.length === 0 || targetSubjects.includes("All")) {
+    return !isQuestionBankSubject(qSub);
+  }
+
   if (!qSub) return false;
-  
+
   return targetSubjects.some(target => {
     const tSub = target.toLowerCase().trim();
-    if (!tSub || tSub === "all") return true;
+    if (!tSub || tSub === "all") return !isQuestionBankSubject(qSub);
+
+    // Strictly isolate Question Bank MCQs from all non-Question-Bank subjects
+    if (isQuestionBankSubject(qSub)) {
+      return isQuestionBankSubject(tSub);
+    }
+    if (isQuestionBankSubject(tSub)) {
+      return false;
+    }
 
     // Direct exact match or bidirectional substring match
     if (qSub === tSub || qSub.includes(tSub) || tSub.includes(qSub)) return true;
@@ -460,6 +470,10 @@ function getSubjectVariants(subject: string): string[] {
     variants.add("Mathematics (Geometry)");
     variants.add("Geometry");
     variants.add("Mathematics(Geometry)");
+  }
+  // Question Bank variants
+  else if (isQuestionBankSubject(lower)) {
+    QUESTION_BANK_SUBJECT_VARIANTS.forEach(v => variants.add(v));
   }
 
   return Array.from(variants);
@@ -651,6 +665,9 @@ export default function AdminPage() {
     "General Knowledge(GK)"
   ];
 
+  // Full MCQ repository subject options (Question Bank is kept strictly separate from regular exam subjects)
+  const ALL_ADMIN_MCQ_SUBJECTS = [...SUBJECTS, QUESTION_BANK_SUBJECT];
+
   // Subject Bengali Names & Metadata Map
   const SUBJECT_BN_MAP: Record<string, { bn: string }> = {
     "Bangla Literature": { bn: "বাংলা সাহিত্য" },
@@ -671,7 +688,8 @@ export default function AdminPage() {
     "Chemistry": { bn: "রসায়ন" },
     "Biology": { bn: "জীববিজ্ঞান" },
     "Recent & Updated": { bn: "সাম্প্রতিক ও আপডেটেড" },
-    "General Knowledge(GK)": { bn: "সাধারণ জ্ঞান (GK)" }
+    "General Knowledge(GK)": { bn: "সাধারণ জ্ঞান (GK)" },
+    "Question Bank": { bn: "প্রশ্নব্যাংক (Question Bank)" }
   };
 
   // Dynamic Courses & Exam Types list
@@ -831,7 +849,6 @@ export default function AdminPage() {
   const [qbQuestions, setQbQuestions] = useState<Question[]>([]);
   const [qbTargetCount, setQbTargetCount] = useState<number>(100);
   const [qbSearchQuery, setQbSearchQuery] = useState<string>("");
-  const [qbSearchSubjects, setQbSearchSubjects] = useState<string[]>(["All"]);
   const [qbAvailableQuestions, setQbAvailableQuestions] = useState<Question[]>([]);
   const [qbLoadingQuestions, setQbLoadingQuestions] = useState<boolean>(false);
   const [qbHasFetched, setQbHasFetched] = useState<boolean>(false);
@@ -886,11 +903,19 @@ export default function AdminPage() {
         if (targetSubjects.length > 0 && !targetSubjects.includes("All")) {
           const allVariants: string[] = [];
           targetSubjects.forEach(s => {
-            allVariants.push(...getSubjectVariants(s));
+            if (!isQuestionBankSubject(s)) {
+              allVariants.push(...getSubjectVariants(s));
+            }
           });
           if (allVariants.length > 0) {
             query = query.in("subjectName", Array.from(new Set(allVariants)));
           }
+        } else {
+          query = query
+            .not("subjectName", "ilike", "%question bank%")
+            .not("subjectName", "ilike", "%question_bank%")
+            .not("subjectName", "ilike", "%প্রশ্ন ব্যাংক%")
+            .not("subjectName", "ilike", "%প্রশ্নব্যাংক%");
         }
 
         const { data, error } = await query;
@@ -921,6 +946,9 @@ export default function AdminPage() {
     });
 
     let merged = Array.from(combinedMap.values());
+
+    // Strictly exclude Question Bank MCQs from regular exam papers (Our Course, Prep Hub, Pro, Weekly Model Test)
+    merged = merged.filter(q => !isQuestionBankSubject(q.subject || q.subjectName));
 
     // Exclude BCS Health Question if not special exam
     if (paperExamType !== "special") {
@@ -1015,7 +1043,7 @@ export default function AdminPage() {
       } catch {}
     }
     const init: Record<string, number> = {};
-    SUBJECTS.forEach((s) => {
+    ALL_ADMIN_MCQ_SUBJECTS.forEach((s) => {
       init[s] = 0;
     });
     return init;
@@ -2137,6 +2165,7 @@ export default function AdminPage() {
       const extraLocal = QUIZ_QUESTIONS
         .map(q => normalizeQuestion(q))
         .filter(q => {
+          if (isQuestionBankSubject(q.subject || q.subjectName)) return false;
           if (paperExamType !== "special" && (q.subject || q.subjectName) === "BCS Health Question") return false;
           if (!paperSearchSubjects.includes("All") && paperSearchSubjects.length > 0) {
             if (!matchesSubject(q.subject || q.subjectName || "", paperSearchSubjects)) return false;
@@ -2542,31 +2571,15 @@ export default function AdminPage() {
     triggerNotification("success", "সাব-সাবজেক্ট ডিলিট করা হয়েছে।");
   };
 
-  const toggleQbSearchSubject = (subj: string) => {
-    if (subj === "All") {
-      setQbSearchSubjects(["All"]);
-      return;
-    }
-    setQbSearchSubjects((prev) => {
-      const withoutAll = prev.filter((s) => s !== "All");
-      const next = withoutAll.includes(subj)
-        ? withoutAll.filter((s) => s !== subj)
-        : [...withoutAll, subj];
-      return next.length === 0 ? ["All"] : next;
-    });
-  };
-
+  // Strictly load ONLY "Question Bank" subject MCQs for Question Bank papers (never mix regular subjects or QUIZ_QUESTIONS)
   const loadQbQuestionsFromDb = async (
-    overrideSubjects?: string[],
     overrideQuery?: string,
-    overrideForceRefresh: boolean = false,
+    _overrideForceRefresh: boolean = false,
     overrideCount?: number
   ): Promise<Question[]> => {
-    const targetSubjects = overrideSubjects !== undefined ? overrideSubjects : qbSearchSubjects;
     const targetQuery = overrideQuery !== undefined ? overrideQuery : qbSearchQuery;
     const targetCount = overrideCount !== undefined ? overrideCount : qbTargetCount;
-    const cleanQuery = targetQuery.trim().toLowerCase();
-    const effectiveQuery = cleanQuery.length >= 2 ? cleanQuery : "";
+    const cleanQuery = targetQuery.trim();
 
     setQbLoadingQuestions(true);
     let fetchedList: Question[] = [];
@@ -2574,34 +2587,40 @@ export default function AdminPage() {
     try {
       const supabase = getSupabase();
       if (supabase) {
-        let query = supabase
+        const qbVariants = Array.from(new Set(QUESTION_BANK_SUBJECT_VARIANTS));
+        const { data, error } = await supabase
           .from("questions")
           .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
+          .in("subjectName", qbVariants)
           .order("created_at", { ascending: false })
-          .limit(1000);
+          .limit(2000);
 
-        if (targetSubjects.length > 0 && !targetSubjects.includes("All")) {
-          const allVariants: string[] = [];
-          targetSubjects.forEach((s) => {
-            allVariants.push(...getSubjectVariants(s));
-          });
-          if (allVariants.length > 0) {
-            query = query.in("subjectName", Array.from(new Set(allVariants)));
-          }
-        }
-
-        const { data, error } = await query;
         if (!error && Array.isArray(data) && data.length > 0) {
-          fetchedList = data.map((q) => normalizeQuestion(q));
+          fetchedList = data
+            .map((q) => normalizeQuestion(q))
+            .filter((q) => isQuestionBankSubject(q.subject || q.subjectName));
         }
       }
     } catch (err) {
-      console.warn("Could not load QB questions from Supabase:", err);
+      console.warn("Could not load Question Bank MCQs from Supabase:", err);
     }
 
-    const localPool = QUIZ_QUESTIONS.map((q) => normalizeQuestion(q));
+    if (fetchedList.length === 0 && typeof window !== "undefined") {
+      try {
+        const cachedMock = localStorage.getItem("job_master_admin_questions");
+        if (cachedMock) {
+          const parsed = JSON.parse(cachedMock);
+          if (Array.isArray(parsed)) {
+            fetchedList = parsed
+              .map((q: unknown) => normalizeQuestion(q))
+              .filter((q) => isQuestionBankSubject(q.subject || q.subjectName));
+          }
+        }
+      } catch {}
+    }
+
     const combinedMap = new Map<string, Question>();
-    [...fetchedList, ...localPool].forEach((q) => {
+    fetchedList.forEach((q) => {
       const key = (q.question || q.questionText || "").trim();
       if (key && !combinedMap.has(key)) {
         combinedMap.set(key, q);
@@ -2609,22 +2628,25 @@ export default function AdminPage() {
     });
 
     let pool = Array.from(combinedMap.values());
-    if (targetSubjects.length > 0 && !targetSubjects.includes("All")) {
-      pool = pool.filter((q) => matchesSubject(q.subject || q.subjectName || "", targetSubjects));
-    }
-    if (effectiveQuery) {
-      pool = pool.filter((q) => questionMatchesSearch(q, effectiveQuery));
+    if (cleanQuery.length > 0) {
+      pool = filterAndRankQuestions(pool, cleanQuery);
     }
 
-    const displaySlice = overrideForceRefresh
-      ? [...pool].slice(0, targetCount)
-      : pool.slice(0, targetCount);
+    const displaySlice = pool.slice(0, targetCount);
 
     setQbAvailableQuestions(displaySlice);
     setQbHasFetched(true);
     setQbLoadingQuestions(false);
     return pool;
   };
+
+  useEffect(() => {
+    if (!qbHasFetched && !qbSearchQuery.trim()) return;
+    const timer = setTimeout(() => {
+      loadQbQuestionsFromDb(qbSearchQuery, true, qbTargetCount);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [qbSearchQuery]);
 
   const handleAddQuestionToQbPaper = (q: Question) => {
     const normQ = normalizeQuestion(q);
@@ -2658,17 +2680,17 @@ export default function AdminPage() {
       triggerNotification("error", `প্রশ্নপত্র ইতিমধ্যেই ${qbQuestions.length} টি প্রশ্নে পূর্ণ!`);
       return;
     }
-    const pool = await loadQbQuestionsFromDb(qbSearchSubjects, qbSearchQuery, true, Math.max(qbTargetCount, 200));
+    const pool = await loadQbQuestionsFromDb(qbSearchQuery, true, Math.max(qbTargetCount, 500));
     const candidates = pool.filter(
       (q) => !qbQuestions.some((pq) => pq.id === q.id || (pq.question || pq.questionText) === (q.question || q.questionText))
     );
     if (candidates.length === 0) {
-      triggerNotification("error", "সিলেক্টেড ফিল্টারে নতুন কোনো প্রশ্ন পাওয়া যায়নি।");
+      triggerNotification("error", "Question Bank সাবজেক্টে নতুন কোনো প্রশ্ন পাওয়া যায়নি।");
       return;
     }
     const shuffled = [...candidates].sort(() => 0.5 - Math.random()).slice(0, needed);
     setQbQuestions((prev) => [...prev, ...shuffled]);
-    triggerNotification("success", `${shuffled.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে যোগ করা হয়েছে!`);
+    triggerNotification("success", `${shuffled.length} টি প্রশ্ন Question Bank থেকে স্বয়ংক্রিয়ভাবে যোগ করা হয়েছে!`);
   };
 
   const handleQbBulkJsonImport = (rawInput: string) => {
@@ -2692,6 +2714,10 @@ export default function AdminPage() {
       for (const item of rawArray) {
         if (!item || typeof item !== "object") continue;
         const norm = normalizeQuestion(item);
+        if (!norm.subject || norm.subject === "General") {
+          norm.subject = QUESTION_BANK_SUBJECT;
+          norm.subjectName = QUESTION_BANK_SUBJECT;
+        }
         if (!norm.question && !norm.questionText) continue;
         if (!Array.isArray(norm.options) || norm.options.length < 2) continue;
         const alreadyInPaper = qbQuestions.some(
@@ -2848,7 +2874,7 @@ export default function AdminPage() {
   ) => {
     setSubjectWiseCounts((prev) => {
       const updated: Record<string, number> = { ...prev };
-      SUBJECTS.forEach((sub) => {
+      ALL_ADMIN_MCQ_SUBJECTS.forEach((sub) => {
         if (updated[sub] === undefined) updated[sub] = 0;
       });
 
@@ -2929,13 +2955,15 @@ export default function AdminPage() {
 
           if (!error && data) {
             const counts: Record<string, number> = {};
-            SUBJECTS.forEach((sub) => {
+            ALL_ADMIN_MCQ_SUBJECTS.forEach((sub) => {
               counts[sub] = 0;
             });
 
             data.forEach((row: any) => {
               const rawSub = (row.subjectName || row.subject_name || "Other").trim();
-              const matched = SUBJECTS.find(s => s.trim().toLowerCase() === rawSub.toLowerCase());
+              const matched = isQuestionBankSubject(rawSub)
+                ? QUESTION_BANK_SUBJECT
+                : ALL_ADMIN_MCQ_SUBJECTS.find(s => s.trim().toLowerCase() === rawSub.toLowerCase());
               const key = matched || rawSub;
               counts[key] = (counts[key] || 0) + 1;
             });
@@ -2968,7 +2996,7 @@ export default function AdminPage() {
 
       // Fallback: calculate from cached local questions or QUIZ_QUESTIONS
       const counts: Record<string, number> = {};
-      SUBJECTS.forEach((sub) => {
+      ALL_ADMIN_MCQ_SUBJECTS.forEach((sub) => {
         counts[sub] = 0;
       });
 
@@ -2985,7 +3013,9 @@ export default function AdminPage() {
 
       pool.forEach((q: any) => {
         const rawSub = (q.subjectName || q.subject || "Other").trim();
-        const matched = SUBJECTS.find(s => s.trim().toLowerCase() === rawSub.toLowerCase());
+        const matched = isQuestionBankSubject(rawSub)
+          ? QUESTION_BANK_SUBJECT
+          : ALL_ADMIN_MCQ_SUBJECTS.find(s => s.trim().toLowerCase() === rawSub.toLowerCase());
         const key = matched || rawSub;
         counts[key] = (counts[key] || 0) + 1;
       });
@@ -3007,7 +3037,7 @@ export default function AdminPage() {
   const renderSubjectWiseCounts = (isMobileView: boolean = false) => {
     const totalInMap = Object.values(subjectWiseCounts).reduce((a, b) => a + b, 0);
     const displayTotal = totalQuestionsCount || totalInMap || 0;
-    const allSubjects = Array.from(new Set([...SUBJECTS, ...Object.keys(subjectWiseCounts)]));
+    const allSubjects = Array.from(new Set([...ALL_ADMIN_MCQ_SUBJECTS, ...Object.keys(subjectWiseCounts)]));
 
     // Calculate time elapsed since last cache
     const formattedLastUpdated = subjectCountsLastUpdated
@@ -4846,8 +4876,8 @@ export default function AdminPage() {
                             onChange={(e) => setNewSubjectName(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
-                            {SUBJECTS.map((sub) => (
-                              <option key={sub} value={sub}>{sub}</option>
+                            {ALL_ADMIN_MCQ_SUBJECTS.map((sub) => (
+                              <option key={sub} value={sub}>{sub === QUESTION_BANK_SUBJECT ? "Question Bank (প্রশ্নব্যাংক)" : sub}</option>
                             ))}
                           </select>
                         </div>
@@ -5002,8 +5032,8 @@ export default function AdminPage() {
                           className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
                         >
                           <option value="All">সকল বিষয় (All Subjects)</option>
-                          {SUBJECTS.map((sub) => (
-                            <option key={sub} value={sub}>{sub}</option>
+                          {ALL_ADMIN_MCQ_SUBJECTS.map((sub) => (
+                            <option key={sub} value={sub}>{sub === QUESTION_BANK_SUBJECT ? "Question Bank (প্রশ্নব্যাংক)" : sub}</option>
                           ))}
                         </select>
                       </div>
@@ -6829,12 +6859,12 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  {/* Server Question Bank Picker */}
+                  {/* Question Bank ONLY Picker */}
                   <div className="space-y-3 pt-1">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                         <Database className="w-4 h-4 text-[#FF6A00]" />
-                        <span>৬. এমসিকিউ ভান্ডার থেকে প্রশ্ন সার্চ ও যোগ করুন:</span>
+                        <span>৬. Question Bank থেকে প্রশ্ন সার্চ ও যোগ করুন:</span>
                       </h4>
 
                       <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -6854,7 +6884,7 @@ export default function AdminPage() {
                         ))}
                         <button
                           type="button"
-                          onClick={() => loadQbQuestionsFromDb(qbSearchSubjects, qbSearchQuery, true, qbTargetCount)}
+                          onClick={() => loadQbQuestionsFromDb(qbSearchQuery, true, qbTargetCount)}
                           disabled={qbLoadingQuestions}
                           className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                         >
@@ -6873,45 +6903,24 @@ export default function AdminPage() {
                       </div>
                     </div>
 
+                    <div className="flex items-center gap-2 px-3 py-2 bg-orange-50/70 border border-orange-200/80 rounded-xl text-[11px] font-bold text-orange-800">
+                      <Database className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                      <span>শুধুমাত্র &quot;Question Bank&quot; সাবজেক্টের প্রশ্ন এখান থেকে সার্চ ও যোগ হবে (অন্য কোনো সাবজেক্ট এখানে আসবে না)।</span>
+                    </div>
+
                     <input
                       type="text"
-                      placeholder="প্রশ্ন বা কীওয়ার্ড দিয়ে সার্চ করুন..."
+                      placeholder="Question Bank থেকে প্রশ্ন বা কীওয়ার্ড দিয়ে সার্চ করুন..."
                       value={qbSearchQuery}
                       onChange={(e) => setQbSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          loadQbQuestionsFromDb(qbSearchQuery, true, qbTargetCount);
+                        }
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
                     />
-
-                    <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-28 overflow-y-auto">
-                      <button
-                        type="button"
-                        onClick={() => toggleQbSearchSubject("All")}
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
-                          qbSearchSubjects.includes("All")
-                            ? "bg-[#FF6A00] text-white shadow-2xs"
-                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        সকল বিষয় (All)
-                      </button>
-                      {SUBJECTS.map((s) => {
-                        const isSelected = !qbSearchSubjects.includes("All") && qbSearchSubjects.includes(s);
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => toggleQbSearchSubject(s)}
-                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
-                              isSelected
-                                ? "bg-[#FF6A00] text-white shadow-2xs"
-                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                            <span>{s}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
 
                     {qbHasFetched && (
                       <div className="space-y-2">
@@ -11845,8 +11854,8 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                       onChange={(e) => setEditSubjectName(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none transition-all text-slate-800 cursor-pointer"
                     >
-                      {SUBJECTS.map((sub) => (
-                        <option key={sub} value={sub}>{sub}</option>
+                      {ALL_ADMIN_MCQ_SUBJECTS.map((sub) => (
+                        <option key={sub} value={sub}>{sub === QUESTION_BANK_SUBJECT ? "Question Bank (প্রশ্নব্যাংক)" : sub}</option>
                       ))}
                     </select>
                   </div>

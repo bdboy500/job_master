@@ -85,7 +85,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits } from "../lib/exams";
+import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, isQuestionBankSubject, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularCategoriesOnlyFromDb, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount, postMatchesCircularCategory, getCircularPostCategoryIds, formatCircularDeadlineDisplay, getCircularPublicViewDisplay } from "../lib/job_circulars";
@@ -2243,9 +2243,13 @@ export default function Home() {
 
   // On-demand questions fetcher with local caching and explicit column selection
   const fetchQuestionsOnDemand = useCallback(async (subjectKey: string = "all"): Promise<Question[]> => {
+    if (isQuestionBankSubject(subjectKey)) {
+      return [];
+    }
+
     // 1. Check in-memory cache
     if (questionsCacheRef.current[subjectKey] && questionsCacheRef.current[subjectKey].length > 0) {
-      return questionsCacheRef.current[subjectKey];
+      return questionsCacheRef.current[subjectKey].filter((q) => !isQuestionBankSubject(q.subject));
     }
 
     // 2. Check in-flight promise
@@ -2260,8 +2264,11 @@ export default function Home() {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            questionsCacheRef.current[subjectKey] = parsed;
-            return parsed;
+            const safeParsed = parsed.filter((q: Question) => !isQuestionBankSubject(q?.subject));
+            if (safeParsed.length > 0) {
+              questionsCacheRef.current[subjectKey] = safeParsed;
+              return safeParsed;
+            }
           }
         }
       } catch (e) {}
@@ -2274,8 +2281,11 @@ export default function Home() {
         if (localStored) {
           const parsed = JSON.parse(localStored);
           if (Array.isArray(parsed) && parsed.length > 0 && !navigator.onLine) {
-            questionsCacheRef.current[subjectKey] = parsed;
-            return parsed;
+            const safeParsed = parsed.filter((q: Question) => !isQuestionBankSubject(q?.subject));
+            if (safeParsed.length > 0) {
+              questionsCacheRef.current[subjectKey] = safeParsed;
+              return safeParsed;
+            }
           }
         }
       } catch (e) {}
@@ -2289,6 +2299,10 @@ export default function Home() {
         let query = supabase
           .from("questions")
           .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
+          .not("subjectName", "ilike", "%question bank%")
+          .not("subjectName", "ilike", "%question_bank%")
+          .not("subjectName", "ilike", "%প্রশ্ন ব্যাংক%")
+          .not("subjectName", "ilike", "%প্রশ্নব্যাংক%")
           .limit(30);
 
         if (subjectKey !== "all" && subjectKey.trim() !== "") {
@@ -2301,48 +2315,52 @@ export default function Home() {
             const localStored = localStorage.getItem(`jobmaster_questions_local_${subjectKey}`);
             if (localStored) {
               const parsed = JSON.parse(localStored);
-              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.filter((q: Question) => !isQuestionBankSubject(q?.subject));
+              }
             }
           }
           return QUIZ_QUESTIONS;
         }
 
-        const mappedQuestions: Question[] = data.map((q: any) => {
-          let questionText = "Untitled Question";
-          const possibleQuestionKeys = ["questionText", "question_text", "question", "title", "text"];
-          for (const key of possibleQuestionKeys) {
-            if (q[key] !== undefined && q[key] !== null) {
-              questionText = String(q[key]);
-              break;
+        const mappedQuestions: Question[] = data
+          .map((q: any) => {
+            let questionText = "Untitled Question";
+            const possibleQuestionKeys = ["questionText", "question_text", "question", "title", "text"];
+            for (const key of possibleQuestionKeys) {
+              if (q[key] !== undefined && q[key] !== null) {
+                questionText = String(q[key]);
+                break;
+              }
             }
-          }
 
-          let rawOptions: any = q.options || q.choices || q.answers || q.option_list;
-          let options: string[] = [];
-          if (Array.isArray(rawOptions)) {
-            options = rawOptions.map(String);
-          } else if (typeof rawOptions === "string") {
-            try {
-              const parsed = JSON.parse(rawOptions);
-              if (Array.isArray(parsed)) options = parsed.map(String);
-            } catch {
-              options = rawOptions.split(",").map((s: string) => s.trim());
+            let rawOptions: any = q.options || q.choices || q.answers || q.option_list;
+            let options: string[] = [];
+            if (Array.isArray(rawOptions)) {
+              options = rawOptions.map(String);
+            } else if (typeof rawOptions === "string") {
+              try {
+                const parsed = JSON.parse(rawOptions);
+                if (Array.isArray(parsed)) options = parsed.map(String);
+              } catch {
+                options = rawOptions.split(",").map((s: string) => s.trim());
+              }
+            } else {
+              options = ["Option 1", "Option 2", "Option 3", "Option 4"];
             }
-          } else {
-            options = ["Option 1", "Option 2", "Option 3", "Option 4"];
-          }
 
-          let correctIndex = Number(q.correctIndex ?? q.correct_index ?? q.correctOptionIndex ?? q.correct_option_index ?? 0);
-          if (isNaN(correctIndex) || correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
+            let correctIndex = Number(q.correctIndex ?? q.correct_index ?? q.correctOptionIndex ?? q.correct_option_index ?? 0);
+            if (isNaN(correctIndex) || correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
 
-          return {
-            id: Number(q.id) || Date.now(),
-            question: questionText,
-            options,
-            correctIndex,
-            subject: q.subject || q.subjectName || q.subject_name
-          };
-        });
+            return {
+              id: Number(q.id) || Date.now(),
+              question: questionText,
+              options,
+              correctIndex,
+              subject: q.subject || q.subjectName || q.subject_name
+            };
+          })
+          .filter((q) => !isQuestionBankSubject(q.subject));
 
         // Cache result for fast load & offline resilience
         questionsCacheRef.current[subjectKey] = mappedQuestions;
@@ -2360,7 +2378,9 @@ export default function Home() {
             const localStored = localStorage.getItem(`jobmaster_questions_local_${subjectKey}`);
             if (localStored) {
               const parsed = JSON.parse(localStored);
-              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.filter((q: Question) => !isQuestionBankSubject(q?.subject));
+              }
             }
           } catch (e) {}
         }
