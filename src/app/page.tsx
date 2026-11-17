@@ -5315,11 +5315,11 @@ export default function Home() {
                                     )}
                                   </div>
 
-                                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
                                     <button
                                       type="button"
                                       onClick={() => handleOpenViewPaper(paper)}
-                                      className="flex-1 py-2.5 px-3.5 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/15"
+                                      className="py-2 px-3 bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] border border-orange-300/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
                                     >
                                       <FileText className="w-3.5 h-3.5" />
                                       <span>প্রশ্নপত্র দেখুন</span>
@@ -5327,7 +5327,7 @@ export default function Home() {
                                     <button
                                       type="button"
                                       onClick={() => handleOpenTakeExam(paper)}
-                                      className="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                                      className="py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
                                     >
                                       <Play className="w-3.5 h-3.5 fill-current" />
                                       <span>পরীক্ষা দিন</span>
@@ -5806,13 +5806,13 @@ export default function Home() {
 
                             {/* Bottom Row: প্রশ্নপত্র দেখুন + পরীক্ষা দিন */}
                             <div
-                              className="flex items-center gap-2 pt-2 border-t border-slate-100"
+                              className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
                                 type="button"
                                 onClick={() => handleOpenViewPaper(paper)}
-                                className="flex-1 py-2.5 px-3.5 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/15"
+                                className="py-2 px-3 bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] border border-orange-300/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
                               >
                                 <FileText className="w-3.5 h-3.5" />
                                 <span>প্রশ্নপত্র দেখুন</span>
@@ -5820,7 +5820,7 @@ export default function Home() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenTakeExam(paper)}
-                                className="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                                className="py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
                               >
                                 <Play className="w-3.5 h-3.5 fill-current" />
                                 <span>পরীক্ষা দিন</span>
@@ -6508,7 +6508,9 @@ export default function Home() {
                           {activeDetailPost.vacancies && (
                             <div className="text-slate-700 flex items-center gap-1.5">
                               <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>পদসংখ্যাঃ {activeDetailPost.vacancies}</span>
+                              <span>
+                                পদসংখ্যাঃ <span className="text-black font-black">{activeDetailPost.vacancies}</span>
+                              </span>
                             </div>
                           )}
                           <div className="text-slate-600 flex items-center gap-1.5">
@@ -6701,7 +6703,8 @@ export default function Home() {
                                 {/* Top: পদ সংখ্যা */}
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[10.5px] sm:text-[11px] font-black leading-tight">
-                                    পদ সংখ্যাঃ {post.vacancies || "বিজ্ঞপ্তি অনুযায়ী"}
+                                    <span>পদ সংখ্যাঃ</span>
+                                    <span className="text-black font-black">{post.vacancies || "বিজ্ঞপ্তি অনুযায়ী"}</span>
                                   </span>
                                 </div>
 
