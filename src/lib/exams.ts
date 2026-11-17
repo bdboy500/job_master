@@ -6,7 +6,7 @@ export interface ExamPaper {
   title: string;
   course: string; // "all_courses", "bcs", "bank", "primary", "ntrca", "psc", "all_job", "bangla", "english", "mathematics", "science", etc.
   subSubject?: string; // "all", "Bangla 1st Paper", "Bangla 2nd Paper", "Physics", "Arithmetic (পাটিগণিত)", etc.
-  categoryType?: "our_course" | "prep_hub" | "pro_feature" | "weekly_model_test";
+  categoryType?: "our_course" | "prep_hub" | "pro_feature" | "weekly_model_test" | "question_bank";
   examType: "model_test" | "daily" | "weekly" | "subject" | "special" | string;
   subject?: string;
   questionCount: number;
@@ -21,6 +21,132 @@ export interface ExamPaper {
   questions: Question[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export const QB_MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+] as const;
+
+const BN_DIGITS_MAP = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+
+export function toBanglaDigits(val: string | number): string {
+  return String(val).replace(/\d/g, (d) => BN_DIGITS_MAP[Number(d)] ?? d);
+}
+
+export function toEnglishDigits(val: string): string {
+  return String(val).replace(/[০-৯]/g, (d) => {
+    const idx = BN_DIGITS_MAP.indexOf(d);
+    return idx >= 0 ? String(idx) : d;
+  });
+}
+
+export function isQuestionBankPaper(paper: Partial<ExamPaper> | null | undefined): boolean {
+  if (!paper) return false;
+  const cat = (paper.categoryType || "").trim().toLowerCase();
+  if (cat === "question_bank") return true;
+  if (cat === "pro_feature") {
+    const course = (paper.course || "").trim().toLowerCase();
+    if (course === "question_bank" || course === "pro-question-bank") return true;
+  }
+  return false;
+}
+
+export function formatQuestionBankDisplayDate(year: number | string, month?: number | string): string {
+  const cleanYearEn = toEnglishDigits(String(year || "")).replace(/\D/g, "");
+  const yearBn = cleanYearEn ? toBanglaDigits(cleanYearEn) : "";
+  if (month !== undefined && month !== null && String(month).trim() !== "" && String(month) !== "0") {
+    const mStr = String(month).trim();
+    const num = Number(toEnglishDigits(mStr));
+    let monthName = "";
+    if (!isNaN(num) && num >= 1 && num <= 12) {
+      monthName = QB_MONTH_NAMES[num - 1];
+    } else {
+      const matched = QB_MONTH_NAMES.find(
+        (m) => m.toLowerCase() === mStr.toLowerCase() || m.toLowerCase().startsWith(mStr.toLowerCase().slice(0, 3))
+      );
+      if (matched) monthName = matched;
+    }
+    if (monthName && yearBn) return `${monthName} ${yearBn}`;
+    if (monthName) return monthName;
+  }
+  return yearBn || String(year || "").trim();
+}
+
+export function parseQuestionBankDateInfo(paper: Partial<ExamPaper>): { year: number; month: number } {
+  const rawDateClean = toEnglishDigits(
+    String(paper.examDate || "").replace(/\[.*\]/, "").trim()
+  );
+
+  let year = 0;
+  let month = 0;
+
+  // Match month name in examDate
+  const lowDate = rawDateClean.toLowerCase();
+  for (let i = 0; i < QB_MONTH_NAMES.length; i++) {
+    const full = QB_MONTH_NAMES[i].toLowerCase();
+    const abbr = full.slice(0, 3);
+    if (lowDate.includes(full) || new RegExp(`\\b${abbr}\\b`, "i").test(lowDate)) {
+      month = i + 1;
+      break;
+    }
+  }
+
+  // Match 4-digit year in examDate
+  const yearMatch = rawDateClean.match(/\b(19\d{2}|20\d{2})\b/);
+  if (yearMatch) {
+    year = Number(yearMatch[1]);
+  }
+
+  // Check startDateTime (YYYY-MM-DD...)
+  if (paper.startDateTime) {
+    const dtMatch = String(paper.startDateTime).match(/^(\d{4})-(\d{2})/);
+    if (dtMatch) {
+      const dtYear = Number(dtMatch[1]);
+      const dtMonth = Number(dtMatch[2]);
+      if (!year && dtYear >= 1900 && dtYear <= 2099) year = dtYear;
+      if (!month && dtMonth >= 1 && dtMonth <= 12) month = dtMonth;
+    }
+  }
+
+  // Fallback to createdAt if no year parsed
+  if (!year && paper.createdAt) {
+    const d = new Date(paper.createdAt);
+    if (!isNaN(d.getTime())) {
+      year = d.getFullYear();
+      if (!month) month = d.getMonth() + 1;
+    }
+  }
+
+  return { year, month };
+}
+
+export function getQuestionBankSortTimestamp(paper: Partial<ExamPaper>): number {
+  const { year, month } = parseQuestionBankDateInfo(paper);
+  return year * 100 + (month || 0);
+}
+
+export function sortQuestionBankPapers(papers: ExamPaper[]): ExamPaper[] {
+  return [...papers].sort((a, b) => {
+    const scoreA = getQuestionBankSortTimestamp(a);
+    const scoreB = getQuestionBankSortTimestamp(b);
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+    const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return timeB - timeA;
+  });
 }
 
 export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
@@ -61,6 +187,11 @@ export function sortExamPapersForDisplay(papers: ExamPaper[]): ExamPaper[] {
 }
 
 export function getExamStatus(paper: ExamPaper): "Live" | "Upcoming" | "Archive" {
+  // Question bank past papers are always available for immediate practice/exam
+  if (isQuestionBankPaper(paper)) {
+    return "Live";
+  }
+
   const now = new Date();
 
   // 1. If startDateTime and endDateTime exist, strictly compare with now

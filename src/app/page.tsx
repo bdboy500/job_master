@@ -85,7 +85,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers } from "../lib/exams";
+import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularCategoriesOnlyFromDb, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount, postMatchesCircularCategory, getCircularPostCategoryIds, formatCircularDeadlineDisplay, getCircularPublicViewDisplay } from "../lib/job_circulars";
@@ -1573,9 +1573,9 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Memoized current active live exams (instant 0ms filtering & sorting)
+  // Memoized current active live exams (instant 0ms filtering & sorting; excludes Question Bank)
   const liveExamsList = useMemo(() => {
-    const lives = examPapers.filter(p => getExamStatus(p) === "Live");
+    const lives = examPapers.filter(p => !isQuestionBankPaper(p) && getExamStatus(p) === "Live");
     return sortExamPapersForDisplay(lives);
   }, [examPapers, liveTick]);
 
@@ -5204,18 +5204,27 @@ export default function Home() {
                         ].filter(Boolean) as string[]
                       );
 
+                      const isQbParent =
+                        matchedProObj?.id === "pro-question-bank" ||
+                        targetLow === "pro-question-bank" ||
+                        targetLow === "question_bank" ||
+                        targetLow.includes("প্রশ্ন ব্যাংক");
+
                       const matchingPapers = examPapers.filter(p => {
                         const pCat = (p.categoryType || "").trim().toLowerCase();
                         const pCourse = (p.course || "").trim().toLowerCase();
                         if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                        if (isCurrentSubjectProFeature) {
-                          if (pCat !== "pro_feature") return false;
+                        if (isQbParent) {
+                          if (!isQuestionBankPaper(p)) return false;
+                          if (!validKeys.has(pCourse) && pCat !== "question_bank") return false;
+                        } else if (isCurrentSubjectProFeature) {
+                          if (isQuestionBankPaper(p) || pCat !== "pro_feature") return false;
+                          if (!validKeys.has(pCourse)) return false;
                         } else {
-                          if (pCat !== "prep_hub") return false;
+                          if (isQuestionBankPaper(p) || pCat !== "prep_hub") return false;
+                          if (!validKeys.has(pCourse)) return false;
                         }
-
-                        if (!validKeys.has(pCourse)) return false;
 
                         const rawSub = (p.subSubject || "").trim().toLowerCase();
                         const hasSpecificSubSubject =
@@ -5228,6 +5237,88 @@ export default function Home() {
 
                         return true;
                       });
+
+                      if (isQbParent) {
+                        const qbSorted = sortQuestionBankPapers(matchingPapers);
+                        if (qbSorted.length === 0) {
+                          return (
+                            <div className="bg-white border border-orange-100 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
+                              <div className="w-12 h-12 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto">
+                                <Database className="w-6 h-6" />
+                              </div>
+                              <h3 className="text-sm sm:text-base font-black text-slate-800">
+                                {selectedPrepSubject}
+                              </h3>
+                              <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
+                                এই সেকশনে এখনো কোনো প্রশ্নপত্র যুক্ত করা হয়নি।
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-3">
+                            {qbSorted.map((paper) => {
+                              const qCount = paper.questionCount || paper.questions?.length || 0;
+                              const durationMins = Math.max(1, Math.round((paper.totalDurationSeconds || qCount * 36) / 60));
+                              const dateInfo = parseQuestionBankDateInfo(paper);
+                              const displayDate = dateInfo.year > 0
+                                ? formatQuestionBankDisplayDate(dateInfo.year, dateInfo.month > 0 ? dateInfo.month : undefined)
+                                : (paper.examDate || "");
+
+                              return (
+                                <div
+                                  key={paper.id}
+                                  onClick={() => handleOpenViewPaper(paper)}
+                                  className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3.5 text-left"
+                                >
+                                  <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">
+                                    <MathRenderer content={paper.title} />
+                                  </h4>
+
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{toBanglaDigits(durationMins)} মিনিট</span>
+                                      </span>
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black">
+                                        <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
+                                      </span>
+                                    </div>
+
+                                    {displayDate && (
+                                      <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 shrink-0">
+                                        <Calendar className="w-3.5 h-3.5 text-[#FF6A00]" />
+                                        <span>{displayDate}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenViewPaper(paper)}
+                                      className="flex-1 py-2.5 px-3.5 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/15"
+                                    >
+                                      <FileText className="w-3.5 h-3.5" />
+                                      <span>প্রশ্নপত্র দেখুন</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenTakeExam(paper)}
+                                      className="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                                    >
+                                      <Play className="w-3.5 h-3.5 fill-current" />
+                                      <span>পরীক্ষা দিন</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
 
                       if (isCurrentSubjectProFeature) {
                         const proSorted = sortExamPapersForDisplay(matchingPapers);
@@ -5358,17 +5449,27 @@ export default function Home() {
                         ].filter(Boolean)
                       );
 
+                      const isQbParent =
+                        matchedProObj?.id === "pro-question-bank" ||
+                        selectedNorm === "pro-question-bank" ||
+                        selectedNorm === "question_bank" ||
+                        selectedNorm.includes("প্রশ্ন ব্যাংক");
+
                       const specificPapersCount = examPapers.filter(p => {
                         const pCat = (p.categoryType || "").trim().toLowerCase();
                         const pCourse = (p.course || "").trim().toLowerCase();
                         if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
-                        if (isCurrentSubjectProFeature) {
-                          if (pCat !== "pro_feature") return false;
+                        if (isQbParent) {
+                          if (!isQuestionBankPaper(p)) return false;
+                          if (!validParentKeys.has(pCourse) && pCat !== "question_bank") return false;
+                        } else if (isCurrentSubjectProFeature) {
+                          if (isQuestionBankPaper(p) || pCat !== "pro_feature") return false;
+                          if (!validParentKeys.has(pCourse)) return false;
                         } else {
-                          if (pCat !== "prep_hub") return false;
+                          if (isQuestionBankPaper(p) || pCat !== "prep_hub") return false;
+                          if (!validParentKeys.has(pCourse)) return false;
                         }
-                        if (!validParentKeys.has(pCourse)) return false;
 
                         const rawSub = (p.subSubject || "").trim().toLowerCase();
                         const effectiveSub =
@@ -5562,20 +5663,33 @@ export default function Home() {
                   ].filter(Boolean)
                 );
 
+                const isQbSubView =
+                  !isCourseOrigin &&
+                  (
+                    matchedProObj?.id === "pro-question-bank" ||
+                    selectedNorm === "pro-question-bank" ||
+                    selectedNorm === "question_bank" ||
+                    selectedNorm.includes("প্রশ্ন ব্যাংক")
+                  );
+
                 const subPapers = examPapers.filter(paper => {
                   const pCat = (paper.categoryType || "").trim().toLowerCase();
                   const pCourse = (paper.course || "").trim().toLowerCase();
                   if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
 
                   if (isCourseOrigin) {
-                    if (pCat === "prep_hub" || pCat === "pro_feature" || pCat === "weekly_model_test") return false;
+                    if (isQuestionBankPaper(paper) || pCat === "prep_hub" || pCat === "pro_feature" || pCat === "weekly_model_test") return false;
+                    if (!validCourseKeys.has(pCourse)) return false;
+                  } else if (isQbSubView) {
+                    if (!isQuestionBankPaper(paper)) return false;
+                    if (!validCourseKeys.has(pCourse) && pCat !== "question_bank") return false;
                   } else if (isCurrentSubjectProFeature) {
-                    if (pCat !== "pro_feature") return false;
+                    if (isQuestionBankPaper(paper) || pCat !== "pro_feature") return false;
+                    if (!validCourseKeys.has(pCourse)) return false;
                   } else {
-                    if (pCat !== "prep_hub") return false;
+                    if (isQuestionBankPaper(paper) || pCat !== "prep_hub") return false;
+                    if (!validCourseKeys.has(pCourse)) return false;
                   }
-
-                  if (!validCourseKeys.has(pCourse)) return false;
 
                   const rawSub = (paper.subSubject || "").trim().toLowerCase();
                   const rawSubject = (paper.subject || "").trim().toLowerCase();
@@ -5604,6 +5718,100 @@ export default function Home() {
 
                   return true;
                 });
+
+                if (isQbSubView) {
+                  const qbSubSorted = sortQuestionBankPapers(subPapers);
+                  if (qbSubSorted.length === 0) {
+                    return (
+                      <div className="bg-white border border-orange-100 rounded-[2rem] p-8 text-center space-y-3 shadow-2xs">
+                        <div className="w-12 h-12 bg-orange-50 text-[#FF6A00] rounded-2xl flex items-center justify-center mx-auto">
+                          <Database className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-800">
+                          {selectedPrepSubSubject.name}
+                        </h3>
+                        <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
+                          এই সাব-সাবজেক্টে এখনো কোনো প্রশ্নপত্র যুক্ত করা হয়নি।
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {qbSubSorted.map((paper) => {
+                        const qCount = paper.questionCount || paper.questions?.length || 0;
+                        const durationMins = Math.max(
+                          1,
+                          Math.round((paper.totalDurationSeconds || qCount * 36) / 60)
+                        );
+                        const dateInfo = parseQuestionBankDateInfo(paper);
+                        const displayDate = dateInfo.year > 0
+                          ? formatQuestionBankDisplayDate(
+                              dateInfo.year,
+                              dateInfo.month > 0 ? dateInfo.month : undefined
+                            )
+                          : (paper.examDate || "");
+
+                        return (
+                          <div
+                            key={paper.id}
+                            onClick={() => handleOpenViewPaper(paper)}
+                            className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3.5 text-left"
+                          >
+                            {/* Top Row: Title */}
+                            <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">
+                              <MathRenderer content={paper.title} />
+                            </h4>
+
+                            {/* Middle Row: Duration & Question Count Badges (Left) + Month Year (Right) */}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{toBanglaDigits(durationMins)} মিনিট</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black">
+                                  <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
+                                </span>
+                              </div>
+
+                              {displayDate && (
+                                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 shrink-0">
+                                  <Calendar className="w-3.5 h-3.5 text-[#FF6A00]" />
+                                  <span>{displayDate}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Bottom Row: প্রশ্নপত্র দেখুন + পরীক্ষা দিন */}
+                            <div
+                              className="flex items-center gap-2 pt-2 border-t border-slate-100"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleOpenViewPaper(paper)}
+                                className="flex-1 py-2.5 px-3.5 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/15"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>প্রশ্নপত্র দেখুন</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenTakeExam(paper)}
+                                className="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl sm:rounded-2xl text-xs font-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                <span>পরীক্ষা দিন</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
 
                 if (!isCourseOrigin && isCurrentSubjectProFeature) {
                   const proSubSorted = sortExamPapersForDisplay(subPapers);
@@ -5770,7 +5978,7 @@ export default function Home() {
                       courseTitle={selectedCourseDetail.title}
                       papers={examPapers.filter(p => {
                         const pCat = (p.categoryType || "").trim().toLowerCase();
-                        if (pCat === "prep_hub" || pCat === "pro_feature" || pCat === "weekly_model_test") return false;
+                        if (isQuestionBankPaper(p) || pCat === "prep_hub" || pCat === "pro_feature" || pCat === "weekly_model_test") return false;
 
                         const pCourse = (p.course || "").trim().toLowerCase();
                         if (!pCourse || pCourse === "all_courses" || pCourse === "all") return false;
@@ -7182,14 +7390,16 @@ export default function Home() {
           {currentScreen === "search" && (() => {
             const query = desktopSearchQuery.toLowerCase().trim();
 
-            // Filter 1: Exam Papers
+            // Filter 1: Exam Papers (excludes Question Bank papers)
             const matchedExams = examPapers.filter(p => 
-              !query || 
-              p.title.toLowerCase().includes(query) || 
-              p.course.toLowerCase().includes(query) || 
-              p.examType.toLowerCase().includes(query) ||
-              (p.subject && p.subject.toLowerCase().includes(query)) ||
-              (p.topic && p.topic.toLowerCase().includes(query))
+              !isQuestionBankPaper(p) && (
+                !query || 
+                p.title.toLowerCase().includes(query) || 
+                p.course.toLowerCase().includes(query) || 
+                p.examType.toLowerCase().includes(query) ||
+                (p.subject && p.subject.toLowerCase().includes(query)) ||
+                (p.topic && p.topic.toLowerCase().includes(query))
+              )
             );
 
             // Filter 2: Courses
@@ -8464,6 +8674,9 @@ export default function Home() {
               {/* Archived Exam Cards List */}
               {(() => {
                 const archivedPapers = examPapers.filter(p => {
+                  // 0. Exclude Question Bank papers strictly
+                  if (isQuestionBankPaper(p)) return false;
+
                   // 1. Must be calculated as Archive status (or manually marked Archive)
                   const currentStatus = getExamStatus(p);
                   if (currentStatus !== "Archive") return false;
@@ -8651,16 +8864,40 @@ export default function Home() {
             {/* Paper Content */}
             <main className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6 pb-20">
               {/* Title Banner */}
-              <div className="bg-white border border-slate-200/80 rounded-[2rem] p-5 shadow-2xs space-y-2">
-                <span className="text-[10px] font-black uppercase text-[#FF6A00] bg-orange-50 px-2.5 py-1 rounded-full">
-                  {viewingPaperModal.course.toUpperCase()} • {viewingPaperModal.examType}
-                </span>
+              <div className="bg-white border border-orange-100/90 rounded-[2rem] p-5 shadow-2xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] font-black uppercase text-[#FF6A00] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200/70">
+                    {isQuestionBankPaper(viewingPaperModal)
+                      ? `প্রশ্ন ব্যাংক${viewingPaperModal.subSubject ? ` • ${viewingPaperModal.subSubject}` : ""}`
+                      : `${viewingPaperModal.course.toUpperCase()} • ${viewingPaperModal.examType}`}
+                  </span>
+                  {viewingPaperModal.examDate && (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500">
+                      <Calendar className="w-3.5 h-3.5 text-[#FF6A00]" />
+                      <span>{viewingPaperModal.examDate}</span>
+                    </span>
+                  )}
+                </div>
                 <h1 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
                   {viewingPaperModal.title}
                 </h1>
-                <p className="text-xs font-extrabold text-slate-500">
-                  মোট প্রশ্ন: {viewingPaperModal.questions.length} টি | সময়: {Math.floor((viewingPaperModal.totalDurationSeconds || viewingPaperModal.questions.length * 36) / 60)} মিনিট
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <p className="text-xs font-extrabold text-slate-500">
+                    মোট প্রশ্ন: {toBanglaDigits(viewingPaperModal.questions.length)} টি | সময়: {toBanglaDigits(Math.max(1, Math.round((viewingPaperModal.totalDurationSeconds || viewingPaperModal.questions.length * 36) / 60)))} মিনিট
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const paperToTake = viewingPaperModal;
+                      setViewingPaperModal(null);
+                      handleOpenTakeExam(paperToTake);
+                    }}
+                    className="px-4 py-2 bg-[#FF6A00] hover:bg-orange-600 text-white rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1.5 shadow-sm shadow-orange-500/20"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>এই প্রশ্নপত্রে পরীক্ষা দিন</span>
+                  </button>
+                </div>
               </div>
 
               {/* Questions List */}

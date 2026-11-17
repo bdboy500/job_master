@@ -91,7 +91,7 @@ import {
   deleteUserProfileFromDb, 
   UserProfile 
 } from "../../lib/user_profiles";
-import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, QB_MONTH_NAMES, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { PaymentTransaction, UserSubscription, SUBSCRIPTIONS_BKASH_SUPABASE_SQL, formatSubscriptionDateBn } from "../../lib/subscriptions";
 import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
@@ -514,7 +514,7 @@ export default function AdminPage() {
   const [newStaffRole, setNewStaffRole] = useState<AdminRole>("editor");
 
   // Tab navigation states
-  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "job_circulars" | "switches" | "leaderboard" | "notifications" | "staff">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "exam_papers" | "question_bank" | "users" | "offers" | "packages" | "courses" | "prep_hub" | "pro_section" | "job_circulars" | "switches" | "leaderboard" | "notifications" | "staff">("questions");
 
   // Leaderboard Admin Management State
   const [adminLeaderboardUsers, setAdminLeaderboardUsers] = useState<LeaderboardUser[]>([]);
@@ -797,7 +797,7 @@ export default function AdminPage() {
     const list = SUB_SUBJECTS_MAP["Bangla"] || SUB_SUBJECTS_MAP["bangla"] || [];
     return list.length > 0 ? list[0].id : "";
   });
-  const [paperProModule, setPaperProModule] = useState<string>("question_bank");
+  const [paperProModule, setPaperProModule] = useState<string>("job_solution");
   const [paperProSubSubject, setPaperProSubSubject] = useState<string>("");
   const [paperExamType, setPaperExamType] = useState<string>("model_test");
   const [paperSubject, setPaperSubject] = useState("");
@@ -817,6 +817,34 @@ export default function AdminPage() {
   const [paperHasFetched, setPaperHasFetched] = useState<boolean>(false);
   const paperQuestionsCacheRef = useRef<Map<string, Question[]>>(new Map());
   const questionsCacheRef = useRef<Map<string, { questions: Question[]; totalCount: number }>>(new Map());
+
+  // ==========================================
+  // DEDICATED QUESTION BANK (প্রশ্ন ব্যাংক) STATE
+  // ==========================================
+  const [qbEditingPaperId, setQbEditingPaperId] = useState<string | null>(null);
+  const [qbTitle, setQbTitle] = useState<string>("");
+  const [qbSubSubject, setQbSubSubject] = useState<string>("");
+  const [qbYear, setQbYear] = useState<number>(() => new Date().getFullYear());
+  const [qbMonth, setQbMonth] = useState<string>("January");
+  const [qbDurationMinutes, setQbDurationMinutes] = useState<number>(60);
+  const [qbTopic, setQbTopic] = useState<string>("");
+  const [qbQuestions, setQbQuestions] = useState<Question[]>([]);
+  const [qbTargetCount, setQbTargetCount] = useState<number>(100);
+  const [qbSearchQuery, setQbSearchQuery] = useState<string>("");
+  const [qbSearchSubjects, setQbSearchSubjects] = useState<string[]>(["All"]);
+  const [qbAvailableQuestions, setQbAvailableQuestions] = useState<Question[]>([]);
+  const [qbLoadingQuestions, setQbLoadingQuestions] = useState<boolean>(false);
+  const [qbHasFetched, setQbHasFetched] = useState<boolean>(false);
+  const [qbBulkJsonOpen, setQbBulkJsonOpen] = useState<boolean>(false);
+  const [qbBulkJsonText, setQbBulkJsonText] = useState<string>("");
+  const [qbNewSubName, setQbNewSubName] = useState<string>("");
+  const [qbNewSubDesc, setQbNewSubDesc] = useState<string>("");
+  const [qbConfirmDeleteSubId, setQbConfirmDeleteSubId] = useState<string | null>(null);
+  const [qbFilterSub, setQbFilterSub] = useState<string>("all");
+  const [qbSearchPaper, setQbSearchPaper] = useState<string>("");
+  const [qbDisplayLimit, setQbDisplayLimit] = useState<number>(20);
+  const [qbSavingPaper, setQbSavingPaper] = useState<boolean>(false);
+  const [qbSyncing, setQbSyncing] = useState<boolean>(false);
 
   const loadPaperQuestionsFromDb = async (
     overrideSubjects?: string[],
@@ -2386,6 +2414,410 @@ export default function AdminPage() {
     triggerNotification("success", isArchived ? "প্রশ্নপত্রটি পুনরায় লাইভ করা হয়েছে!" : "প্রশ্নপত্রটি আর্কাইভে পাঠানো হয়েছে!");
   };
 
+  // ==========================================
+  // DEDICATED QUESTION BANK (প্রশ্ন ব্যাংক) HELPERS & HANDLERS
+  // ==========================================
+  const qbProSectionItem = useMemo(() => {
+    return (
+      proSectionList.find(
+        (p) => p.id === "pro-question-bank" || p.name?.trim() === "প্রশ্ন ব্যাংক"
+      ) ||
+      DEFAULT_PRO_SECTION.find((p) => p.id === "pro-question-bank") ||
+      null
+    );
+  }, [proSectionList]);
+
+  const qbSubSubjectsList = useMemo(() => {
+    if (!qbProSectionItem) return [];
+    const cleaned = sanitizeSubSubjects([qbProSectionItem])[0]?.subSubjects || [];
+    return cleaned;
+  }, [qbProSectionItem]);
+
+  useEffect(() => {
+    if (!qbSubSubject && qbSubSubjectsList.length > 0) {
+      setQbSubSubject(qbSubSubjectsList[0].name);
+    }
+  }, [qbSubSubjectsList, qbSubSubject]);
+
+  const regularExamPapers = useMemo(
+    () => examPapers.filter((p) => !isQuestionBankPaper(p)),
+    [examPapers]
+  );
+
+  const questionBankPapers = useMemo(
+    () => sortQuestionBankPapers(examPapers.filter((p) => isQuestionBankPaper(p))),
+    [examPapers]
+  );
+
+  const resetQbForm = () => {
+    setQbEditingPaperId(null);
+    setQbTitle("");
+    setQbSubSubject(qbSubSubjectsList[0]?.name || "");
+    setQbYear(new Date().getFullYear());
+    setQbMonth("January");
+    setQbDurationMinutes(60);
+    setQbTopic("");
+    setQbQuestions([]);
+    setQbBulkJsonText("");
+    setQbBulkJsonOpen(false);
+  };
+
+  const handleAddQbSubSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = qbNewSubName.trim();
+    if (!cleanName) {
+      triggerNotification("error", "সাব-সাবজেক্টের নাম লিখুন (যেমন: বিসিএস / প্রাইমারি প্রধান শিক্ষক নিয়োগ)।");
+      return;
+    }
+
+    const baseList = proSectionList.length > 0 ? [...proSectionList] : [...DEFAULT_PRO_SECTION];
+    let targetIdx = baseList.findIndex(
+      (p) => p.id === "pro-question-bank" || p.name?.trim() === "প্রশ্ন ব্যাংক"
+    );
+    if (targetIdx < 0) {
+      const defItem = DEFAULT_PRO_SECTION.find((p) => p.id === "pro-question-bank") || {
+        id: "pro-question-bank",
+        serial: 1,
+        name: "প্রশ্ন ব্যাংক",
+        sub: "সকল বিগত প্রশ্নপত্র",
+        icon: "Database",
+        bg: "bg-purple-50",
+        text: "text-purple-600",
+        active: true,
+        subSubjects: []
+      };
+      baseList.unshift({ ...defItem, subSubjects: [...(defItem.subSubjects || [])] });
+      targetIdx = 0;
+    }
+
+    const targetItem = { ...baseList[targetIdx] };
+    const currentSubs = [...(targetItem.subSubjects || [])];
+    if (currentSubs.some((s) => s.name?.trim().toLowerCase() === cleanName.toLowerCase())) {
+      triggerNotification("error", `"${cleanName}" সাব-সাবজেক্টটি ইতিমধ্যেই যুক্ত আছে।`);
+      return;
+    }
+
+    const newSub: SubCategoryItem = {
+      id: `qb_sub_${Date.now()}`,
+      name: cleanName,
+      sub: qbNewSubDesc.trim() || "বিগত সালের প্রশ্নপত্র",
+      serial: currentSubs.length + 1,
+      subCategories2: []
+    };
+
+    targetItem.subSubjects = [...currentSubs, newSub];
+    baseList[targetIdx] = targetItem;
+    const sanitizedList = sanitizeSubSubjects(baseList);
+
+    setProSectionList(sanitizedList);
+    await saveProSectionToDb(sanitizedList);
+    setQbSubSubject(cleanName);
+    setQbNewSubName("");
+    setQbNewSubDesc("");
+    triggerNotification("success", `"${cleanName}" প্রশ্ন ব্যাংকের সাব-সাবজেক্ট হিসেবে যুক্ত হয়েছে!`);
+  };
+
+  const handleDeleteQbSubSubject = async (subIdOrName: string) => {
+    const baseList = proSectionList.length > 0 ? [...proSectionList] : [...DEFAULT_PRO_SECTION];
+    const targetIdx = baseList.findIndex(
+      (p) => p.id === "pro-question-bank" || p.name?.trim() === "প্রশ্ন ব্যাংক"
+    );
+    if (targetIdx < 0) return;
+
+    const targetItem = { ...baseList[targetIdx] };
+    const updatedSubs = (targetItem.subSubjects || [])
+      .filter((s) => s.id !== subIdOrName && s.name !== subIdOrName)
+      .map((s, idx) => ({ ...s, serial: idx + 1 }));
+
+    targetItem.subSubjects = updatedSubs;
+    baseList[targetIdx] = targetItem;
+    const sanitizedList = sanitizeSubSubjects(baseList);
+
+    setProSectionList(sanitizedList);
+    await saveProSectionToDb(sanitizedList);
+    setQbConfirmDeleteSubId(null);
+    if (qbSubSubject === subIdOrName) {
+      setQbSubSubject(updatedSubs[0]?.name || "");
+    }
+    triggerNotification("success", "সাব-সাবজেক্ট ডিলিট করা হয়েছে।");
+  };
+
+  const toggleQbSearchSubject = (subj: string) => {
+    if (subj === "All") {
+      setQbSearchSubjects(["All"]);
+      return;
+    }
+    setQbSearchSubjects((prev) => {
+      const withoutAll = prev.filter((s) => s !== "All");
+      const next = withoutAll.includes(subj)
+        ? withoutAll.filter((s) => s !== subj)
+        : [...withoutAll, subj];
+      return next.length === 0 ? ["All"] : next;
+    });
+  };
+
+  const loadQbQuestionsFromDb = async (
+    overrideSubjects?: string[],
+    overrideQuery?: string,
+    overrideForceRefresh: boolean = false,
+    overrideCount?: number
+  ): Promise<Question[]> => {
+    const targetSubjects = overrideSubjects !== undefined ? overrideSubjects : qbSearchSubjects;
+    const targetQuery = overrideQuery !== undefined ? overrideQuery : qbSearchQuery;
+    const targetCount = overrideCount !== undefined ? overrideCount : qbTargetCount;
+    const cleanQuery = targetQuery.trim().toLowerCase();
+    const effectiveQuery = cleanQuery.length >= 2 ? cleanQuery : "";
+
+    setQbLoadingQuestions(true);
+    let fetchedList: Question[] = [];
+
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        let query = supabase
+          .from("questions")
+          .select("id, subjectName, questionText, options, correctOptionIndex, explanation, created_at")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+
+        if (targetSubjects.length > 0 && !targetSubjects.includes("All")) {
+          const allVariants: string[] = [];
+          targetSubjects.forEach((s) => {
+            allVariants.push(...getSubjectVariants(s));
+          });
+          if (allVariants.length > 0) {
+            query = query.in("subjectName", Array.from(new Set(allVariants)));
+          }
+        }
+
+        const { data, error } = await query;
+        if (!error && Array.isArray(data) && data.length > 0) {
+          fetchedList = data.map((q) => normalizeQuestion(q));
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load QB questions from Supabase:", err);
+    }
+
+    const localPool = QUIZ_QUESTIONS.map((q) => normalizeQuestion(q));
+    const combinedMap = new Map<string, Question>();
+    [...fetchedList, ...localPool].forEach((q) => {
+      const key = (q.question || q.questionText || "").trim();
+      if (key && !combinedMap.has(key)) {
+        combinedMap.set(key, q);
+      }
+    });
+
+    let pool = Array.from(combinedMap.values());
+    if (targetSubjects.length > 0 && !targetSubjects.includes("All")) {
+      pool = pool.filter((q) => matchesSubject(q.subject || q.subjectName || "", targetSubjects));
+    }
+    if (effectiveQuery) {
+      pool = pool.filter((q) => questionMatchesSearch(q, effectiveQuery));
+    }
+
+    const displaySlice = overrideForceRefresh
+      ? [...pool].slice(0, targetCount)
+      : pool.slice(0, targetCount);
+
+    setQbAvailableQuestions(displaySlice);
+    setQbHasFetched(true);
+    setQbLoadingQuestions(false);
+    return pool;
+  };
+
+  const handleAddQuestionToQbPaper = (q: Question) => {
+    const normQ = normalizeQuestion(q);
+    if (qbQuestions.some((item) => item.id === normQ.id || (item.question || item.questionText) === normQ.question)) {
+      triggerNotification("error", "এই প্রশ্নটি ইতিমধ্যেই সিলেক্ট করা হয়েছে।");
+      return;
+    }
+    setQbQuestions((prev) => [...prev, normQ]);
+  };
+
+  const handleQbSelectAllAvailable = () => {
+    if (qbAvailableQuestions.length === 0) {
+      triggerNotification("error", "যোগ করার জন্য কোনো প্রশ্ন লোড করা নেই! প্রথমে '🔍 প্রশ্ন লোড করুন' ক্লিক করুন।");
+      return;
+    }
+    const unadded = qbAvailableQuestions.filter((q) => {
+      const normQ = normalizeQuestion(q);
+      return !qbQuestions.some((item) => item.id === normQ.id || (item.question || item.questionText) === normQ.question);
+    });
+    if (unadded.length === 0) {
+      triggerNotification("error", "প্রদর্শিত সবকয়টি প্রশ্ন ইতিমধ্যেই যুক্ত আছে।");
+      return;
+    }
+    setQbQuestions((prev) => [...prev, ...unadded.map(normalizeQuestion)]);
+    triggerNotification("success", `${unadded.length} টি প্রশ্ন এক ক্লিকে প্রশ্নপত্রে যুক্ত হয়েছে!`);
+  };
+
+  const handleQbAutoFillQuestions = async () => {
+    const needed = qbTargetCount - qbQuestions.length;
+    if (needed <= 0) {
+      triggerNotification("error", `প্রশ্নপত্র ইতিমধ্যেই ${qbQuestions.length} টি প্রশ্নে পূর্ণ!`);
+      return;
+    }
+    const pool = await loadQbQuestionsFromDb(qbSearchSubjects, qbSearchQuery, true, Math.max(qbTargetCount, 200));
+    const candidates = pool.filter(
+      (q) => !qbQuestions.some((pq) => pq.id === q.id || (pq.question || pq.questionText) === (q.question || q.questionText))
+    );
+    if (candidates.length === 0) {
+      triggerNotification("error", "সিলেক্টেড ফিল্টারে নতুন কোনো প্রশ্ন পাওয়া যায়নি।");
+      return;
+    }
+    const shuffled = [...candidates].sort(() => 0.5 - Math.random()).slice(0, needed);
+    setQbQuestions((prev) => [...prev, ...shuffled]);
+    triggerNotification("success", `${shuffled.length} টি প্রশ্ন স্বয়ংক্রিয়ভাবে যোগ করা হয়েছে!`);
+  };
+
+  const handleQbBulkJsonImport = (rawInput: string) => {
+    const trimmed = rawInput.trim();
+    if (!trimmed) {
+      triggerNotification("error", "দয়া করে প্রশ্নগুলোর JSON ডাটা পেস্ট করুন অথবা JSON ফাইল আপলোড করুন।");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      const rawArray = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.questions)
+        ? parsed.questions
+        : null;
+      if (!rawArray || rawArray.length === 0) {
+        triggerNotification("error", "সঠিক JSON অ্যারে পাওয়া যায়নি। কমপক্ষে ১টি প্রশ্ন থাকতে হবে।");
+        return;
+      }
+      const imported: Question[] = [];
+      for (const item of rawArray) {
+        if (!item || typeof item !== "object") continue;
+        const norm = normalizeQuestion(item);
+        if (!norm.question && !norm.questionText) continue;
+        if (!Array.isArray(norm.options) || norm.options.length < 2) continue;
+        const alreadyInPaper = qbQuestions.some(
+          (pq) => (pq.question || pq.questionText) === norm.question
+        );
+        const alreadyInImport = imported.some(
+          (iq) => (iq.question || iq.questionText) === norm.question
+        );
+        if (!alreadyInPaper && !alreadyInImport) {
+          imported.push(norm);
+        }
+      }
+      if (imported.length === 0) {
+        triggerNotification("error", "কোনো নতুন বৈধ প্রশ্ন পাওয়া যায়নি (সবগুলো হয়তো ডুপ্লিকেট বা ফরম্যাট ভুল)।");
+        return;
+      }
+      setQbQuestions((prev) => [...prev, ...imported]);
+      setQbBulkJsonText("");
+      setQbBulkJsonOpen(false);
+      triggerNotification("success", `✅ ${imported.length} টি প্রশ্ন JSON থেকে প্রশ্নপত্রে যুক্ত হয়েছে!`);
+    } catch {
+      triggerNotification("error", "JSON ফরম্যাট সঠিক নয়! কমা, ব্র্যাকেট ও কোটেশন চেক করুন।");
+    }
+  };
+
+  const handleSaveQbPaper = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qbTitle.trim()) {
+      triggerNotification("error", "দয়া করে প্রশ্নপত্রের শিরোনাম লিখুন (যেমন: ৫০ তম বিসিএস প্রিলিমিনারি টেস্ট)।");
+      return;
+    }
+    if (qbSubSubjectsList.length > 0 && !qbSubSubject.trim()) {
+      triggerNotification("error", "দয়া করে একটি সাব-সাবজেক্ট সিলেক্ট করুন।");
+      return;
+    }
+    if (qbQuestions.length === 0) {
+      triggerNotification("error", "দয়া করে অন্তত ১টি প্রশ্ন প্রশ্নপত্রে যোগ করুন।");
+      return;
+    }
+    const cleanYear = Number(qbYear) || new Date().getFullYear();
+    const cleanDurationMins = Math.max(1, Number(qbDurationMinutes) || 60);
+    const normalizedQs = qbQuestions.map((q) => normalizeQuestion(q));
+    const totalSeconds = cleanDurationMins * 60;
+    const perQuestionSecs = Math.max(1, Math.round(totalSeconds / normalizedQs.length));
+
+    const monthIndex = qbMonth ? QB_MONTH_NAMES.findIndex((m) => m === qbMonth) + 1 : 0;
+    const monthStr = String(monthIndex > 0 ? monthIndex : 1).padStart(2, "0");
+    const displayDate = formatQuestionBankDisplayDate(cleanYear, qbMonth || undefined);
+    const existingOriginal = qbEditingPaperId
+      ? examPapers.find((p) => p.id === qbEditingPaperId)
+      : undefined;
+
+    const qbPaper: ExamPaper = {
+      id: qbEditingPaperId || `qb-${Date.now()}`,
+      title: qbTitle.trim(),
+      course: qbProSectionItem?.id || "pro-question-bank",
+      subSubject: qbSubSubject.trim(),
+      categoryType: "question_bank",
+      examType: "model_test",
+      subject: qbSubSubject.trim() || "প্রশ্ন ব্যাংক",
+      questionCount: normalizedQs.length,
+      timePerQuestionSeconds: perQuestionSecs,
+      totalDurationSeconds: totalSeconds,
+      totalMarks: normalizedQs.length,
+      topic: qbTopic.trim() || "বিগত সালের প্রশ্নপত্র",
+      examDate: displayDate,
+      startDateTime: `${cleanYear}-${monthStr}-01T00:00`,
+      endDateTime: "2099-12-31T23:59",
+      status: "Live",
+      questions: normalizedQs,
+      createdAt: existingOriginal?.createdAt || new Date().toISOString()
+    };
+
+    setQbSavingPaper(true);
+    const ok = await saveExamPaperToDb(qbPaper);
+    setQbSavingPaper(false);
+
+    if (ok) {
+      triggerNotification(
+        "success",
+        qbEditingPaperId
+          ? "প্রশ্ন ব্যাংকের প্রশ্নপত্র সফলভাবে আপডেট করা হয়েছে!"
+          : "প্রশ্ন ব্যাংকে নতুন প্রশ্নপত্র সফলভাবে যুক্ত করা হয়েছে!"
+      );
+      resetQbForm();
+    } else {
+      triggerNotification("error", "লোকাল সেভ হয়েছে, কিন্তু সার্ভারে সেভ করতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handleEditQbPaper = async (paper: ExamPaper) => {
+    setQbEditingPaperId(paper.id);
+    setQbTitle(paper.title);
+    setQbSubSubject(paper.subSubject || qbSubSubjectsList[0]?.name || "");
+    const dateInfo = parseQuestionBankDateInfo(paper);
+    setQbYear(dateInfo.year || new Date().getFullYear());
+    setQbMonth(dateInfo.month >= 1 && dateInfo.month <= 12 ? QB_MONTH_NAMES[dateInfo.month - 1] : "");
+    const mins = Math.max(1, Math.round((paper.totalDurationSeconds || (paper.questionCount || 10) * 36) / 60));
+    setQbDurationMinutes(mins);
+    setQbTopic(paper.topic || "");
+    setActiveTab("question_bank");
+
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 50);
+
+    if (Array.isArray(paper.questions) && paper.questions.length > 0) {
+      setQbQuestions(paper.questions.map((q) => normalizeQuestion(q)));
+      setQbTargetCount(Math.max(paper.questions.length, 50));
+    } else {
+      setQbLoadingQuestions(true);
+      setQbQuestions([]);
+      try {
+        const fullPaper = await fetchExamPaperById(paper.id, true);
+        if (fullPaper && Array.isArray(fullPaper.questions)) {
+          setQbQuestions(fullPaper.questions.map((q) => normalizeQuestion(q)));
+          setQbTargetCount(Math.max(fullPaper.questions.length, 50));
+        }
+      } catch (err) {
+        console.error("Failed loading QB paper questions for edit:", err);
+      } finally {
+        setQbLoadingQuestions(false);
+      }
+    }
+  };
+
   // Sync users and offers updates
   const saveUsers = (updatedUsers: AdminUser[]) => {
     setUsers(updatedUsers);
@@ -3875,7 +4307,7 @@ export default function AdminPage() {
                 }`}
               >
                 <HelpCircle className={`w-4 h-4 ${activeTab === "questions" ? "text-white" : "text-[#FF6A00]"}`} />
-                <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
+                <span>এমসিকিউ ভান্ডার ({totalQuestionsCount || questions.length})</span>
               </button>
             )}
 
@@ -3889,7 +4321,21 @@ export default function AdminPage() {
                 }`}
               >
                 <FileText className={`w-4 h-4 ${activeTab === "exam_papers" ? "text-white" : "text-[#FF6A00]"}`} />
-                <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
+                <span>প্রশ্ন পত্র তৈরি ({regularExamPapers.length})</span>
+              </button>
+            )}
+
+            {(canManageExams(currentStaffSession) || canManageQuestions(currentStaffSession)) && (
+              <button
+                onClick={() => setActiveTab("question_bank")}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  activeTab === "question_bank"
+                    ? "bg-[#FF6A00] text-white border-[#FF6A00] shadow-sm shadow-orange-500/30 scale-[1.02]"
+                    : "bg-slate-50 text-slate-700 border-slate-200/70 hover:bg-orange-50 hover:text-[#FF6A00]"
+                }`}
+              >
+                <Database className={`w-4 h-4 ${activeTab === "question_bank" ? "text-white" : "text-[#FF6A00]"}`} />
+                <span>প্রশ্ন ব্যাংক ({questionBankPapers.length})</span>
               </button>
             )}
 
@@ -4065,7 +4511,7 @@ export default function AdminPage() {
                 }`}
               >
                 <HelpCircle className="w-4 h-4" />
-                <span>প্রশ্ন ব্যাংক ({totalQuestionsCount || questions.length})</span>
+                <span>এমসিকিউ ভান্ডার ({totalQuestionsCount || questions.length})</span>
               </button>
             )}
 
@@ -4080,7 +4526,22 @@ export default function AdminPage() {
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                <span>প্রশ্ন পত্র তৈরি ({examPapers.length})</span>
+                <span>প্রশ্ন পত্র তৈরি ({regularExamPapers.length})</span>
+              </button>
+            )}
+
+            {/* Tab Button 2B: Dedicated Question Bank Section */}
+            {(canManageExams(currentStaffSession) || canManageQuestions(currentStaffSession)) && (
+              <button
+                onClick={() => setActiveTab("question_bank")}
+                className={`flex flex-none items-center justify-start gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
+                  activeTab === "question_bank"
+                    ? "bg-orange-50 text-[#FF6A00]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Database className="w-4 h-4" />
+                <span>প্রশ্ন ব্যাংক ({questionBankPapers.length})</span>
               </button>
             )}
 
@@ -4823,7 +5284,7 @@ export default function AdminPage() {
                         onClick={() => {
                           setPaperCategoryType("pro_feature");
                           setPaperSearchSubjects(prev => prev.filter(s => s !== "All"));
-                          if (!paperProModule) setPaperProModule("question_bank");
+                          if (!paperProModule || paperProModule === "question_bank") setPaperProModule("job_solution");
                         }}
                         className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
                           paperCategoryType === "pro_feature"
@@ -4969,7 +5430,6 @@ export default function AdminPage() {
                             }}
                             className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800 cursor-pointer"
                           >
-                            <option value="question_bank">📊 প্রশ্ন ব্যাংক (Question Bank)</option>
                             <option value="job_solution">💼 জব সল্যুশন (Job Solution)</option>
                             {proSectionList.filter(p => p.id !== "pro-question-bank" && p.id !== "pro-job-solution").map(p => (
                               <option key={p.id} value={p.id}>{p.name}</option>
@@ -5591,7 +6051,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-[#FF6A00]" />
                     <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
-                      পাবলিশকৃত প্রশ্ন পত্রসমূহের তালিকা ({examPapers.length} টি)
+                      পাবলিশকৃত প্রশ্ন পত্রসমূহের তালিকা ({regularExamPapers.length} টি)
                     </h3>
                   </div>
 
@@ -5814,8 +6274,8 @@ export default function AdminPage() {
 
                 {/* Filter Results Counter Banner */}
                 {(() => {
-                  // Perform client-side filter computation
-                  const filteredList = examPapers.filter((paper) => {
+                  // Perform client-side filter computation (strictly excluding Question Bank papers)
+                  const filteredList = regularExamPapers.filter((paper) => {
                     // Category Filter
                     if (filterPaperCategory !== "all") {
                       const pCat = paper.categoryType || "our_course";
@@ -5880,7 +6340,7 @@ export default function AdminPage() {
                       {/* Active Filter Counter */}
                       <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
                         <span>
-                          মোট {examPapers.length} টির মধ্যে ফিল্টার অনুযায়ী <strong className="text-[#FF6A00] font-black">{filteredList.length}</strong> টি প্রশ্নপত্র পাওয়া গেছে
+                          মোট {regularExamPapers.length} টির মধ্যে ফিল্টার অনুযায়ী <strong className="text-[#FF6A00] font-black">{filteredList.length}</strong> টি প্রশ্নপত্র পাওয়া গেছে
                         </span>
                         {filteredList.length > examPaperDisplayLimit && (
                           <span className="text-[11px] text-slate-400">
@@ -6020,6 +6480,764 @@ export default function AdminPage() {
                 })()}
               </div>
 
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW QUESTION BANK: SUB-SUBJECTS & PAST QUESTION PAPERS   */}
+          {/* ========================================================= */}
+          {activeTab === "question_bank" && (
+            <div className="space-y-6 animate-fade-in text-left">
+
+              {/* 1. Sub-Subjects Manager for Question Bank */}
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0">
+                      <Layers className="w-5 h-5 stroke-[2.2px]" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm sm:text-base text-slate-800 tracking-tight">
+                        প্রশ্ন ব্যাংকের সাব-সাবজেক্ট ম্যানেজমেন্ট ({qbSubSubjectsList.length} টি)
+                      </h3>
+                      <p className="text-[11px] font-bold text-slate-400">
+                        যেমন: বিসিএস, প্রাইমারি প্রধান শিক্ষক নিয়োগ, ব্যাংক নিয়োগ, NTRCA — এসবের ভেতরে পুরনো সালের প্রশ্নপত্র যুক্ত হবে।
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Existing Sub-Subjects Pills */}
+                <div className="flex flex-wrap gap-2">
+                  {qbSubSubjectsList.length === 0 ? (
+                    <div className="w-full p-3 bg-orange-50/50 border border-dashed border-orange-200 rounded-2xl text-xs font-bold text-slate-500 text-center">
+                      এখনো কোনো সাব-সাবজেক্ট তৈরি করা হয়নি! নিচের ফর্ম থেকে যুক্ত করুন (যেমন: বিসিএস)।
+                    </div>
+                  ) : (
+                    qbSubSubjectsList.map((sub) => {
+                      const paperCnt = questionBankPapers.filter(
+                        (p) => (p.subSubject || "").trim().toLowerCase() === (sub.name || "").trim().toLowerCase()
+                      ).length;
+                      const isConfirming = qbConfirmDeleteSubId === (sub.id || sub.name);
+                      return (
+                        <div
+                          key={sub.id || sub.name}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs font-extrabold text-slate-800"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-[#FF6A00]" />
+                          <span>{sub.name}</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-[#FF6A00]">
+                            {toBanglaDigits(paperCnt)}টি প্রশ্নপত্র
+                          </span>
+                          {isConfirming ? (
+                            <div className="inline-flex items-center gap-1 ml-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteQbSubSubject(sub.id || sub.name)}
+                                className="px-2 py-0.5 bg-rose-600 text-white rounded-lg text-[10px] font-black cursor-pointer"
+                              >
+                                নিশ্চিত ডিলিট
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setQbConfirmDeleteSubId(null)}
+                                className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold cursor-pointer"
+                              >
+                                বাতিল
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setQbConfirmDeleteSubId(sub.id || sub.name)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                              title="সাব-সাবজেক্ট মুছুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Add Sub-Subject Form */}
+                <form onSubmit={handleAddQbSubSubject} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2 border-t border-slate-100">
+                  <div className="sm:col-span-5">
+                    <input
+                      type="text"
+                      value={qbNewSubName}
+                      onChange={(e) => setQbNewSubName(e.target.value)}
+                      placeholder="নতুন সাব-সাবজেক্ট (যেমন: বিসিএস / প্রাইমারি প্রধান শিক্ষক নিয়োগ)"
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-4">
+                    <input
+                      type="text"
+                      value={qbNewSubDesc}
+                      onChange={(e) => setQbNewSubDesc(e.target.value)}
+                      placeholder="সংক্ষিপ্ত বিবরণ (ঐচ্ছিক, যেমন: ১০ম-৫০তম বিসিএস)"
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <button
+                      type="submit"
+                      className="w-full h-full py-2.5 px-4 bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/20"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5px]" />
+                      <span>সাব-সাবজেক্ট যোগ</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* 2. Add / Edit Question Bank Paper Card */}
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-5">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-orange-50 text-[#FF6A00] rounded-xl flex items-center justify-center shrink-0">
+                      <Database className="w-5 h-5 stroke-[2.2px]" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm sm:text-base text-slate-800 tracking-tight">
+                        {qbEditingPaperId ? "প্রশ্ন ব্যাংকের প্রশ্নপত্র এডিট করুন" : "প্রশ্ন ব্যাংকে নতুন প্রশ্নপত্র যুক্ত করুন"}
+                      </h3>
+                      <p className="text-[11px] font-bold text-slate-400">
+                        এগুলো কোনো লাইভ/আসন্ন/আর্কাইভ এক্সাম লিস্টে যাবে না — শুধুমাত্র প্রশ্ন ব্যাংক সেকশনে সাল ও মাস অনুযায়ী সিরিয়ালে থাকবে।
+                      </p>
+                    </div>
+                  </div>
+
+                  {qbEditingPaperId && (
+                    <button
+                      type="button"
+                      onClick={resetQbForm}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      বাতিল করুন
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleSaveQbPaper} className="space-y-5">
+                  {/* Title & Sub-subject */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-7 space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        ১. প্রশ্নপত্রের শিরোনাম (Title) *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: ৫০ তম বিসিএস প্রিলিমিনারি টেস্ট / প্রাথমিক বিদ্যালয় প্রধান শিক্ষক নিয়োগ পরীক্ষা-2012-(নাগলিঙ্গম-01)"
+                        value={qbTitle}
+                        onChange={(e) => setQbTitle(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                        required
+                      />
+                    </div>
+
+                    <div className="md:col-span-5 space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-[#FF6A00] uppercase block pl-1">
+                        ২. সাব-সাবজেক্ট সিলেক্ট করুন *
+                      </label>
+                      <select
+                        value={qbSubSubject}
+                        onChange={(e) => setQbSubSubject(e.target.value)}
+                        className="w-full bg-orange-50/50 border border-orange-200/90 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold focus:outline-none text-slate-800 cursor-pointer"
+                        required={qbSubSubjectsList.length > 0}
+                      >
+                        {qbSubSubjectsList.length === 0 ? (
+                          <option value="">আগে উপরে সাব-সাবজেক্ট তৈরি করুন</option>
+                        ) : (
+                          qbSubSubjectsList.map((s) => (
+                            <optgroup key={s.id || s.name} label={s.name}>
+                              <option value={s.name}>{s.name}</option>
+                              {(s.subCategories2 || []).map((s2) => (
+                                <option key={s2.id || s2.name} value={s2.name}>
+                                  └─ {s2.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Year, Month & Duration */}
+                  <div className="p-4 bg-orange-50/50 border border-orange-200/70 rounded-2xl space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-[#FF6A00]" />
+                        <span>৩. পরীক্ষার সাল, মাস ও সময় নির্ধারণ (সাল অনুযায়ী সিরিয়াল হবে) *</span>
+                      </span>
+                      <span className="text-xs font-black text-[#FF6A00] bg-white border border-orange-200 px-3 py-1 rounded-full flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>কার্ডে দেখাবে: {formatQuestionBankDisplayDate(qbYear, qbMonth || undefined)}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
+                          সাল (Year, যেমন: 2026 / 2012) *
+                        </label>
+                        <input
+                          type="number"
+                          min={1971}
+                          max={2099}
+                          value={qbYear}
+                          onChange={(e) => setQbYear(Number(e.target.value) || new Date().getFullYear())}
+                          className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-black text-slate-800 focus:outline-none"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
+                          মাস (Month)
+                        </label>
+                        <select
+                          value={qbMonth}
+                          onChange={(e) => setQbMonth(e.target.value)}
+                          className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="">মাস ছাড়া (শুধু সাল)</option>
+                          {QB_MONTH_NAMES.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold text-slate-600 uppercase block pl-1">
+                          সময় (মিনিট / Duration in Minutes) *
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={600}
+                          value={qbDurationMinutes}
+                          onChange={(e) => setQbDurationMinutes(Math.max(1, Number(e.target.value) || 60))}
+                          className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-black text-slate-800 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] font-bold text-slate-500">দ্রুত সময়:</span>
+                      {[30, 45, 60, 90, 100, 120].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setQbDurationMinutes(m)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                            qbDurationMinutes === m
+                              ? "bg-[#FF6A00] text-white shadow-2xs"
+                              : "bg-white border border-slate-200 text-slate-600 hover:border-orange-300"
+                          }`}
+                        >
+                          {toBanglaDigits(m)} মিনিট
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Topic / Short Note */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                      ৪. টপিক / নোট (ঐচ্ছিক)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="যেমন: ৫০তম বিসিএস প্রিলিমিনারি পূর্ণাঙ্গ প্রশ্ন ও সমাধান"
+                      value={qbTopic}
+                      onChange={(e) => setQbTopic(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Bulk JSON Import Drawer */}
+                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Upload className="w-4 h-4 text-[#FF6A00]" />
+                        <span className="text-xs font-black text-slate-800">
+                          ৫. প্রশ্ন যুক্ত করার দ্রুত মাধ্যম (JSON ফাইল / পেস্ট অথবা সার্ভার ব্যাংক)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setQbBulkJsonOpen(!qbBulkJsonOpen)}
+                        className="px-3 py-1.5 bg-white hover:bg-orange-50 border border-orange-200 text-[#FF6A00] rounded-xl text-xs font-black transition-all cursor-pointer"
+                      >
+                        {qbBulkJsonOpen ? "JSON বক্স বন্ধ করুন" : "📥 JSON দিয়ে একসাথে ৮০-২০০ প্রশ্ন যোগ করুন"}
+                      </button>
+                    </div>
+
+                    {qbBulkJsonOpen && (
+                      <div className="space-y-3 pt-2 border-t border-slate-200">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] font-bold text-slate-500">
+                            ফরম্যাট: <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200">[{"{ question, options: [...], correctIndex: 0, explanation, subject }"}]</code>
+                          </span>
+                          <label className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-black cursor-pointer inline-flex items-center gap-1.5">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>.JSON ফাইল আপলোড</span>
+                            <input
+                              type="file"
+                              accept=".json,application/json"
+                              className="hidden"
+                              onChange={(ev) => {
+                                const file = ev.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  const content = String(reader.result || "");
+                                  setQbBulkJsonText(content);
+                                  handleQbBulkJsonImport(content);
+                                };
+                                reader.readAsText(file);
+                                ev.target.value = "";
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        <textarea
+                          rows={5}
+                          value={qbBulkJsonText}
+                          onChange={(e) => setQbBulkJsonText(e.target.value)}
+                          placeholder='[{"question":"বাংলাদেশের রাজধানী কোনটি?","options":["ঢাকা","খুলনা","সিলেট","রাজশাহী"],"correctIndex":0,"explanation":"ঢাকা বাংলাদেশের রাজধানী।"}]'
+                          className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl p-3 text-xs font-mono text-slate-800 focus:outline-none"
+                        />
+
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleQbBulkJsonImport(qbBulkJsonText)}
+                            className="px-4 py-2 bg-[#FF6A00] hover:bg-orange-600 text-white font-black text-xs rounded-xl cursor-pointer"
+                          >
+                            JSON প্রশ্নগুলো যুক্ত করুন
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Server Question Bank Picker */}
+                  <div className="space-y-3 pt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <Database className="w-4 h-4 text-[#FF6A00]" />
+                        <span>৬. এমসিকিউ ভান্ডার থেকে প্রশ্ন সার্চ ও যোগ করুন:</span>
+                      </h4>
+
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        {[50, 80, 100, 160, 200].map((cnt) => (
+                          <button
+                            key={cnt}
+                            type="button"
+                            onClick={() => setQbTargetCount(cnt)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                              qbTargetCount === cnt
+                                ? "bg-slate-800 text-white"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            {cnt} টি
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => loadQbQuestionsFromDb(qbSearchSubjects, qbSearchQuery, true, qbTargetCount)}
+                          disabled={qbLoadingQuestions}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${qbLoadingQuestions ? "animate-spin" : ""}`} />
+                          <span>{qbLoadingQuestions ? "লোড হচ্ছে..." : "🔍 প্রশ্ন লোড করুন"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleQbAutoFillQuestions}
+                          disabled={qbLoadingQuestions}
+                          className="px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#FF6A00] font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Auto Fill</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="প্রশ্ন বা কীওয়ার্ড দিয়ে সার্চ করুন..."
+                      value={qbSearchQuery}
+                      onChange={(e) => setQbSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF6A00]"
+                    />
+
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-28 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => toggleQbSearchSubject("All")}
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer ${
+                          qbSearchSubjects.includes("All")
+                            ? "bg-[#FF6A00] text-white shadow-2xs"
+                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        সকল বিষয় (All)
+                      </button>
+                      {SUBJECTS.map((s) => {
+                        const isSelected = !qbSearchSubjects.includes("All") && qbSearchSubjects.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => toggleQbSearchSubject(s)}
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                              isSelected
+                                ? "bg-[#FF6A00] text-white shadow-2xs"
+                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            <span>{s}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {qbHasFetched && (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-orange-50/70 border border-orange-200/80 rounded-xl">
+                          <span className="text-xs font-extrabold text-slate-800">
+                            লোডকৃত প্রশ্ন: <strong className="text-[#FF6A00]">{qbAvailableQuestions.length}</strong> টি
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleQbSelectAllAvailable}
+                            disabled={qbAvailableQuestions.length === 0}
+                            className="px-3 py-1.5 bg-[#FF6A00] hover:bg-orange-600 disabled:bg-slate-200 text-white font-black text-xs rounded-xl cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5" />
+                            <span>সিলেক্ট অল (সব যোগ করুন)</span>
+                          </button>
+                        </div>
+
+                        <div className="max-h-64 overflow-y-auto border border-slate-100 rounded-2xl bg-slate-50/50 p-2 space-y-1.5">
+                          {qbAvailableQuestions.length === 0 ? (
+                            <div className="p-4 text-center text-xs font-bold text-slate-400">
+                              কোনো প্রশ্ন পাওয়া যায়নি।
+                            </div>
+                          ) : (
+                            qbAvailableQuestions.map((q, idx) => {
+                              const isAdded = qbQuestions.some((pq) => pq.id === q.id || (pq.question || pq.questionText) === q.question);
+                              return (
+                                <div key={q.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-100 flex items-center justify-between gap-3 shadow-2xs">
+                                  <div className="text-xs text-slate-800 font-semibold flex-1 flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] font-extrabold text-[#FF6A00] bg-orange-50 px-1.5 py-0.5 rounded shrink-0">
+                                      {q.subject || q.subjectName || "General"}
+                                    </span>
+                                    <MathRenderer content={q.question || q.questionText} />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddQuestionToQbPaper(q)}
+                                    disabled={isAdded}
+                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 cursor-pointer ${
+                                      isAdded
+                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                    }`}
+                                  >
+                                    {isAdded ? "যুক্ত আছে ✓" : "+ যোগ করুন"}
+                                  </button>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Selected Questions Preview */}
+                  <div className="space-y-2.5 pt-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span>৭. প্রশ্নপত্রে যুক্ত প্রশ্নসমূহ ({toBanglaDigits(qbQuestions.length)} টি):</span>
+                      </h4>
+                      {qbQuestions.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setQbQuestions([])}
+                          className="text-[11px] font-extrabold text-rose-600 hover:underline cursor-pointer"
+                        >
+                          সব প্রশ্ন পরিষ্কার করুন
+                        </button>
+                      )}
+                    </div>
+
+                    {qbLoadingQuestions && qbQuestions.length === 0 ? (
+                      <div className="p-6 border-2 border-dashed border-orange-200 bg-orange-50/40 rounded-2xl text-center text-xs font-bold text-[#FF6A00] flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>প্রশ্নসমূহ লোড হচ্ছে...</span>
+                      </div>
+                    ) : qbQuestions.length === 0 ? (
+                      <div className="p-5 border-2 border-dashed border-slate-200 rounded-2xl text-center text-xs font-bold text-slate-400">
+                        এখনো কোনো প্রশ্ন যুক্ত হয়নি। উপরের JSON ইমপোর্ট অথবা এমসিকিউ ভান্ডার থেকে প্রশ্ন যোগ করুন।
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                        {qbQuestions.map((pq, idx) => (
+                          <div key={idx} className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                            <div className="text-xs text-slate-800 font-bold flex items-center gap-2 min-w-0">
+                              <span className="w-6 h-6 bg-orange-100 text-[#FF6A00] rounded-full flex items-center justify-center text-[10px] font-black shrink-0">
+                                {idx + 1}
+                              </span>
+                              <div className="min-w-0 truncate">
+                                <MathRenderer content={pq.question || pq.questionText} />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setQbQuestions((prev) => prev.filter((_, i) => i !== idx))}
+                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg shrink-0 cursor-pointer"
+                              title="সরান"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Submit */}
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                    <button
+                      type="submit"
+                      disabled={qbSavingPaper}
+                      className="bg-[#FF6A00] hover:bg-orange-600 disabled:bg-slate-400 text-white font-black text-xs sm:text-sm px-8 py-3.5 rounded-2xl active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5px]" />
+                      <span>
+                        {qbSavingPaper
+                          ? "সংরক্ষণ হচ্ছে..."
+                          : qbEditingPaperId
+                          ? "প্রশ্নপত্র আপডেট করুন"
+                          : "প্রশ্ন ব্যাংকে যুক্ত করুন"}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* 3. Published Question Bank Papers List (Sorted Latest First) */}
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-[#FF6A00]" />
+                    <h3 className="font-extrabold text-sm text-slate-800 tracking-tight">
+                      প্রশ্ন ব্যাংকের সংরক্ষিত প্রশ্নপত্র ({toBanglaDigits(questionBankPapers.length)} টি) — লেটেস্ট ডেট সবার আগে
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setQbSyncing(true);
+                        try {
+                          const refreshed = await fetchExamPapersFromDb(true);
+                          setExamPapers(refreshed);
+                          triggerNotification("success", "✅ সার্ভার থেকে প্রশ্ন ব্যাংক সিঙ্ক সম্পন্ন হয়েছে!");
+                        } catch {
+                          triggerNotification("error", "⚠️ সিঙ্ক করতে সমস্যা হয়েছে।");
+                        } finally {
+                          setQbSyncing(false);
+                        }
+                      }}
+                      disabled={qbSyncing}
+                      className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#FF6A00] text-xs font-black rounded-xl cursor-pointer flex items-center gap-1.5"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${qbSyncing ? "animate-spin" : ""}`} />
+                      <span>{qbSyncing ? "সিঙ্ক হচ্ছে..." : "সিঙ্ক্রোনাইজ"}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+                      {[20, 50, 100].map((lim) => (
+                        <button
+                          key={lim}
+                          type="button"
+                          onClick={() => setQbDisplayLimit(lim)}
+                          className={`px-2 py-1 text-xs font-black rounded-lg cursor-pointer ${
+                            qbDisplayLimit === lim ? "bg-[#FF6A00] text-white" : "text-slate-600 hover:bg-slate-200/60"
+                          }`}
+                        >
+                          {lim}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70">
+                  <select
+                    value={qbFilterSub}
+                    onChange={(e) => setQbFilterSub(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#FF6A00] cursor-pointer"
+                  >
+                    <option value="all">সকল সাব-সাবজেক্ট ({questionBankPapers.length} টি)</option>
+                    {qbSubSubjectsList.map((sub) => (
+                      <option key={sub.id || sub.name} value={sub.name}>{sub.name}</option>
+                    ))}
+                  </select>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={qbSearchPaper}
+                      onChange={(e) => setQbSearchPaper(e.target.value)}
+                      placeholder="শিরোনাম বা সাল দিয়ে খুঁজুন (যেমন: ৫০ তম, ২০২৬, প্রধান শিক্ষক)..."
+                      className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#FF6A00]"
+                    />
+                    {qbSearchPaper && (
+                      <button
+                        type="button"
+                        onClick={() => setQbSearchPaper("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sorted Question Bank List */}
+                {(() => {
+                  const filteredQb = questionBankPapers.filter((p) => {
+                    if (qbFilterSub !== "all") {
+                      const pSub = (p.subSubject || p.subject || "").trim().toLowerCase();
+                      if (pSub !== qbFilterSub.trim().toLowerCase()) return false;
+                    }
+                    if (qbSearchPaper.trim()) {
+                      const q = qbSearchPaper.trim().toLowerCase();
+                      const matchTitle = (p.title || "").toLowerCase().includes(q);
+                      const matchDate = (p.examDate || "").toLowerCase().includes(q);
+                      const matchSub = (p.subSubject || "").toLowerCase().includes(q);
+                      if (!matchTitle && !matchDate && !matchSub) return false;
+                    }
+                    return true;
+                  });
+
+                  const visibleQb = filteredQb.slice(0, qbDisplayLimit);
+
+                  if (visibleQb.length === 0) {
+                    return (
+                      <div className="p-8 text-center text-xs font-bold text-slate-400 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                        প্রশ্ন ব্যাংকে এখনো কোনো প্রশ্নপত্র যুক্ত হয়নি। উপরের ফর্ম থেকে যুক্ত করুন।
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {visibleQb.map((paper) => {
+                        const qCount = paper.questionCount || paper.questions?.length || 0;
+                        const durationMins = Math.max(
+                          1,
+                          Math.round((paper.totalDurationSeconds || qCount * 36) / 60)
+                        );
+                        const dateInfo = parseQuestionBankDateInfo(paper);
+                        const formattedDate =
+                          dateInfo.year > 0
+                            ? formatQuestionBankDisplayDate(
+                                dateInfo.year,
+                                dateInfo.month > 0 ? dateInfo.month : undefined
+                              )
+                            : paper.examDate || "";
+
+                        return (
+                          <div
+                            key={paper.id}
+                            onClick={() => handleViewExamPaperDetails(paper)}
+                            className="p-4 bg-slate-50/80 border border-slate-200/80 hover:border-orange-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all cursor-pointer group"
+                          >
+                            <div className="space-y-1.5 text-left">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[10px] font-black text-[#FF6A00] bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-full">
+                                  প্রশ্ন ব্যাংক
+                                </span>
+                                {paper.subSubject && (
+                                  <span className="text-[10px] font-extrabold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded-full">
+                                    {paper.subSubject}
+                                  </span>
+                                )}
+                                {formattedDate && (
+                                  <span className="text-[11px] font-bold text-slate-600 inline-flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5 text-[#FF6A00]" />
+                                    {formattedDate}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-[#FF6A00] transition-colors">
+                                {paper.title}
+                              </h4>
+
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg border border-orange-200 bg-orange-50 text-[#FF6A00]">
+                                  {toBanglaDigits(durationMins)} মিনিট
+                                </span>
+                                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
+                                  {toBanglaDigits(qCount)}টি প্রশ্ন
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => handleViewExamPaperDetails(paper)}
+                                className="px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#FF6A00] text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>দেখুন</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditQbPaper(paper)}
+                                className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>এডিট</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteExamPaper(paper.id)}
+                                className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                                title="ডিলেট করুন"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           )}
 
@@ -10573,7 +11791,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
           {/* ========================================================= */}
           {activeTab === "notifications" && canManageNotifications(currentStaffSession) && (
             <AdminPushNotificationTab
-              examPapers={examPapers}
+              examPapers={regularExamPapers}
               triggerNotification={triggerNotification}
             />
           )}
