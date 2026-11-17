@@ -97,7 +97,7 @@ import { useModalHistory, useExamExitProtection, useAppNavigationHistory, genera
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { updateUsernameOnServer, changeUserPasswordOnServer } from "../lib/user_auth";
 import { useOneSignal } from "../hooks/useOneSignal";
-import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd, subscribeAndroidAdState, isAndroidAdPlayingNow } from "../lib/android_bridge";
+import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd, triggerCircularPostInterstitialWithCooldown, subscribeAndroidAdState, isAndroidAdPlayingNow } from "../lib/android_bridge";
 
 // Code-split heavy interactive modals & components via next/dynamic
 const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { 
@@ -4028,6 +4028,7 @@ export default function Home() {
                 {/* RIGHT CARD: CV Maker (Theme Color Background) */}
                 <div
                   onClick={() => {
+                    triggerAndroidRewardedAd("open_cv_maker_reward");
                     setPreviousScreen("home");
                     setCurrentScreen("cv-maker");
                     if (soundEnabled) quizAudio.playClick();
@@ -6269,6 +6270,7 @@ export default function Home() {
                               key={post.id}
                               type="button"
                               onClick={() => {
+                                triggerCircularPostInterstitialWithCooldown();
                                 setSelectedCircularPost(post);
                                 setJobCircularPosts((prev) =>
                                   prev.map((p) => (p.id === post.id ? { ...p, views: (p.views || 0) + 1 } : p))

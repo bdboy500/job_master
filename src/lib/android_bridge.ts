@@ -21,6 +21,8 @@ export type AndroidAdActionEvent =
   | "quiz_next_6"
   | "quiz_replay_reward"
   | "quiz_rankings_reward"
+  | "open_cv_maker_reward"
+  | "job_circular_post_click"
   | "view_quiz_result"
   | "view_leaderboard"
   | "open_question_paper"
@@ -227,6 +229,53 @@ export function triggerAndroidRewardedAd(actionEvent?: AndroidAdActionEvent): bo
     }
   } catch {
     resumeFromAndroidAd();
+  }
+
+  return false;
+}
+
+const CIRCULAR_AD_COOLDOWN_KEY = "jobmaster_circular_post_ad_last_at";
+export const CIRCULAR_AD_COOLDOWN_MS = 150_000; // 2.5 minutes (2 * 60 + 30 = 150s)
+let memoryCircularAdLastShownAt = 0;
+
+/**
+ * Triggers an Android Interstitial Ad when clicking a Job Circular post card,
+ * strictly enforcing a 2.5-minute (150,000ms) cooldown between ads.
+ */
+export function triggerCircularPostInterstitialWithCooldown(
+  cooldownMs: number = CIRCULAR_AD_COOLDOWN_MS
+): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const now = Date.now();
+    let lastShownAt = memoryCircularAdLastShownAt;
+    try {
+      const storedRaw = window.localStorage.getItem(CIRCULAR_AD_COOLDOWN_KEY);
+      const storedNum = storedRaw ? Number(storedRaw) : 0;
+      if (Number.isFinite(storedNum) && storedNum > lastShownAt) {
+        lastShownAt = storedNum;
+      }
+    } catch {
+      // Ignore storage access errors
+    }
+
+    if (lastShownAt > 0 && now - lastShownAt < cooldownMs) {
+      return false;
+    }
+
+    const shown = triggerAndroidInterstitialAd("job_circular_post_click");
+    if (shown) {
+      memoryCircularAdLastShownAt = now;
+      try {
+        window.localStorage.setItem(CIRCULAR_AD_COOLDOWN_KEY, String(now));
+      } catch {
+        // Ignore storage write errors
+      }
+      return true;
+    }
+  } catch {
+    // Ignore errors so circular opening never breaks
   }
 
   return false;
