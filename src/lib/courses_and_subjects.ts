@@ -435,7 +435,10 @@ export async function fetchCoursesFromDb(forceRefresh = false): Promise<CourseIt
       try {
         const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
         const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
-        const res = await fetch("/api/courses", controller ? { signal: controller.signal } : undefined);
+        const res = await fetch("/api/courses", {
+          cache: "no-store",
+          ...(controller ? { signal: controller.signal } : {})
+        });
         if (timer) clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
@@ -576,7 +579,10 @@ export async function fetchPrepSubjectsFromDb(forceRefresh = false): Promise<Pre
       try {
         const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
         const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
-        const res = await fetch("/api/prep-subjects", controller ? { signal: controller.signal } : undefined);
+        const res = await fetch("/api/prep-subjects", {
+          cache: "no-store",
+          ...(controller ? { signal: controller.signal } : {})
+        });
         if (timer) clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
@@ -660,11 +666,25 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
     });
   } catch (e) {}
 
-  // 3. Try Supabase directly as well
+  // 3. Try Supabase directly as well (app_config first + schema-safe table fallback)
   try {
     const supabase = getSupabase();
     if (supabase) {
-      const payload = sorted.map(s => ({
+      await supabase.from("app_config").upsert({
+        key: "prep_subjects",
+        value: sorted,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+
+      try {
+        const currentIds = sorted.map(s => s.id).filter(Boolean);
+        if (currentIds.length > 0) {
+          const quotedIds = currentIds.map(id => `"${String(id).replace(/"/g, '\\"')}"`).join(",");
+          await supabase.from("app_prep_subjects").delete().not("id", "in", `(${quotedIds})`);
+        }
+      } catch (delErr) {}
+
+      const fullPayload = sorted.map(s => ({
         id: s.id,
         name: s.name,
         bnName: s.bnName || s.name,
@@ -679,20 +699,37 @@ export async function savePrepSubjectsToDb(prepSubjects: PrepSubjectItem[]): Pro
         active: s.active !== false
       }));
 
-      try {
-        const currentIds = sorted.map(s => s.id);
-        if (currentIds.length > 0) {
-          const formattedIds = currentIds.map(id => id).join(",");
-          await supabase.from("app_prep_subjects").delete().not("id", "in", `(${formattedIds})`);
+      const { error: errFull } = await supabase.from("app_prep_subjects").upsert(fullPayload, { onConflict: "id" });
+      if (errFull) {
+        const snakePayload = sorted.map(s => ({
+          id: s.id,
+          name: s.name,
+          bn_name: s.bnName || s.name,
+          icon: s.icon || "BookOpen",
+          bg: s.bg || "bg-[#FFF1E6]",
+          text: s.text || "text-orange-600",
+          sub: s.sub || "",
+          serial: Number(s.serial) || 1,
+          sub_subjects: s.subSubjects || [],
+          active: s.active !== false
+        }));
+        const { error: errSnake } = await supabase.from("app_prep_subjects").upsert(snakePayload, { onConflict: "id" });
+        if (errSnake) {
+          const camelPayload = sorted.map(s => ({
+            id: s.id,
+            name: s.name,
+            bnName: s.bnName || s.name,
+            icon: s.icon || "BookOpen",
+            bg: s.bg || "bg-[#FFF1E6]",
+            text: s.text || "text-orange-600",
+            sub: s.sub || "",
+            serial: Number(s.serial) || 1,
+            subSubjects: s.subSubjects || [],
+            active: s.active !== false
+          }));
+          await supabase.from("app_prep_subjects").upsert(camelPayload, { onConflict: "id" });
         }
-      } catch (delErr) {}
-
-      await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
-      await supabase.from("app_config").upsert({
-        key: "prep_subjects",
-        value: sorted,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "key" });
+      }
     }
   } catch (e) {}
 
@@ -724,7 +761,10 @@ export async function fetchProSectionFromDb(forceRefresh = false): Promise<ProSe
     try {
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
       const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
-      const res = await fetch("/api/pro-section", controller ? { signal: controller.signal } : undefined);
+      const res = await fetch("/api/pro-section", {
+        cache: "no-store",
+        ...(controller ? { signal: controller.signal } : {})
+      });
       if (timer) clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();

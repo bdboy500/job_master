@@ -29,6 +29,7 @@ export type AndroidAdActionEvent =
   | "download_circular"
   | "download_cv_pdf";
 
+let androidAdsSuppressed = false;
 let adPlayingState = false;
 let sawFocusLostSinceAdTrigger = false;
 let adTriggerTimestamp = 0;
@@ -37,6 +38,21 @@ let resumeDelayTimer: ReturnType<typeof setTimeout> | null = null;
 let listenersInstalled = false;
 
 const adStateListeners = new Set<(isPlaying: boolean) => void>();
+
+/**
+ * Globally enables or disables native Android ads (Interstitial & Rewarded).
+ * Set to `true` whenever the logged-in user has an active purchased package.
+ */
+export function setAndroidAdsSuppressed(suppressed: boolean): void {
+  androidAdsSuppressed = Boolean(suppressed);
+  if (androidAdsSuppressed && adPlayingState) {
+    resumeFromAndroidAd();
+  }
+}
+
+export function isAndroidAdsSuppressed(): boolean {
+  return androidAdsSuppressed;
+}
 
 function notifyAdState(playing: boolean) {
   if (adPlayingState === playing) return;
@@ -173,9 +189,10 @@ export function isAndroidWebViewBridge(): boolean {
 /**
  * Safely triggers a native Android AdMob Interstitial ad via `window.AndroidBridge.showInterstitialAd()`.
  * Pauses active quiz/exam timers until the ad finishes/closes.
+ * Suppressed automatically if user holds an active purchased package.
  */
 export function triggerAndroidInterstitialAd(actionEvent?: AndroidAdActionEvent): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || androidAdsSuppressed) return false;
   installGlobalAdResumeListeners();
 
   try {
@@ -205,9 +222,10 @@ export function triggerAndroidInterstitialAd(actionEvent?: AndroidAdActionEvent)
 /**
  * Safely triggers a native Android AdMob Rewarded ad via `window.AndroidBridge.showRewardedAd()`.
  * Pauses active quiz/exam timers until the ad finishes/closes.
+ * Suppressed automatically if user holds an active purchased package.
  */
 export function triggerAndroidRewardedAd(actionEvent?: AndroidAdActionEvent): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || androidAdsSuppressed) return false;
   installGlobalAdResumeListeners();
 
   try {
@@ -241,11 +259,12 @@ let memoryCircularAdLastShownAt = 0;
 /**
  * Triggers an Android Interstitial Ad when clicking a Job Circular post card,
  * strictly enforcing a 2.5-minute (150,000ms) cooldown between ads.
+ * Suppressed automatically if user holds an active purchased package.
  */
 export function triggerCircularPostInterstitialWithCooldown(
   cooldownMs: number = CIRCULAR_AD_COOLDOWN_MS
 ): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || androidAdsSuppressed) return false;
 
   try {
     const now = Date.now();

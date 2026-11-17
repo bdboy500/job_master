@@ -78,7 +78,9 @@ import {
   HeartHandshake,
   Shield,
   Eye,
-  Image as ImageIcon
+  Image as ImageIcon,
+  CreditCard,
+  CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -97,7 +99,8 @@ import { useModalHistory, useExamExitProtection, useAppNavigationHistory, genera
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { updateUsernameOnServer, changeUserPasswordOnServer } from "../lib/user_auth";
 import { useOneSignal } from "../hooks/useOneSignal";
-import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd, triggerCircularPostInterstitialWithCooldown, subscribeAndroidAdState, isAndroidAdPlayingNow } from "../lib/android_bridge";
+import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd, triggerCircularPostInterstitialWithCooldown, subscribeAndroidAdState, isAndroidAdPlayingNow, setAndroidAdsSuppressed } from "../lib/android_bridge";
+import { UserSubscription, PaymentTransaction, isSubscriptionActive, isValidRegisteredEmail, fetchActiveUserSubscription, getCachedUserSubscription, formatSubscriptionDateBn } from "../lib/subscriptions";
 
 // Code-split heavy interactive modals & components via next/dynamic
 const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { 
@@ -494,6 +497,16 @@ export default function Home() {
   const [prepSubjectSearchQuery, setPrepSubjectSearchQuery] = useState<string>("");
   const [selectedPurchasePkg, setSelectedPurchasePkg] = useState<any | null>(null);
   const [isProSectionActive, setIsProSectionActive] = useState<boolean>(false);
+  const [activeSubscription, setActiveSubscription] = useState<UserSubscription | null>(null);
+  const [userPaymentTransactions, setUserPaymentTransactions] = useState<PaymentTransaction[]>([]);
+  const [isInitiatingBkash, setIsInitiatingBkash] = useState<boolean>(false);
+  const [bkashActionError, setBkashActionError] = useState<string>("");
+  const [bkashPaymentResult, setBkashPaymentResult] = useState<{
+    status: "success" | "failed";
+    message: string;
+    trxId?: string;
+    pkgId?: string;
+  } | null>(null);
   
   // Drawer & Overlay States
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
@@ -1205,6 +1218,19 @@ export default function Home() {
           }
         }
 
+        const pendingPkgId = localStorage.getItem("job_master_pending_package_id");
+        if (pendingPkgId) {
+          localStorage.removeItem("job_master_pending_package_id");
+          const matchedPkg =
+            packagesList.find((p) => p.id === pendingPkgId) ||
+            DEFAULT_PACKAGES.find((p) => p.id === pendingPkgId);
+          setCurrentScreen("packages");
+          if (matchedPkg) {
+            setSelectedPurchasePkg(matchedPkg);
+          }
+          return;
+        }
+
         const pendingIntent = localStorage.getItem("job_master_pending_intent");
         if (pendingIntent) {
           localStorage.removeItem("job_master_pending_intent");
@@ -1212,6 +1238,8 @@ export default function Home() {
             setCurrentScreen("all-live-exams");
           } else if (pendingIntent === "live_quiz" || pendingIntent === "quiz") {
             setCurrentScreen("quiz");
+          } else if (pendingIntent === "packages") {
+            setCurrentScreen("packages");
           }
         }
       };
@@ -1739,6 +1767,22 @@ export default function Home() {
       }
     }
 
+    const pendingPkgId = typeof window !== "undefined" ? localStorage.getItem("job_master_pending_package_id") : null;
+    if (pendingPkgId) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("job_master_pending_package_id");
+        localStorage.removeItem("job_master_pending_intent");
+      }
+      const matchedPkg =
+        packagesList.find((p) => p.id === pendingPkgId) ||
+        DEFAULT_PACKAGES.find((p) => p.id === pendingPkgId);
+      setCurrentScreen("packages");
+      if (matchedPkg) {
+        setSelectedPurchasePkg(matchedPkg);
+      }
+      return;
+    }
+
     const pendingIntent = typeof window !== "undefined" ? localStorage.getItem("job_master_pending_intent") : null;
     if (pendingIntent) {
       if (typeof window !== "undefined") {
@@ -1748,10 +1792,136 @@ export default function Home() {
         setCurrentScreen("all-live-exams");
       } else if (pendingIntent === "live_quiz" || pendingIntent === "quiz") {
         setCurrentScreen("quiz");
+      } else if (pendingIntent === "packages") {
+        setCurrentScreen("packages");
       }
     } else if (currentScreen === "auth") {
       const dest = previousScreen && previousScreen !== "auth" ? previousScreen : "home";
       setCurrentScreen(dest);
+    }
+  };
+
+  // Sync active paid package subscription & suppress all Android ads for paid subscribers
+  useEffect(() => {
+    const userId = currentUser?.id || "";
+    const userEmail = currentUser?.email || "";
+
+    if (!isLoggedIn || (!userId && !userEmail)) {
+      setActiveSubscription(null);
+      setUserPaymentTransactions([]);
+      setAndroidAdsSuppressed(false);
+      return;
+    }
+
+    const cached = userId ? getCachedUserSubscription(userId) : null;
+    if (cached && isSubscriptionActive(cached)) {
+      setActiveSubscription(cached);
+      setAndroidAdsSuppressed(true);
+    }
+
+    let cancelled = false;
+    fetchActiveUserSubscription(userId, userEmail).then(({ activeSubscription: sub, transactions }) => {
+      if (cancelled) return;
+      const isActive = isSubscriptionActive(sub);
+      setActiveSubscription(isActive ? sub : null);
+      setUserPaymentTransactions(transactions || []);
+      setAndroidAdsSuppressed(isActive);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, currentUser?.id, currentUser?.email]);
+
+  // Handle bKash redirect callback query params (?payment_status=success|failed&message=...&trxID=...&pkg=...)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("payment_status");
+    if (paymentStatus !== "success" && paymentStatus !== "failed") return;
+
+    const messageParam = params.get("message") || (paymentStatus === "failed" ? "payment failed" : "পেমেন্ট সফল হয়েছে!");
+    const trxIdParam = params.get("trxID") || "";
+    const pkgIdParam = params.get("pkg") || "";
+
+    setBkashPaymentResult({
+      status: paymentStatus,
+      message: messageParam,
+      trxId: trxIdParam || undefined,
+      pkgId: pkgIdParam || undefined,
+    });
+    setCurrentScreen("packages");
+    setSelectedPurchasePkg(null);
+
+    if (paymentStatus === "success" && (currentUser?.id || currentUser?.email)) {
+      fetchActiveUserSubscription(currentUser?.id, currentUser?.email).then(({ activeSubscription: sub, transactions }) => {
+        const isActive = isSubscriptionActive(sub);
+        setActiveSubscription(isActive ? sub : null);
+        setUserPaymentTransactions(transactions || []);
+        setAndroidAdsSuppressed(isActive);
+      });
+    }
+
+    try {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("payment_status");
+      cleanUrl.searchParams.delete("paymentID");
+      cleanUrl.searchParams.delete("trxID");
+      cleanUrl.searchParams.delete("message");
+      cleanUrl.searchParams.delete("pkg");
+      window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search);
+    } catch {
+      // Ignore URL cleanup errors
+    }
+  }, [currentUser?.id, currentUser?.email]);
+
+  const handleRequireEmailAuthForPackage = (pkg: any, mode: "signin" | "signup" = "signup") => {
+    if (typeof window !== "undefined" && pkg?.id) {
+      localStorage.setItem("job_master_pending_package_id", pkg.id);
+      localStorage.setItem("job_master_pending_intent", "packages");
+    }
+    setSelectedPurchasePkg(null);
+    setAuthModalCustomTitle("ইমেইল দিয়ে রেজিস্ট্রেশন করুন");
+    setAuthModalCustomSubtitle("প্যাকেজ কিনতে এবং অ্যাড-ফ্রি সুবিধা পেতে অবশ্যই ইমেইল দিয়ে রেজিস্টার ও লগইন থাকতে হবে।");
+    openAuthScreen(mode);
+  };
+
+  const handleStartBkashCheckout = async (pkg: any) => {
+    setBkashActionError("");
+    if (!isLoggedIn || !currentUser || !isValidRegisteredEmail(currentUser.email)) {
+      handleRequireEmailAuthForPackage(pkg, "signup");
+      return;
+    }
+
+    setIsInitiatingBkash(true);
+    try {
+      const res = await fetch("/api/bkash/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          userEmail: currentUser.email,
+          packageId: pkg.id,
+          payerReference: currentUser.phone_number || currentUser.email,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success || !data?.bkashURL) {
+        if (data?.code === "EMAIL_REGISTRATION_REQUIRED") {
+          handleRequireEmailAuthForPackage(pkg, "signup");
+          return;
+        }
+        setBkashActionError(data?.error || "bKash পেমেন্ট শুরু করা যায়নি। আবার চেষ্টা করুন।");
+        return;
+      }
+
+      if (typeof window !== "undefined") {
+        window.location.href = data.bkashURL;
+      }
+    } catch (err: any) {
+      setBkashActionError(err?.message || "সার্ভারের সাথে সংযোগ ব্যর্থ হয়েছে।");
+    } finally {
+      setIsInitiatingBkash(false);
     }
   };
 
@@ -6490,14 +6660,26 @@ export default function Home() {
                     {profileEmail}
                   </p>
 
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <span className="bg-orange-100/90 text-[#FF6A00] font-black text-[9px] sm:text-[10px] tracking-wide uppercase px-2.5 py-0.5 rounded-full border border-orange-200/80 shadow-2xs shrink-0">
-                      PRO MEMBER
-                    </span>
+                  <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                    {isSubscriptionActive(activeSubscription) ? (
+                      <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] tracking-wide uppercase px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-2xs shrink-0 flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3" />
+                        PRO MEMBER • AD-FREE
+                      </span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-600 font-black text-[9px] sm:text-[10px] tracking-wide uppercase px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs shrink-0">
+                        FREE MEMBER
+                      </span>
+                    )}
                     <span className="text-[11px] font-extrabold text-slate-400 truncate">
                       ID: {profileId}
                     </span>
                   </div>
+                  {isSubscriptionActive(activeSubscription) && activeSubscription && (
+                    <p className="text-[10px] font-bold text-emerald-600 pt-0.5">
+                      অ্যাক্টিভ প্ল্যান: {activeSubscription.packageTitle} (মেয়াদ: {formatSubscriptionDateBn(activeSubscription.expiresAt)})
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -6677,171 +6859,318 @@ export default function Home() {
           )}
 
           {/* ========================================================= */}
-          {/* 7. SCREEN: PACKAGES (Apple UI Style)                       */}
+          {/* 7. SCREEN: PACKAGES (Apple UI Style + Pay with bKash)     */}
           {/* ========================================================= */}
           {currentScreen === "packages" && (
             <div className="px-1.5 sm:px-2.5 py-3 sm:py-4 space-y-3.5 sm:space-y-4 animate-fade-in pb-12">
-              {/* Header Banner - reduced top padding & removed "প্যাকেজসমূহ" header */}
+              {/* Header Banner */}
               <div className="text-center space-y-1 pt-0 mt-0">
                 <span className="inline-block text-[10px] font-black uppercase tracking-widest text-[#007AFF] bg-[#007AFF]/10 px-3 py-0.5 rounded-full">
-                  PRICING & MEMBERSHIP
+                  PRICING & AD-FREE MEMBERSHIP
                 </span>
-                <div className="pt-1">
-                  <span className="inline-block text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/90 border border-amber-200 px-3 py-1 rounded-full">
-                    Demo Only • Payment feature is coming soon
-                  </span>
-                </div>
-                <p className="text-xs font-semibold text-slate-500 max-w-xs mx-auto">
-                  সকল প্রস্তুতির সেরা প্ল্যান বেছে নিন
+                <p className="text-xs font-semibold text-slate-500 max-w-xs mx-auto pt-1">
+                  প্যাকেজ সাবস্ক্রাইব করে বিজ্ঞাপনমুক্ত (Ad-Free) সম্পূর্ণ প্রস্তুতি উপভোগ করুন
                 </p>
               </div>
+
+              {/* bKash Callback Status Banner */}
+              {bkashPaymentResult && (
+                <div
+                  className={`rounded-2xl p-4 border shadow-xs flex items-start justify-between gap-3 ${
+                    bkashPaymentResult.status === "success"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                      : "bg-rose-50 border-rose-200 text-rose-900"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    {bkashPaymentResult.status === "success" ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <div className="space-y-0.5">
+                      <h4 className="text-xs sm:text-sm font-black">
+                        {bkashPaymentResult.status === "success"
+                          ? "পেমেন্ট সফল হয়েছে! আপনার প্যাকেজ অ্যাক্টিভ হয়েছে।"
+                          : bkashPaymentResult.message || "payment failed"}
+                      </h4>
+                      {bkashPaymentResult.status === "success" ? (
+                        <p className="text-[11px] font-semibold text-emerald-700">
+                          এখন থেকে অ্যাপে কোনো অ্যাড দেখানো হবে না (১০০% Ad-Free)।
+                          {bkashPaymentResult.trxId ? ` TrxID: ${bkashPaymentResult.trxId}` : ""}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] font-semibold text-rose-700">
+                          অনুগ্রহ করে পুনরায় চেষ্টা করুন অথবা অন্য বিকাশ ওয়ালেট দিয়ে পেমেন্ট করুন।
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBkashPaymentResult(null)}
+                    className="p-1 rounded-full hover:bg-black/5 text-slate-500 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Active Paid Subscription Card */}
+              {isSubscriptionActive(activeSubscription) && activeSubscription && (
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-md space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      অ্যাক্টিভ মেম্বারশিপ • AD-FREE
+                    </span>
+                    <span className="text-[11px] font-bold bg-white/15 px-2.5 py-0.5 rounded-lg">
+                      মেয়াদ: {formatSubscriptionDateBn(activeSubscription.expiresAt)}
+                    </span>
+                  </div>
+                  <h4 className="font-black text-sm sm:text-base">{activeSubscription.packageTitle}</h4>
+                  <p className="text-[11px] text-emerald-50 font-medium">
+                    আপনার অ্যাকাউন্ট ({activeSubscription.userEmail}) এর জন্য অ্যাপের সকল ইন্টারস্টিশিয়াল ও রিওয়ার্ড অ্যাড সম্পূর্ণভাবে বন্ধ রয়েছে।
+                  </p>
+                </div>
+              )}
+
+              {/* Email Registration Reminder if guest or missing valid email */}
+              {(!isLoggedIn || !isValidRegisteredEmail(currentUser?.email)) && (
+                <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <Mail className="w-4 h-4 text-[#007AFF] shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-extrabold text-slate-800">
+                        প্যাকেজ কিনতে ইমেইল রেজিস্ট্রেশন আবশ্যক
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-600">
+                        অ্যাড-ফ্রি সাবস্ক্রিপশন সংরক্ষণ করতে ইমেইল দিয়ে অ্যাকাউন্ট তৈরি বা লগইন করুন।
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openAuthScreen("signup")}
+                    className="shrink-0 px-3 py-1.5 bg-[#007AFF] hover:bg-blue-600 text-white text-[11px] font-black rounded-xl transition-all active:scale-95 cursor-pointer"
+                  >
+                    রেজিস্টার / লগইন
+                  </button>
+                </div>
+              )}
 
               {/* Section 1: All Access Packages */}
               <div className="space-y-3">
                 {packagesList
-                  .filter((p) => (p.category || "all") !== "course")
+                  .filter((p) => (p.category || "all") !== "course" && p.active !== false)
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
-                  .map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    onClick={() => {
-                      setSelectedPurchasePkg(pkg);
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className={`${pkg.bg || "bg-white"} ${pkg.border || "border-slate-200/80"} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1.5 pr-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
-                            {pkg.title}
-                          </h4>
-                          {pkg.badge && (
-                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                              pkg.badge === "NEW" 
-                                ? "bg-[#007AFF] text-white" 
-                                : "bg-amber-100 text-amber-800 border border-amber-200/80"
-                            }`}>
-                              {pkg.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] sm:text-xs font-light text-slate-500 leading-relaxed">
-                          {pkg.desc}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right flex flex-col items-end">
-                        <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleShareLink({
-                                view: "package",
-                                id: pkg.id,
-                                title: `JobMaster - ${pkg.title}`,
-                                text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
-                              });
-                            }}
-                            className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
-                            title="প্যাকেজ লিংক শেয়ার করুন"
-                          >
-                            <Share2 className="w-3 h-3" />
-                            <span>Share</span>
-                          </button>
-                          <span>{pkg.price}</span>
-                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
-                        </div>
-                        {pkg.oldPrice && (
-                          <div className="text-[11px] font-bold text-slate-400 line-through">
-                            {pkg.oldPrice}
+                  .map((pkg) => {
+                    const isCurrentActivePkg =
+                      isSubscriptionActive(activeSubscription) && activeSubscription?.packageId === pkg.id;
+                    return (
+                      <div
+                        key={pkg.id}
+                        onClick={() => {
+                          setBkashActionError("");
+                          setSelectedPurchasePkg(pkg);
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className={`${pkg.bg || "bg-white"} ${
+                          isCurrentActivePkg ? "border-emerald-400 ring-2 ring-emerald-500/20" : pkg.border || "border-slate-200/80"
+                        } border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1.5 pr-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
+                                {pkg.title}
+                              </h4>
+                              {pkg.badge && (
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                                  pkg.badge === "NEW"
+                                    ? "bg-[#007AFF] text-white"
+                                    : "bg-amber-100 text-amber-800 border border-amber-200/80"
+                                }`}>
+                                  {pkg.badge}
+                                </span>
+                              )}
+                              {isCurrentActivePkg && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  ACTIVE
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] sm:text-xs font-light text-slate-500 leading-relaxed">
+                              {pkg.desc}
+                            </p>
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md">
+                                Ad-Free Experience Included
+                              </span>
+                            </div>
                           </div>
-                        )}
+                          <div className="shrink-0 text-right flex flex-col items-end">
+                            <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShareLink({
+                                    view: "package",
+                                    id: pkg.id,
+                                    title: `JobMaster - ${pkg.title}`,
+                                    text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড ও অ্যাড-ফ্রি এক্সেস পান!`
+                                  });
+                                }}
+                                className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
+                                title="প্যাকেজ লিংক শেয়ার করুন"
+                              >
+                                <Share2 className="w-3 h-3" />
+                                <span>Share</span>
+                              </button>
+                              <span>{pkg.price}</span>
+                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
+                            </div>
+                            {pkg.oldPrice && (
+                              <div className="text-[11px] font-bold text-slate-400 line-through">
+                                {pkg.oldPrice}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
               </div>
 
               {/* Section 2: Course Based (কোর্সভিত্তিক) */}
-              {packagesList.some((p) => p.category === "course") && (
+              {packagesList.some((p) => p.category === "course" && p.active !== false) && (
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">
                     কোর্সভিত্তিক
                   </h4>
 
                   {packagesList
-                    .filter((p) => p.category === "course")
+                    .filter((p) => p.category === "course" && p.active !== false)
                     .sort((a, b) => (a.order || 0) - (b.order || 0))
-                    .map((pkg) => (
-                    <div
-                      key={pkg.id}
-                      onClick={() => {
-                        setSelectedPurchasePkg(pkg);
-                        if (soundEnabled) quizAudio.playClick();
-                      }}
-                      className={`${pkg.bg || "bg-white"} ${pkg.border || "border-slate-200/80"} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1.5 pr-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
-                              {pkg.title}
-                            </h4>
-                            {pkg.badge && (
-                              <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200/80">
-                                {pkg.badge}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] sm:text-xs font-light text-slate-500 leading-relaxed">
-                            {pkg.desc}
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right flex flex-col items-end">
-                          <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShareLink({
-                                  view: "package",
-                                  id: pkg.id,
-                                  title: `JobMaster - ${pkg.title}`,
-                                  text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
-                                });
-                              }}
-                              className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
-                              title="প্যাকেজ লিংক শেয়ার করুন"
-                            >
-                              <Share2 className="w-3 h-3" />
-                              <span>Share</span>
-                            </button>
-                            <span>{pkg.price}</span>
-                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
-                          </div>
-                          {pkg.oldPrice && (
-                            <div className="text-[11px] font-bold text-slate-400 line-through">
-                              {pkg.oldPrice}
+                    .map((pkg) => {
+                      const isCurrentActivePkg =
+                        isSubscriptionActive(activeSubscription) && activeSubscription?.packageId === pkg.id;
+                      return (
+                        <div
+                          key={pkg.id}
+                          onClick={() => {
+                            setBkashActionError("");
+                            setSelectedPurchasePkg(pkg);
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className={`${pkg.bg || "bg-white"} ${
+                            isCurrentActivePkg ? "border-emerald-400 ring-2 ring-emerald-500/20" : pkg.border || "border-slate-200/80"
+                          } border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between relative group`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1.5 pr-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-extrabold text-sm sm:text-base text-[#1D1D1F] group-hover:text-[#007AFF] transition-colors leading-snug">
+                                  {pkg.title}
+                                </h4>
+                                {pkg.badge && (
+                                  <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200/80">
+                                    {pkg.badge}
+                                  </span>
+                                )}
+                                {isCurrentActivePkg && (
+                                  <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    ACTIVE
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] sm:text-xs font-light text-slate-500 leading-relaxed">
+                                {pkg.desc}
+                              </p>
+                              <div className="flex items-center gap-1.5 pt-0.5">
+                                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md">
+                                  Ad-Free Experience Included
+                                </span>
+                              </div>
                             </div>
-                          )}
+                            <div className="shrink-0 text-right flex flex-col items-end">
+                              <div className="text-base sm:text-lg font-black text-[#1D1D1F] flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleShareLink({
+                                      view: "package",
+                                      id: pkg.id,
+                                      title: `JobMaster - ${pkg.title}`,
+                                      text: `JobMaster এর ${pkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড ও অ্যাড-ফ্রি এক্সেস পান!`
+                                    });
+                                  }}
+                                  className="px-2 py-0.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-[#007AFF] rounded-lg transition-all active:scale-90 cursor-pointer flex items-center gap-1 text-[10px] font-black"
+                                  title="প্যাকেজ লিংক শেয়ার করুন"
+                                >
+                                  <Share2 className="w-3 h-3" />
+                                  <span>Share</span>
+                                </button>
+                                <span>{pkg.price}</span>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all" />
+                              </div>
+                              {pkg.oldPrice && (
+                                <div className="text-[11px] font-bold text-slate-400 line-through">
+                                  {pkg.oldPrice}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               )}
 
-              {/* Notice: Payment feature coming soon / Demo Only */}
-              <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 text-center space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-[11px] font-black uppercase tracking-wider mx-auto">
-                  <span>Demo Only • Payment Feature Coming Soon</span>
+              {/* User Payment History */}
+              {isLoggedIn && userPaymentTransactions.length > 0 && (
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-2.5 shadow-2xs">
+                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-[#E2136E]" />
+                    <span>আপনার সাম্প্রতিক পেমেন্ট হিস্ট্রি</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {userPaymentTransactions.slice(0, 5).map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px]">
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-800 truncate">{tx.packageTitle}</p>
+                          <p className="text-[10px] text-slate-500 font-mono truncate">
+                            {tx.trxId ? `TrxID: ${tx.trxId}` : `Invoice: ${tx.merchantInvoiceNumber}`}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-black text-slate-800 block">৳{tx.amount}</span>
+                          <span className={`inline-block text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            tx.status === "completed"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : tx.status === "refunded"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-rose-100 text-rose-700"
+                          }`}>
+                            {tx.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
-                  ℹ️ <span>পেমেন্ট গেটওয়ে শীঘ্রই যুক্ত হবে</span>
-                </p>
+              )}
+
+              {/* Secured by bKash Info Card */}
+              <div className="bg-pink-50/60 border border-pink-200/80 rounded-2xl p-4 text-center space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#E2136E]/10 text-[#E2136E] rounded-full text-[11px] font-black uppercase tracking-wider mx-auto">
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Pay with bKash • Instant Activation</span>
+                </div>
                 <p className="text-[11px] font-medium text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  বর্তমানে এই প্যাকেজ তালিকাটি শুধুমাত্র ডেমো ও প্রিভিউ প্রদর্শনীর জন্য রাখা হয়েছে। খুব শীঘ্রই সরাসরি অনলাইন পেমেন্ট গেটওয়ে সক্রিয় করা হবে।
+                  নিরাপদ bKash অনলাইন পেমেন্ট গেটওয়ের মাধ্যমে পেমেন্ট সম্পন্ন হওয়ার সাথে সাথেই আপনার প্যাকেজ অ্যাক্টিভ হবে এবং অ্যাপের সকল অ্যাড বন্ধ হয়ে যাবে।
                 </p>
               </div>
             </div>
@@ -8717,7 +9046,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Apple UI Package Purchase Modal */}
+        {/* Apple UI Package Purchase Modal (Email Required + Pay with bKash) */}
         {selectedPurchasePkg && (
           <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full text-center shadow-2xl space-y-4 border border-slate-100 relative">
@@ -8728,7 +9057,7 @@ export default function Home() {
                       view: "package",
                       id: selectedPurchasePkg.id,
                       title: `JobMaster - ${selectedPurchasePkg.title}`,
-                      text: `JobMaster এর ${selectedPurchasePkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড এক্সেস পান!`
+                      text: `JobMaster এর ${selectedPurchasePkg.title} প্যাকেজ সাবস্ক্রাইব করে সকল পরীক্ষার আনলিমিটেড ও অ্যাড-ফ্রি এক্সেস পান!`
                     });
                   }}
                   className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 hover:text-[#007AFF] text-slate-600 transition-all active:scale-95 cursor-pointer flex items-center gap-1 text-[11px] font-black"
@@ -8738,15 +9067,18 @@ export default function Home() {
                   <span>Share</span>
                 </button>
                 <button 
-                  onClick={() => setSelectedPurchasePkg(null)}
+                  onClick={() => {
+                    setBkashActionError("");
+                    setSelectedPurchasePkg(null);
+                  }}
                   className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all active:scale-95 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black shadow-2xs">
-                {"\uD83D\uDECD"}️
+              <div className="w-14 h-14 bg-[#E2136E]/10 text-[#E2136E] rounded-2xl flex items-center justify-center mx-auto shadow-2xs">
+                <Package className="w-7 h-7" />
               </div>
 
               <div className="space-y-1">
@@ -8768,28 +9100,89 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Coming Soon & Demo Notice instead of mock payment methods */}
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-left space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-black uppercase rounded-lg tracking-wider">
-                    Demo Only
-                  </span>
-                  <span className="text-xs font-extrabold text-slate-800">Payment feature is coming soon</span>
-                </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  প্যাকেজ সাবস্ক্রিপশন ও অনলাইন পেমেন্ট সিস্টেম বর্তমানে উন্নয়নাধীন রয়েছে। শীঘ্রই নিরাপদ পেমেন্ট গেটওয়ে যুক্ত হবে।
+              {/* Ad-Free Subscription Guarantee */}
+              <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3 text-left flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                <p className="text-[11px] font-bold text-emerald-900 leading-snug">
+                  এই প্যাকেজটি কিনলে মেয়াদকালীন সময়ে অ্যাপে কোনো অ্যাড দেখানো হবে না (১০০% Ad-Free)।
                 </p>
-                <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200/60 text-[11px] text-slate-700 font-medium">
-                  💡 <span className="font-bold">রিভিউয়ারদের জন্য তথ্য (For Reviewers):</span> এটি একটি ইন্টারফেস প্রিভিউ (UI Preview), কোনো লাইভ পেমেন্ট গেটওয়ে এখনও সক্রিয় করা হয়নি।
-                </div>
               </div>
+
+              {/* Mandatory Email Registration Gate */}
+              {!isLoggedIn || !isValidRegisteredEmail(currentUser?.email) ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-left space-y-2.5">
+                  <div className="flex items-center gap-2 text-amber-900 font-extrabold text-xs">
+                    <Mail className="w-4 h-4 shrink-0" />
+                    <span>ইমেইল রেজিস্ট্রেশন প্রয়োজন</span>
+                  </div>
+                  <p className="text-[11px] text-slate-700 leading-relaxed font-medium">
+                    প্যাকেজ কিনতে অবশ্যই ইউজারকে ইমেইল দিয়ে রেজিস্ট্রেশন ও লগইন করতে হবে, যাতে আপনার সাবস্ক্রিপশন ও অ্যাড-ফ্রি সুবিধা স্থায়ীভাবে সংরক্ষিত থাকে।
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleRequireEmailAuthForPackage(selectedPurchasePkg, "signup")}
+                      className="flex-1 py-2.5 px-3 bg-[#007AFF] hover:bg-blue-600 text-white font-extrabold text-xs rounded-xl transition-all active:scale-95 cursor-pointer"
+                    >
+                      ইমেইল দিয়ে রেজিস্টার করুন
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRequireEmailAuthForPackage(selectedPurchasePkg, "signin")}
+                      className="flex-1 py-2.5 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-extrabold text-xs rounded-xl transition-all active:scale-95 cursor-pointer"
+                    >
+                      লগইন করুন
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-left space-y-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      রেজিস্টার্ড অ্যাকাউন্ট (ইমেইল)
+                    </span>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 truncate">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">{currentUser?.email}</span>
+                    </div>
+                  </div>
+
+                  {bkashActionError && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-2.5 text-[11px] font-bold text-left">
+                      {bkashActionError}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={isInitiatingBkash}
+                    onClick={() => handleStartBkashCheckout(selectedPurchasePkg)}
+                    className="w-full py-3.5 px-4 bg-[#E2136E] hover:bg-[#c91061] disabled:opacity-60 text-white font-black text-sm rounded-2xl shadow-lg shadow-[#E2136E]/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isInitiatingBkash ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>bKash এ নিয়ে যাওয়া হচ্ছে...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4" />
+                        <span>Pay with bKash ({selectedPurchasePkg.price})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               <div className="flex gap-2 pt-1">
                 <button
-                  onClick={() => setSelectedPurchasePkg(null)}
-                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
+                  onClick={() => {
+                    setBkashActionError("");
+                    setSelectedPurchasePkg(null);
+                  }}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
                 >
-                  বন্ধ করুন (Close)
+                  বাতিল করুন
                 </button>
               </div>
             </div>

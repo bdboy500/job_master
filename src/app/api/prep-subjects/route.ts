@@ -66,40 +66,61 @@ async function saveToKvStore(prepSubjects: PrepSubjectItem[]) {
   }
 }
 
+function normalizePrepSubSubjects(raw: any): PrepSubjectItem["subSubjects"] {
+  if (!raw) return [];
+  let arr = raw;
+  if (typeof raw === "string") {
+    try {
+      arr = JSON.parse(raw);
+    } catch (e) {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter((s: any) => s && s.name && String(s.name).trim() !== "")
+    .map((s: any, idx: number) => ({
+      ...s,
+      id: String(s.id || `sub_${idx + 1}`),
+      name: String(s.name).trim(),
+      sub: String(s.sub || ""),
+      serial: Number(s.serial) || idx + 1,
+      subCategories2: Array.isArray(s.subCategories2)
+        ? s.subCategories2.filter((s2: any) => s2 && s2.name && String(s2.name).trim() !== "")
+        : []
+    }));
+}
+
+function mapPrepItem(item: any): PrepSubjectItem {
+  const showQt =
+    item.showQuickTools !== undefined
+      ? item.showQuickTools !== false && item.showQuickTools !== "false"
+      : item.show_quick_tools !== undefined
+      ? item.show_quick_tools !== false && item.show_quick_tools !== "false"
+      : true;
+
+  return {
+    id: String(item.id),
+    name: String(item.name || ""),
+    bnName: String(item.bnName || item.bn_name || item.name || ""),
+    icon: String(item.icon || "BookOpen"),
+    bg: String(item.bg || "bg-[#FFF1E6]"),
+    text: String(item.text || "text-orange-600"),
+    sub: String(item.sub || ""),
+    serial: Number(item.serial) || 1,
+    subSubjects: normalizePrepSubSubjects(item.subSubjects ?? item.sub_subjects),
+    active: item.active !== false,
+    showQuickTools: showQt
+  };
+}
+
 export async function GET() {
   try {
     // 1. Primary DB: Supabase (Vercel + Supabase production architecture)
     try {
       const supabase = getSupabase();
       if (supabase) {
-        const { data, error } = await supabase
-          .from("app_prep_subjects")
-          .select("id, name, bnName, bn_name, icon, bg, text, sub, serial, subSubjects, sub_subjects, active")
-          .order("serial", { ascending: true });
-
-        if (!error && data && data.length > 0) {
-          const mapped: PrepSubjectItem[] = data.map((item: any) => ({
-            id: String(item.id),
-            name: String(item.name || ""),
-            bnName: String(item.bnName || item.bn_name || ""),
-            icon: String(item.icon || "BookOpen"),
-            bg: String(item.bg || "bg-[#FFF1E6]"),
-            text: String(item.text || "text-orange-600"),
-            sub: String(item.sub || ""),
-            serial: Number(item.serial) || 1,
-            subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.sub_subjects ? (typeof item.sub_subjects === "string" ? JSON.parse(item.sub_subjects) : item.sub_subjects) : (item.subSubjects || [])),
-            active: item.active !== false,
-            showQuickTools: item.showQuickTools !== undefined ? (item.showQuickTools !== false && item.showQuickTools !== "false" && item.show_quick_tools !== false && item.show_quick_tools !== "false") : (item.show_quick_tools !== undefined ? (item.show_quick_tools !== false && item.show_quick_tools !== "false") : true)
-          }));
-          mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-
-          memoryPrepCache = mapped;
-          saveToKvStore(mapped);
-          saveToDiskFile(TMP_CACHE_FILE, mapped);
-          return NextResponse.json({ prepSubjects: mapped, source: "supabase" });
-        }
-
-        // Try app_config table as secondary check
+        // Priority A: app_config preserves complete JSON including deleted/updated subSubjects, subCategories2 & showQuickTools
         const { data: configData } = await supabase
           .from("app_config")
           .select("value")
@@ -107,12 +128,29 @@ export async function GET() {
           .maybeSingle();
 
         if (configData && configData.value && Array.isArray(configData.value) && configData.value.length > 0) {
-          const configMapped: PrepSubjectItem[] = configData.value;
+          const configMapped: PrepSubjectItem[] = configData.value.map(mapPrepItem);
           configMapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+
           memoryPrepCache = configMapped;
           saveToKvStore(configMapped);
           saveToDiskFile(TMP_CACHE_FILE, configMapped);
           return NextResponse.json({ prepSubjects: configMapped, source: "supabase_app_config" });
+        }
+
+        // Priority B: app_prep_subjects table
+        const { data, error } = await supabase
+          .from("app_prep_subjects")
+          .select("*")
+          .order("serial", { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const mapped: PrepSubjectItem[] = data.map(mapPrepItem);
+          mapped.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+
+          memoryPrepCache = mapped;
+          saveToKvStore(mapped);
+          saveToDiskFile(TMP_CACHE_FILE, mapped);
+          return NextResponse.json({ prepSubjects: mapped, source: "supabase" });
         }
       }
     } catch (sbErr) {
@@ -122,9 +160,10 @@ export async function GET() {
     // 2. Persistent Backup: Cloud KV Store
     const kvCached = await loadFromKvStore();
     if (kvCached && kvCached.length > 0) {
-      memoryPrepCache = kvCached;
-      saveToDiskFile(TMP_CACHE_FILE, kvCached);
-      return NextResponse.json({ prepSubjects: kvCached, source: "kv" });
+      const normalized = kvCached.map(mapPrepItem);
+      memoryPrepCache = normalized;
+      saveToDiskFile(TMP_CACHE_FILE, normalized);
+      return NextResponse.json({ prepSubjects: normalized, source: "kv" });
     }
 
     // 3. Memory Cache (Warm Lambda)
@@ -135,8 +174,9 @@ export async function GET() {
     // 4. Temporary /tmp Cache
     const tmpCached = loadFromDiskFile(TMP_CACHE_FILE);
     if (tmpCached && tmpCached.length > 0) {
-      memoryPrepCache = tmpCached;
-      return NextResponse.json({ prepSubjects: tmpCached, source: "tmp_file" });
+      const normalized = tmpCached.map(mapPrepItem);
+      memoryPrepCache = normalized;
+      return NextResponse.json({ prepSubjects: normalized, source: "tmp_file" });
     }
 
     // 5. Default Fallback
@@ -157,20 +197,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid prep subjects data" }, { status: 400 });
     }
 
-    const sorted = [...prepSubjects].sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    const sorted = [...prepSubjects]
+      .map(mapPrepItem)
+      .sort((a, b) => (a.serial || 99) - (b.serial || 99));
 
-    // Update Memory & Cloud KV Store immediately (single source of truth)
+    // Update Memory, Disk & Cloud KV Store cleanly (await KV so subsequent refresh never reads stale KV)
     memoryPrepCache = sorted;
-    saveToKvStore(sorted);
     saveToDiskFile(TMP_CACHE_FILE, sorted);
     saveToDiskFile(PROJECT_DATA_FILE, sorted);
+    await saveToKvStore(sorted);
 
     // Persist to Supabase DB (Vercel + Supabase primary persistence)
     try {
       const supabase = getSupabase();
       if (supabase) {
-        // 1. Table upsert with exact table columns
-        const payload = sorted.map(s => ({
+        // 1. Save complete JSON to app_config FIRST (100% reliable fail-safe primary store)
+        await supabase.from("app_config").upsert({
+          key: "prep_subjects",
+          value: sorted,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
+
+        // 2. Keep app_prep_subjects table in sync across schema variations
+        try {
+          const currentIds = sorted.map(s => s.id).filter(Boolean);
+          if (currentIds.length > 0) {
+            const quotedIds = currentIds.map(id => `"${String(id).replace(/"/g, '\\"')}"`).join(",");
+            await supabase.from("app_prep_subjects").delete().not("id", "in", `(${quotedIds})`);
+          }
+        } catch (delErr) {
+          console.warn("Delete old prep subjects note:", delErr);
+        }
+
+        const fullPayload = sorted.map(s => ({
           id: s.id,
           name: s.name,
           bnName: s.bnName || s.name,
@@ -185,27 +244,42 @@ export async function POST(req: NextRequest) {
           active: s.active !== false
         }));
 
-        try {
-          const currentIds = sorted.map(s => s.id);
-          if (currentIds.length > 0) {
-            const formattedIds = `(${currentIds.map(id => id).join(",")})`;
-            await supabase.from("app_prep_subjects").delete().not("id", "in", formattedIds);
+        const { error: errFull } = await supabase.from("app_prep_subjects").upsert(fullPayload, { onConflict: "id" });
+        if (errFull) {
+          // Retry snake_case columns (typical Postgres schema)
+          const snakePayload = sorted.map(s => ({
+            id: s.id,
+            name: s.name,
+            bn_name: s.bnName || s.name,
+            icon: s.icon || "BookOpen",
+            bg: s.bg || "bg-[#FFF1E6]",
+            text: s.text || "text-orange-600",
+            sub: s.sub || "",
+            serial: Number(s.serial) || 1,
+            sub_subjects: s.subSubjects || [],
+            active: s.active !== false
+          }));
+          const { error: errSnake } = await supabase.from("app_prep_subjects").upsert(snakePayload, { onConflict: "id" });
+          if (errSnake) {
+            // Retry camelCase columns
+            const camelPayload = sorted.map(s => ({
+              id: s.id,
+              name: s.name,
+              bnName: s.bnName || s.name,
+              icon: s.icon || "BookOpen",
+              bg: s.bg || "bg-[#FFF1E6]",
+              text: s.text || "text-orange-600",
+              sub: s.sub || "",
+              serial: Number(s.serial) || 1,
+              subSubjects: s.subSubjects || [],
+              active: s.active !== false
+            }));
+            const { error: errCamel } = await supabase.from("app_prep_subjects").upsert(camelPayload, { onConflict: "id" });
+            if (errCamel) {
+              console.warn("Supabase app_prep_subjects table upsert note:", errCamel);
+            }
           }
-        } catch (delErr) {
-          console.warn("Delete old prep subjects note:", delErr);
         }
-
-        const { error: upsertErr } = await supabase.from("app_prep_subjects").upsert(payload, { onConflict: "id" });
-        if (upsertErr) {
-          console.warn("Supabase app_prep_subjects table upsert note:", upsertErr);
-        }
-
-        // 2. Backup to app_config table for 100% reliable fail-safe persistence
-        await supabase.from("app_config").upsert({
-          key: "prep_subjects",
-          value: sorted,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "key" });
       }
     } catch (sbErr) {
       console.warn("Supabase upsert prep subjects note:", sbErr);
