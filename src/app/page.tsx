@@ -97,7 +97,7 @@ import { useModalHistory, useExamExitProtection, useAppNavigationHistory, genera
 import { UserProfile, fetchUserProfile, upsertUserProfile, generateStudentId } from "../lib/user_profiles";
 import { updateUsernameOnServer, changeUserPasswordOnServer } from "../lib/user_auth";
 import { useOneSignal } from "../hooks/useOneSignal";
-import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd } from "../lib/android_bridge";
+import { triggerAndroidInterstitialAd, triggerAndroidRewardedAd, subscribeAndroidAdState, isAndroidAdPlayingNow } from "../lib/android_bridge";
 
 // Code-split heavy interactive modals & components via next/dynamic
 const LeaderboardView = dynamic(() => import("@/src/components/LeaderboardView"), { 
@@ -865,6 +865,8 @@ export default function Home() {
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(30);
   const [isTimedOut, setIsTimedOut] = useState<boolean>(false);
+  const [isAndroidAdPlaying, setIsAndroidAdPlaying] = useState<boolean>(false);
+  const [isPageHidden, setIsPageHidden] = useState<boolean>(false);
   const isCompleted = quizStarted && questions.length > 0 && currentQuestionIndex >= questions.length;
 
   const handleResetQuizToHome = useCallback(() => {
@@ -1636,11 +1638,27 @@ export default function Home() {
     }
   }, [activeLiveExamIndex, liveExamsList.length]);
 
+  // Pause Exam & Quiz timers automatically while an Android ad is showing or WebView is in background
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const unsubAd = subscribeAndroidAdState(setIsAndroidAdPlaying);
+    const syncVisibility = () => {
+      setIsPageHidden(typeof document !== "undefined" ? document.hidden : false);
+    };
+    syncVisibility();
+    document.addEventListener("visibilitychange", syncVisibility);
+    return () => {
+      unsubAd();
+      document.removeEventListener("visibilitychange", syncVisibility);
+    };
+  }, []);
+
   // Timer effect for Taking Exam Modal
   useEffect(() => {
     let timerId: any = null;
-    if (takingExamModal && !examSubmitted && examTimer > 0) {
+    if (takingExamModal && !examSubmitted && examTimer > 0 && !isAndroidAdPlaying && !isPageHidden) {
       timerId = setInterval(() => {
+        if (isAndroidAdPlayingNow() || (typeof document !== "undefined" && document.hidden)) return;
         setExamTimer(prev => {
           if (prev <= 1) {
             clearInterval(timerId);
@@ -1654,7 +1672,7 @@ export default function Home() {
     return () => {
       if (timerId) clearInterval(timerId);
     };
-  }, [takingExamModal, examSubmitted, examTimer]);
+  }, [takingExamModal, examSubmitted, examTimer, isAndroidAdPlaying, isPageHidden]);
 
   // Save routine tasks
   const saveRoutine = (updated: RoutineItem[]) => {
@@ -2195,11 +2213,22 @@ export default function Home() {
     setIsUsingFallback(false);
   }, []);
 
-  // Countdown timer logic
+  // Countdown timer logic (Pauses completely during Android AdMob ads or background visibility)
   useEffect(() => {
-    if (currentScreen !== "quiz" || !quizStarted || loading || isSubmitted || isTimedOut || isCompleted || showQuitConfirmModal) return;
+    if (
+      currentScreen !== "quiz" ||
+      !quizStarted ||
+      loading ||
+      isSubmitted ||
+      isTimedOut ||
+      isCompleted ||
+      showQuitConfirmModal ||
+      isAndroidAdPlaying ||
+      isPageHidden
+    ) return;
 
     const interval = setInterval(() => {
+      if (isAndroidAdPlayingNow() || (typeof document !== "undefined" && document.hidden)) return;
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
@@ -2217,7 +2246,7 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentScreen, quizStarted, loading, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal, soundEnabled]);
+  }, [currentScreen, quizStarted, loading, isSubmitted, isTimedOut, currentQuestionIndex, isCompleted, showQuitConfirmModal, soundEnabled, isAndroidAdPlaying, isPageHidden]);
 
   // Helper function to shuffle options for any question
   const shuffleQuestionOptions = (q: Question): Question => {

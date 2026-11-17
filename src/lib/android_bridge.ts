@@ -7,6 +7,8 @@ export interface AndroidBridgeInterface {
 declare global {
   interface Window {
     AndroidBridge?: AndroidBridgeInterface;
+    onAndroidAdOpened?: () => void;
+    onAndroidAdClosed?: () => void;
   }
 }
 
@@ -25,6 +27,134 @@ export type AndroidAdActionEvent =
   | "download_circular"
   | "download_cv_pdf";
 
+let adPlayingState = false;
+let sawFocusLostSinceAdTrigger = false;
+let adTriggerTimestamp = 0;
+let noFocusLostFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+let resumeDelayTimer: ReturnType<typeof setTimeout> | null = null;
+let listenersInstalled = false;
+
+const adStateListeners = new Set<(isPlaying: boolean) => void>();
+
+function notifyAdState(playing: boolean) {
+  if (adPlayingState === playing) return;
+  adPlayingState = playing;
+  adStateListeners.forEach((cb) => {
+    try {
+      cb(playing);
+    } catch {
+      // Ignore subscriber errors
+    }
+  });
+}
+
+function clearAdTimers() {
+  if (noFocusLostFallbackTimer) {
+    clearTimeout(noFocusLostFallbackTimer);
+    noFocusLostFallbackTimer = null;
+  }
+  if (resumeDelayTimer) {
+    clearTimeout(resumeDelayTimer);
+    resumeDelayTimer = null;
+  }
+}
+
+export function resumeFromAndroidAd(): void {
+  clearAdTimers();
+  sawFocusLostSinceAdTrigger = false;
+  notifyAdState(false);
+}
+
+function pauseForAndroidAd(): void {
+  clearAdTimers();
+  sawFocusLostSinceAdTrigger = false;
+  adTriggerTimestamp = Date.now();
+  notifyAdState(true);
+
+  // If neither blur nor hidden occurs within 4s (e.g. ad wasn't loaded/cached natively),
+  // automatically resume so the quiz timer doesn't stay stuck (any tap inside WebView also resumes immediately).
+  noFocusLostFallbackTimer = setTimeout(() => {
+    if (adPlayingState && !sawFocusLostSinceAdTrigger && typeof document !== "undefined" && !document.hidden) {
+      resumeFromAndroidAd();
+    }
+  }, 4000);
+}
+
+export function isAndroidAdPlayingNow(): boolean {
+  return adPlayingState;
+}
+
+function installGlobalAdResumeListeners() {
+  if (listenersInstalled || typeof window === "undefined") return;
+  listenersInstalled = true;
+
+  // Allow Android native code to explicitly notify when an ad opens/closes if desired:
+  // webView.evaluateJavascript("window.onAndroidAdClosed && window.onAndroidAdClosed()", null)
+  window.onAndroidAdOpened = () => {
+    sawFocusLostSinceAdTrigger = true;
+    clearAdTimers();
+    notifyAdState(true);
+  };
+  window.onAndroidAdClosed = () => {
+    resumeFromAndroidAd();
+  };
+
+  const markFocusLost = () => {
+    if (adPlayingState) {
+      sawFocusLostSinceAdTrigger = true;
+      if (noFocusLostFallbackTimer) {
+        clearTimeout(noFocusLostFallbackTimer);
+        noFocusLostFallbackTimer = null;
+      }
+    }
+  };
+
+  const handlePossibleAdReturn = () => {
+    if (!adPlayingState) return;
+    if (typeof document !== "undefined" && document.hidden) {
+      markFocusLost();
+      return;
+    }
+    const elapsed = Date.now() - adTriggerTimestamp;
+    if (sawFocusLostSinceAdTrigger || elapsed > 350) {
+      if (resumeDelayTimer) clearTimeout(resumeDelayTimer);
+      resumeDelayTimer = setTimeout(() => {
+        if (typeof document === "undefined" || !document.hidden) {
+          resumeFromAndroidAd();
+        }
+      }, 150);
+    }
+  };
+
+  window.addEventListener("blur", markFocusLost);
+  window.addEventListener("focus", handlePossibleAdReturn);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      markFocusLost();
+    } else {
+      handlePossibleAdReturn();
+    }
+  });
+
+  // If the user physically interacts inside WebView, any fullscreen native ad is definitely dismissed
+  const handleUserInteraction = () => {
+    if (adPlayingState && Date.now() - adTriggerTimestamp > 120) {
+      resumeFromAndroidAd();
+    }
+  };
+  window.addEventListener("pointerdown", handleUserInteraction, { passive: true });
+  window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+}
+
+export function subscribeAndroidAdState(cb: (isPlaying: boolean) => void): () => void {
+  installGlobalAdResumeListeners();
+  adStateListeners.add(cb);
+  cb(adPlayingState);
+  return () => {
+    adStateListeners.delete(cb);
+  };
+}
+
 /**
  * Safely checks whether the page is running inside an Android WebView
  * with an exposed `window.AndroidBridge` interface.
@@ -40,11 +170,11 @@ export function isAndroidWebViewBridge(): boolean {
 
 /**
  * Safely triggers a native Android AdMob Interstitial ad via `window.AndroidBridge.showInterstitialAd()`.
- * For standard web browser visitors where `window.AndroidBridge` is absent, this no-ops silently
- * with zero errors or UX interruptions.
+ * Pauses active quiz/exam timers until the ad finishes/closes.
  */
 export function triggerAndroidInterstitialAd(actionEvent?: AndroidAdActionEvent): boolean {
   if (typeof window === "undefined") return false;
+  installGlobalAdResumeListeners();
 
   try {
     const bridge = window.AndroidBridge;
@@ -59,11 +189,12 @@ export function triggerAndroidInterstitialAd(actionEvent?: AndroidAdActionEvent)
     }
 
     if (typeof bridge.showInterstitialAd === "function") {
+      pauseForAndroidAd();
       bridge.showInterstitialAd();
       return true;
     }
   } catch {
-    // Never interrupt normal user navigation or browser behavior
+    resumeFromAndroidAd();
   }
 
   return false;
@@ -71,10 +202,11 @@ export function triggerAndroidInterstitialAd(actionEvent?: AndroidAdActionEvent)
 
 /**
  * Safely triggers a native Android AdMob Rewarded ad via `window.AndroidBridge.showRewardedAd()`.
- * For standard web browser visitors where `window.AndroidBridge` is absent, this no-ops silently.
+ * Pauses active quiz/exam timers until the ad finishes/closes.
  */
 export function triggerAndroidRewardedAd(actionEvent?: AndroidAdActionEvent): boolean {
   if (typeof window === "undefined") return false;
+  installGlobalAdResumeListeners();
 
   try {
     const bridge = window.AndroidBridge;
@@ -89,11 +221,12 @@ export function triggerAndroidRewardedAd(actionEvent?: AndroidAdActionEvent): bo
     }
 
     if (typeof bridge.showRewardedAd === "function") {
+      pauseForAndroidAd();
       bridge.showRewardedAd();
       return true;
     }
   } catch {
-    // Never interrupt normal user navigation or browser behavior
+    resumeFromAndroidAd();
   }
 
   return false;
