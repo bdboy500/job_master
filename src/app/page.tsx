@@ -1666,6 +1666,55 @@ export default function Home() {
     }
   }, [activeLiveExamIndex, liveExamsList.length]);
 
+  // Bidirectional Infinite Scroll refs & handlers for Job Circulars ("চাকরির বিজ্ঞপ্তি") strip
+  const circularStripRef = useRef<HTMLDivElement | null>(null);
+  const circularBlockRef = useRef<HTMLDivElement | null>(null);
+  const isCircularAdjustingRef = useRef<boolean>(false);
+  const circularIsDraggingRef = useRef<boolean>(false);
+  const circularHasDraggedRef = useRef<boolean>(false);
+  const circularDragStartXRef = useRef<number>(0);
+  const circularDragStartScrollRef = useRef<number>(0);
+
+  const handleCircularInfiniteScroll = useCallback(() => {
+    const scroller = circularStripRef.current;
+    const block = circularBlockRef.current;
+    if (!scroller || !block || isCircularAdjustingRef.current) return;
+    const blockWidth = block.offsetWidth;
+    if (blockWidth <= 0) return;
+
+    if (scroller.scrollLeft <= blockWidth * 0.25) {
+      isCircularAdjustingRef.current = true;
+      scroller.scrollLeft += blockWidth;
+      requestAnimationFrame(() => {
+        isCircularAdjustingRef.current = false;
+      });
+    } else if (scroller.scrollLeft >= blockWidth * 1.75) {
+      isCircularAdjustingRef.current = true;
+      scroller.scrollLeft -= blockWidth;
+      requestAnimationFrame(() => {
+        isCircularAdjustingRef.current = false;
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentScreen !== "home") return;
+    const rafId = requestAnimationFrame(() => {
+      const scroller = circularStripRef.current;
+      const block = circularBlockRef.current;
+      if (!scroller || !block) return;
+      const blockWidth = block.offsetWidth;
+      if (blockWidth > 0 && (scroller.scrollLeft < blockWidth * 0.25 || scroller.scrollLeft > blockWidth * 1.75)) {
+        isCircularAdjustingRef.current = true;
+        scroller.scrollLeft = blockWidth;
+        requestAnimationFrame(() => {
+          isCircularAdjustingRef.current = false;
+        });
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [currentScreen, jobCircularCategories.length]);
+
   // Pause Exam & Quiz timers automatically while an Android ad is showing or WebView is in background
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -3890,7 +3939,7 @@ export default function Home() {
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                     </span>
                     <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
-                      Live Exam (লাইভ পরীক্ষা)
+                      Live Exam ({toBanglaDigits(liveExamsList.length)} টি)
                     </h3>
                   </div>
                   <button 
@@ -4123,6 +4172,66 @@ export default function Home() {
                   Newspaper,
                 };
 
+                const repeatCount = Math.max(1, Math.ceil(12 / activeCircularCats.length));
+                const circularUnitCats = Array.from({ length: repeatCount }, () => activeCircularCats).flat();
+
+                const renderCircularCardsBlock = (blockIndex: number, isMeasuredBlock: boolean) => (
+                  <div
+                    key={`circular-block-${blockIndex}`}
+                    ref={isMeasuredBlock ? circularBlockRef : undefined}
+                    className="flex items-stretch gap-2 shrink-0 pr-2"
+                  >
+                    {circularUnitCats.map((cat, idx) => {
+                      const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
+                      return (
+                        <button
+                          key={`${cat.id}-${blockIndex}-${idx}`}
+                          type="button"
+                          onClick={() => {
+                            if (circularHasDraggedRef.current) {
+                              circularHasDraggedRef.current = false;
+                              return;
+                            }
+                            setSelectedCircularCategoryId(cat.id);
+                            setSelectedCircularPost(null);
+                            setCircularSearchQuery("");
+                            setPreviousScreen("home");
+                            setCurrentScreen("job-circulars");
+                            if (soundEnabled) quizAudio.playClick();
+                          }}
+                          className="w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs cursor-pointer overflow-hidden flex flex-col text-center select-none [-webkit-tap-highlight-color:transparent]"
+                        >
+                          <div className="w-full h-[62px] sm:h-[68px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
+                            {cat.imageUrl ? (
+                              <img
+                                src={cat.imageUrl}
+                                alt={cat.name}
+                                width={80}
+                                height={62}
+                                loading="eager"
+                                decoding="async"
+                                draggable={false}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover block pointer-events-none select-none"
+                              />
+                            ) : (
+                              <div className="relative w-10 h-10 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-orange-200 rounded-full opacity-60" />
+                                <FallbackIcon className="w-4 h-4 text-[#FF6A00] relative z-10 stroke-[2px]" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="w-full flex-1 bg-white px-1 flex items-center justify-center">
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-900 leading-tight line-clamp-1">
+                              {cat.name}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+
                 return (
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between">
@@ -4131,50 +4240,39 @@ export default function Home() {
                       </h3>
                     </div>
 
-                    <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                      {activeCircularCats.map((cat) => {
-                        const FallbackIcon = (cat.icon && circularFallbackIcons[cat.icon]) || Briefcase;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCircularCategoryId(cat.id);
-                              setSelectedCircularPost(null);
-                              setCircularSearchQuery("");
-                              setPreviousScreen("home");
-                              setCurrentScreen("job-circulars");
-                              if (soundEnabled) quizAudio.playClick();
-                            }}
-                            className="w-[80px] h-[90px] sm:w-[92px] sm:h-[100px] shrink-0 rounded-xl bg-white border border-orange-200 shadow-xs cursor-pointer overflow-hidden flex flex-col text-center [-webkit-tap-highlight-color:transparent]"
-                          >
-                            <div className="w-full h-[62px] sm:h-[68px] bg-orange-50 relative overflow-hidden flex items-center justify-center shrink-0">
-                              {cat.imageUrl ? (
-                                <img
-                                  src={cat.imageUrl}
-                                  alt={cat.name}
-                                  width={80}
-                                  height={62}
-                                  loading="eager"
-                                  decoding="async"
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover block pointer-events-none select-none"
-                                />
-                              ) : (
-                                <div className="relative w-10 h-10 flex items-center justify-center">
-                                  <div className="w-8 h-8 bg-orange-200 rounded-full opacity-60" />
-                                  <FallbackIcon className="w-4 h-4 text-[#FF6A00] relative z-10 stroke-[2px]" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="w-full flex-1 bg-white px-1 flex items-center justify-center">
-                              <span className="text-[11px] sm:text-xs font-semibold text-slate-900 leading-tight line-clamp-1">
-                                {cat.name}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
+                    <div
+                      ref={circularStripRef}
+                      onScroll={handleCircularInfiniteScroll}
+                      onMouseDown={(e) => {
+                        const scroller = circularStripRef.current;
+                        if (!scroller) return;
+                        circularIsDraggingRef.current = true;
+                        circularHasDraggedRef.current = false;
+                        circularDragStartXRef.current = e.clientX;
+                        circularDragStartScrollRef.current = scroller.scrollLeft;
+                      }}
+                      onMouseMove={(e) => {
+                        if (!circularIsDraggingRef.current) return;
+                        const scroller = circularStripRef.current;
+                        if (!scroller) return;
+                        const dx = e.clientX - circularDragStartXRef.current;
+                        if (Math.abs(dx) > 5) {
+                          circularHasDraggedRef.current = true;
+                          scroller.scrollLeft = circularDragStartScrollRef.current - dx;
+                          handleCircularInfiniteScroll();
+                        }
+                      }}
+                      onMouseUp={() => {
+                        circularIsDraggingRef.current = false;
+                      }}
+                      onMouseLeave={() => {
+                        circularIsDraggingRef.current = false;
+                      }}
+                      className="flex items-stretch overflow-x-auto pb-1.5 pt-0.5 cursor-grab active:cursor-grabbing [touch-action:pan-x_pan-y] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {renderCircularCardsBlock(0, true)}
+                      {renderCircularCardsBlock(1, false)}
+                      {renderCircularCardsBlock(2, false)}
                     </div>
                   </div>
                 );
@@ -4395,6 +4493,55 @@ export default function Home() {
                 })()}
               </div>
 
+              {/* Preparation Hub Section */}
+              <div className="space-y-2 pt-2 sm:pt-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
+                    Preparation Hub
+                  </h3>
+                  <button 
+                    onClick={() => {
+                      setSelectedCourseDetail(null);
+                      setIsProSectionActive(false);
+                      setPreviousScreen("home");
+                      setCurrentScreen("prep-all-subjects");
+                      if (soundEnabled) quizAudio.playClick();
+                    }}
+                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
+                  >
+                    সকল বিষয় দেখুন
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch">
+                  {allPrepSubjectsData.slice(0, appSettings.prepHubHomeLimit || 4).map((subject, idx) => {
+                    const SubIcon = subject.icon || BookOpen;
+                    return (
+                      <div 
+                        key={subject.id || idx}
+                        onClick={() => {
+                          setSelectedCourseDetail(null);
+                          setIsProSectionActive(false);
+                          setSelectedPrepSubject(subject.name);
+                          setPrepSubjectOrigin("home");
+                          setPreviousScreen("home");
+                          setCurrentScreen("prep-sub");
+                          if (soundEnabled) quizAudio.playClick();
+                        }}
+                        className="bg-white border border-slate-100 rounded-2xl pl-2 pr-2.5 sm:pl-2.5 sm:pr-3.5 py-2.5 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0 h-full"
+                      >
+                        <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0 self-center`}>
+                          <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
+                        </div>
+                        <span className="text-[12.5px] min-[360px]:text-[13px] min-[380px]:text-[13.5px] sm:text-base font-semibold text-[#334155] tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1 text-left">
+                          {subject.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Pro Feature Section */}
               {appSettings.proSectionActive !== false && (
                 <div className="space-y-2 pt-2 sm:pt-3">
@@ -4455,55 +4602,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-
-              {/* Preparation Hub Section */}
-              <div className="space-y-2 pt-2 sm:pt-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-base sm:text-lg text-[#FF6A00] tracking-tight">
-                    Preparation Hub
-                  </h3>
-                  <button 
-                    onClick={() => {
-                      setSelectedCourseDetail(null);
-                      setIsProSectionActive(false);
-                      setPreviousScreen("home");
-                      setCurrentScreen("prep-all-subjects");
-                      if (soundEnabled) quizAudio.playClick();
-                    }}
-                    className="text-xs font-extrabold text-[#FF6A00] bg-orange-100/90 border border-orange-200/60 px-3 py-1 rounded-full hover:bg-orange-200/80 active:scale-95 transition-all cursor-pointer"
-                  >
-                    সকল বিষয় দেখুন
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch">
-                  {allPrepSubjectsData.slice(0, appSettings.prepHubHomeLimit || 4).map((subject, idx) => {
-                    const SubIcon = subject.icon || BookOpen;
-                    return (
-                      <div 
-                        key={subject.id || idx}
-                        onClick={() => {
-                          setSelectedCourseDetail(null);
-                          setIsProSectionActive(false);
-                          setSelectedPrepSubject(subject.name);
-                          setPrepSubjectOrigin("home");
-                          setPreviousScreen("home");
-                          setCurrentScreen("prep-sub");
-                          if (soundEnabled) quizAudio.playClick();
-                        }}
-                        className="bg-white border border-slate-100 rounded-2xl pl-2 pr-2.5 sm:pl-2.5 sm:pr-3.5 py-2.5 min-[360px]:py-3 sm:py-3.5 flex flex-row items-center gap-2 sm:gap-2.5 shadow-xs hover:shadow-md hover:border-slate-200 transition-all cursor-pointer active:scale-95 min-w-0 h-full"
-                      >
-                        <div className={`w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-8.5 sm:h-8.5 ${subject.bg || "bg-orange-50"} rounded-lg min-[360px]:rounded-xl flex items-center justify-center ${subject.text || "text-orange-600"} shrink-0 self-center`}>
-                          <SubIcon className="w-4 h-4 min-[360px]:w-4.5 min-[360px]:h-4.5 sm:w-5 sm:h-5 stroke-[2.2px]" />
-                        </div>
-                        <span className="text-[12.5px] min-[360px]:text-[13px] min-[380px]:text-[13.5px] sm:text-base font-semibold text-[#334155] tracking-[0.01em] line-clamp-2 break-words leading-tight sm:leading-snug min-w-0 flex-1 text-left">
-                          {subject.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
 
             </div>
           )}
