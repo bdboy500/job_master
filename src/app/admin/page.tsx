@@ -6512,7 +6512,7 @@ export default function AdminPage() {
 
                         const resolvedParentLabel =
                           paper.categoryType === "weekly_model_test"
-                            ? "সকল চাকরী পার্থীদের জন্য"
+                            ? "সাপ্তাহিক মডেল টেস্ট"
                             : paper.categoryType === "pro_feature"
                             ? (
                                 paper.course === "question_bank"

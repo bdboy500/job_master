@@ -320,7 +320,7 @@ export const DEFAULT_PRO_SECTION: ProSectionItem[] = [
   {
     id: "pro-question-bank",
     name: "প্রশ্ন ব্যাংক",
-    sub: "বিষয়ভিত্তিক বিশাল প্রশ্ন ব্যাংক",
+    sub: "",
     icon: "Database",
     bg: "bg-[#E6F0FA]",
     text: "text-blue-600",

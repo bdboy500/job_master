@@ -2657,9 +2657,14 @@ export default function Home() {
   }), []);
 
   const allProSectionData = useMemo(() => {
+    const cleanSub = (sub?: string) => {
+      if (!sub) return "";
+      return /বিষ[য়য়]ভিত্তিক\s+বিশাল\s+প্রশ্ন\s*ব্যাংক/.test(sub.trim()) ? "" : sub;
+    };
     if (proSectionList && proSectionList.length > 0) {
       return proSectionList.map(s => ({
         ...s,
+        sub: cleanSub(s.sub),
         icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
         text: s.text || "text-orange-600",
         bg: s.bg || "bg-[#FFF1E6]"
@@ -2667,6 +2672,7 @@ export default function Home() {
     }
     return DEFAULT_PRO_SECTION.map(s => ({
       ...s,
+      sub: cleanSub(s.sub),
       icon: ICON_MAP[s.icon || "Briefcase"] || Briefcase,
       text: s.text || "text-orange-600",
       bg: s.bg || "bg-[#FFF1E6]"
@@ -3685,7 +3691,7 @@ export default function Home() {
                     : currentScreen === "auth"
                     ? (authModalMode === "signup" ? "CREATE NEW ACCOUNT" : "ACCOUNT LOGIN")
                     : currentScreen === "daily-quick-test"
-                    ? "সকল চাকরী পার্থীদের জন্য"
+                    ? "WEEKLY MODEL TEST"
                     : "চাকরি আপনার হাতে"}
                 </span>
               </div>
@@ -4263,7 +4269,6 @@ export default function Home() {
                         p.name?.trim() === "প্রশ্ন ব্যাংক"
                     );
                   const qbTargetSubjectName = proQuestionBankItem?.name || "প্রশ্ন ব্যাংক";
-                  const qbSubtitle = proQuestionBankItem?.sub || "সকল বিগত প্রশ্নপত্র";
                   const openHomeQuestionBank = () => {
                     if (soundEnabled) quizAudio.playClick();
                     setSelectedCourseDetail(null);
@@ -4289,9 +4294,9 @@ export default function Home() {
                           }}
                           className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] px-2 py-2.5 sm:px-3.5 sm:py-3.5 flex items-center justify-between gap-1 sm:gap-2 active:scale-[0.99] cursor-pointer text-center"
                         >
-                          {/* Center Content: Title + Subtitle + Bottom Centered CTA */}
-                          <div className="flex-1 min-w-0 flex flex-col items-center justify-between gap-2 h-full">
-                            <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
+                          {/* Center Content: Title + Bottom Centered CTA */}
+                          <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-2 h-full">
+                            <div className="min-w-0 w-full flex flex-col items-center">
                               <div className="flex items-center justify-center gap-1 min-w-0 max-w-full">
                                 <h4 className="font-black text-[12px] min-[380px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
                                   সাপ্তাহিক মডেল টেস্ট
@@ -4300,9 +4305,6 @@ export default function Home() {
                                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" title="Live Now" />
                                 )}
                               </div>
-                              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
-                                সকল চাকরী পার্থীদের জন্য
-                              </p>
                             </div>
 
                             <button
@@ -4348,15 +4350,12 @@ export default function Home() {
                           onClick={openHomeQuestionBank}
                           className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] px-2 py-2.5 sm:px-3.5 sm:py-3.5 flex items-center justify-between gap-1 sm:gap-2 active:scale-[0.99] cursor-pointer text-center"
                         >
-                          {/* Center Content: Title + Subtitle + Bottom Centered CTA */}
-                          <div className="flex-1 min-w-0 flex flex-col items-center justify-between gap-2 h-full">
-                            <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
+                          {/* Center Content: Title + Bottom Centered CTA */}
+                          <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-2 h-full">
+                            <div className="min-w-0 w-full flex flex-col items-center">
                               <h4 className="font-black text-[12px] min-[380px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate max-w-full">
                                 প্রশ্ন ব্যাংক
                               </h4>
-                              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
-                                {qbSubtitle}
-                              </p>
                             </div>
 
                             <button
