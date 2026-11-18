@@ -622,7 +622,6 @@ export default function AdminPage() {
   const [circularCatImageUrl, setCircularCatImageUrl] = useState<string>("/assets/circulars/govt.svg");
   const [circularCatIcon, setCircularCatIcon] = useState<string>("Briefcase");
   const [circularCatActive, setCircularCatActive] = useState<boolean>(true);
-  const [confirmDeleteCircularCatId, setConfirmDeleteCircularCatId] = useState<string | null>(null);
 
   const [editingCircularPostId, setEditingCircularPostId] = useState<string | null>(null);
   const [circularPostCategoryIds, setCircularPostCategoryIds] = useState<string[]>(["circ-govt"]);
@@ -635,12 +634,42 @@ export default function AdminPage() {
   const [circularPostApplyUrl, setCircularPostApplyUrl] = useState<string>("");
   const [circularPostDescription, setCircularPostDescription] = useState<string>("");
   const [circularPostActive, setCircularPostActive] = useState<boolean>(true);
-  const [confirmDeleteCircularPostId, setConfirmDeleteCircularPostId] = useState<string | null>(null);
   const [showCircularSqlBox, setShowCircularSqlBox] = useState<boolean>(false);
   const circularDeadlineInputRef = useRef<HTMLInputElement | null>(null);
 
   // Notifications
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Centralized Delete Confirmation Warning Modal
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    title: string;
+    message: string;
+    itemName?: string;
+    confirmLabel?: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [isExecutingDeleteConfirm, setIsExecutingDeleteConfirm] = useState<boolean>(false);
+
+  const requestDeleteConfirmation = (config: {
+    title: string;
+    message: string;
+    itemName?: string;
+    confirmLabel?: string;
+    onConfirm: () => Promise<void> | void;
+  }) => {
+    setDeleteConfirmModal(config);
+  };
+
+  const handleExecuteDeleteConfirm = async () => {
+    if (!deleteConfirmModal || isExecutingDeleteConfirm) return;
+    setIsExecutingDeleteConfirm(true);
+    try {
+      await deleteConfirmModal.onConfirm();
+    } finally {
+      setIsExecutingDeleteConfirm(false);
+      setDeleteConfirmModal(null);
+    }
+  };
 
   // Predefined Subjects required for Exam MCQ Hub
   const SUBJECTS = [
@@ -856,7 +885,6 @@ export default function AdminPage() {
   const [qbBulkJsonText, setQbBulkJsonText] = useState<string>("");
   const [qbNewSubName, setQbNewSubName] = useState<string>("");
   const [qbNewSubDesc, setQbNewSubDesc] = useState<string>("");
-  const [qbConfirmDeleteSubId, setQbConfirmDeleteSubId] = useState<string | null>(null);
   const [qbFilterSub, setQbFilterSub] = useState<string>("all");
   const [qbSearchPaper, setQbSearchPaper] = useState<string>("");
   const [qbDisplayLimit, setQbDisplayLimit] = useState<number>(20);
@@ -1436,15 +1464,20 @@ export default function AdminPage() {
     setPkgFormOrder(packagesList.length + 1);
   };
 
-  const handleDeletePackage = async (id: string, title: string) => {
-    if (confirm(`আপনি কি নিশ্চিত যে "${title}" প্যাকেজটি ডিলিট করতে চান?`)) {
-      const updated = await deletePackageFromDb(id);
-      setPackagesList(updated);
-      triggerNotification("success", "প্যাকেজ সফলভাবে ডিলিট করা হয়েছে।");
-      if (editingPkgId === id) {
-        handleCancelPkgEdit();
-      }
-    }
+  const handleDeletePackage = (id: string, title: string) => {
+    requestDeleteConfirmation({
+      title: "প্যাকেজ ডিলেট সতর্কবার্তা",
+      itemName: title,
+      message: `আপনি কি নিশ্চিত যে "${title}" প্যাকেজটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updated = await deletePackageFromDb(id);
+        setPackagesList(updated);
+        triggerNotification("success", "প্যাকেজ সফলভাবে ডিলিট করা হয়েছে।");
+        if (editingPkgId === id) {
+          handleCancelPkgEdit();
+        }
+      },
+    });
   };
 
   const fetchAdminPaymentsData = async () => {
@@ -1496,39 +1529,44 @@ export default function AdminPage() {
     }
   };
 
-  const handleRefundBkashTransaction = async (tx: PaymentTransaction) => {
+  const handleRefundBkashTransaction = (tx: PaymentTransaction) => {
     if (!tx.paymentId || !tx.trxId) {
       triggerNotification("error", "রিফান্ড করার জন্য paymentID এবং trxID উভয়ই প্রয়োজন।");
       return;
     }
-    if (!confirm(`আপনি কি নিশ্চিত যে ${tx.userEmail} এর ৳${tx.amount} (TrxID: ${tx.trxId}) পেমেন্টটি bKash-এ রিফান্ড করতে চান?`)) {
-      return;
-    }
-    setRefundingTxId(tx.id);
-    try {
-      const res = await fetch("/api/bkash/refund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentID: tx.paymentId,
-          trxID: tx.trxId,
-          amount: tx.amount,
-          sku: tx.packageId || "JobMaster-Package",
-          reason: "Admin panel refund request",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) {
-        triggerNotification("error", data?.error || "রিফান্ড ব্যর্থ হয়েছে।");
-      } else {
-        triggerNotification("success", "✅ bKash রিফান্ড সফলভাবে সম্পন্ন হয়েছে!");
-        await fetchAdminPaymentsData();
-      }
-    } catch (err: any) {
-      triggerNotification("error", err?.message || "রিফান্ড প্রসেস করা যায়নি।");
-    } finally {
-      setRefundingTxId(null);
-    }
+    requestDeleteConfirmation({
+      title: "bKash রিফান্ড সতর্কবার্তা",
+      itemName: `${tx.userEmail} — ৳${tx.amount} (TrxID: ${tx.trxId})`,
+      message: `আপনি কি নিশ্চিত যে ${tx.userEmail} এর ৳${tx.amount} পেমেন্টটি bKash-এ রিফান্ড করতে চান?`,
+      confirmLabel: "হ্যাঁ, রিফান্ড করুন",
+      onConfirm: async () => {
+        setRefundingTxId(tx.id);
+        try {
+          const res = await fetch("/api/bkash/refund", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              paymentID: tx.paymentId,
+              trxID: tx.trxId,
+              amount: tx.amount,
+              sku: tx.packageId || "JobMaster-Package",
+              reason: "Admin panel refund request",
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data?.success) {
+            triggerNotification("error", data?.error || "রিফান্ড ব্যর্থ হয়েছে।");
+          } else {
+            triggerNotification("success", "✅ bKash রিফান্ড সফলভাবে সম্পন্ন হয়েছে!");
+            await fetchAdminPaymentsData();
+          }
+        } catch (err: any) {
+          triggerNotification("error", err?.message || "রিফান্ড প্রসেস করা যায়নি।");
+        } finally {
+          setRefundingTxId(null);
+        }
+      },
+    });
   };
 
   // --- OUR COURSES HANDLERS ---
@@ -1604,13 +1642,19 @@ export default function AdminPage() {
     handleCancelCourseEdit();
   };
 
-  const handleDeleteCourse = async (id: string, name: string) => {
-    if (!confirm(`আপনি কি নিশ্চিত যে "${name}" কোর্সটি ডিলিট করতে চান?`)) return;
-    const updated = coursesList.filter(c => c.id !== id);
-    setCoursesList(updated);
-    await saveCoursesToDb(updated);
-    triggerNotification("success", "কোর্স সফলভাবে ডিলিট করা হয়েছে।");
-    if (editingCourseId === id) handleCancelCourseEdit();
+  const handleDeleteCourse = (id: string, name: string) => {
+    requestDeleteConfirmation({
+      title: "কোর্স ডিলেট সতর্কবার্তা",
+      itemName: name,
+      message: `আপনি কি নিশ্চিত যে "${name}" কোর্সটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updated = coursesList.filter(c => c.id !== id);
+        setCoursesList(updated);
+        await saveCoursesToDb(updated);
+        triggerNotification("success", "কোর্স সফলভাবে ডিলিট করা হয়েছে।");
+        if (editingCourseId === id) handleCancelCourseEdit();
+      },
+    });
   };
 
   const handleMoveCourseSerial = async (index: number, direction: "up" | "down") => {
@@ -1705,13 +1749,19 @@ export default function AdminPage() {
     handleCancelPrepEdit();
   };
 
-  const handleDeletePrep = async (id: string, name: string) => {
-    if (!confirm(`আপনি কি নিশ্চিত যে "${name}" প্রিপারেশন সাবজেক্টটি ডিলিট করতে চান?`)) return;
-    const updated = prepSubjectsList.filter(p => p.id !== id);
-    setPrepSubjectsList(updated);
-    await savePrepSubjectsToDb(updated);
-    triggerNotification("success", "সাবজেক্ট ডিলিট করা হয়েছে।");
-    if (editingPrepId === id) handleCancelPrepEdit();
+  const handleDeletePrep = (id: string, name: string) => {
+    requestDeleteConfirmation({
+      title: "প্রিপারেশন সাবজেক্ট ডিলেট সতর্কবার্তা",
+      itemName: name,
+      message: `আপনি কি নিশ্চিত যে "${name}" প্রিপারেশন সাবজেক্টটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updated = prepSubjectsList.filter(p => p.id !== id);
+        setPrepSubjectsList(updated);
+        await savePrepSubjectsToDb(updated);
+        triggerNotification("success", "সাবজেক্ট ডিলিট করা হয়েছে।");
+        if (editingPrepId === id) handleCancelPrepEdit();
+      },
+    });
   };
 
   const handleMovePrepSerial = async (index: number, direction: "up" | "down") => {
@@ -1799,13 +1849,19 @@ export default function AdminPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDeletePro = async (id: string, name: string) => {
-    if (!confirm(`আপনি কি নিশ্চিত যে "${name}" প্রো সেকশন আইটেমটি ডিলিট করতে চান?`)) return;
-    const updated = proSectionList.filter(p => p.id !== id);
-    setProSectionList(updated);
-    await saveProSectionToDb(updated);
-    triggerNotification("success", `"${name}" ডিলিট করা হয়েছে।`);
-    if (editingProId === id) handleCancelProEdit();
+  const handleDeletePro = (id: string, name: string) => {
+    requestDeleteConfirmation({
+      title: "প্রো সেকশন আইটেম ডিলেট সতর্কবার্তা",
+      itemName: name,
+      message: `আপনি কি নিশ্চিত যে "${name}" প্রো সেকশন আইটেমটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updated = proSectionList.filter(p => p.id !== id);
+        setProSectionList(updated);
+        await saveProSectionToDb(updated);
+        triggerNotification("success", `"${name}" ডিলিট করা হয়েছে।`);
+        if (editingProId === id) handleCancelProEdit();
+      },
+    });
   };
 
   const handleMoveProSerial = async (index: number, direction: "up" | "down") => {
@@ -1906,15 +1962,21 @@ export default function AdminPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDeleteCircularCat = async (id: string, name: string) => {
-    const updated = circularCategories
-      .filter((c) => c.id !== id)
-      .map((c, idx) => ({ ...c, serial: idx + 1 }));
-    setCircularCategories(updated);
-    setConfirmDeleteCircularCatId(null);
-    await saveJobCircularCategoriesToDb(updated);
-    triggerNotification("success", `"${name}" ডিলিট করা হয়েছে।`);
-    if (editingCircularCatId === id) handleCancelCircularCatEdit(updated.length + 1);
+  const handleDeleteCircularCat = (id: string, name: string) => {
+    requestDeleteConfirmation({
+      title: "চাকরির ক্যাটাগরি ডিলেট সতর্কবার্তা",
+      itemName: name,
+      message: `আপনি কি নিশ্চিত যে "${name}" ক্যাটাগরিটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updated = circularCategories
+          .filter((c) => c.id !== id)
+          .map((c, idx) => ({ ...c, serial: idx + 1 }));
+        setCircularCategories(updated);
+        await saveJobCircularCategoriesToDb(updated);
+        triggerNotification("success", `"${name}" ডিলিট করা হয়েছে।`);
+        if (editingCircularCatId === id) handleCancelCircularCatEdit(updated.length + 1);
+      },
+    });
   };
 
   const handleToggleCircularCatActive = async (id: string) => {
@@ -2015,13 +2077,19 @@ export default function AdminPage() {
     triggerNotification("success", "বিজ্ঞপ্তির স্ট্যাটাস আপডেট হয়েছে!");
   };
 
-  const handleDeleteCircularPost = async (id: string) => {
-    const updated = circularPosts.filter((p) => p.id !== id);
-    setCircularPosts(updated);
-    setConfirmDeleteCircularPostId(null);
-    await saveJobCircularPostsToDb(updated);
-    triggerNotification("success", "বিজ্ঞপ্তি ডিলিট করা হয়েছে।");
-    if (editingCircularPostId === id) handleCancelCircularPostEdit();
+  const handleDeleteCircularPost = (id: string, title?: string) => {
+    requestDeleteConfirmation({
+      title: "চাকরির বিজ্ঞপ্তি ডিলেট সতর্কবার্তা",
+      itemName: title || "চাকরির বিজ্ঞপ্তি",
+      message: `আপনি কি নিশ্চিত যে ${title ? `"${title}" ` : "এই "}বিজ্ঞপ্তিটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updated = circularPosts.filter((p) => p.id !== id);
+        setCircularPosts(updated);
+        await saveJobCircularPostsToDb(updated);
+        triggerNotification("success", "বিজ্ঞপ্তি ডিলিট করা হয়েছে।");
+        if (editingCircularPostId === id) handleCancelCircularPostEdit();
+      },
+    });
   };
 
   const handleMoveCourseSubSubjectInList = async (courseIndex: number, subIndex: number, direction: "up" | "down") => {
@@ -2068,27 +2136,33 @@ export default function AdminPage() {
     triggerNotification("success", "সাব-সাবজেক্টের সিরিয়াল আপডেট করা হয়েছে!");
   };
 
-  const handleDeletePrepSubSubjectInList = async (prepIndex: number, subIndex: number) => {
+  const handleDeletePrepSubSubjectInList = (prepIndex: number, subIndex: number) => {
     const prep = prepSubjectsList[prepIndex];
     if (!prep || !prep.subSubjects) return;
     const subItem = prep.subSubjects[subIndex];
     if (!subItem) return;
-    if (!confirm(`আপনি কি নিশ্চিত যে "${prep.bnName || prep.name}" থেকে "${subItem.name}" সাব-সাবজেক্টটি ডিলিট করতে চান?`)) return;
 
-    const updatedSubs = prep.subSubjects
-      .filter((_, i) => i !== subIndex)
-      .map((s, i) => ({ ...s, serial: i + 1 }));
+    requestDeleteConfirmation({
+      title: "সাব-সাবজেক্ট ডিলেট সতর্কবার্তা",
+      itemName: `${prep.bnName || prep.name} → ${subItem.name}`,
+      message: `আপনি কি নিশ্চিত যে "${prep.bnName || prep.name}" থেকে "${subItem.name}" সাব-সাবজেক্টটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const updatedSubs = prep.subSubjects!
+          .filter((_, i) => i !== subIndex)
+          .map((s, i) => ({ ...s, serial: i + 1 }));
 
-    const newList = prepSubjectsList.map((p, idx) =>
-      idx === prepIndex ? { ...p, subSubjects: updatedSubs } : p
-    );
-    setPrepSubjectsList(newList);
-    if (editingPrepId === prep.id) {
-      setPrepFormSubSubjects(JSON.parse(JSON.stringify(updatedSubs)));
-      setHasUnsavedPrepChanges(false);
-    }
-    await savePrepSubjectsToDb(newList);
-    triggerNotification("success", "সাব-সাবজেক্ট স্থায়ীভাবে ডিলিট ও সার্ভারে সেভ করা হয়েছে!");
+        const newList = prepSubjectsList.map((p, idx) =>
+          idx === prepIndex ? { ...p, subSubjects: updatedSubs } : p
+        );
+        setPrepSubjectsList(newList);
+        if (editingPrepId === prep.id) {
+          setPrepFormSubSubjects(JSON.parse(JSON.stringify(updatedSubs)));
+          setHasUnsavedPrepChanges(false);
+        }
+        await savePrepSubjectsToDb(newList);
+        triggerNotification("success", "সাব-সাবজেক্ট স্থায়ীভাবে ডিলিট ও সার্ভারে সেভ করা হয়েছে!");
+      },
+    });
   };
 
   const handleMoveProSubSubjectInList = async (proIndex: number, subIndex: number, direction: "up" | "down") => {
@@ -2142,7 +2216,17 @@ export default function AdminPage() {
   };
 
   const handleRemoveQuestionFromPaper = (index: number) => {
-    setPaperQuestions(prev => prev.filter((_, i) => i !== index));
+    const q = paperQuestions[index];
+    const preview = String(q?.question || q?.questionText || "").replace(/<[^>]+>/g, "").slice(0, 70);
+    requestDeleteConfirmation({
+      title: "প্রশ্নপত্র থেকে প্রশ্ন সরান",
+      itemName: preview ? `#${index + 1}: ${preview}` : `প্রশ্ন #${index + 1}`,
+      message: "আপনি কি নিশ্চিত যে এই প্রশ্নটি প্রশ্নপত্রের তালিকা থেকে মুছে ফেলতে চান?",
+      confirmLabel: "হ্যাঁ, সরান",
+      onConfirm: () => {
+        setPaperQuestions(prev => prev.filter((_, i) => i !== index));
+      },
+    });
   };
 
   const handleAutoFillQuestions = async () => {
@@ -2427,10 +2511,16 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteExamPaper = async (id: string) => {
-    if (!confirm("আপনি কি নিশ্চিত যে এই প্রশ্ন পত্রটি ডিলেট করতে চান?")) return;
-    await deleteExamPaperFromDb(id);
-    triggerNotification("success", "প্রশ্ন পত্র ডিলেট করা হয়েছে।");
+  const handleDeleteExamPaper = (id: string, title?: string) => {
+    requestDeleteConfirmation({
+      title: "প্রশ্নপত্র ডিলেট সতর্কবার্তা",
+      itemName: title || "প্রশ্নপত্র",
+      message: `আপনি কি নিশ্চিত যে ${title ? `"${title}" ` : "এই "}প্রশ্ন পত্রটি স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        await deleteExamPaperFromDb(id);
+        triggerNotification("success", "প্রশ্ন পত্র ডিলেট করা হয়েছে।");
+      },
+    });
   };
 
   const handleToggleArchiveExamPaper = async (paper: ExamPaper) => {
@@ -2546,29 +2636,36 @@ export default function AdminPage() {
     triggerNotification("success", `"${cleanName}" প্রশ্ন ব্যাংকের সাব-সাবজেক্ট হিসেবে যুক্ত হয়েছে!`);
   };
 
-  const handleDeleteQbSubSubject = async (subIdOrName: string) => {
-    const baseList = proSectionList.length > 0 ? [...proSectionList] : [...DEFAULT_PRO_SECTION];
-    const targetIdx = baseList.findIndex(
-      (p) => p.id === "pro-question-bank" || p.name?.trim() === "প্রশ্ন ব্যাংক"
-    );
-    if (targetIdx < 0) return;
+  const handleDeleteQbSubSubject = (subIdOrName: string, displayName?: string) => {
+    const label = displayName || subIdOrName;
+    requestDeleteConfirmation({
+      title: "প্রশ্ন ব্যাংকের সাব-সাবজেক্ট ডিলেট",
+      itemName: label,
+      message: `আপনি কি নিশ্চিত যে "${label}" সাব-সাবজেক্টটি প্রশ্ন ব্যাংক থেকে স্থায়ীভাবে ডিলেট করতে চান?`,
+      onConfirm: async () => {
+        const baseList = proSectionList.length > 0 ? [...proSectionList] : [...DEFAULT_PRO_SECTION];
+        const targetIdx = baseList.findIndex(
+          (p) => p.id === "pro-question-bank" || p.name?.trim() === "প্রশ্ন ব্যাংক"
+        );
+        if (targetIdx < 0) return;
 
-    const targetItem = { ...baseList[targetIdx] };
-    const updatedSubs = (targetItem.subSubjects || [])
-      .filter((s) => s.id !== subIdOrName && s.name !== subIdOrName)
-      .map((s, idx) => ({ ...s, serial: idx + 1 }));
+        const targetItem = { ...baseList[targetIdx] };
+        const updatedSubs = (targetItem.subSubjects || [])
+          .filter((s) => s.id !== subIdOrName && s.name !== subIdOrName)
+          .map((s, idx) => ({ ...s, serial: idx + 1 }));
 
-    targetItem.subSubjects = updatedSubs;
-    baseList[targetIdx] = targetItem;
-    const sanitizedList = sanitizeSubSubjects(baseList);
+        targetItem.subSubjects = updatedSubs;
+        baseList[targetIdx] = targetItem;
+        const sanitizedList = sanitizeSubSubjects(baseList);
 
-    setProSectionList(sanitizedList);
-    await saveProSectionToDb(sanitizedList);
-    setQbConfirmDeleteSubId(null);
-    if (qbSubSubject === subIdOrName) {
-      setQbSubSubject(updatedSubs[0]?.name || "");
-    }
-    triggerNotification("success", "সাব-সাবজেক্ট ডিলিট করা হয়েছে।");
+        setProSectionList(sanitizedList);
+        await saveProSectionToDb(sanitizedList);
+        if (qbSubSubject === subIdOrName || qbSubSubject === displayName) {
+          setQbSubSubject(updatedSubs[0]?.name || "");
+        }
+        triggerNotification("success", "সাব-সাবজেক্ট ডিলিট করা হয়েছে।");
+      },
+    });
   };
 
   // Strictly load ONLY "Question Bank" subject MCQs for Question Bank papers (never mix regular subjects or QUIZ_QUESTIONS)
@@ -3534,11 +3631,16 @@ export default function AdminPage() {
   };
 
   // Seeding Database Helper
-  const handleSeedDatabase = async () => {
-    if (!confirm("আপনি কি নিশ্চিত যে আপনি ৩১টি প্রাক-সংজ্ঞায়িত ডেমো প্রশ্ন Supabase ডেটাবেজে সিড করতে চান?")) return;
-    try {
-      setDbLoading(true);
-      const supabase = getSupabase();
+  const handleSeedDatabase = () => {
+    requestDeleteConfirmation({
+      title: "ডেমো প্রশ্ন সিড সতর্কবার্তা",
+      itemName: "৩১টি প্রাক-সংজ্ঞায়িত ডেমো প্রশ্ন",
+      message: "আপনি কি নিশ্চিত যে আপনি ৩১টি প্রাক-সংজ্ঞায়িত ডেমো প্রশ্ন Supabase ডেটাবেজে সিড করতে চান?",
+      confirmLabel: "হ্যাঁ, সিড করুন",
+      onConfirm: async () => {
+        try {
+          setDbLoading(true);
+          const supabase = getSupabase();
 
       const payloads = QUIZ_QUESTIONS.map((q, idx) => {
         const subIndex = idx % SUBJECTS.length;
@@ -3563,12 +3665,14 @@ export default function AdminPage() {
       questionsCacheRef.current.clear();
       await loadQuestionsFromDb(displayLimit, selectedSubjectFilter, searchQuery, true);
       fetchSubjectWiseCounts(true);
-    } catch (err: any) {
-      console.error("Error seeding database:", err);
-      triggerNotification("error", `সিড করতে ব্যর্থ: ${err.message}`);
-    } finally {
-      setDbLoading(false);
-    }
+        } catch (err: any) {
+          console.error("Error seeding database:", err);
+          triggerNotification("error", `সিড করতে ব্যর্থ: ${err.message}`);
+        } finally {
+          setDbLoading(false);
+        }
+      },
+    });
   };
 
   // Handle Option Value Change
@@ -3719,26 +3823,31 @@ export default function AdminPage() {
   };
 
   // Handle Delete Staff
-  const handleDeleteStaff = async (staffId: string) => {
+  const handleDeleteStaff = (staffId: string) => {
     const target = adminStaffList.find(s => s.id === staffId);
     if (!target) return;
     if (target.email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase()) {
       triggerNotification("error", "মূল মাস্টার অ্যাডমিন একাউন্ট মুছে ফেলা যাবে না!");
       return;
     }
-    if (window.confirm(`আপনি কি নিশ্চিত যে "${target.name}" (${target.email}) এর অ্যাডমিন একাউন্ট মুছে ফেলতে চান?`)) {
-      const updated = await deleteStaffAccount(staffId);
-      setAdminStaffList(updated);
+    requestDeleteConfirmation({
+      title: "স্টাফ অ্যাকাউন্ট ডিলেট সতর্কবার্তা",
+      itemName: `${target.name} (${target.email})`,
+      message: `আপনি কি নিশ্চিত যে "${target.name}" (${target.email}) এর অ্যাডমিন একাউন্টটি স্থায়ীভাবে মুছে ফেলতে চান?`,
+      onConfirm: async () => {
+        const updated = await deleteStaffAccount(staffId);
+        setAdminStaffList(updated);
 
-      // If active session was deleted, kick out
-      if (currentStaffSession && currentStaffSession.id === staffId) {
-        handleLogout();
-        triggerNotification("error", "আপনার অ্যাডমিন অ্যাকাউন্টটি মুছে ফেলা হয়েছে!");
-        return;
-      }
+        // If active session was deleted, kick out
+        if (currentStaffSession && currentStaffSession.id === staffId) {
+          handleLogout();
+          triggerNotification("error", "আপনার অ্যাডমিন অ্যাকাউন্টটি মুছে ফেলা হয়েছে!");
+          return;
+        }
 
-      triggerNotification("success", `${target.name}-এর একাউন্ট সফলভাবে মুছে ফেলা হয়েছে।`);
-    }
+        triggerNotification("success", `${target.name}-এর একাউন্ট সফলভাবে মুছে ফেলা হয়েছে।`);
+      },
+    });
   };
 
   // Handle Logout
@@ -3752,24 +3861,31 @@ export default function AdminPage() {
   };
 
   // Handle Clean & Optimize Quiz Scores in Database (Strategies 1-4)
-  const handleCleanQuizScores = async () => {
-    if (!confirm("আপনি কি Supabase এর কুইজ স্কোর টেবিল অপ্টিমাইজ ও অপ্রয়োজনীয় ডুপ্লিকেট রেকর্ড ক্লিন করতে চান? এতে ১ ইউজার = ১ রেকর্ড বজায় থাকবে এবং ডাটাবেজ হালকা ও দ্রুত থাকবে।")) return;
-    setIsCleaningScores(true);
-    try {
-      const res = await fetch("/api/leaderboard", { method: "DELETE" });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        triggerNotification("success", data.message || "কুইজ স্কোর ডাটাবেজ সফলভাবে ক্লিন ও অপ্টিমাইজ করা হয়েছে!");
-        const freshUsers = await fetchLeaderboard(true);
-        setAdminLeaderboardUsers(freshUsers);
-      } else {
-        triggerNotification("error", data.error || "ক্লিনআপ সম্পন্ন হয়নি");
-      }
-    } catch (err: any) {
-      triggerNotification("error", "ক্লিনআপ রিকোয়েস্ট ব্যর্থ হয়েছে: " + err.message);
-    } finally {
-      setIsCleaningScores(false);
-    }
+  const handleCleanQuizScores = () => {
+    requestDeleteConfirmation({
+      title: "কুইজ স্কোর ডুপ্লিকেট ক্লিনআপ সতর্কবার্তা",
+      itemName: "ডুপ্লিকেট কুইজ স্কোর রেকর্ডসমূহ",
+      message: "আপনি কি Supabase এর কুইজ স্কোর টেবিল অপ্টিমাইজ ও অপ্রয়োজনীয় ডুপ্লিকেট রেকর্ড ক্লিন করতে চান? এতে ১ ইউজার = ১ রেকর্ড বজায় থাকবে এবং ডাটাবেজ হালকা ও দ্রুত থাকবে।",
+      confirmLabel: "হ্যাঁ, ক্লিন করুন",
+      onConfirm: async () => {
+        setIsCleaningScores(true);
+        try {
+          const res = await fetch("/api/leaderboard", { method: "DELETE" });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            triggerNotification("success", data.message || "কুইজ স্কোর ডাটাবেজ সফলভাবে ক্লিন ও অপ্টিমাইজ করা হয়েছে!");
+            const freshUsers = await fetchLeaderboard(true);
+            setAdminLeaderboardUsers(freshUsers);
+          } else {
+            triggerNotification("error", data.error || "ক্লিনআপ সম্পন্ন হয়নি");
+          }
+        } catch (err: any) {
+          triggerNotification("error", "ক্লিনআপ রিকোয়েস্ট ব্যর্থ হয়েছে: " + err.message);
+        } finally {
+          setIsCleaningScores(false);
+        }
+      },
+    });
   };
 
   // Handle User Status Change (Ban/Unban toggle) with Supabase DB sync
@@ -3798,20 +3914,25 @@ export default function AdminPage() {
   };
 
   // Handle Delete User Account
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = (userId: string) => {
     const target = users.find(u => u.id === userId);
     if (!target) return;
 
-    if (window.confirm(`আপনি কি নিশ্চিত যে ইউজার (${target.email}) কে স্থায়ীভাবে মুছে ফেলতে চান?`)) {
-      const updated = users.filter(u => u.id !== userId);
-      setUsers(updated);
-      saveUsers(updated);
+    requestDeleteConfirmation({
+      title: "ইউজার অ্যাকাউন্ট ডিলেট সতর্কবার্তা",
+      itemName: `${target.full_name || "ইউজার"} (${target.email})`,
+      message: `আপনি কি নিশ্চিত যে ইউজার (${target.email}) কে স্থায়ীভাবে মুছে ফেলতে চান?`,
+      onConfirm: async () => {
+        const updated = users.filter(u => u.id !== userId);
+        setUsers(updated);
+        saveUsers(updated);
 
-      // Sync to Supabase DB
-      await deleteUserProfileFromDb(userId);
+        // Sync to Supabase DB
+        await deleteUserProfileFromDb(userId);
 
-      triggerNotification("success", `ইউজার ${target.email} সফলভাবে মুছে ফেলা হয়েছে।`);
-    }
+        triggerNotification("success", `ইউজার ${target.email} সফলভাবে মুছে ফেলা হয়েছে।`);
+      },
+    });
   };
 
   // Handle Add Offer Banner
@@ -5198,9 +5319,13 @@ export default function AdminPage() {
                               {/* Bottom Right Delete Button */}
                               <button
                                 onClick={() => {
-                                  if (confirm(`আপনি কি নিশ্চিত যে আপনি এই প্রশ্নটি মুছে ফেলতে চান?`)) {
-                                    handleDeleteQuestion(idVal);
-                                  }
+                                  const plainPreview = String(questionText || "").replace(/<[^>]+>/g, "").slice(0, 80);
+                                  requestDeleteConfirmation({
+                                    title: "প্রশ্ন ডিলেট সতর্কবার্তা",
+                                    itemName: plainPreview || "নির্বাচিত প্রশ্ন",
+                                    message: "আপনি কি নিশ্চিত যে আপনি এই প্রশ্নটি প্রশ্নভান্ডার থেকে স্থায়ীভাবে ডিলেট করতে চান?",
+                                    onConfirm: () => handleDeleteQuestion(idVal),
+                                  });
                                 }}
                                 className="p-2.5 sm:p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-xl transition-all active:scale-90 cursor-pointer shrink-0 self-end flex items-center gap-1 text-xs font-extrabold"
                                 title="Delete Question"
@@ -6489,7 +6614,7 @@ export default function AdminPage() {
                               </button>
 
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteExamPaper(paper.id); }}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteExamPaper(paper.id, paper.title); }}
                                 className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                                 title="ডিলেট করুন"
                               >
@@ -6548,7 +6673,6 @@ export default function AdminPage() {
                       const paperCnt = questionBankPapers.filter(
                         (p) => (p.subSubject || "").trim().toLowerCase() === (sub.name || "").trim().toLowerCase()
                       ).length;
-                      const isConfirming = qbConfirmDeleteSubId === (sub.id || sub.name);
                       return (
                         <div
                           key={sub.id || sub.name}
@@ -6559,33 +6683,14 @@ export default function AdminPage() {
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-[#FF6A00]">
                             {toBanglaDigits(paperCnt)}টি প্রশ্নপত্র
                           </span>
-                          {isConfirming ? (
-                            <div className="inline-flex items-center gap-1 ml-1">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteQbSubSubject(sub.id || sub.name)}
-                                className="px-2 py-0.5 bg-rose-600 text-white rounded-lg text-[10px] font-black cursor-pointer"
-                              >
-                                নিশ্চিত ডিলিট
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setQbConfirmDeleteSubId(null)}
-                                className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold cursor-pointer"
-                              >
-                                বাতিল
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setQbConfirmDeleteSubId(sub.id || sub.name)}
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
-                              title="সাব-সাবজেক্ট মুছুন"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQbSubSubject(sub.id || sub.name, sub.name)}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                            title="সাব-সাবজেক্ট মুছুন"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       );
                     })
@@ -6986,7 +7091,15 @@ export default function AdminPage() {
                       {qbQuestions.length > 0 && (
                         <button
                           type="button"
-                          onClick={() => setQbQuestions([])}
+                          onClick={() => {
+                            requestDeleteConfirmation({
+                              title: "সব প্রশ্ন পরিষ্কার করার সতর্কবার্তা",
+                              itemName: `${toBanglaDigits(qbQuestions.length)} টি যুক্ত প্রশ্ন`,
+                              message: "আপনি কি নিশ্চিত যে প্রশ্নপত্র থেকে যুক্ত করা সবগুলো প্রশ্ন একসাথে মুছে ফেলতে চান?",
+                              confirmLabel: "হ্যাঁ, সব মুছুন",
+                              onConfirm: () => setQbQuestions([]),
+                            });
+                          }}
                           className="text-[11px] font-extrabold text-rose-600 hover:underline cursor-pointer"
                         >
                           সব প্রশ্ন পরিষ্কার করুন
@@ -7017,7 +7130,16 @@ export default function AdminPage() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => setQbQuestions((prev) => prev.filter((_, i) => i !== idx))}
+                              onClick={() => {
+                                const preview = String(pq.question || pq.questionText || "").replace(/<[^>]+>/g, "").slice(0, 70);
+                                requestDeleteConfirmation({
+                                  title: "প্রশ্ন সরানোর সতর্কবার্তা",
+                                  itemName: preview ? `#${idx + 1}: ${preview}` : `প্রশ্ন #${idx + 1}`,
+                                  message: "আপনি কি নিশ্চিত যে এই প্রশ্নটি প্রশ্নপত্রের তালিকা থেকে সরিয়ে ফেলতে চান?",
+                                  confirmLabel: "হ্যাঁ, সরান",
+                                  onConfirm: () => setQbQuestions((prev) => prev.filter((_, i) => i !== idx)),
+                                });
+                              }}
                               className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg shrink-0 cursor-pointer"
                               title="সরান"
                             >
@@ -7233,7 +7355,7 @@ export default function AdminPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteExamPaper(paper.id)}
+                                onClick={() => handleDeleteExamPaper(paper.id, paper.title)}
                                 className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                                 title="ডিলেট করুন"
                               >
@@ -8465,10 +8587,17 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updated = courseFormSubSubjects
-                                      .filter((_, i) => i !== sIdx)
-                                      .map((s, i) => ({ ...s, serial: i + 1 }));
-                                    setCourseFormSubSubjects(updated);
+                                    requestDeleteConfirmation({
+                                      title: "কোর্স সাব-সাবজেক্ট ডিলেট সতর্কবার্তা",
+                                      itemName: subItem.name || `সাব-সাবজেক্ট #${sIdx + 1}`,
+                                      message: `আপনি কি নিশ্চিত যে "${subItem.name || `সাব-সাবজেক্ট #${sIdx + 1}`}" ডিলেট করতে চান?`,
+                                      onConfirm: () => {
+                                        const updated = courseFormSubSubjects
+                                          .filter((_, i) => i !== sIdx)
+                                          .map((s, i) => ({ ...s, serial: i + 1 }));
+                                        setCourseFormSubSubjects(updated);
+                                      },
+                                    });
                                   }}
                                   className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
                                   title="সাব-সাবজেক্ট ডিলিট করুন"
@@ -8510,11 +8639,18 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
-                                            if (updated[sIdx]?.subCategories2) {
-                                              updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
-                                              setCourseFormSubSubjects(updated);
-                                            }
+                                            requestDeleteConfirmation({
+                                              title: "টপিক ডিলেট সতর্কবার্তা",
+                                              itemName: sub2.name,
+                                              message: `আপনি কি নিশ্চিত যে "${sub2.name}" টপিকটি ডিলেট করতে চান?`,
+                                              onConfirm: () => {
+                                                const updated = JSON.parse(JSON.stringify(courseFormSubSubjects));
+                                                if (updated[sIdx]?.subCategories2) {
+                                                  updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                                  setCourseFormSubSubjects(updated);
+                                                }
+                                              },
+                                            });
                                           }}
                                           className="hover:text-rose-600 text-orange-400 p-0.5 cursor-pointer"
                                         >
@@ -8991,11 +9127,18 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updated = prepFormSubSubjects
-                                      .filter((_, i) => i !== sIdx)
-                                      .map((s, i) => ({ ...s, serial: i + 1 }));
-                                    setPrepFormSubSubjects(updated);
-                                    if (editingPrepId) setHasUnsavedPrepChanges(true);
+                                    requestDeleteConfirmation({
+                                      title: "সাব-ক্যাটাগরি ডিলেট সতর্কবার্তা",
+                                      itemName: subItem.name || `Level 2 #${sIdx + 1}`,
+                                      message: `আপনি কি নিশ্চিত যে "${subItem.name || `Level 2 #${sIdx + 1}`}" সাব-ক্যাটাগরিটি ডিলেট করতে চান?`,
+                                      onConfirm: () => {
+                                        const updated = prepFormSubSubjects
+                                          .filter((_, i) => i !== sIdx)
+                                          .map((s, i) => ({ ...s, serial: i + 1 }));
+                                        setPrepFormSubSubjects(updated);
+                                        if (editingPrepId) setHasUnsavedPrepChanges(true);
+                                      },
+                                    });
                                   }}
                                   className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
                                   title="মুছে ফেলুন"
@@ -9037,12 +9180,19 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const updated = JSON.parse(JSON.stringify(prepFormSubSubjects));
-                                          if (updated[sIdx]?.subCategories2) {
-                                            updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
-                                            setPrepFormSubSubjects(updated);
-                                            if (editingPrepId) setHasUnsavedPrepChanges(true);
-                                          }
+                                          requestDeleteConfirmation({
+                                            title: "সাব-টপিক ডিলেট সতর্কবার্তা",
+                                            itemName: sub2.name,
+                                            message: `আপনি কি নিশ্চিত যে "${sub2.name}" টপিকটি ডিলেট করতে চান?`,
+                                            onConfirm: () => {
+                                              const updated = JSON.parse(JSON.stringify(prepFormSubSubjects));
+                                              if (updated[sIdx]?.subCategories2) {
+                                                updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                                setPrepFormSubSubjects(updated);
+                                                if (editingPrepId) setHasUnsavedPrepChanges(true);
+                                              }
+                                            },
+                                          });
                                         }}
                                         className="hover:text-rose-600 text-purple-400 p-0.5 cursor-pointer"
                                       >
@@ -9477,8 +9627,15 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updated = proFormSubSubjects.filter((_, i) => i !== sIdx);
-                                    setProFormSubSubjects(updated);
+                                    requestDeleteConfirmation({
+                                      title: "প্রো সাব-ক্যাটাগরি ডিলেট সতর্কবার্তা",
+                                      itemName: subItem.name || `Level 2 #${sIdx + 1}`,
+                                      message: `আপনি কি নিশ্চিত যে "${subItem.name || `Level 2 #${sIdx + 1}`}" সাব-ক্যাটাগরিটি ডিলেট করতে চান?`,
+                                      onConfirm: () => {
+                                        const updated = proFormSubSubjects.filter((_, i) => i !== sIdx);
+                                        setProFormSubSubjects(updated);
+                                      },
+                                    });
                                   }}
                                   className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
                                   title="মুছে ফেলুন"
@@ -9520,11 +9677,18 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const updated = JSON.parse(JSON.stringify(proFormSubSubjects));
-                                          if (updated[sIdx]?.subCategories2) {
-                                            updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
-                                            setProFormSubSubjects(updated);
-                                          }
+                                          requestDeleteConfirmation({
+                                            title: "টপিক ডিলেট সতর্কবার্তা",
+                                            itemName: sub2.name,
+                                            message: `আপনি কি নিশ্চিত যে "${sub2.name}" টপিকটি ডিলেট করতে চান?`,
+                                            onConfirm: () => {
+                                              const updated = JSON.parse(JSON.stringify(proFormSubSubjects));
+                                              if (updated[sIdx]?.subCategories2) {
+                                                updated[sIdx].subCategories2 = updated[sIdx].subCategories2.filter((_: any, i: number) => i !== sub2Idx);
+                                                setProFormSubSubjects(updated);
+                                              }
+                                            },
+                                          });
                                         }}
                                         className="hover:text-rose-600 text-purple-400 p-0.5 cursor-pointer"
                                       >
@@ -9996,33 +10160,14 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                             <span>এডিট</span>
                           </button>
 
-                          {confirmDeleteCircularCatId === cat.id ? (
-                            <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-1 rounded-xl border border-rose-200">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCircularCat(cat.id, cat.name)}
-                                className="px-2 py-0.5 bg-rose-600 text-white text-[10px] font-black rounded-lg cursor-pointer"
-                              >
-                                ডিলিট
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteCircularCatId(null)}
-                                className="px-1.5 py-0.5 text-slate-600 text-[10px] font-bold cursor-pointer"
-                              >
-                                না
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteCircularCatId(cat.id)}
-                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
-                              title="ডিলিট করুন"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCircularCat(cat.id, cat.name)}
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                            title="ডিলিট করুন"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -10416,32 +10561,14 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                 <Pencil className="w-3.5 h-3.5" />
                                 <span>এডিট</span>
                               </button>
-                              {confirmDeleteCircularPostId === post.id ? (
-                                <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-1 rounded-xl border border-rose-200">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteCircularPost(post.id)}
-                                    className="px-2 py-0.5 bg-rose-600 text-white text-[10px] font-black rounded-lg cursor-pointer"
-                                  >
-                                    ডিলিট
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeleteCircularPostId(null)}
-                                    className="px-1.5 py-0.5 text-slate-600 text-[10px] font-bold cursor-pointer"
-                                  >
-                                    না
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDeleteCircularPostId(post.id)}
-                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCircularPost(post.id, post.title)}
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl cursor-pointer"
+                                title="বিজ্ঞপ্তি ডিলিট করুন"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
                         );
@@ -10695,14 +10822,22 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                             <button
                               type="button"
                               onClick={() => {
-                                const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
-                                const pts = (current.points || []).filter((_, i) => i !== pIdx);
-                                setAppSettings({
-                                  ...appSettings,
-                                  popupNotification: { ...current, points: pts }
+                                requestDeleteConfirmation({
+                                  title: "পয়েন্ট ডিলেট সতর্কবার্তা",
+                                  itemName: pt || `পয়েন্ট #${pIdx + 1}`,
+                                  message: `আপনি কি নিশ্চিত যে "${pt || `পয়েন্ট #${pIdx + 1}`}" পয়েন্টটি মুছে ফেলতে চান?`,
+                                  onConfirm: () => {
+                                    const current = appSettings.popupNotification || DEFAULT_POPUP_CONFIG;
+                                    const pts = (current.points || []).filter((_, i) => i !== pIdx);
+                                    setAppSettings({
+                                      ...appSettings,
+                                      popupNotification: { ...current, points: pts }
+                                    });
+                                  },
                                 });
                               }}
                               className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                              title="পয়েন্ট ডিলেট করুন"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -12367,6 +12502,82 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* GLOBAL DELETE WARNING CONFIRMATION MODAL (ALL ADMIN TABS) */}
+        {/* ========================================================= */}
+        {deleteConfirmModal && (
+          <div
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in"
+            onClick={() => {
+              if (!isExecutingDeleteConfirm) setDeleteConfirmModal(null);
+            }}
+          >
+            <div
+              className="w-full max-w-md bg-white rounded-[2rem] border border-rose-100 shadow-2xl overflow-hidden text-left"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 sm:p-6 bg-rose-50/70 border-b border-rose-100 flex items-start gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 shadow-xs">
+                  <AlertOctagon className="w-6 h-6 stroke-[2.2px]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-base text-slate-900 leading-snug">
+                    {deleteConfirmModal.title || "ডিলেট সতর্কবার্তা!"}
+                  </h3>
+                  <p className="text-[11px] font-bold text-rose-600 mt-0.5">
+                    অনুমতি দিলে এটি মুছে ফেলা হবে
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={isExecutingDeleteConfirm}
+                  onClick={() => setDeleteConfirmModal(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-white/80 transition-colors cursor-pointer disabled:opacity-40"
+                  title="বন্ধ করুন"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 sm:p-6 space-y-4">
+                {deleteConfirmModal.itemName && (
+                  <div className="px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-black text-slate-800 break-words">
+                    {deleteConfirmModal.itemName}
+                  </div>
+                )}
+
+                <p className="text-xs sm:text-sm font-semibold text-slate-600 leading-relaxed">
+                  {deleteConfirmModal.message}
+                </p>
+
+                <div className="pt-2 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isExecutingDeleteConfirm}
+                    onClick={() => setDeleteConfirmModal(null)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    বাতিল করুন
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isExecutingDeleteConfirm}
+                    onClick={handleExecuteDeleteConfirm}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-500/20 transition-all active:scale-95 cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>
+                      {isExecutingDeleteConfirm
+                        ? "ডিলেট হচ্ছে..."
+                        : deleteConfirmModal.confirmLabel || "হ্যাঁ, ডিলেট করুন"}
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
