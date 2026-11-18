@@ -4181,8 +4181,8 @@ export default function Home() {
                   onClick={() => startQuizFlow("Live Quiz Game", "লাইভ কুইজ")}
                   className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-[0.98] transition-all"
                 >
-                  <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
-                    <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full">
+                  <div className="flex-1 min-w-0 flex flex-col items-center justify-center text-center gap-1.5">
+                    <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full text-center">
                       Live Quiz Game
                     </h3>
                     <button
@@ -4191,7 +4191,7 @@ export default function Home() {
                         e.stopPropagation();
                         startQuizFlow("Live Quiz Game", "লাইভ কুইজ");
                       }}
-                      className="animate-quiz-cta w-fit max-w-full self-start bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1 border border-white/80"
+                      className="animate-quiz-cta w-fit max-w-full self-center mx-auto bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2.5 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1 border border-white/80"
                     >
                       <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FF4E00] fill-[#FF4E00] animate-zap-icon shrink-0" />
                       <span className="font-black leading-[1.2] truncate">Start Quiz</span>
@@ -4223,13 +4223,13 @@ export default function Home() {
                     setCurrentScreen("cv-maker");
                     if (soundEnabled) quizAudio.playClick();
                   }}
-                  className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-[0.98] transition-all text-left"
+                  className="bg-[#FF6A00] rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 text-white relative overflow-hidden shadow-md shadow-orange-500/15 border border-orange-500/20 flex items-center justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-[0.98] transition-all"
                 >
-                  <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
-                    <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full">
+                  <div className="flex-1 min-w-0 flex flex-col items-center justify-center text-center gap-1.5">
+                    <h3 className="text-[12.5px] min-[360px]:text-[13px] sm:text-base font-black tracking-tight leading-tight text-white truncate w-full text-center">
                       CV Maker
                     </h3>
-                    <div className="w-fit max-w-full self-start bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-0.5 border border-white/80">
+                    <div className="w-fit max-w-full self-center mx-auto bg-white hover:bg-orange-50 text-[#FF4E00] font-black text-[11px] min-[360px]:text-xs sm:text-sm px-2 py-1 min-h-[28px] sm:min-h-[32px] leading-[1.2] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-0.5 border border-white/80">
                       <span className="font-black leading-[1.2] translate-y-[1px] truncate">সিভি তৈরি করুন</span>
                       <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5px] shrink-0" />
                     </div>
@@ -4241,7 +4241,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Weekly Model Test Section (Placed between Live Quiz Game and Pro Feature) */}
+              {/* Weekly Model Test + Question Bank Two-Column Row */}
               <div className="pt-1 sm:pt-1.5">
                 {(() => {
                   const weeklyLiveCount = examPapers.filter(p => {
@@ -4251,71 +4251,156 @@ export default function Home() {
                     return pCat === "weekly_model_test";
                   }).length;
 
-                  return (
-                    <div className="relative p-[2.5px] rounded-2xl sm:rounded-3xl overflow-hidden group shadow-2xs hover:shadow-md transition-shadow">
-                      {/* Clockwise rotating animated glowing border */}
-                      <div className="absolute -inset-[150%] bg-[conic-gradient(from_0deg_at_50%_50%,#f59e0b_0deg,#ea580c_90deg,#e11d48_180deg,#facc15_270deg,#f59e0b_360deg)] animate-border-clockwise opacity-90 group-hover:opacity-100 pointer-events-none" />
+                  const proQuestionBankItem =
+                    (allProSectionData || []).find(
+                      (p: any) =>
+                        p.id === "pro-question-bank" ||
+                        p.name?.trim() === "প্রশ্ন ব্যাংক"
+                    ) ||
+                    (DEFAULT_PRO_SECTION || []).find(
+                      (p: any) =>
+                        p.id === "pro-question-bank" ||
+                        p.name?.trim() === "প্রশ্ন ব্যাংক"
+                    );
+                  const qbTargetSubjectName = proQuestionBankItem?.name || "প্রশ্ন ব্যাংক";
+                  const qbSubtitle = proQuestionBankItem?.sub || "সকল বিগত প্রশ্নপত্র";
+                  const openHomeQuestionBank = () => {
+                    if (soundEnabled) quizAudio.playClick();
+                    setSelectedCourseDetail(null);
+                    setIsProSectionActive(true);
+                    setSelectedPrepSubject(qbTargetSubjectName);
+                    setPrepSubjectOrigin("home");
+                    setPreviousScreen("home");
+                    setCurrentScreen("prep-sub");
+                  };
 
-                      <div 
-                        onClick={() => {
-                          if (soundEnabled) quizAudio.playClick();
-                          setPreviousScreen("home");
-                          setCurrentScreen("daily-quick-test");
-                        }}
-                        className="relative w-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-3 sm:p-4.5 flex items-center justify-between gap-2 sm:gap-3 active:scale-[0.99] cursor-pointer text-left"
-                      >
-                        {/* Left side: Icon + Text */}
-                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
-                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-base sm:text-xl font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                            ⚡
+                  return (
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 items-stretch">
+                      {/* LEFT SECTION: সাপ্তাহিক মডেল টেস্ট */}
+                      <div className="relative p-[2.5px] rounded-2xl sm:rounded-3xl overflow-hidden group shadow-2xs hover:shadow-md transition-shadow h-full">
+                        {/* Clockwise rotating animated glowing border */}
+                        <div className="absolute -inset-[150%] bg-[conic-gradient(from_0deg_at_50%_50%,#f59e0b_0deg,#ea580c_90deg,#e11d48_180deg,#facc15_270deg,#f59e0b_360deg)] animate-border-clockwise opacity-90 group-hover:opacity-100 pointer-events-none" />
+
+                        <div
+                          onClick={() => {
+                            if (soundEnabled) quizAudio.playClick();
+                            setPreviousScreen("home");
+                            setCurrentScreen("daily-quick-test");
+                          }}
+                          className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-2.5 sm:p-3.5 flex flex-col justify-between gap-2 active:scale-[0.99] cursor-pointer text-center"
+                        >
+                          {/* Top Row: Icon (left) + Share Button (right) */}
+                          <div className="flex items-center justify-between gap-1.5 w-full">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm sm:text-base font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                              ⚡
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareLink({
+                                  view: "weekly-model-test",
+                                  title: "JobMaster সাপ্তাহিক মডেল টেস্ট",
+                                  text: "JobMaster সাপ্তাহিক মডেল টেস্ট এ অংশগ্রহণ করে আপনার প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
+                                });
+                              }}
+                              title="সাপ্তাহিক মডেল টেস্ট লিংক কপি / শেয়ার করুন"
+                              className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0 shadow-2xs"
+                            >
+                              <Share2 className="w-3.5 h-3.5 stroke-[2.2px]" />
+                            </button>
                           </div>
-                          <div className="space-y-0.5 truncate text-left min-w-0">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <h4 className="font-black text-[13px] min-[360px]:text-sm sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+
+                          {/* Middle: Title + Subtitle */}
+                          <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
+                            <div className="flex items-center justify-center gap-1 min-w-0 max-w-full">
+                              <h4 className="font-black text-[12.5px] min-[360px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
                                 সাপ্তাহিক মডেল টেস্ট
                               </h4>
                               {weeklyLiveCount > 0 && (
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" title="Live Now" />
                               )}
                             </div>
-                            <p className="text-[10.5px] sm:text-[11px] font-bold text-slate-400 truncate">
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
                               সকল চাকরী পার্থীদের জন্য
                             </p>
                           </div>
+
+                          {/* Bottom Center: পরীক্ষা দিন button */}
+                          <div className="flex justify-center pt-0.5 w-full">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (soundEnabled) quizAudio.playClick();
+                                setPreviousScreen("home");
+                                setCurrentScreen("daily-quick-test");
+                              }}
+                              className="px-3 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20"
+                            >
+                              <span>পরীক্ষা দিন</span>
+                              <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
+                            </button>
+                          </div>
                         </div>
+                      </div>
 
-                        {/* Right side: Share Button + Take Exam Button */}
-                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleShareLink({
-                                view: "weekly-model-test",
-                                title: "JobMaster সাপ্তাহিক মডেল টেস্ট",
-                                text: "JobMaster সাপ্তাহিক মডেল টেস্ট এ অংশগ্রহণ করে আপনার প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
-                              });
-                            }}
-                            title="সাপ্তাহিক মডেল টেস্ট লিংক কপি / শেয়ার করুন"
-                            className="px-2 sm:px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-90 flex items-center gap-1 text-[11px] sm:text-xs font-black shadow-2xs"
-                          >
-                            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2px]" />
-                            <span>Share</span>
-                          </button>
+                      {/* RIGHT SECTION: প্রশ্ন ব্যাংক (Mirrors Pro Feature -> প্রশ্ন ব্যাংক) */}
+                      <div className="relative p-[2.5px] rounded-2xl sm:rounded-3xl overflow-hidden group shadow-2xs hover:shadow-md transition-shadow h-full">
+                        {/* Same clockwise rotating animated glowing border */}
+                        <div className="absolute -inset-[150%] bg-[conic-gradient(from_0deg_at_50%_50%,#f59e0b_0deg,#ea580c_90deg,#e11d48_180deg,#facc15_270deg,#f59e0b_360deg)] animate-border-clockwise opacity-90 group-hover:opacity-100 pointer-events-none" />
 
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (soundEnabled) quizAudio.playClick();
-                              setPreviousScreen("home");
-                              setCurrentScreen("daily-quick-test");
-                            }}
-                            className="px-2.5 sm:px-3.5 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20"
-                          >
-                            <span>পরীক্ষা দিন</span>
-                            <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
-                          </button>
+                        <div
+                          onClick={openHomeQuestionBank}
+                          className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-2.5 sm:p-3.5 flex flex-col justify-between gap-2 active:scale-[0.99] cursor-pointer text-center"
+                        >
+                          {/* Top Row: Icon (left) + Share Button (right) */}
+                          <div className="flex items-center justify-between gap-1.5 w-full">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                              <Database className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2px]" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareLink({
+                                  view: "prep-sub",
+                                  id: qbTargetSubjectName,
+                                  title: `JobMaster - ${qbTargetSubjectName}`,
+                                  text: `${qbTargetSubjectName} এর সকল বিগত সালের প্রশ্নপত্র ও অনুশীলন দেখুন!`
+                                });
+                              }}
+                              title="প্রশ্ন ব্যাংক লিংক কপি / শেয়ার করুন"
+                              className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0 shadow-2xs"
+                            >
+                              <Share2 className="w-3.5 h-3.5 stroke-[2.2px]" />
+                            </button>
+                          </div>
+
+                          {/* Middle: Title + Subtitle */}
+                          <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
+                            <h4 className="font-black text-[12.5px] min-[360px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate max-w-full">
+                              প্রশ্ন ব্যাংক
+                            </h4>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
+                              {qbSubtitle}
+                            </p>
+                          </div>
+
+                          {/* Bottom Center: প্রশ্ন দেখুন button */}
+                          <div className="flex justify-center pt-0.5 w-full">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openHomeQuestionBank();
+                              }}
+                              className="px-3 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20"
+                            >
+                              <span>প্রশ্ন দেখুন</span>
+                              <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
