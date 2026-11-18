@@ -4287,47 +4287,24 @@ export default function Home() {
                             setPreviousScreen("home");
                             setCurrentScreen("daily-quick-test");
                           }}
-                          className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-2.5 sm:p-3.5 flex flex-col justify-between gap-2 active:scale-[0.99] cursor-pointer text-center"
+                          className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] px-2 py-2.5 sm:px-3.5 sm:py-3.5 flex items-center justify-between gap-1 sm:gap-2 active:scale-[0.99] cursor-pointer text-center"
                         >
-                          {/* Top Row: Icon (left) + Share Button (right) */}
-                          <div className="flex items-center justify-between gap-1.5 w-full">
-                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm sm:text-base font-black shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                              ⚡
+                          {/* Center Content: Title + Subtitle + Bottom Centered CTA */}
+                          <div className="flex-1 min-w-0 flex flex-col items-center justify-between gap-2 h-full">
+                            <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
+                              <div className="flex items-center justify-center gap-1 min-w-0 max-w-full">
+                                <h4 className="font-black text-[12px] min-[380px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
+                                  সাপ্তাহিক মডেল টেস্ট
+                                </h4>
+                                {weeklyLiveCount > 0 && (
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" title="Live Now" />
+                                )}
+                              </div>
+                              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
+                                সকল চাকরী পার্থীদের জন্য
+                              </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShareLink({
-                                  view: "weekly-model-test",
-                                  title: "JobMaster সাপ্তাহিক মডেল টেস্ট",
-                                  text: "JobMaster সাপ্তাহিক মডেল টেস্ট এ অংশগ্রহণ করে আপনার প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
-                                });
-                              }}
-                              title="সাপ্তাহিক মডেল টেস্ট লিংক কপি / শেয়ার করুন"
-                              className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0 shadow-2xs"
-                            >
-                              <Share2 className="w-3.5 h-3.5 stroke-[2.2px]" />
-                            </button>
-                          </div>
 
-                          {/* Middle: Title + Subtitle */}
-                          <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
-                            <div className="flex items-center justify-center gap-1 min-w-0 max-w-full">
-                              <h4 className="font-black text-[12.5px] min-[360px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate">
-                                সাপ্তাহিক মডেল টেস্ট
-                              </h4>
-                              {weeklyLiveCount > 0 && (
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" title="Live Now" />
-                              )}
-                            </div>
-                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
-                              সকল চাকরী পার্থীদের জন্য
-                            </p>
-                          </div>
-
-                          {/* Bottom Center: পরীক্ষা দিন button */}
-                          <div className="flex justify-center pt-0.5 w-full">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -4336,12 +4313,29 @@ export default function Home() {
                                 setPreviousScreen("home");
                                 setCurrentScreen("daily-quick-test");
                               }}
-                              className="px-3 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20"
+                              className="px-2.5 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20 self-center mx-auto"
                             >
                               <span>পরীক্ষা দিন</span>
                               <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
                             </button>
                           </div>
+
+                          {/* Right Share Button (Vertically Centered) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShareLink({
+                                view: "weekly-model-test",
+                                title: "JobMaster সাপ্তাহিক মডেল টেস্ট",
+                                text: "JobMaster সাপ্তাহিক মডেল টেস্ট এ অংশগ্রহণ করে আপনার প্রস্তুতি যাচাই করুন! এখনই যুক্ত হোন।"
+                              });
+                            }}
+                            title="সাপ্তাহিক মডেল টেস্ট লিংক কপি / শেয়ার করুন"
+                            className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0 self-center shadow-2xs"
+                          >
+                            <Share2 className="w-3.5 h-3.5 stroke-[2.2px]" />
+                          </button>
                         </div>
                       </div>
 
@@ -4352,55 +4346,49 @@ export default function Home() {
 
                         <div
                           onClick={openHomeQuestionBank}
-                          className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] p-2.5 sm:p-3.5 flex flex-col justify-between gap-2 active:scale-[0.99] cursor-pointer text-center"
+                          className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] px-2 py-2.5 sm:px-3.5 sm:py-3.5 flex items-center justify-between gap-1 sm:gap-2 active:scale-[0.99] cursor-pointer text-center"
                         >
-                          {/* Top Row: Icon (left) + Share Button (right) */}
-                          <div className="flex items-center justify-between gap-1.5 w-full">
-                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                              <Database className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2px]" />
+                          {/* Center Content: Title + Subtitle + Bottom Centered CTA */}
+                          <div className="flex-1 min-w-0 flex flex-col items-center justify-between gap-2 h-full">
+                            <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
+                              <h4 className="font-black text-[12px] min-[380px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate max-w-full">
+                                প্রশ্ন ব্যাংক
+                              </h4>
+                              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
+                                {qbSubtitle}
+                              </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShareLink({
-                                  view: "prep-sub",
-                                  id: qbTargetSubjectName,
-                                  title: `JobMaster - ${qbTargetSubjectName}`,
-                                  text: `${qbTargetSubjectName} এর সকল বিগত সালের প্রশ্নপত্র ও অনুশীলন দেখুন!`
-                                });
-                              }}
-                              title="প্রশ্ন ব্যাংক লিংক কপি / শেয়ার করুন"
-                              className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0 shadow-2xs"
-                            >
-                              <Share2 className="w-3.5 h-3.5 stroke-[2.2px]" />
-                            </button>
-                          </div>
 
-                          {/* Middle: Title + Subtitle */}
-                          <div className="space-y-0.5 min-w-0 w-full flex flex-col items-center">
-                            <h4 className="font-black text-[12.5px] min-[360px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate max-w-full">
-                              প্রশ্ন ব্যাংক
-                            </h4>
-                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 truncate max-w-full">
-                              {qbSubtitle}
-                            </p>
-                          </div>
-
-                          {/* Bottom Center: প্রশ্ন দেখুন button */}
-                          <div className="flex justify-center pt-0.5 w-full">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openHomeQuestionBank();
                               }}
-                              className="px-3 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20"
+                              className="px-2.5 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20 self-center mx-auto"
                             >
                               <span>প্রশ্ন দেখুন</span>
                               <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
                             </button>
                           </div>
+
+                          {/* Right Share Button (Vertically Centered) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShareLink({
+                                view: "prep-sub",
+                                id: qbTargetSubjectName,
+                                title: `JobMaster - ${qbTargetSubjectName}`,
+                                text: `${qbTargetSubjectName} এর সকল বিগত সালের প্রশ্নপত্র ও অনুশীলন দেখুন!`
+                              });
+                            }}
+                            title="প্রশ্ন ব্যাংক লিংক কপি / শেয়ার করুন"
+                            className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-900 border border-amber-200/80 rounded-xl transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0 self-center shadow-2xs"
+                          >
+                            <Share2 className="w-3.5 h-3.5 stroke-[2.2px]" />
+                          </button>
                         </div>
                       </div>
                     </div>
