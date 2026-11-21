@@ -4037,16 +4037,19 @@ export default function Home() {
                                         <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
                                           {currentLive.title}
                                         </h4>
-                                        <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center gap-2">
+                                        <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                           <span>প্রশ্ন {qCount} টি</span>
                                           <span className="text-slate-300">•</span>
                                           <span>{mins} মিনিট</span>
+                                          {currentLive.topic && currentLive.topic.trim() !== "" && (
+                                            <>
+                                              <span className="text-slate-300">•</span>
+                                              <span className="text-slate-600 font-semibold">
+                                                <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {currentLive.topic}
+                                              </span>
+                                            </>
+                                          )}
                                         </p>
-                                        {currentLive.topic && currentLive.topic.trim() !== "" && (
-                                          <p className="text-xs font-semibold text-slate-600 mt-1 line-clamp-2">
-                                            <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {currentLive.topic}
-                                          </p>
-                                        )}
                                       </div>
 
                                       {/* Footer Row: Live Timer & Participant Count */}
@@ -5083,16 +5086,19 @@ export default function Home() {
                             <h4 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-[#FF6A00] transition-colors leading-snug">
                               {currentLive.title}
                             </h4>
-                            <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center gap-2">
+                            <p className="text-xs font-bold text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                               <span>প্রশ্ন {qCount} টি</span>
                               <span className="text-slate-300">•</span>
                               <span>{mins} মিনিট</span>
+                              {currentLive.topic && currentLive.topic.trim() !== "" && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-600 font-semibold">
+                                    <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {currentLive.topic}
+                                  </span>
+                                </>
+                              )}
                             </p>
-                            {currentLive.topic && currentLive.topic.trim() !== "" && (
-                              <p className="text-xs font-semibold text-slate-600 mt-1 line-clamp-2">
-                                <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {currentLive.topic}
-                              </p>
-                            )}
                           </div>
 
                           {/* Footer Row: Live Timer & Participant Count */}
@@ -5470,6 +5476,11 @@ export default function Home() {
                                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black">
                                         <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
                                       </span>
+                                      {paper.topic && paper.topic.trim() !== "" && (
+                                        <span className="text-xs font-semibold text-slate-600">
+                                          <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                        </span>
+                                      )}
                                     </div>
 
                                     {displayDate && (
@@ -5479,12 +5490,6 @@ export default function Home() {
                                       </div>
                                     )}
                                   </div>
-
-                                  {paper.topic && paper.topic.trim() !== "" && (
-                                    <p className="text-xs font-semibold text-slate-600 leading-snug">
-                                      <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                                    </p>
-                                  )}
 
                                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
                                     <button
@@ -5540,14 +5545,19 @@ export default function Home() {
                                     <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
                                       <MathRenderer content={paper.title} />
                                     </h4>
-                                    <p className="text-xs font-bold text-slate-500">
-                                      প্রশ্ন: {qCount} টি • সময়: {durationMins} মিনিট
+                                    <p className="text-xs font-bold text-slate-500 flex items-center gap-2 flex-wrap">
+                                      <span>প্রশ্ন: {qCount} টি</span>
+                                      <span className="text-slate-300">•</span>
+                                      <span>সময়: {durationMins} মিনিট</span>
+                                      {paper.topic && paper.topic.trim() !== "" && (
+                                        <>
+                                          <span className="text-slate-300">•</span>
+                                          <span className="text-slate-600 font-semibold">
+                                            <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                          </span>
+                                        </>
+                                      )}
                                     </p>
-                                    {paper.topic && paper.topic.trim() !== "" && (
-                                      <p className="text-xs font-semibold text-slate-600 pt-0.5 leading-snug">
-                                        <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                                      </p>
-                                    )}
                                   </div>
                                   <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                                     <button
@@ -5970,6 +5980,11 @@ export default function Home() {
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black">
                                   <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
                                 </span>
+                                {paper.topic && paper.topic.trim() !== "" && (
+                                  <span className="text-xs font-semibold text-slate-600">
+                                    <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                  </span>
+                                )}
                               </div>
 
                               {displayDate && (
@@ -5979,12 +5994,6 @@ export default function Home() {
                                 </div>
                               )}
                             </div>
-
-                            {paper.topic && paper.topic.trim() !== "" && (
-                              <p className="text-xs font-semibold text-slate-600 leading-snug">
-                                <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                              </p>
-                            )}
 
                             {/* Bottom Row: প্রশ্নপত্র দেখুন + পরীক্ষা দিন */}
                             <div
@@ -6044,14 +6053,19 @@ export default function Home() {
                               <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
                                 <MathRenderer content={paper.title} />
                               </h4>
-                              <p className="text-xs font-bold text-slate-500">
-                                প্রশ্ন: {qCount} টি • সময়: {durationMins} মিনিট
+                              <p className="text-xs font-bold text-slate-500 flex items-center gap-2 flex-wrap">
+                                <span>প্রশ্ন: {qCount} টি</span>
+                                <span className="text-slate-300">•</span>
+                                <span>সময়: {durationMins} মিনিট</span>
+                                {paper.topic && paper.topic.trim() !== "" && (
+                                  <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="text-slate-600 font-semibold">
+                                      <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                    </span>
+                                  </>
+                                )}
                               </p>
-                              {paper.topic && paper.topic.trim() !== "" && (
-                                <p className="text-xs font-semibold text-slate-600 pt-0.5 leading-snug">
-                                  <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                                </p>
-                              )}
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                               <button
@@ -7761,18 +7775,23 @@ export default function Home() {
                               </h5>
                             </div>
 
-                            <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                                <span>{paper.questionCount} টি প্রশ্ন • {Math.max(1, Math.ceil((paper.totalDurationSeconds || (paper.questionCount || 10) * 36) / 60))} মিনিট</span>
-                                <span className="text-[#FF6A00] font-black flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                  পরীক্ষা দিন <ChevronRight className="w-3.5 h-3.5" />
-                                </span>
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                              <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold text-slate-500">
+                                <span>{paper.questionCount} টি প্রশ্ন</span>
+                                <span>•</span>
+                                <span>{Math.max(1, Math.ceil((paper.totalDurationSeconds || (paper.questionCount || 10) * 36) / 60))} মিনিট</span>
+                                {paper.topic && paper.topic.trim() !== "" && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-slate-600 font-semibold">
+                                      <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                    </span>
+                                  </>
+                                )}
                               </div>
-                              {paper.topic && paper.topic.trim() !== "" && (
-                                <p className="text-[11px] text-slate-600 font-semibold line-clamp-1">
-                                  <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                                </p>
-                              )}
+                              <span className="text-[11px] text-[#FF6A00] font-black flex items-center gap-1 group-hover:translate-x-1 transition-transform shrink-0">
+                                পরীক্ষা দিন <ChevronRight className="w-3.5 h-3.5" />
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -8993,12 +9012,15 @@ export default function Home() {
                               <span>প্রশ্ন: {paper.questionCount || paper.questions?.length || 10} টি</span>
                               <span>•</span>
                               <span>সময়: {durationMins} মিনিট</span>
+                              {paper.topic && paper.topic.trim() !== "" && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-slate-600 font-semibold">
+                                    <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                  </span>
+                                </>
+                              )}
                             </div>
-                            {paper.topic && paper.topic.trim() !== "" && (
-                              <div className="text-xs font-semibold text-slate-600 pt-0.5">
-                                <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                              </div>
-                            )}
                           </div>
 
                           {/* Action Buttons */}

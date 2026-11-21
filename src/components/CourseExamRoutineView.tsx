@@ -298,14 +298,17 @@ export default function CourseExamRoutineView({
                           <span>প্রশ্ন: {paper.questionCount || paper.questions?.length || 20} টি</span>
                           <span>•</span>
                           <span>সময়: {Math.ceil(((paper.questionCount || paper.questions?.length || 20) * 36) / 60)} মিনিট</span>
+                          {paper.topic && paper.topic.trim() !== "" && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-600 font-semibold">
+                                <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                              </span>
+                            </>
+                          )}
                           <span>•</span>
                           <span className="text-emerald-600 font-extrabold">পূর্ণমান: {paper.totalMarks || paper.questionCount || 20}</span>
                         </div>
-                        {paper.topic && paper.topic.trim() !== "" && (
-                          <p className="text-[11px] sm:text-xs font-semibold text-slate-600 pt-0.5 leading-snug">
-                            <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                          </p>
-                        )}
                       </div>
 
                       {/* Card Action Buttons: পরীক্ষা দিন, সিলেবাস, প্রশ্নপত্র (Inactive for live), Share */}
@@ -381,17 +384,20 @@ export default function CourseExamRoutineView({
                               <span>প্রশ্ন {paper.questionCount || paper.questions?.length || 20} টি</span>
                               <span>-</span>
                               <span>{Math.ceil(((paper.questionCount || paper.questions?.length || 20) * 36) / 60)} মিনিট</span>
+                              {paper.topic && paper.topic.trim() !== "" && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-slate-600 font-semibold">
+                                    <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                                  </span>
+                                </>
+                              )}
                               <span>•</span>
                               <span className="text-blue-600 font-extrabold flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                 Upcoming
                               </span>
                             </div>
-                            {paper.topic && paper.topic.trim() !== "" && (
-                              <p className="text-[11px] sm:text-xs font-semibold text-slate-600 pt-0.5 leading-snug">
-                                <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                              </p>
-                            )}
                           </div>
 
                           {/* Action Buttons: আসন্ন, প্রশ্নপত্র (ACTIVE), সিলেবাস, Share */}
@@ -483,14 +489,19 @@ export default function CourseExamRoutineView({
                       <h4 className="font-black text-sm sm:text-base text-slate-900 leading-snug">
                         {paper.title}
                       </h4>
-                      <p className="text-[11px] sm:text-xs font-bold text-slate-500">
-                        প্রশ্ন: {paper.questionCount || paper.questions?.length || 20} টি • সময়: {Math.ceil(((paper.questionCount || paper.questions?.length || 20) * 36) / 60)} মিনিট
+                      <p className="text-[11px] sm:text-xs font-bold text-slate-500 flex items-center gap-2 flex-wrap">
+                        <span>প্রশ্ন: {paper.questionCount || paper.questions?.length || 20} টি</span>
+                        <span>•</span>
+                        <span>সময়: {Math.ceil(((paper.questionCount || paper.questions?.length || 20) * 36) / 60)} মিনিট</span>
+                        {paper.topic && paper.topic.trim() !== "" && (
+                          <>
+                            <span>•</span>
+                            <span className="text-slate-600 font-semibold">
+                              <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
+                            </span>
+                          </>
+                        )}
                       </p>
-                      {paper.topic && paper.topic.trim() !== "" && (
-                        <p className="text-[11px] sm:text-xs font-semibold text-slate-600 pt-0.5 leading-snug">
-                          <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                        </p>
-                      )}
                     </div>
 
                     {/* Action Buttons: অনুশীলন করুন, প্রশ্নপত্র (ACTIVE), মেধা তালিকা, সিলেবাস, Share */}
