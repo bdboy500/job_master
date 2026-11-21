@@ -581,7 +581,7 @@ export function parseRawExamPaper(item: any): ExamPaper {
     timePerQuestionSeconds: item.timePerQuestionSeconds || item.time_per_question || 36,
     totalDurationSeconds: item.totalDurationSeconds || item.total_duration || 360,
     totalMarks: item.totalMarks || item.total_marks || 10,
-    topic: item.topic || "মডেল টেস্ট",
+    topic: typeof item.topic === "string" ? item.topic.trim() : "",
     examDate: rawExamDate || "Today",
     startDateTime: startDT,
     endDateTime: endDT,

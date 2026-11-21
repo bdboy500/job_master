@@ -673,6 +673,7 @@ export default function AdminPage() {
 
   // Predefined Subjects required for Exam MCQ Hub
   const SUBJECTS = [
+    "General Knowledge(GK)",
     "Bangla Literature",
     "Bangla Grammer",
     "English Literature",
@@ -690,8 +691,7 @@ export default function AdminPage() {
     "Physics",
     "Chemistry",
     "Biology",
-    "Recent & Updated",
-    "General Knowledge(GK)"
+    "Recent & Updated"
   ];
 
   // Full MCQ repository subject options (Question Bank is kept strictly separate from regular exam subjects)
@@ -1113,7 +1113,7 @@ export default function AdminPage() {
   const [displayLimit, setDisplayLimit] = useState<number>(10);
 
   // Add Question form states
-  const [newSubjectName, setNewSubjectName] = useState<string>("Bangla Literature");
+  const [newSubjectName, setNewSubjectName] = useState<string>("General Knowledge(GK)");
   const [newQuestionText, setNewQuestionText] = useState("");
   const [newOptions, setNewOptions] = useState<string[]>(["", "", "", ""]);
   const [correctOptionIdx, setCorrectOptionIdx] = useState<number>(0);
@@ -2408,7 +2408,7 @@ export default function AdminPage() {
       timePerQuestionSeconds: 36,
       totalDurationSeconds: totalSeconds,
       totalMarks: normalizedPaperQuestions.length,
-      topic: paperTopic.trim() || "মডেল টেস্ট",
+      topic: paperTopic.trim(),
       examDate: paperDate.trim() || (finalStartDT ? formatDisplayDate(finalStartDT) : "Fri, Jul 31, 2026"),
       startDateTime: finalStartDT,
       endDateTime: finalEndDT,
@@ -2456,7 +2456,7 @@ export default function AdminPage() {
 
     setPaperExamType(paper.examType);
     setPaperSubject(paper.subject && paper.subject !== "All Subjects" ? paper.subject : "");
-    setPaperTopic(paper.topic);
+    setPaperTopic(paper.topic || "");
     
     // Parse preserved exam paper dates properly
     const resolvedStartDT = toDateTimeLocalInput(paper.startDateTime || paper.examDate || paper.createdAt, getNowLocalDateTimeStr());
@@ -2935,7 +2935,7 @@ export default function AdminPage() {
       timePerQuestionSeconds: perQuestionSecs,
       totalDurationSeconds: totalSeconds,
       totalMarks: normalizedQs.length,
-      topic: qbTopic.trim() || "বিগত সালের প্রশ্নপত্র",
+      topic: qbTopic.trim(),
       examDate: displayDate,
       startDateTime: `${cleanYear}-${monthStr}-01T00:00`,
       endDateTime: "2099-12-31T23:59",
