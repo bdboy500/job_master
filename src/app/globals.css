@@ -1,22 +1,21 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-/* Bengali Digits (০-৯) rendered in self-hosted Anek Bangla */
+/* Bengali Digits (০-৯) rendered exclusively in self-hosted Anek Bangla */
 @font-face {
   font-family: 'BanglaAnekDigits';
-  src: local('Anek Bangla'), local('AnekBangla-Regular');
-  unicode-range: U+09E6-09EF;
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
   font-display: swap;
+  src: url('/fonts/anek-bangla-bengali.woff2') format('woff2');
+  unicode-range: U+09E6-09EF;
 }
 
 @theme {
-  --font-sans: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", var(--font-anek-bangla), "Anek Bangla", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", "Anek Bangla", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-}
-
-body {
-  font-family: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", var(--font-anek-bangla), "Anek Bangla", sans-serif;
+  --font-sans: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", sans-serif;
+  --font-mono: 'BanglaAnekDigits', "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 /* Ensure cursor pointer on all buttons, interactive controls and clickable elements */
@@ -75,26 +74,28 @@ html {
   }
 }
 
-body {
-  min-height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  background-color: #fafafa;
-  color: #171717;
-  font-family: var(--font-anek-bangla), "Anek Bangla", "Hind Siliguri", "Noto Sans Bengali", "Kalpurush", "SolaimanLipi", var(--font-inter), "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
-  text-rendering: optimizeLegibility;
-  overflow-x: hidden;
-}
+@layer base {
+  body {
+    min-height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #fafafa;
+    color: #171717;
+    font-family: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", "Kalpurush", "SolaimanLipi", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
 
-/* Universal Typography - Consistent Anek Bangla across all components */
-body, button, input, select, textarea, p, span, h1, h2, h3, h4, h5, h6,
-.admin-panel,
-.admin-root {
-  font-family: var(--font-anek-bangla), "Anek Bangla", "Hind Siliguri", "Noto Sans Bengali", "Kalpurush", "SolaimanLipi", var(--font-inter), "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Universal Typography: Bengali digits (০-৯) in Anek Bangla, all other Bengali text in Hind Siliguri */
+  body, button, input, select, textarea,
+  .admin-panel,
+  .admin-root {
+    font-family: 'BanglaAnekDigits', var(--font-poppins), "Poppins", var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", "Kalpurush", "SolaimanLipi", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
 }
 
 /* Ensure Bengali text does not overlap or clip diacritics */

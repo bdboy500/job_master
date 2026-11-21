@@ -1838,7 +1838,7 @@ export default function CvMakerView({
           backgroundColor: "#ffffff",
           color: "#1e293b",
           fontFamily:
-            "'Anek Bangla', 'Hind Siliguri', 'Poppins', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
+            "'BanglaAnekDigits', var(--font-poppins), 'Poppins', var(--font-hind-siliguri), 'Hind Siliguri', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
           boxSizing: "border-box",
           padding: hasModernHeaderOnThisPage ? "0px 0px 36px 0px" : "38px 44px",
           lineHeight: 1.5,
@@ -3393,7 +3393,7 @@ export default function CvMakerView({
           backgroundColor: "#ffffff",
           color: "#1e293b",
           fontFamily:
-            "'Anek Bangla', 'Hind Siliguri', 'Poppins', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
+            "'BanglaAnekDigits', var(--font-poppins), 'Poppins', var(--font-hind-siliguri), 'Hind Siliguri', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
           boxSizing: "border-box",
           padding: isModern ? "0px 0px 36px 0px" : "38px 44px",
           lineHeight: 1.5,

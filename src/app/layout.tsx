@@ -1,15 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Anek_Bangla, Hind_Siliguri, Poppins } from "next/font/google";
+import { Hind_Siliguri, Poppins } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "../components/ClientProviders";
-
-const anekBangla = Anek_Bangla({
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-anek-bangla",
-});
 
 const hindSiliguri = Hind_Siliguri({
   subsets: ["bengali", "latin"],
@@ -192,8 +185,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className={`${anekBangla.variable} ${hindSiliguri.variable} ${poppins.variable}`}>
+    <html lang="bn" className={`${hindSiliguri.variable} ${poppins.variable}`}>
       <head>
+        <link rel="preload" href="/fonts/anek-bangla-bengali.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cqwssqcpxrwkivrrmuou.supabase.co" />
         <link rel="preconnect" href="https://cqwssqcpxrwkivrrmuou.supabase.co" crossOrigin="anonymous" />
       </head>
