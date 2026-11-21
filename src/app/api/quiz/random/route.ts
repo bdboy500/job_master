@@ -230,6 +230,8 @@ export async function GET(req: NextRequest) {
             let query = supabase
               .from("questions")
               .select("id, subjectName, questionText, options, correctOptionIndex, explanation")
+              .not("subjectName", "ilike", "%আউটডেটেড%")
+              .not("subjectName", "ilike", "%outdated%")
               .not("subjectName", "ilike", "%question bank%")
               .not("subjectName", "ilike", "%question_bank%")
               .not("subjectName", "ilike", "%প্রশ্ন ব্যাংক%")

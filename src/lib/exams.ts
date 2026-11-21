@@ -62,9 +62,12 @@ export function isQuestionBankPaper(paper: Partial<ExamPaper> | null | undefined
   return false;
 }
 
-export const QUESTION_BANK_SUBJECT = "Question Bank";
+export const QUESTION_BANK_SUBJECT = "আউটডেটেড";
 
 export const QUESTION_BANK_SUBJECT_VARIANTS = [
+  "আউটডেটেড",
+  "Outdated",
+  "outdated",
   "Question Bank",
   "question bank",
   "Question bank",
@@ -82,6 +85,10 @@ export function isQuestionBankSubject(subjectName?: string | null): boolean {
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
   return (
+    normalized === "আউটডেটেড" ||
+    normalized.includes("আউটডেটেড") ||
+    normalized === "outdated" ||
+    normalized.includes("outdated") ||
     normalized === "question bank" ||
     normalized.includes("question bank") ||
     normalized === "প্রশ্ন ব্যাংক" ||
