@@ -839,3 +839,187 @@ export function subscribeToExamPapers(onUpdate: (papers: ExamPaper[]) => void) {
     window.removeEventListener("storage", handleUpdate);
   };
 }
+
+// =========================================================================
+// REAL EXAM PARTICIPANT COUNTS (Tracked in app_config & synced realtime)
+// =========================================================================
+const EXAM_PARTICIPANTS_CACHE_KEY = "job_master_exam_participant_counts_v1";
+const EXAM_PARTICIPANTS_CHANNEL = "jobmaster_exam_participants_bc";
+
+function normalizeParticipantCountsMap(raw: any): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const res: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const cleanKey = String(k || "").trim();
+    if (!cleanKey) continue;
+    const num = Math.max(0, Math.floor(Number(v) || 0));
+    if (num > 0) res[cleanKey] = num;
+  }
+  return res;
+}
+
+export function getCachedExamParticipantCounts(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(EXAM_PARTICIPANTS_CACHE_KEY);
+    if (raw) {
+      return normalizeParticipantCountsMap(JSON.parse(raw));
+    }
+  } catch (e) {}
+  return {};
+}
+
+function writeLocalExamParticipantCountsCache(counts: Record<string, number>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(EXAM_PARTICIPANTS_CACHE_KEY, JSON.stringify(counts));
+    window.dispatchEvent(
+      new CustomEvent("jobmaster_exam_participants_updated", { detail: counts })
+    );
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        const bc = new BroadcastChannel(EXAM_PARTICIPANTS_CHANNEL);
+        bc.postMessage({ type: "updated", counts });
+        bc.close();
+      } catch (e) {}
+    }
+  } catch (e) {}
+}
+
+export async function fetchExamParticipantCountsFromDb(
+  forceRefresh = false
+): Promise<Record<string, number>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      forceRefresh ? "/api/exam-participants?force=1" : "/api/exam-participants",
+      {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const counts = normalizeParticipantCountsMap(data?.counts);
+      writeLocalExamParticipantCountsCache(counts);
+      return counts;
+    }
+  } catch (err) {
+    console.warn("fetchExamParticipantCountsFromDb note:", err);
+  } finally {
+    clearTimeout(timer);
+  }
+  return getCachedExamParticipantCounts();
+}
+
+export async function incrementExamParticipantCount(
+  examId: string
+): Promise<Record<string, number> | null> {
+  const cleanId = String(examId || "").trim();
+  if (!cleanId) return null;
+
+  try {
+    const current = getCachedExamParticipantCounts();
+    const optimistic: Record<string, number> = {
+      ...current,
+      [cleanId]: (current[cleanId] || 0) + 1,
+    };
+    writeLocalExamParticipantCountsCache(optimistic);
+
+    const res = await fetch("/api/exam-participants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ examId: cleanId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const counts = normalizeParticipantCountsMap(data?.counts);
+      writeLocalExamParticipantCountsCache(counts);
+      return counts;
+    }
+    return optimistic;
+  } catch (err) {
+    console.warn("incrementExamParticipantCount note:", err);
+  }
+  return null;
+}
+
+export function subscribeToExamParticipantCounts(
+  onUpdate: (counts: Record<string, number>) => void
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const handleCustom = (e: Event) => {
+    const detail = (e as CustomEvent)?.detail;
+    if (detail && typeof detail === "object") {
+      onUpdate(normalizeParticipantCountsMap(detail));
+    }
+  };
+
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === EXAM_PARTICIPANTS_CACHE_KEY && e.newValue) {
+      try {
+        onUpdate(normalizeParticipantCountsMap(JSON.parse(e.newValue)));
+      } catch (err) {}
+    }
+  };
+
+  window.addEventListener("jobmaster_exam_participants_updated", handleCustom);
+  window.addEventListener("storage", handleStorage);
+
+  let bc: BroadcastChannel | null = null;
+  if (typeof BroadcastChannel !== "undefined") {
+    try {
+      bc = new BroadcastChannel(EXAM_PARTICIPANTS_CHANNEL);
+      bc.onmessage = (msg) => {
+        if (msg?.data?.counts && typeof msg.data.counts === "object") {
+          onUpdate(normalizeParticipantCountsMap(msg.data.counts));
+        }
+      };
+    } catch (e) {}
+  }
+
+  let sbChannel: any = null;
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      sbChannel = supabase
+        .channel("app_config_exam_participants_rt")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "app_config",
+          },
+          (payload: any) => {
+            if (payload?.new?.key === "exam_real_participants_v1" && payload?.new?.value) {
+              const counts = normalizeParticipantCountsMap(payload.new.value);
+              writeLocalExamParticipantCountsCache(counts);
+              onUpdate(counts);
+            }
+          }
+        )
+        .subscribe();
+    }
+  } catch (e) {}
+
+  return () => {
+    window.removeEventListener("jobmaster_exam_participants_updated", handleCustom);
+    window.removeEventListener("storage", handleStorage);
+    if (bc) {
+      try {
+        bc.close();
+      } catch (e) {}
+    }
+    if (sbChannel) {
+      try {
+        const supabase = getSupabase();
+        if (supabase) supabase.removeChannel(sbChannel);
+      } catch (e) {}
+    }
+  };
+}
+

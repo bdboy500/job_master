@@ -85,7 +85,7 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, isQuestionBankSubject, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits } from "../lib/exams";
+import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, isQuestionBankSubject, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, incrementExamParticipantCount, subscribeToExamParticipantCounts } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
 import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularCategoriesOnlyFromDb, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount, postMatchesCircularCategory, getCircularPostCategoryIds, formatCircularDeadlineDisplay, getCircularDeadlineStatus, isCircularAutoExpired, getCircularPublicViewDisplay } from "../lib/job_circulars";
@@ -221,7 +221,12 @@ function formatLiveElapsed(startDateTime?: string, createdAt?: string, endDateTi
 
 // Live Exam Participant Display Helper
 // প্রথম ঘন্টায় ১০+ জন, প্রতি ঘন্টায় ১০ জন করে ২৪ ঘন্টা পর্যন্ত ১০ জন করে বাড়বে। এরপর প্রতি ১ দিনে ১০ জন করে বাড়বে।
-function getExamParticipantDisplay(startDateTime?: string, createdAt?: string): string {
+// এর সাথে রিয়েল পরীক্ষার্থীর সংখ্যা যোগ করে ইউজারকে দেখানো হয়।
+function getExamParticipantDisplay(
+  startDateTime?: string,
+  createdAt?: string,
+  realParticipants: number = 0
+): string {
   let startMs = 0;
   if (startDateTime) {
     const parsed = new Date(startDateTime).getTime();
@@ -239,17 +244,18 @@ function getExamParticipantDisplay(startDateTime?: string, createdAt?: string): 
   const elapsedMs = Math.max(0, nowMs - startMs);
   const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
 
-  let count = 10;
+  let demoCount = 10;
   if (elapsedHours < 24) {
     // ১ম ঘন্টায় (elapsedHours = 0) ১০+, এরপর প্রতি ঘন্টায় ১০ জন করে ২৪ ঘন্টা পর্যন্ত
-    count = (elapsedHours + 1) * 10;
+    demoCount = (elapsedHours + 1) * 10;
   } else {
     // ২৪ ঘন্টা পর্যন্ত ২৪০+ জন, এরপর প্রতি ১ দিনে ১০ জন করে বাড়বে
     const additionalDays = Math.floor((elapsedHours - 24) / 24) + 1;
-    count = 240 + (additionalDays * 10);
+    demoCount = 240 + (additionalDays * 10);
   }
 
-  return `পরীক্ষা দিয়েছেঃ ${toBnDigits(count)}+ জন`;
+  const totalCount = demoCount + Math.max(0, Number(realParticipants) || 0);
+  return `পরীক্ষা দিয়েছেঃ ${toBnDigits(totalCount)}+ জন`;
 }
 
 // Extra mock question databases for other test subjects
@@ -796,6 +802,7 @@ export default function Home() {
 
   // Dynamic Exam Papers & Packages State (Initialized synchronously with cached/default data for instant 0ms display)
   const [examPapers, setExamPapers] = useState<ExamPaper[]>(DEFAULT_EXAM_PAPERS);
+  const [examParticipantCounts, setExamParticipantCounts] = useState<Record<string, number>>({});
   const [isExamsLoading, setIsExamsLoading] = useState<boolean>(false);
   const [packagesList, setPackagesList] = useState<PackageItem[]>(DEFAULT_PACKAGES);
   const [coursesList, setCoursesList] = useState<CourseItem[]>([]);
@@ -1453,6 +1460,19 @@ export default function Home() {
         (updatedPro) => setProSectionList(updatedPro)
       );
 
+      const cachedParticipantCounts = getCachedExamParticipantCounts();
+      if (Object.keys(cachedParticipantCounts).length > 0) {
+        setExamParticipantCounts(cachedParticipantCounts);
+      }
+
+      fetchExamParticipantCountsFromDb().then((counts) => {
+        if (counts) setExamParticipantCounts(counts);
+      });
+
+      const unsubExamParticipants = subscribeToExamParticipantCounts((counts) => {
+        setExamParticipantCounts(counts);
+      });
+
       fetchJobCircularCategoriesOnlyFromDb().then((categories) => {
         if (categories && categories.length > 0) setJobCircularCategories(categories);
       });
@@ -1463,6 +1483,7 @@ export default function Home() {
 
       return () => {
         if (unsubscribe) unsubscribe();
+        if (unsubExamParticipants) unsubExamParticipants();
         if (unsubPkgs) unsubPkgs();
         if (unsubCoursesPrep) unsubCoursesPrep();
         if (unsubCirculars) unsubCirculars();
@@ -2260,6 +2281,13 @@ export default function Home() {
       percentage
     };
     saveTakenTests([newLog, ...takenTests]);
+
+    // Increment real participant count for this exam
+    incrementExamParticipantCount(paper.id).then((updatedCounts) => {
+      if (updatedCounts) {
+        setExamParticipantCounts(updatedCounts);
+      }
+    });
 
     // Submit exam score to Supabase & Leaderboard
     if (correctCount > 0) {
@@ -4065,7 +4093,7 @@ export default function Home() {
 
                                         {/* Participant Count */}
                                         <div className="text-slate-500 text-[11px] font-bold tracking-tight">
-                                          {getExamParticipantDisplay(currentLive.startDateTime, currentLive.createdAt)}
+                                          {getExamParticipantDisplay(currentLive.startDateTime, currentLive.createdAt, examParticipantCounts[currentLive.id] || 0)}
                                         </div>
                                       </div>
                                     </div>
@@ -5112,7 +5140,7 @@ export default function Home() {
                             </div>
 
                             <div className="text-slate-500 text-[11px] font-bold tracking-tight">
-                              {getExamParticipantDisplay(currentLive.startDateTime, currentLive.createdAt)}
+                              {getExamParticipantDisplay(currentLive.startDateTime, currentLive.createdAt, examParticipantCounts[currentLive.id] || 0)}
                             </div>
                           </div>
                         </div>
@@ -5467,26 +5495,21 @@ export default function Home() {
                                     <MathRenderer content={paper.title} />
                                   </h4>
 
-                                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black">
-                                        <Clock className="w-3 h-3" />
+                                  <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                      <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black whitespace-nowrap">
+                                        <Clock className="w-3 h-3 shrink-0" />
                                         <span>{toBanglaDigits(durationMins)} মিনিট</span>
                                       </span>
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black">
+                                      <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black whitespace-nowrap">
                                         <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
                                       </span>
-                                      {paper.topic && paper.topic.trim() !== "" && (
-                                        <span className="text-xs font-semibold text-slate-600">
-                                          <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                                        </span>
-                                      )}
                                     </div>
 
                                     {displayDate && (
-                                      <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 shrink-0">
-                                        <Calendar className="w-3.5 h-3.5 text-[#FF6A00]" />
-                                        <span>{displayDate}</span>
+                                      <div className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-500 min-w-0">
+                                        <Calendar className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                                        <span className="truncate whitespace-nowrap">{displayDate}</span>
                                       </div>
                                     )}
                                   </div>
@@ -5970,27 +5993,22 @@ export default function Home() {
                               <MathRenderer content={paper.title} />
                             </h4>
 
-                            {/* Middle Row: Duration & Question Count Badges (Left) + Month Year (Right) */}
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black">
-                                  <Clock className="w-3 h-3" />
+                            {/* Middle Row: Duration, Question Count, and Month Year on one single line */}
+                            <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
+                              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black whitespace-nowrap">
+                                  <Clock className="w-3 h-3 shrink-0" />
                                   <span>{toBanglaDigits(durationMins)} মিনিট</span>
                                 </span>
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black">
+                                <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black whitespace-nowrap">
                                   <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
                                 </span>
-                                {paper.topic && paper.topic.trim() !== "" && (
-                                  <span className="text-xs font-semibold text-slate-600">
-                                    <span className="font-extrabold text-[#FF6A00]">টপিক:</span> {paper.topic}
-                                  </span>
-                                )}
                               </div>
 
                               {displayDate && (
-                                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 shrink-0">
-                                  <Calendar className="w-3.5 h-3.5 text-[#FF6A00]" />
-                                  <span>{displayDate}</span>
+                                <div className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-500 min-w-0">
+                                  <Calendar className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                                  <span className="truncate whitespace-nowrap">{displayDate}</span>
                                 </div>
                               )}
                             </div>
@@ -10418,7 +10436,7 @@ export default function Home() {
               <div className="p-3 bg-rose-50/80 border border-rose-100 rounded-2xl flex items-center justify-between text-xs font-bold text-rose-700">
                 <span className="flex items-center gap-1.5 font-extrabold text-slate-700">
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                  <span>{getExamParticipantDisplay(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt)}</span>
+                  <span>{getExamParticipantDisplay(selectedLiveExamModal.startDateTime, selectedLiveExamModal.createdAt, examParticipantCounts[selectedLiveExamModal.id] || 0)}</span>
                 </span>
                 <span className="font-black text-rose-600 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
@@ -10515,6 +10533,11 @@ export default function Home() {
             setTakingExamModal(null);
             setExamUserAnswers(answers);
             setExamSubmitted(true);
+            incrementExamParticipantCount(paper.id).then((updatedCounts) => {
+              if (updatedCounts) {
+                setExamParticipantCounts(updatedCounts);
+              }
+            });
             // Calculate exam score and result summary
             const questions = paper.questions || [];
             let correct = 0;

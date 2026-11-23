@@ -91,7 +91,7 @@ import {
   deleteUserProfileFromDb, 
   UserProfile 
 } from "../../lib/user_profiles";
-import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, isQuestionBankSubject, QUESTION_BANK_SUBJECT, QUESTION_BANK_SUBJECT_VARIANTS, QB_MONTH_NAMES, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, isQuestionBankSubject, QUESTION_BANK_SUBJECT, QUESTION_BANK_SUBJECT_VARIANTS, QB_MONTH_NAMES, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, subscribeToExamParticipantCounts } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { PaymentTransaction, UserSubscription, SUBSCRIPTIONS_BKASH_SUPABASE_SQL, formatSubscriptionDateBn } from "../../lib/subscriptions";
 import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
@@ -547,6 +547,7 @@ export default function AdminPage() {
 
   // Full Exam Paper Viewing State Modal
   const [viewingExamPaper, setViewingExamPaper] = useState<ExamPaper | null>(null);
+  const [examParticipantCounts, setExamParticipantCounts] = useState<Record<string, number>>({});
 
   // App Settings State (Grid Display Limits)
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
@@ -1237,7 +1238,15 @@ export default function AdminPage() {
     // Fetch questions & exam papers from Supabase/Storage
     loadExamPapersFromDb();
     fetchSubjectWiseCounts();
+    const cachedParticipantCounts = getCachedExamParticipantCounts();
+    if (Object.keys(cachedParticipantCounts).length > 0) {
+      setExamParticipantCounts(cachedParticipantCounts);
+    }
+    fetchExamParticipantCountsFromDb(true).then((counts) => {
+      if (counts) setExamParticipantCounts(counts);
+    });
     const unsubExams = subscribeToExamPapers(setExamPapers);
+    const unsubExamParticipants = subscribeToExamParticipantCounts(setExamParticipantCounts);
 
     // Fetch packages & subscribe
     fetchPackagesFromDb().then((pkgs) => {
@@ -1280,6 +1289,7 @@ export default function AdminPage() {
       window.removeEventListener("focus", handleWindowFocus);
       window.removeEventListener("visibilitychange", handleWindowFocus);
       unsubExams();
+      unsubExamParticipants();
       unsubPkgs();
       unsubCoursesPrep();
       unsubCirculars();
@@ -6282,8 +6292,12 @@ export default function AdminPage() {
                       onClick={async () => {
                         setIsSyncingPapers(true);
                         try {
-                          const refreshed = await fetchExamPapersFromDb(true);
+                          const [refreshed, counts] = await Promise.all([
+                            fetchExamPapersFromDb(true),
+                            fetchExamParticipantCountsFromDb(true),
+                          ]);
                           setExamPapers(refreshed);
+                          if (counts) setExamParticipantCounts(counts);
                           triggerNotification("success", `✅ সার্ভারের সাথে সফলভাবে সিঙ্ক্রোনাইজ হয়েছে! মোট ${refreshed.length} টি প্রশ্নপত্র সংরক্ষিত রয়েছে।`);
                         } catch (err) {
                           console.error("Sync error:", err);
@@ -6643,6 +6657,10 @@ export default function AdminPage() {
                                 <span>প্রশ্ন: {paper.questionCount} টি</span>
                                 <span>সময়: {Math.floor(paper.totalDurationSeconds / 60)} মিনিট</span>
                                 <span>তারিখ: {paper.examDate}</span>
+                                <span className="inline-flex items-center gap-1 text-[10.5px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                  <Users className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>রিয়েল পরীক্ষা দিয়েছে: {toBanglaDigits(examParticipantCounts[paper.id] || 0)} জন</span>
+                                </span>
                                 <span 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -7292,8 +7310,12 @@ export default function AdminPage() {
                       onClick={async () => {
                         setQbSyncing(true);
                         try {
-                          const refreshed = await fetchExamPapersFromDb(true);
+                          const [refreshed, counts] = await Promise.all([
+                            fetchExamPapersFromDb(true),
+                            fetchExamParticipantCountsFromDb(true),
+                          ]);
                           setExamPapers(refreshed);
+                          if (counts) setExamParticipantCounts(counts);
                           triggerNotification("success", "✅ সার্ভার থেকে প্রশ্ন ব্যাংক সিঙ্ক সম্পন্ন হয়েছে!");
                         } catch {
                           triggerNotification("error", "⚠️ সিঙ্ক করতে সমস্যা হয়েছে।");
@@ -7437,6 +7459,10 @@ export default function AdminPage() {
                                 </span>
                                 <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
                                   {toBanglaDigits(qCount)}টি প্রশ্ন
+                                </span>
+                                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 inline-flex items-center gap-1">
+                                  <Users className="w-3 h-3 shrink-0" />
+                                  <span>রিয়েল দিয়েছে: {toBanglaDigits(examParticipantCounts[paper.id] || 0)} জন</span>
                                 </span>
                               </div>
                             </div>
@@ -12234,7 +12260,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
               </div>
 
               {/* Exam Info Metadata Bar */}
-              <div className="bg-purple-50/70 border-b border-purple-100 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+              <div className="bg-purple-50/70 border-b border-purple-100 p-4 grid grid-cols-2 sm:grid-cols-5 gap-3 text-left">
                 <div className="space-y-0.5">
                   <span className="text-[10px] font-extrabold text-slate-400 uppercase block">মোট সময়</span>
                   <span className="text-xs sm:text-sm font-black text-purple-900 flex items-center gap-1">
@@ -12264,6 +12290,14 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                   <span className="text-xs sm:text-sm font-black text-purple-900 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-purple-600" />
                     {viewingExamPaper.examDate}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">রিয়েল পরীক্ষার্থী</span>
+                  <span className="text-xs sm:text-sm font-black text-emerald-700 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-emerald-600" />
+                    {toBanglaDigits(examParticipantCounts[viewingExamPaper.id] || 0)} জন
                   </span>
                 </div>
               </div>
