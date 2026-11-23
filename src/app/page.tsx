@@ -80,7 +80,8 @@ import {
   Eye,
   Image as ImageIcon,
   CreditCard,
-  CheckCircle2
+  CheckCircle2,
+  Copy
 } from "lucide-react";
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
@@ -813,6 +814,8 @@ export default function Home() {
   const [isCircularPostsLoading, setIsCircularPostsLoading] = useState<boolean>(false);
   const [selectedCircularCategoryId, setSelectedCircularCategoryId] = useState<string>("all");
   const [selectedCircularPost, setSelectedCircularPost] = useState<JobCircularPost | null>(null);
+  const [showCircularApplyLinkBox, setShowCircularApplyLinkBox] = useState<boolean>(false);
+  const [circularApplyLinkCopied, setCircularApplyLinkCopied] = useState<boolean>(false);
   const [circularSearchQuery, setCircularSearchQuery] = useState<string>("");
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [selectedExamCategory, setSelectedExamCategory] = useState<"all" | "daily" | "weekly" | "subject" | "special">("all");
@@ -1491,6 +1494,13 @@ export default function Home() {
       };
     }
   }, []);
+
+  // Reset inline apply-link reveal box whenever active circular post changes
+  const selectedCircularPostId = selectedCircularPost?.id || "";
+  useEffect(() => {
+    setShowCircularApplyLinkBox(false);
+    setCircularApplyLinkCopied(false);
+  }, [selectedCircularPostId]);
 
   // Lazy-load job circular posts ONLY after user clicks a circular card (enters job-circulars screen)
   useEffect(() => {
@@ -6778,17 +6788,87 @@ export default function Home() {
                           )}
 
                           {activeDetailPost.applyUrl && (
-                            <a
-                              href={activeDetailPost.applyUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-extrabold shadow-xs transition-all"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCircularApplyLinkBox((prev) => !prev);
+                                setCircularApplyLinkCopied(false);
+                                if (soundEnabled) quizAudio.playClick();
+                              }}
+                              className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold shadow-xs transition-all cursor-pointer active:scale-[0.98] ${
+                                showCircularApplyLinkBox
+                                  ? "bg-[#FF6A00] hover:bg-[#E05E00] text-white"
+                                  : "bg-slate-900 hover:bg-slate-800 text-white"
+                              }`}
                             >
                               <span>আবেদন লিংক দেখুন</span>
-                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                            </a>
+                              {showCircularApplyLinkBox ? (
+                                <ChevronUp className="w-3.5 h-3.5 shrink-0" />
+                              ) : (
+                                <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                              )}
+                            </button>
                           )}
                         </div>
+
+                        {activeDetailPost.applyUrl && showCircularApplyLinkBox && (
+                          <div className="bg-slate-50 border border-orange-200 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 animate-fade-in">
+                            <div className="min-w-0 flex-1 space-y-0.5">
+                              <span className="text-[10px] font-black text-[#FF6A00] block">
+                                অনলাইন আবেদন লিংকঃ
+                              </span>
+                              <p className="text-xs font-bold text-slate-800 break-all select-all">
+                                {activeDetailPost.applyUrl}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const textToCopy = activeDetailPost.applyUrl || "";
+                                let copiedOk = false;
+                                try {
+                                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                                    await navigator.clipboard.writeText(textToCopy);
+                                    copiedOk = true;
+                                  }
+                                } catch {}
+                                if (!copiedOk && typeof document !== "undefined") {
+                                  try {
+                                    const ta = document.createElement("textarea");
+                                    ta.value = textToCopy;
+                                    ta.setAttribute("readonly", "");
+                                    ta.style.position = "fixed";
+                                    ta.style.opacity = "0";
+                                    document.body.appendChild(ta);
+                                    ta.select();
+                                    copiedOk = document.execCommand("copy");
+                                    document.body.removeChild(ta);
+                                  } catch {}
+                                }
+                                setCircularApplyLinkCopied(true);
+                                if (soundEnabled) quizAudio.playClick();
+                                setTimeout(() => setCircularApplyLinkCopied(false), 2500);
+                              }}
+                              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer border ${
+                                circularApplyLinkCopied
+                                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                                  : "bg-white hover:bg-orange-50 text-[#FF6A00] border-orange-200 shadow-2xs"
+                              }`}
+                            >
+                              {circularApplyLinkCopied ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 shrink-0" />
+                                  <span>কপি হয়েছে</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5 shrink-0" />
+                                  <span>কপি করুন</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {previewSrc && (
