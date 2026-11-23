@@ -259,11 +259,12 @@ export function formatCircularDeadlineDisplay(deadline?: string | null): string 
 }
 
 export function parseBanglaDateToISO(dateStr?: string | null): string {
-  const clean = (dateStr || "").trim();
+  const clean = (dateStr || "")
+    .normalize("NFC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
   if (!clean) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
 
-  // Convert Bengali digits back to English digits for parsing
   const bnToEn: Record<string, string> = {
     "০": "0",
     "১": "1",
@@ -276,27 +277,212 @@ export function parseBanglaDateToISO(dateStr?: string | null): string {
     "৮": "8",
     "৯": "9",
   };
-  const enStr = clean.replace(/[০-৯]/g, (d) => bnToEn[d] ?? d).replace(/,/g, " ");
 
-  const isoMatch = enStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (isoMatch) {
-    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  const enStr = clean
+    .replace(/[০-৯]/g, (d) => bnToEn[d] ?? d)
+    .replace(/,/g, " ")
+    .trim();
+
+  // YYYY-MM-DD (or YYYY/MM/DD or YYYY-MM-DDT...)
+  const isoPrefixMatch = enStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:$|T|\s)/);
+  if (isoPrefixMatch) {
+    const y = Number(isoPrefixMatch[1]);
+    const m = Number(isoPrefixMatch[2]);
+    const d = Number(isoPrefixMatch[3]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
   }
 
-  for (let i = 0; i < BANGLA_MONTH_NAMES.length; i++) {
-    const monthName = BANGLA_MONTH_NAMES[i];
-    if (enStr.includes(monthName)) {
-      const nums = enStr.match(/\d+/g);
-      if (nums && nums.length >= 2) {
-        const dayNum = Number(nums[0]);
-        const yearNum = Number(nums[nums.length - 1]);
-        if (dayNum >= 1 && dayNum <= 31 && yearNum >= 1900) {
-          return `${String(yearNum).padStart(4, "0")}-${String(i + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-        }
+  // DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+  const dmyMatch = enStr.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmyMatch) {
+    const d = Number(dmyMatch[1]);
+    const m = Number(dmyMatch[2]);
+    const y = Number(dmyMatch[3]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+
+  // Month name lookup (Bangla spelling variants + English months)
+  const monthAliases: Array<{ month: number; patterns: string[] }> = [
+    { month: 1, patterns: ["জানুয়ারি", "জানুয়ারি", "জানুয়ারী", "জানু", "january", "jan"] },
+    { month: 2, patterns: ["ফেব্রুয়ারি", "ফেব্রুয়ারি", "ফেব্রুয়ারী", "ফেব্রু", "february", "feb"] },
+    { month: 3, patterns: ["মার্চ", "march", "mar"] },
+    { month: 4, patterns: ["এপ্রিল", "april", "apr"] },
+    { month: 5, patterns: ["মে", "may"] },
+    { month: 6, patterns: ["জুন", "june", "jun"] },
+    { month: 7, patterns: ["জুলাই", "july", "jul"] },
+    { month: 8, patterns: ["আগস্ট", "আগষ্ট", "অগাস্ট", "অগষ্ট", "august", "aug"] },
+    { month: 9, patterns: ["সেপ্টেম্বর", "সেপ্টেম্বার", "সেপ্টে", "september", "sept", "sep"] },
+    { month: 10, patterns: ["অক্টোবর", "অক্টবর", "অক্টো", "october", "oct"] },
+    { month: 11, patterns: ["নভেম্বর", "নবেম্বর", "নভেম্বার", "নবেম্বার", "নভে", "নবে", "november", "nov"] },
+    { month: 12, patterns: ["ডিসেম্বর", "ডিসেম্বার", "ডিসে", "december", "dec"] },
+  ];
+
+  const lowerTokens = enStr
+    .toLowerCase()
+    .split(/[\s\-/.,।]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  let matchedMonth = 0;
+  for (const entry of monthAliases) {
+    if (
+      entry.patterns.some(
+        (pat) =>
+          lowerTokens.includes(pat) ||
+          (pat.length >= 4 && enStr.toLowerCase().includes(pat))
+      )
+    ) {
+      matchedMonth = entry.month;
+      break;
+    }
+  }
+
+  if (matchedMonth >= 1 && matchedMonth <= 12) {
+    const nums = enStr.match(/\d+/g);
+    if (nums && nums.length >= 2) {
+      const fourDigitYear = nums.find((n) => n.length === 4 && Number(n) >= 1900 && Number(n) <= 2100);
+      const dayCandidate = nums.find((n) => n !== fourDigitYear && Number(n) >= 1 && Number(n) <= 31);
+      if (fourDigitYear && dayCandidate) {
+        return `${fourDigitYear}-${String(matchedMonth).padStart(2, "0")}-${String(Number(dayCandidate)).padStart(2, "0")}`;
       }
     }
   }
+
   return "";
+}
+
+export function getBangladeshTodayISO(now: Date = new Date()): string {
+  try {
+    const formatted = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Dhaka",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
+      return formatted;
+    }
+  } catch (e) {}
+  const bstDate = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+  const year = bstDate.getUTCFullYear();
+  const month = String(bstDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(bstDate.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isoDateToUtcDayMs(isoDate: string): number {
+  const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return NaN;
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+export type CircularDeadlineLifecycle = "active" | "expired_grace" | "expired_delete" | "none";
+
+export interface CircularDeadlineStatusInfo {
+  status: CircularDeadlineLifecycle;
+  deadlineISO: string;
+  todayISO: string;
+  daysPast: number;
+  isExpired: boolean;
+  shouldAutoDelete: boolean;
+  displayText: string;
+}
+
+export const CIRCULAR_EXPIRED_GRACE_DAYS = 7;
+export const CIRCULAR_EXPIRED_LABEL = "আবেদনের সময় শেষ";
+
+export function getCircularDeadlineStatus(
+  deadline?: string | null,
+  now: Date = new Date()
+): CircularDeadlineStatusInfo {
+  const todayISO = getBangladeshTodayISO(now);
+  const deadlineISO = parseBanglaDateToISO(deadline);
+
+  if (!deadlineISO) {
+    return {
+      status: "none",
+      deadlineISO: "",
+      todayISO,
+      daysPast: 0,
+      isExpired: false,
+      shouldAutoDelete: false,
+      displayText: formatCircularDeadlineDisplay(deadline),
+    };
+  }
+
+  const todayMs = isoDateToUtcDayMs(todayISO);
+  const deadlineMs = isoDateToUtcDayMs(deadlineISO);
+  if (Number.isNaN(todayMs) || Number.isNaN(deadlineMs)) {
+    return {
+      status: "none",
+      deadlineISO,
+      todayISO,
+      daysPast: 0,
+      isExpired: false,
+      shouldAutoDelete: false,
+      displayText: formatCircularDeadlineDisplay(deadline),
+    };
+  }
+
+  const daysPast = Math.floor((todayMs - deadlineMs) / 86400000);
+
+  if (daysPast <= 0) {
+    return {
+      status: "active",
+      deadlineISO,
+      todayISO,
+      daysPast,
+      isExpired: false,
+      shouldAutoDelete: false,
+      displayText: formatCircularDeadlineDisplay(deadline),
+    };
+  }
+
+  if (daysPast <= CIRCULAR_EXPIRED_GRACE_DAYS) {
+    return {
+      status: "expired_grace",
+      deadlineISO,
+      todayISO,
+      daysPast,
+      isExpired: true,
+      shouldAutoDelete: false,
+      displayText: CIRCULAR_EXPIRED_LABEL,
+    };
+  }
+
+  return {
+    status: "expired_delete",
+    deadlineISO,
+    todayISO,
+    daysPast,
+    isExpired: true,
+    shouldAutoDelete: true,
+    displayText: CIRCULAR_EXPIRED_LABEL,
+  };
+}
+
+export function isCircularAutoExpired(post: Pick<JobCircularPost, "deadline">, now: Date = new Date()): boolean {
+  return getCircularDeadlineStatus(post?.deadline, now).shouldAutoDelete;
+}
+
+export function pruneExpiredCircularPosts(
+  posts: JobCircularPost[],
+  now: Date = new Date()
+): { keptPosts: JobCircularPost[]; expiredPosts: JobCircularPost[] } {
+  const keptPosts: JobCircularPost[] = [];
+  const expiredPosts: JobCircularPost[] = [];
+  for (const post of posts) {
+    if (isCircularAutoExpired(post, now)) {
+      expiredPosts.push(post);
+    } else {
+      keptPosts.push(post);
+    }
+  }
+  return { keptPosts, expiredPosts };
 }
 
 // Live-Exam-style time-by-time public view counter:
@@ -443,7 +629,7 @@ export function getCachedJobCircularPosts(): JobCircularPost[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return normalizeCircularPosts(parsed);
+        return pruneExpiredCircularPosts(normalizeCircularPosts(parsed)).keptPosts;
       }
     }
   } catch (e) {}
@@ -518,7 +704,9 @@ export async function fetchJobCircularsFromDb(): Promise<{
         Array.isArray(data?.categories) && data.categories.length > 0
           ? normalizeCircularCategories(data.categories)
           : DEFAULT_JOB_CIRCULAR_CATEGORIES;
-      const posts = Array.isArray(data?.posts) ? normalizeCircularPosts(data.posts) : [];
+      const posts = Array.isArray(data?.posts)
+        ? pruneExpiredCircularPosts(normalizeCircularPosts(data.posts)).keptPosts
+        : [];
       writeLocalCircularsCache(categories, posts);
       return { categories, posts };
     }
@@ -623,7 +811,7 @@ export function subscribeToJobCirculars(
       onCategoriesUpdate(normalizeCircularCategories(detail.categories));
     }
     if (detail?.posts && onPostsUpdate) {
-      onPostsUpdate(normalizeCircularPosts(detail.posts));
+      onPostsUpdate(pruneExpiredCircularPosts(normalizeCircularPosts(detail.posts)).keptPosts);
     }
   };
 
@@ -635,7 +823,7 @@ export function subscribeToJobCirculars(
     }
     if (e.key === POSTS_CACHE_KEY && e.newValue && onPostsUpdate) {
       try {
-        onPostsUpdate(normalizeCircularPosts(JSON.parse(e.newValue)));
+        onPostsUpdate(pruneExpiredCircularPosts(normalizeCircularPosts(JSON.parse(e.newValue))).keptPosts);
       } catch (err) {}
     }
   };
@@ -652,7 +840,7 @@ export function subscribeToJobCirculars(
           onCategoriesUpdate(normalizeCircularCategories(msg.data.categories));
         }
         if (msg?.data?.posts && onPostsUpdate) {
-          onPostsUpdate(normalizeCircularPosts(msg.data.posts));
+          onPostsUpdate(pruneExpiredCircularPosts(normalizeCircularPosts(msg.data.posts)).keptPosts);
         }
       };
     } catch (e) {}
@@ -683,7 +871,7 @@ export function subscribeToJobCirculars(
               writeLocalCircularsCache(norm, undefined);
               onCategoriesUpdate(norm);
             } else if (key === "job_circular_posts" && Array.isArray(val) && onPostsUpdate) {
-              const normPosts = normalizeCircularPosts(val);
+              const normPosts = pruneExpiredCircularPosts(normalizeCircularPosts(val)).keptPosts;
               writeLocalCircularsCache(undefined, normPosts);
               onPostsUpdate(normPosts);
             }

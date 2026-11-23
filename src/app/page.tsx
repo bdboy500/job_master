@@ -88,7 +88,7 @@ import { getSupabase } from "../lib/supabase";
 import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, isQuestionBankSubject, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits } from "../lib/exams";
 import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
 import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
-import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularCategoriesOnlyFromDb, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount, postMatchesCircularCategory, getCircularPostCategoryIds, formatCircularDeadlineDisplay, getCircularPublicViewDisplay } from "../lib/job_circulars";
+import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularCategoriesOnlyFromDb, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount, postMatchesCircularCategory, getCircularPostCategoryIds, formatCircularDeadlineDisplay, getCircularDeadlineStatus, isCircularAutoExpired, getCircularPublicViewDisplay } from "../lib/job_circulars";
 import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings } from "../lib/app_settings";
 import { questionMatchesSearch } from "../lib/search_normalizer";
 import { quizAudio } from "../lib/audio";
@@ -6627,7 +6627,7 @@ export default function Home() {
                 const query = circularSearchQuery.trim().toLowerCase();
 
                 const visiblePosts = [...jobCircularPosts]
-                  .filter((post) => post.active !== false)
+                  .filter((post) => post.active !== false && !isCircularAutoExpired(post))
                   .filter((post) => postMatchesCircularCategory(post, selectedCircularCategoryId))
                   .filter((post) => {
                     if (!query) return true;
@@ -6702,10 +6702,27 @@ export default function Home() {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-orange-50/60 border border-orange-100 rounded-xl p-3 text-xs font-bold">
-                          <div className="text-slate-700 flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
-                            <span>আবেদনের শেষ তারিখঃ {formatCircularDeadlineDisplay(activeDetailPost.deadline)}</span>
-                          </div>
+                          {(() => {
+                            const detailDeadlineStatus = getCircularDeadlineStatus(activeDetailPost.deadline);
+                            return (
+                              <div className="text-slate-700 flex items-center gap-1.5">
+                                <Clock
+                                  className={`w-3.5 h-3.5 shrink-0 ${
+                                    detailDeadlineStatus.status === "expired_grace"
+                                      ? "text-rose-600"
+                                      : "text-[#FF6A00]"
+                                  }`}
+                                />
+                                {detailDeadlineStatus.status === "expired_grace" ? (
+                                  <span className="text-rose-600 font-extrabold">
+                                    {detailDeadlineStatus.displayText}
+                                  </span>
+                                ) : (
+                                  <span>আবেদনের শেষ তারিখঃ {detailDeadlineStatus.displayText}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {activeDetailPost.vacancies && (
                             <div className="text-slate-700 flex items-center gap-1.5">
                               <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -6865,6 +6882,7 @@ export default function Home() {
                           const effectiveUrl = (post.fileUrl || post.applyUrl || "").trim();
                           const fileType = detectCircularFileType(effectiveUrl, post.fileType);
                           const isImage = fileType === "image";
+                          const deadlineStatus = getCircularDeadlineStatus(post.deadline);
 
                           return (
                             <button
@@ -6901,28 +6919,34 @@ export default function Home() {
 
                               {/* Right Stacked Circular Details */}
                               <div className="flex-1 min-w-0 space-y-1">
-                                {/* Top: পদ সংখ্যা */}
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[10.5px] sm:text-[11px] font-black leading-tight">
-                                    <span>পদ সংখ্যাঃ</span>
-                                    <span className="text-black font-black">{post.vacancies || "বিজ্ঞপ্তি অনুযায়ী"}</span>
-                                  </span>
-                                </div>
-
                                 <h4 className="font-extrabold text-[13.5px] sm:text-[15px] text-slate-900 leading-snug line-clamp-2">
                                   {post.title}
                                 </h4>
-                                {post.organization && (
-                                  <p className="text-[12px] sm:text-[13px] font-bold text-[#FF6A00] leading-snug line-clamp-1">
-                                    {post.organization}
-                                  </p>
-                                )}
 
-                                {/* Bottom Row: Deadline on Left, Dynamic Public View pushed Far Right */}
+                                {/* পদ সংখ্যা (left) + মন্ত্রণালয়/প্রতিষ্ঠানের নাম (right) on the same line */}
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200/80 text-[#FF6A00] text-[10.5px] sm:text-[11px] font-black leading-tight shrink-0">
+                                    <span>পদ সংখ্যাঃ</span>
+                                    <span className="text-black font-black">{post.vacancies || "বিজ্ঞপ্তি অনুযায়ী"}</span>
+                                  </span>
+                                  {post.organization && (
+                                    <p className="text-[12px] sm:text-[13px] font-bold text-[#FF6A00] leading-snug truncate min-w-0">
+                                      {post.organization}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Bottom Row: Deadline / Expired status on Left, Dynamic Public View pushed Far Right */}
                                 <div className="flex items-center justify-between gap-2 pt-0.5">
-                                  <p className="text-[11px] sm:text-xs font-bold text-[#9A3412] leading-snug truncate">
-                                    আবেদনের শেষ তারিখঃ {formatCircularDeadlineDisplay(post.deadline)}
-                                  </p>
+                                  {deadlineStatus.status === "expired_grace" ? (
+                                    <p className="text-[11px] sm:text-xs font-extrabold text-rose-600 leading-snug truncate">
+                                      {deadlineStatus.displayText}
+                                    </p>
+                                  ) : (
+                                    <p className="text-[11px] sm:text-xs font-bold text-[#9A3412] leading-snug truncate">
+                                      আবেদনের শেষ তারিখঃ {deadlineStatus.displayText}
+                                    </p>
+                                  )}
                                   <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1 shrink-0 ml-auto">
                                     <Eye className="w-3 h-3 text-slate-400 shrink-0" />
                                     <span>মোট ভিউঃ {getCircularPublicViewDisplay(post.publishedAt, post.views || 0, liveTick)}</span>

@@ -126,6 +126,7 @@ import {
   postMatchesCircularCategory,
   formatBanglaDateFromISO,
   formatCircularDeadlineDisplay,
+  getCircularDeadlineStatus,
   parseBanglaDateToISO,
   getCachedJobCircularCategories,
   getCachedJobCircularPosts,
@@ -10622,11 +10623,18 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                                     {cName}
                                   </span>
                                 ))}
-                                {post.deadline && (
-                                  <span className="text-[10px] font-bold text-rose-600">
-                                    শেষ তারিখ: {formatCircularDeadlineDisplay(post.deadline)}
-                                  </span>
-                                )}
+                                {post.deadline && (() => {
+                                  const dStatus = getCircularDeadlineStatus(post.deadline);
+                                  return dStatus.status === "expired_grace" ? (
+                                    <span className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md">
+                                      আবেদনের সময় শেষ (শেষ তারিখ: {formatCircularDeadlineDisplay(post.deadline)})
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-rose-600">
+                                      শেষ তারিখ: {formatCircularDeadlineDisplay(post.deadline)}
+                                    </span>
+                                  );
+                                })()}
                                 <span className="text-[10px] font-extrabold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
                                   <Eye className="w-3 h-3 text-[#FF6A00]" />
                                   <span>রিয়েল ভিউ: {post.views ?? 0}</span>

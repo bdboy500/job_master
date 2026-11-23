@@ -67,21 +67,41 @@
   ],
   "posts": [
     {
-      "id": "circ_post_1794840956310",
-      "categoryId": "circ-defense",
+      "id": "circ_post_1795379300405",
+      "categoryId": "circ-govt",
       "categoryIds": [
-        "circ-defense"
+        "circ-govt",
+        "circ-ministry"
       ],
-      "title": "বাংলাদেশ পুলিশের চাকরি",
-      "organization": "স্বরাষ্ট্র মন্ত্রণালয়",
-      "vacancies": "৩০০০",
-      "deadline": "৩০-নবেম্বর- ২০২৬",
+      "title": "জেলা প্রশাসকের কার্যালয়, সিরাজগঞ্জ এ নিয়োগ বিজ্ঞপ্তি",
+      "organization": "জনপ্রশাসন মন্ত্রণালয়",
+      "vacancies": "৪৩ টি",
+      "deadline": "১৫ ডিসেম্বর ২০২৬",
       "fileType": "pdf",
-      "fileUrl": "https://drive.google.com/file/d/1JuvYdKicXNUyKPqs7O0NeyIl7cRf_I1_/view?usp=drive_link",
-      "applyUrl": "https://gemini.google.com/app",
+      "fileUrl": "https://drive.google.com/file/d/1eEmmCqA9_fPe5fnL5r-mHZfbyj7hrU2B/view?usp=drivesdk",
+      "applyUrl": "",
       "description": "",
-      "views": 8,
-      "publishedAt": "2026-11-16T14:55:56.31+00:00",
+      "views": 1,
+      "publishedAt": "2026-11-22T20:28:20.405+00:00",
+      "active": true
+    },
+    {
+      "id": "circ_post_1795373640034",
+      "categoryId": "circ-govt",
+      "categoryIds": [
+        "circ-govt",
+        "circ-ministry"
+      ],
+      "title": "প্রাণীসম্পদ অধিদপ্তর (dls) এ নিয়োগ বিজ্ঞপ্তি",
+      "organization": "প্রাণীসম্পদ অধিদপ্তর",
+      "vacancies": "৪৯৫ টি",
+      "deadline": "৬ ডিসেম্বর ২০২৬",
+      "fileType": "pdf",
+      "fileUrl": "https://drive.google.com/file/d/1-e4Tltvxej-0K1P4CdV96wf4U1oV5G48/view?usp=drivesdk",
+      "applyUrl": "",
+      "description": "",
+      "views": 1,
+      "publishedAt": "2026-11-22T18:54:00.034+00:00",
       "active": true
     }
   ]

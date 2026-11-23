@@ -6,6 +6,7 @@ import {
   JobCircularPost,
   normalizeCircularCategories,
   normalizeCircularPosts,
+  pruneExpiredCircularPosts,
 } from "@/src/lib/job_circulars";
 import {
   CIRCULAR_PROJECT_DATA_FILE,
@@ -64,6 +65,39 @@ async function syncPostsToDedicatedSupabaseTable(posts: JobCircularPost[]) {
     }
   } catch (e) {
     // Fallback gracefully to app_config
+  }
+}
+
+async function persistCleanedBundleAcrossServer(
+  bundle: JobCircularsBundle,
+  options: { syncSupabase?: boolean; expiredIds?: string[] } = {}
+) {
+  setMemoryCircularsCache(bundle);
+  saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, bundle);
+  saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, bundle);
+  await saveCircularsToKvStore(bundle);
+
+  if (options.syncSupabase) {
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        await supabase.from("app_config").upsert(
+          {
+            key: "job_circular_posts",
+            value: bundle.posts,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
+
+        if (options.expiredIds && options.expiredIds.length > 0) {
+          await supabase.from("job_circulars").delete().in("id", options.expiredIds);
+        }
+        await syncPostsToDedicatedSupabaseTable(bundle.posts);
+      }
+    } catch (sbErr) {
+      console.warn("Supabase auto-delete expired circulars note:", sbErr);
+    }
   }
 }
 
@@ -134,15 +168,26 @@ export async function GET(req: NextRequest) {
             ? normalizeCircularPosts(postRow.value)
             : DEFAULT_JOB_CIRCULAR_POSTS;
 
+          const { keptPosts, expiredPosts } = pruneExpiredCircularPosts(resolvedPosts);
+
           const bundle: JobCircularsBundle = {
             categories: hasCats
               ? normalizeCircularCategories(catRow.value)
               : DEFAULT_JOB_CIRCULAR_CATEGORIES,
-            posts: resolvedPosts,
+            posts: keptPosts,
           };
-          setMemoryCircularsCache(bundle);
-          saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, bundle);
-          saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, bundle);
+
+          if (expiredPosts.length > 0) {
+            await persistCleanedBundleAcrossServer(bundle, {
+              syncSupabase: true,
+              expiredIds: expiredPosts.map((p) => p.id),
+            });
+          } else {
+            setMemoryCircularsCache(bundle);
+            saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, bundle);
+            saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, bundle);
+          }
+
           return NextResponse.json({
             ...bundle,
             source: hasTablePosts ? "supabase_job_circulars" : "supabase_app_config",
@@ -156,9 +201,15 @@ export async function GET(req: NextRequest) {
     // 2. Cloud KV Store
     const kvCached = await loadCircularsFromKvStore();
     if (kvCached && kvCached.categories.length > 0) {
-      setMemoryCircularsCache(kvCached);
-      saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, kvCached);
-      return NextResponse.json({ ...kvCached, source: "kv" });
+      const { keptPosts, expiredPosts } = pruneExpiredCircularPosts(kvCached.posts || []);
+      const cleanKv: JobCircularsBundle = { ...kvCached, posts: keptPosts };
+      if (expiredPosts.length > 0) {
+        await persistCleanedBundleAcrossServer(cleanKv);
+      } else {
+        setMemoryCircularsCache(cleanKv);
+        saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, cleanKv);
+      }
+      return NextResponse.json({ ...cleanKv, source: "kv" });
     }
 
     // 3. Local Disk Cache
@@ -166,14 +217,27 @@ export async function GET(req: NextRequest) {
       loadCircularsFromDiskFile(CIRCULAR_TMP_CACHE_FILE) ||
       loadCircularsFromDiskFile(CIRCULAR_PROJECT_DATA_FILE);
     if (diskCached && diskCached.categories.length > 0) {
-      setMemoryCircularsCache(diskCached);
-      return NextResponse.json({ ...diskCached, source: "disk" });
+      const { keptPosts, expiredPosts } = pruneExpiredCircularPosts(diskCached.posts || []);
+      const cleanDisk: JobCircularsBundle = { ...diskCached, posts: keptPosts };
+      if (expiredPosts.length > 0) {
+        setMemoryCircularsCache(cleanDisk);
+        saveCircularsToDiskFile(CIRCULAR_TMP_CACHE_FILE, cleanDisk);
+        saveCircularsToDiskFile(CIRCULAR_PROJECT_DATA_FILE, cleanDisk);
+      } else {
+        setMemoryCircularsCache(cleanDisk);
+      }
+      return NextResponse.json({ ...cleanDisk, source: "disk" });
     }
 
     // 4. Memory Cache
     const memCached = getMemoryCircularsCache();
     if (memCached && memCached.categories.length > 0) {
-      return NextResponse.json({ ...memCached, source: "memory" });
+      const { keptPosts, expiredPosts } = pruneExpiredCircularPosts(memCached.posts || []);
+      const cleanMem: JobCircularsBundle = { ...memCached, posts: keptPosts };
+      if (expiredPosts.length > 0) {
+        setMemoryCircularsCache(cleanMem);
+      }
+      return NextResponse.json({ ...cleanMem, source: "memory" });
     }
 
     // 5. Default Fallback
@@ -207,9 +271,10 @@ export async function POST(req: NextRequest) {
       ? normalizeCircularCategories(body.categories)
       : currentFallback.categories;
 
-    const nextPosts = Array.isArray(body?.posts)
+    const rawPosts = Array.isArray(body?.posts)
       ? normalizeCircularPosts(body.posts)
       : currentFallback.posts;
+    const nextPosts = pruneExpiredCircularPosts(rawPosts).keptPosts;
 
     const bundle: JobCircularsBundle = {
       categories: nextCategories,
