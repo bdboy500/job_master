@@ -406,35 +406,114 @@ let coursesMemoryCache: CourseItem[] | null = null;
 let prepMemoryCache: PrepSubjectItem[] | null = null;
 let proMemoryCache: ProSectionItem[] | null = null;
 
+let hasRealCoursesLoaded = false;
+let hasRealPrepLoaded = false;
+let hasRealProLoaded = false;
+
+export function isCoursesLoadedFromServer(): boolean {
+  return hasRealCoursesLoaded;
+}
+export function isPrepSubjectsLoadedFromServer(): boolean {
+  return hasRealPrepLoaded;
+}
+export function isProSectionLoadedFromServer(): boolean {
+  return hasRealProLoaded;
+}
+
 export function invalidateCoursesCache() {
   coursesMemoryCache = null;
   coursesInFlightPromise = null;
+  hasRealCoursesLoaded = false;
 }
 
 export function invalidatePrepSubjectsCache() {
   prepMemoryCache = null;
   prepSubjectsInFlightPromise = null;
+  hasRealPrepLoaded = false;
 }
 
 export function invalidateProSectionCache() {
   proMemoryCache = null;
   proSectionInFlightPromise = null;
+  hasRealProLoaded = false;
+}
+
+async function fetchCoursesDirectSupabaseFallback(): Promise<CourseItem[] | null> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+    const { data: configData } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "app_courses")
+      .maybeSingle();
+
+    if (configData?.value && Array.isArray(configData.value) && configData.value.length > 0) {
+      return configData.value.map((item: any) => ({
+        id: String(item.id),
+        name: String(item.name || ""),
+        title: String(item.title || ""),
+        desc: String(item.desc || ""),
+        category: String(item.category || "Other"),
+        icon: String(item.icon || "BookOpen"),
+        bg: String(item.bg || "bg-[#FFF1E6]"),
+        iconColor: String(item.iconColor || item.icon_color || "text-orange-600"),
+        serial: Number(item.serial) || 1,
+        subSubjects: Array.isArray(item.subSubjects) ? item.subSubjects : (Array.isArray(item.sub_subjects) ? item.sub_subjects : []),
+        active: item.active !== false
+      }));
+    }
+
+    const { data, error } = await supabase
+      .from("app_courses")
+      .select("id, name, title, desc, category, icon, bg, iconColor, icon_color, serial, subSubjects, sub_subjects, active")
+      .order("serial", { ascending: true });
+    if (!error && data && data.length > 0) {
+      return data.map((item: any) => ({
+        id: String(item.id),
+        name: String(item.name || ""),
+        title: String(item.title || ""),
+        desc: String(item.desc || ""),
+        category: String(item.category || "Other"),
+        icon: String(item.icon || "BookOpen"),
+        bg: String(item.bg || "bg-[#FFF1E6]"),
+        iconColor: String(item.iconColor || item.icon_color || "text-orange-600"),
+        serial: Number(item.serial) || 1,
+        subSubjects: typeof item.subSubjects === "string" ? JSON.parse(item.subSubjects) : (item.sub_subjects ? (typeof item.sub_subjects === "string" ? JSON.parse(item.sub_subjects) : item.sub_subjects) : (item.subSubjects || [])),
+        active: item.active !== false
+      }));
+    }
+  } catch (e) {}
+  return null;
 }
 
 // Global fetcher & sync methods for Courses
 export async function fetchCoursesFromDb(forceRefresh = false): Promise<CourseItem[]> {
-  if (!forceRefresh && coursesMemoryCache && coursesMemoryCache.length > 0) {
+  if (!forceRefresh && hasRealCoursesLoaded && coursesMemoryCache && coursesMemoryCache.length > 0) {
     return coursesMemoryCache;
   }
 
   if (!forceRefresh && coursesInFlightPromise) return coursesInFlightPromise;
 
+  const commitRealCourses = (list: CourseItem[]): CourseItem[] => {
+    const cleanCourses = sanitizeCourseSubSubjects(list);
+    cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
+      } catch (e) {}
+    }
+    coursesMemoryCache = cleanCourses;
+    hasRealCoursesLoaded = true;
+    return cleanCourses;
+  };
+
   coursesInFlightPromise = (async () => {
     try {
-      // 1. Try Server API Route (/api/courses) with fast timeout guard
+      // 1. Try Server API Route (/api/courses) with 10s slow-mobile tolerance
       try {
         const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-        const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 10000) : null;
         const res = await fetch("/api/courses", {
           cache: "no-store",
           ...(controller ? { signal: controller.signal } : {})
@@ -445,48 +524,47 @@ export async function fetchCoursesFromDb(forceRefresh = false): Promise<CourseIt
           const courses: CourseItem[] = data.courses || [];
           const source = data.source;
 
-          // Fail-safe: If server returned default fallback, but client has custom edited data in localStorage, preserve client's custom data and sync to server
-          if (source === "default" && typeof window !== "undefined") {
-            const localCached = getCachedCourses();
-            if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_COURSES)) {
-              // Re-sync local custom data to server
-              fetch("/api/courses", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(localCached)
-              }).catch(() => {});
-              coursesMemoryCache = localCached;
-              return localCached;
+          // Fail-safe: If server returned default fallback, check direct Supabase first; then local custom edits
+          if (source === "default") {
+            const directSb = await fetchCoursesDirectSupabaseFallback();
+            if (directSb && directSb.length > 0) {
+              return commitRealCourses(directSb);
             }
-          }
-
-          if (source !== "default" && Array.isArray(courses)) {
-            const cleanCourses = sanitizeCourseSubSubjects(courses);
-            cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
             if (typeof window !== "undefined") {
-              localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
+              const localCached = getCachedCourses();
+              if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_COURSES)) {
+                fetch("/api/courses", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(localCached)
+                }).catch(() => {});
+                coursesMemoryCache = localCached;
+                hasRealCoursesLoaded = true;
+                return localCached;
+              }
             }
-            coursesMemoryCache = cleanCourses;
-            return cleanCourses;
+            return courses.length > 0 ? courses : getCachedCourses();
           }
 
           if (Array.isArray(courses) && courses.length > 0) {
-            const cleanCourses = sanitizeCourseSubSubjects(courses);
-            cleanCourses.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-            if (typeof window !== "undefined") {
-              localStorage.setItem(COURSES_KEY, JSON.stringify(cleanCourses));
-            }
-            coursesMemoryCache = cleanCourses;
-            return cleanCourses;
+            return commitRealCourses(courses);
           }
         }
       } catch (e) {
         console.warn("API courses fetch note:", e);
       }
 
-      // 2. Fallback to Local Storage / Default
+      // 2. Direct Supabase fallback if /api/courses failed or timed out
+      const directSb = await fetchCoursesDirectSupabaseFallback();
+      if (directSb && directSb.length > 0) {
+        return commitRealCourses(directSb);
+      }
+
+      // 3. Fallback to Local Storage / Default WITHOUT locking default into coursesMemoryCache
       const fallback = getCachedCourses();
-      coursesMemoryCache = fallback;
+      if (typeof window !== "undefined" && localStorage.getItem(COURSES_KEY)) {
+        coursesMemoryCache = fallback;
+      }
       return fallback;
     } finally {
       coursesInFlightPromise = null;
@@ -565,20 +643,72 @@ export async function saveCoursesToDb(courses: CourseItem[]): Promise<CourseItem
   return sorted;
 }
 
+async function fetchPrepDirectSupabaseFallback(): Promise<PrepSubjectItem[] | null> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+    const { data: configData } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "prep_subjects")
+      .maybeSingle();
+
+    const mapRow = (item: any): PrepSubjectItem => ({
+      id: String(item.id),
+      name: String(item.name || ""),
+      bnName: String(item.bnName || item.bn_name || item.name || ""),
+      icon: String(item.icon || "BookOpen"),
+      bg: String(item.bg || "bg-[#FFF1E6]"),
+      text: String(item.text || "text-orange-600"),
+      sub: String(item.sub || ""),
+      serial: Number(item.serial) || 1,
+      subSubjects: Array.isArray(item.subSubjects) ? item.subSubjects : (Array.isArray(item.sub_subjects) ? item.sub_subjects : []),
+      active: item.active !== false,
+      showQuickTools: item.showQuickTools !== undefined ? item.showQuickTools !== false : item.show_quick_tools !== undefined ? item.show_quick_tools !== false : true,
+    });
+
+    if (configData?.value && Array.isArray(configData.value) && configData.value.length > 0) {
+      return configData.value.map(mapRow);
+    }
+
+    const { data, error } = await supabase
+      .from("app_prep_subjects")
+      .select("*")
+      .order("serial", { ascending: true });
+    if (!error && data && data.length > 0) {
+      return data.map(mapRow);
+    }
+  } catch (e) {}
+  return null;
+}
+
 // Global fetcher & sync methods for Prep Subjects
 export async function fetchPrepSubjectsFromDb(forceRefresh = false): Promise<PrepSubjectItem[]> {
-  if (!forceRefresh && prepMemoryCache && prepMemoryCache.length > 0) {
+  if (!forceRefresh && hasRealPrepLoaded && prepMemoryCache && prepMemoryCache.length > 0) {
     return prepMemoryCache;
   }
 
   if (!forceRefresh && prepSubjectsInFlightPromise) return prepSubjectsInFlightPromise;
 
+  const commitRealPrep = (list: PrepSubjectItem[]): PrepSubjectItem[] => {
+    const cleanPrep = sanitizeSubSubjects(list);
+    cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
+      } catch (e) {}
+    }
+    prepMemoryCache = cleanPrep;
+    hasRealPrepLoaded = true;
+    return cleanPrep;
+  };
+
   prepSubjectsInFlightPromise = (async () => {
     try {
-      // 1. Try Server API Route (/api/prep-subjects) with fast timeout guard
+      // 1. Try Server API Route (/api/prep-subjects) with 10s slow-mobile tolerance
       try {
         const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-        const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 10000) : null;
         const res = await fetch("/api/prep-subjects", {
           cache: "no-store",
           ...(controller ? { signal: controller.signal } : {})
@@ -589,45 +719,44 @@ export async function fetchPrepSubjectsFromDb(forceRefresh = false): Promise<Pre
           const prepSubjects: PrepSubjectItem[] = data.prepSubjects || [];
           const source = data.source;
 
-          if (source === "default" && typeof window !== "undefined") {
-            const localCached = getCachedPrepSubjects();
-            if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_PREP_SUBJECTS)) {
-              fetch("/api/prep-subjects", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(localCached)
-              }).catch(() => {});
-              prepMemoryCache = localCached;
-              return localCached;
+          if (source === "default") {
+            const directSb = await fetchPrepDirectSupabaseFallback();
+            if (directSb && directSb.length > 0) {
+              return commitRealPrep(directSb);
             }
-          }
-
-          if (source !== "default" && Array.isArray(prepSubjects)) {
-            const cleanPrep = sanitizeSubSubjects(prepSubjects);
-            cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
             if (typeof window !== "undefined") {
-              localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
+              const localCached = getCachedPrepSubjects();
+              if (localCached && localCached.length > 0 && JSON.stringify(localCached) !== JSON.stringify(DEFAULT_PREP_SUBJECTS)) {
+                fetch("/api/prep-subjects", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(localCached)
+                }).catch(() => {});
+                prepMemoryCache = localCached;
+                hasRealPrepLoaded = true;
+                return localCached;
+              }
             }
-            prepMemoryCache = cleanPrep;
-            return cleanPrep;
+            return prepSubjects.length > 0 ? prepSubjects : getCachedPrepSubjects();
           }
 
           if (Array.isArray(prepSubjects) && prepSubjects.length > 0) {
-            const cleanPrep = sanitizeSubSubjects(prepSubjects);
-            cleanPrep.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-            if (typeof window !== "undefined") {
-              localStorage.setItem(PREP_KEY, JSON.stringify(cleanPrep));
-            }
-            prepMemoryCache = cleanPrep;
-            return cleanPrep;
+            return commitRealPrep(prepSubjects);
           }
         }
       } catch (e) {
         console.warn("API prep-subjects fetch note:", e);
       }
 
+      const directSb = await fetchPrepDirectSupabaseFallback();
+      if (directSb && directSb.length > 0) {
+        return commitRealPrep(directSb);
+      }
+
       const fallback = getCachedPrepSubjects();
-      prepMemoryCache = fallback;
+      if (typeof window !== "undefined" && localStorage.getItem(PREP_KEY)) {
+        prepMemoryCache = fallback;
+      }
       return fallback;
     } finally {
       prepSubjectsInFlightPromise = null;
@@ -750,17 +879,66 @@ export function getCachedProSection(): ProSectionItem[] {
   return DEFAULT_PRO_SECTION;
 }
 
+async function fetchProDirectSupabaseFallback(): Promise<ProSectionItem[] | null> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+    const { data: configData } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "pro_section")
+      .maybeSingle();
+
+    const mapPro = (item: any): ProSectionItem => ({
+      id: String(item.id),
+      name: String(item.name || ""),
+      sub: String(item.sub || ""),
+      icon: String(item.icon || "Briefcase"),
+      bg: String(item.bg || "bg-[#FFF1E6]"),
+      text: String(item.text || "text-orange-600"),
+      serial: Number(item.serial) || 1,
+      active: item.active !== false,
+      subSubjects: Array.isArray(item.subSubjects) ? item.subSubjects : (Array.isArray(item.sub_subjects) ? item.sub_subjects : [])
+    });
+
+    if (configData?.value && Array.isArray(configData.value) && configData.value.length > 0) {
+      return configData.value.map(mapPro);
+    }
+
+    const { data, error } = await supabase
+      .from("app_pro_section")
+      .select("id, name, sub, icon, bg, text, serial, active, subSubjects, sub_subjects")
+      .order("serial", { ascending: true });
+    if (!error && data && data.length > 0) {
+      return data.map(mapPro);
+    }
+  } catch (e) {}
+  return null;
+}
+
 export async function fetchProSectionFromDb(forceRefresh = false): Promise<ProSectionItem[]> {
-  if (!forceRefresh && proMemoryCache && proMemoryCache.length > 0) {
+  if (!forceRefresh && hasRealProLoaded && proMemoryCache && proMemoryCache.length > 0) {
     return proMemoryCache;
   }
 
   if (!forceRefresh && proSectionInFlightPromise) return proSectionInFlightPromise;
 
+  const commitRealPro = (items: ProSectionItem[]): ProSectionItem[] => {
+    items.sort((a, b) => (a.serial || 99) - (b.serial || 99));
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(items));
+      } catch (e) {}
+    }
+    proMemoryCache = items;
+    hasRealProLoaded = true;
+    return items;
+  };
+
   proSectionInFlightPromise = (async () => {
     try {
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+      const timer = controller ? setTimeout(() => controller.abort(), 10000) : null;
       const res = await fetch("/api/pro-section", {
         cache: "no-store",
         ...(controller ? { signal: controller.signal } : {})
@@ -769,20 +947,31 @@ export async function fetchProSectionFromDb(forceRefresh = false): Promise<ProSe
       if (res.ok) {
         const data = await res.json();
         const items: ProSectionItem[] = data.proSection || [];
-        if (Array.isArray(items) && items.length > 0) {
-          items.sort((a, b) => (a.serial || 99) - (b.serial || 99));
-          if (typeof window !== "undefined") {
-            localStorage.setItem(PRO_SECTION_KEY, JSON.stringify(items));
+        const source = data.source;
+        if (source === "default") {
+          const directSb = await fetchProDirectSupabaseFallback();
+          if (directSb && directSb.length > 0) {
+            return commitRealPro(directSb);
           }
-          proMemoryCache = items;
-          return items;
+          return items.length > 0 ? items : getCachedProSection();
+        }
+        if (Array.isArray(items) && items.length > 0) {
+          return commitRealPro(items);
         }
       }
     } catch (e) {} finally {
       proSectionInFlightPromise = null;
     }
+
+    const directSb = await fetchProDirectSupabaseFallback();
+    if (directSb && directSb.length > 0) {
+      return commitRealPro(directSb);
+    }
+
     const fallback = getCachedProSection();
-    proMemoryCache = fallback;
+    if (typeof window !== "undefined" && localStorage.getItem(PRO_SECTION_KEY)) {
+      proMemoryCache = fallback;
+    }
     return fallback;
   })();
 
@@ -899,15 +1088,22 @@ export function subscribeToCoursesAndPrep(
   window.addEventListener("storage", handlePrep);
   window.addEventListener("storage", handlePro);
 
-  // Re-fetch when tab becomes visible or focused
+  // Re-fetch when tab becomes visible, focused, or back online — force refresh if server data hasn't loaded yet
   const handleVisibility = () => {
     if (document.visibilityState === "visible") {
-      fetchCoursesFromDb().then(onCourses);
-      fetchPrepSubjectsFromDb().then(onPrep);
-      if (onPro) fetchProSectionFromDb().then(onPro);
+      fetchCoursesFromDb(!hasRealCoursesLoaded).then(onCourses).catch(() => {});
+      fetchPrepSubjectsFromDb(!hasRealPrepLoaded).then(onPrep).catch(() => {});
+      if (onPro) fetchProSectionFromDb(!hasRealProLoaded).then(onPro).catch(() => {});
     }
   };
+  const handleRecoverOnline = () => {
+    if (!hasRealCoursesLoaded) fetchCoursesFromDb(true).then(onCourses).catch(() => {});
+    if (!hasRealPrepLoaded) fetchPrepSubjectsFromDb(true).then(onPrep).catch(() => {});
+    if (onPro && !hasRealProLoaded) fetchProSectionFromDb(true).then(onPro).catch(() => {});
+  };
   window.addEventListener("visibilitychange", handleVisibility);
+  window.addEventListener("online", handleRecoverOnline);
+  window.addEventListener("focus", handleRecoverOnline);
 
   let supabaseChannel: any = null;
   let supabaseRef: any = null;
@@ -944,6 +1140,8 @@ export function subscribeToCoursesAndPrep(
     window.removeEventListener("storage", handlePrep);
     window.removeEventListener("storage", handlePro);
     window.removeEventListener("visibilitychange", handleVisibility);
+    window.removeEventListener("online", handleRecoverOnline);
+    window.removeEventListener("focus", handleRecoverOnline);
     if (supabaseRef && supabaseChannel) {
       try {
         supabaseRef.removeChannel(supabaseChannel);

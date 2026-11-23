@@ -114,14 +114,20 @@ export function getCachedPackages(): PackageItem[] {
 
 let packagesInFlightPromise: Promise<PackageItem[]> | null = null;
 let packagesMemoryCache: PackageItem[] | null = null;
+let hasRealPackagesLoaded = false;
+
+export function isPackagesLoadedFromServer(): boolean {
+  return hasRealPackagesLoaded;
+}
 
 export function invalidatePackagesCache() {
   packagesMemoryCache = null;
   packagesInFlightPromise = null;
+  hasRealPackagesLoaded = false;
 }
 
 export async function fetchPackagesFromDb(forceRefresh = false): Promise<PackageItem[]> {
-  if (!forceRefresh && packagesMemoryCache && packagesMemoryCache.length > 0) {
+  if (!forceRefresh && hasRealPackagesLoaded && packagesMemoryCache && packagesMemoryCache.length > 0) {
     return packagesMemoryCache;
   }
 
@@ -131,14 +137,18 @@ export async function fetchPackagesFromDb(forceRefresh = false): Promise<Package
 
   packagesInFlightPromise = (async () => {
     try {
-      // 1. Primary: Try Supabase Server
+      // 1. Primary: Try Supabase Server with 8s timeout guard
       try {
         const supabase = getSupabase();
         if (supabase) {
-          const { data, error } = await supabase
+          const sbPromise = supabase
             .from("packages")
             .select("*")
             .order("order", { ascending: true });
+          const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+            setTimeout(() => resolve({ data: null, error: new Error("Packages timeout") }), 8000)
+          );
+          const { data, error } = await Promise.race([sbPromise, timeoutPromise]);
 
           if (!error && data && data.length > 0) {
             const mappedData: PackageItem[] = data.map((item: any) => ({
@@ -159,6 +169,7 @@ export async function fetchPackagesFromDb(forceRefresh = false): Promise<Package
               localStorage.setItem(STORAGE_KEY, JSON.stringify(mappedData));
             }
             packagesMemoryCache = mappedData;
+            hasRealPackagesLoaded = true;
             return mappedData;
           }
         }
@@ -166,9 +177,11 @@ export async function fetchPackagesFromDb(forceRefresh = false): Promise<Package
         console.warn("Supabase packages query exception:", err);
       }
 
-      // 2. Secondary: Fallback to LocalStorage / Defaults
+      // 2. Secondary: Fallback to LocalStorage / Defaults without poisoning memoryCache with DEFAULT_PACKAGES
       const cached = getCachedPackages();
-      packagesMemoryCache = cached;
+      if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY)) {
+        packagesMemoryCache = cached;
+      }
       return cached;
     } finally {
       packagesInFlightPromise = null;
@@ -421,10 +434,16 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
 
   const handleVisibility = () => {
     if (document.visibilityState === "visible") {
-      fetchPackagesFromDb().then(callback).catch(() => {});
+      fetchPackagesFromDb(!hasRealPackagesLoaded).then(callback).catch(() => {});
+    }
+  };
+  const handleOnline = () => {
+    if (!hasRealPackagesLoaded) {
+      fetchPackagesFromDb(true).then(callback).catch(() => {});
     }
   };
   window.addEventListener("visibilitychange", handleVisibility);
+  window.addEventListener("online", handleOnline);
 
   let supabaseChannel: any = null;
   let supabaseRef: any = null;
@@ -452,6 +471,7 @@ export function subscribeToPackages(callback: (pkgs: PackageItem[]) => void) {
     window.removeEventListener("jobmaster_packages_updated", handleUpdate);
     window.removeEventListener("storage", handleUpdate);
     window.removeEventListener("visibilitychange", handleVisibility);
+    window.removeEventListener("online", handleOnline);
     if (supabaseRef && supabaseChannel) {
       try {
         supabaseRef.removeChannel(supabaseChannel);

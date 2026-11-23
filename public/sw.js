@@ -1,7 +1,7 @@
 // Job Master Performance-First & Offline-Resilient PWA Service Worker
-const SHELL_CACHE = 'jobmaster-shell-v11';
-const STATIC_CACHE = 'jobmaster-static-v11';
-const DATA_CACHE = 'jobmaster-data-v11';
+const SHELL_CACHE = 'jobmaster-shell-v12';
+const STATIC_CACHE = 'jobmaster-static-v12';
+const DATA_CACHE = 'jobmaster-data-v12';
 const VALID_CACHES = [SHELL_CACHE, STATIC_CACHE, DATA_CACHE];
 const IS_DEV_PREVIEW_HOST =
   self.location.hostname.includes('ais-dev') ||
@@ -22,9 +22,10 @@ const PUBLIC_DATA_ROUTES = [
   '/api/pro-section',
   '/api/app-settings',
   '/api/job-circulars',
+  '/api/exam-papers',
 ];
 
-// Install: Pre-cache core app shell & icons and activate immediately
+// Install: Pre-cache core icons/manifest (never trap stale HTML) and activate immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) => cache.addAll(ESSENTIAL_ASSETS)).catch(() => {})
@@ -43,16 +44,26 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
+});
+
+// Allow client recovery handlers to wipe all SW caches cleanly
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => {})
+    );
+  } else if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Helper: Fetch with timeout so slow networks seamlessly fall back to cached shell
-function fetchWithTimeout(request, timeoutMs) {
+function fetchWithTimeout(request, timeoutMs, initOverrides) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('SW_TIMEOUT')), timeoutMs);
-    fetch(request)
+    fetch(request, initOverrides)
       .then((res) => {
         clearTimeout(timer);
         resolve(res);
@@ -67,7 +78,6 @@ function fetchWithTimeout(request, timeoutMs) {
 // Fetch strategy
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (event.request.cache === 'no-store') return;
 
   const url = new URL(event.request.url);
 
@@ -83,25 +93,41 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Public Read-Only Metadata APIs: Stale-While-Revalidate (skip if initiated from /admin)
+  // Always bypass SW cache when client explicitly requests no-store
+  if (event.request.cache === 'no-store') {
+    return;
+  }
+
+  // 1. Public Read-Only Metadata APIs: Network-First (never serve/store 'default' fallback in DATA_CACHE)
   if (PUBLIC_DATA_ROUTES.some((route) => url.pathname === route)) {
     const ref = event.request.referrer || '';
     if (ref.includes('/admin')) return;
 
     event.respondWith(
-      caches.open(DATA_CACHE).then((cache) => {
-        return cache.match(event.request).then((cachedResponse) => {
-          const networkPromise = fetch(event.request)
-            .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                cache.put(event.request, networkResponse.clone()).catch(() => {});
-              }
-              return networkResponse;
-            })
-            .catch(() => cachedResponse);
-
-          return cachedResponse || networkPromise;
-        });
+      caches.open(DATA_CACHE).then(async (cache) => {
+        try {
+          const networkResponse = await fetchWithTimeout(event.request, 6000, { cache: 'no-store' });
+          if (networkResponse && networkResponse.status === 200) {
+            const cloneForInspect = networkResponse.clone();
+            const cloneForCache = networkResponse.clone();
+            cloneForInspect
+              .json()
+              .then((payload) => {
+                if (payload && payload.source !== 'default' && payload.source !== 'empty') {
+                  cache.put(event.request, cloneForCache).catch(() => {});
+                }
+              })
+              .catch(() => {});
+          }
+          return networkResponse;
+        } catch {
+          const cachedResponse = await cache.match(event.request);
+          if (cachedResponse) return cachedResponse;
+          return new Response(JSON.stringify({ error: 'network_unavailable' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
       })
     );
     return;
@@ -112,53 +138,47 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. HTML Navigations: Fast 1500ms Network Race -> Instant Cached Shell Fallback + Background Refresh
+  // 2. HTML Navigations: Network-First (4.5s timeout for slow Android WebView mobile networks) -> Cached Shell fallback
+  //    Wait 4.5s instead of 1.5s so slow 2G/3G doesn't prematurely receive old pre-deploy HTML that mismatches JS chunks.
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(SHELL_CACHE).then(async (cache) => {
-        const networkPromise = fetch(event.request)
+        const networkPromise = fetch(event.request, { cache: 'no-cache' })
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
               cache.put(event.request, networkResponse.clone()).catch(() => {});
+              cache.put('/', networkResponse.clone()).catch(() => {});
             }
             return networkResponse;
           });
 
         try {
-          // Wait at most 1.5s for network; on slow 2G/3G, serve cached HTML immediately while network updates cache in background
-          const cached = (await cache.match(event.request)) || (await cache.match('/'));
-          if (cached) {
-            return await fetchWithTimeout(event.request, 1500)
-              .then((fresh) => {
-                if (fresh && fresh.status === 200 && fresh.type === 'basic') {
-                  cache.put(event.request, fresh.clone()).catch(() => {});
-                }
-                return fresh;
-              })
-              .catch(() => {
-                // Keep background update alive even after serving cached shell
-                networkPromise.catch(() => {});
-                return cached;
-              });
+          const fresh = await fetchWithTimeout(event.request, 4500, { cache: 'no-cache' });
+          if (fresh && fresh.status === 200 && fresh.type === 'basic') {
+            cache.put(event.request, fresh.clone()).catch(() => {});
+            cache.put('/', fresh.clone()).catch(() => {});
           }
-
-          return await networkPromise;
+          return fresh;
         } catch {
-          const fallback = (await cache.match(event.request)) || (await cache.match('/'));
-          if (fallback) return fallback;
-          return new Response('Offline - অনুগ্রহ করে ইন্টারনেট সংযোগ পরীক্ষা করুন', {
-            status: 503,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          });
+          // Keep background update alive in case it completes right after timeout
+          networkPromise.catch(() => {});
+          const cached = (await cache.match(event.request)) || (await cache.match('/'));
+          if (cached) return cached;
+          try {
+            return await networkPromise;
+          } catch {
+            return new Response('Offline - অনুগ্রহ করে ইন্টারনেট সংযোগ পরীক্ষা করুন', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            });
+          }
         }
       })
     );
     return;
   }
 
-  // 3. Next.js Static Bundles, Fonts, CSS, JS, and Images:
-  //    CSS/JSON use Stale-While-Revalidate (0ms cached load + background update),
-  //    while fonts/images/JS chunks stay Cache-First.
+  // 3. Next.js Static Bundles, Fonts, CSS, JS, and Images
   const isNextStatic = url.pathname.startsWith('/_next/static/');
   const isStaticAsset = /\.(js|css|woff2|woff|ttf|png|jpg|jpeg|webp|svg|ico|json)$/i.test(url.pathname);
   const shouldBgRevalidate = url.pathname.endsWith('.css') || url.pathname.endsWith('.json') || url.pathname.includes('root-of-the-server');

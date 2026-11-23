@@ -11,6 +11,11 @@ const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_courses_cache.json");
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_courses_v2";
 
 let memoryCoursesCache: CourseItem[] | null = null;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 function loadFromDiskFile(filePath: string): CourseItem[] | null {
   try {
@@ -41,7 +46,10 @@ function saveToDiskFile(filePath: string, courses: CourseItem[]) {
 
 async function loadFromKvStore(): Promise<CourseItem[] | null> {
   try {
-    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -98,7 +106,7 @@ export async function GET() {
           memoryCoursesCache = configMapped;
           saveToKvStore(configMapped);
           saveToDiskFile(TMP_CACHE_FILE, configMapped);
-          return NextResponse.json({ courses: configMapped, source: "supabase_app_config" });
+          return NextResponse.json({ courses: configMapped, source: "supabase_app_config" }, { headers: NO_STORE_HEADERS });
         }
 
         // Priority B: app_courses table
@@ -126,7 +134,7 @@ export async function GET() {
           memoryCoursesCache = mapped;
           saveToKvStore(mapped);
           saveToDiskFile(TMP_CACHE_FILE, mapped);
-          return NextResponse.json({ courses: mapped, source: "supabase" });
+          return NextResponse.json({ courses: mapped, source: "supabase" }, { headers: NO_STORE_HEADERS });
         }
       }
     } catch (sbErr) {
@@ -138,27 +146,27 @@ export async function GET() {
     if (kvCached && kvCached.length > 0) {
       memoryCoursesCache = kvCached;
       saveToDiskFile(TMP_CACHE_FILE, kvCached);
-      return NextResponse.json({ courses: kvCached, source: "kv" });
+      return NextResponse.json({ courses: kvCached, source: "kv" }, { headers: NO_STORE_HEADERS });
     }
 
     // 3. Memory Cache (Warm Lambda)
     if (memoryCoursesCache && memoryCoursesCache.length > 0) {
-      return NextResponse.json({ courses: memoryCoursesCache, source: "memory" });
+      return NextResponse.json({ courses: memoryCoursesCache, source: "memory" }, { headers: NO_STORE_HEADERS });
     }
 
     // 4. Temporary /tmp Cache
     const tmpCached = loadFromDiskFile(TMP_CACHE_FILE);
     if (tmpCached && tmpCached.length > 0) {
       memoryCoursesCache = tmpCached;
-      return NextResponse.json({ courses: tmpCached, source: "tmp_file" });
+      return NextResponse.json({ courses: tmpCached, source: "tmp_file" }, { headers: NO_STORE_HEADERS });
     }
 
     // 5. Default Fallback
     const projectCached = loadFromDiskFile(PROJECT_DATA_FILE);
     const finalFallback = (projectCached && projectCached.length > 0) ? projectCached : DEFAULT_COURSES;
-    return NextResponse.json({ courses: finalFallback, source: "default" });
+    return NextResponse.json({ courses: finalFallback, source: "default" }, { headers: NO_STORE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to fetch courses" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Failed to fetch courses" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
 

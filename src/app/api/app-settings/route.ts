@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/src/lib/supabase";
 import { DEFAULT_APP_SETTINGS, DEFAULT_POPUP_CONFIG, AppSettings } from "@/src/lib/app_settings";
 
+export const dynamic = "force-dynamic";
+
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_settings_v2";
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 export async function GET() {
   try {
@@ -23,12 +30,15 @@ export async function GET() {
             ...(data.value.popupNotification || {})
           }
         };
-        return NextResponse.json({ settings: merged });
+        return NextResponse.json({ settings: merged, source: "supabase" }, { headers: NO_STORE_HEADERS });
       }
     }
 
     // Fallback to Cloud KV
-    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data.ourCoursesHomeLimit === "number") {
@@ -40,7 +50,7 @@ export async function GET() {
             ...(data.popupNotification || {})
           }
         };
-        return NextResponse.json({ settings: merged });
+        return NextResponse.json({ settings: merged, source: "kv" }, { headers: NO_STORE_HEADERS });
       }
     }
   } catch (e) {
@@ -48,8 +58,9 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    settings: DEFAULT_APP_SETTINGS
-  });
+    settings: DEFAULT_APP_SETTINGS,
+    source: "default"
+  }, { headers: NO_STORE_HEADERS });
 }
 
 export async function POST(req: NextRequest) {

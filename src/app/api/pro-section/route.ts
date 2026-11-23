@@ -11,6 +11,11 @@ const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_pro_section_cache.json");
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_pro_section_v2";
 
 let memoryProCache: ProSectionItem[] | null = null;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 function loadFromDiskFile(filePath: string): ProSectionItem[] | null {
   try {
@@ -41,7 +46,10 @@ function saveToDiskFile(filePath: string, items: ProSectionItem[]) {
 
 async function loadFromKvStore(): Promise<ProSectionItem[] | null> {
   try {
-    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -108,7 +116,7 @@ export async function GET() {
           saveToKvStore(configMapped);
           saveToDiskFile(TMP_CACHE_FILE, configMapped);
           saveToDiskFile(PROJECT_DATA_FILE, configMapped);
-          return NextResponse.json({ proSection: configMapped, source: "supabase_app_config" });
+          return NextResponse.json({ proSection: configMapped, source: "supabase_app_config" }, { headers: NO_STORE_HEADERS });
         }
 
         // Priority B: app_pro_section table
@@ -134,7 +142,7 @@ export async function GET() {
           memoryProCache = mapped;
           saveToKvStore(mapped);
           saveToDiskFile(TMP_CACHE_FILE, mapped);
-          return NextResponse.json({ proSection: mapped, source: "supabase_table" });
+          return NextResponse.json({ proSection: mapped, source: "supabase_table" }, { headers: NO_STORE_HEADERS });
         }
       }
     } catch (sbErr) {
@@ -146,25 +154,25 @@ export async function GET() {
     if (kvCached && kvCached.length > 0) {
       memoryProCache = kvCached;
       saveToDiskFile(TMP_CACHE_FILE, kvCached);
-      return NextResponse.json({ proSection: kvCached, source: "kv" });
+      return NextResponse.json({ proSection: kvCached, source: "kv" }, { headers: NO_STORE_HEADERS });
     }
 
     // 3. Local Disk Cache
     const diskCached = loadFromDiskFile(TMP_CACHE_FILE) || loadFromDiskFile(PROJECT_DATA_FILE);
     if (diskCached && diskCached.length > 0) {
       memoryProCache = diskCached;
-      return NextResponse.json({ proSection: diskCached, source: "disk" });
+      return NextResponse.json({ proSection: diskCached, source: "disk" }, { headers: NO_STORE_HEADERS });
     }
 
     // 4. Memory Cache
     if (memoryProCache && memoryProCache.length > 0) {
-      return NextResponse.json({ proSection: memoryProCache, source: "memory" });
+      return NextResponse.json({ proSection: memoryProCache, source: "memory" }, { headers: NO_STORE_HEADERS });
     }
 
     // 5. Default Fallback
-    return NextResponse.json({ proSection: DEFAULT_PRO_SECTION, source: "default" });
+    return NextResponse.json({ proSection: DEFAULT_PRO_SECTION, source: "default" }, { headers: NO_STORE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to fetch pro section" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Failed to fetch pro section" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
 

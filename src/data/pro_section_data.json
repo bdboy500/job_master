@@ -1,71 +1,12 @@
 [
   {
-    "id": "pro-job-solution",
-    "name": "জব সল্যুশন",
-    "sub": "বিগত সালের  পরীক্ষার সমাধান",
-    "icon": "HelpCircle",
-    "bg": "bg-[#FFF1E6]",
-    "text": "text-orange-600",
-    "serial": 1,
-    "active": true,
-    "subSubjects": []
-  },
-  {
-    "id": "pro_1794409880839",
-    "name": "জব সার্কুলার",
-    "sub": "",
-    "icon": "Briefcase",
-    "bg": "bg-purple-50",
-    "text": "text-purple-600",
-    "serial": 2,
-    "active": true,
-    "subSubjects": [
-      {
-        "id": "pro_sub_1794484738021",
-        "sub": "সংক্ষিপ্ত তথ্য",
-        "name": "সরকারী জব সার্কুলার",
-        "serial": 1,
-        "subCategories2": []
-      },
-      {
-        "id": "pro_sub_1794484757029",
-        "sub": "সংক্ষিপ্ত তথ্য",
-        "name": "বেসরকারি জব সার্কুলার",
-        "serial": 2,
-        "subCategories2": []
-      }
-    ]
-  },
-  {
-    "id": "pro-question-bank",
-    "name": "প্রশ্ন ব্যাংক",
-    "sub": "বিষয়ভিত্তিক প্রশ্নপত্র",
-    "icon": "Database",
-    "bg": "bg-[#E6F0FA]",
-    "text": "text-blue-600",
-    "serial": 3,
-    "active": true,
-    "subSubjects": []
-  },
-  {
-    "id": "pro_1794409775063",
-    "name": "সিভি মেকার",
-    "sub": "",
-    "icon": "FileText",
-    "bg": "bg-purple-50",
-    "text": "text-purple-600",
-    "serial": 4,
-    "active": true,
-    "subSubjects": []
-  },
-  {
     "id": "pro-live-class",
     "name": "লাইভ ক্লাস",
     "sub": "অভিজ্ঞ শিক্ষকদের",
     "icon": "Video",
     "bg": "bg-[#F3E8FF]",
     "text": "text-purple-600",
-    "serial": 5,
+    "serial": 1,
     "active": true,
     "subSubjects": []
   },
@@ -76,8 +17,66 @@
     "icon": "PlayCircle",
     "bg": "bg-[#EBF7EE]",
     "text": "text-green-600",
-    "serial": 6,
+    "serial": 2,
     "active": true,
     "subSubjects": []
+  },
+  {
+    "id": "pro-job-solution",
+    "name": "জব সল্যুশন",
+    "sub": "বিগত সালের  পরীক্ষার সমাধান",
+    "icon": "HelpCircle",
+    "bg": "bg-[#FFF1E6]",
+    "text": "text-orange-600",
+    "serial": 3,
+    "active": true,
+    "subSubjects": []
+  },
+  {
+    "id": "pro-question-bank",
+    "name": "প্রশ্ন ব্যাংক",
+    "sub": "বিষয়ভিত্তিক প্রশ্নপত্র",
+    "icon": "Database",
+    "bg": "bg-[#E6F0FA]",
+    "text": "text-blue-600",
+    "serial": 4,
+    "active": true,
+    "subSubjects": [
+      {
+        "id": "pro_sub_1794922865802",
+        "sub": "",
+        "name": "বিসিএস প্রশ্নব্যাংক",
+        "serial": 1,
+        "subCategories2": []
+      },
+      {
+        "id": "pro_sub_1794922907065",
+        "sub": "",
+        "name": "প্রাইমারি প্রশ্নব্যাংক",
+        "serial": 2,
+        "subCategories2": []
+      },
+      {
+        "id": "pro_sub_1794922937890",
+        "sub": "সংক্ষিপ্ত তথ্য",
+        "name": "ব্যাংক এক্সামের প্রশ্নব্যাংক",
+        "serial": 3,
+        "subCategories2": []
+      },
+      {
+        "id": "pro_sub_1794923074578",
+        "sub": "",
+        "name": "শিক্ষক নিবন্ধন  প্রশ্নব্যাংক (NTRCA)",
+        "serial": 4,
+        "subCategories2": []
+      },
+      {
+        "id": "pro_sub_1794922970922",
+        "sub": "সংক্ষিপ্ত তথ্য",
+        "name": "অন্যান্য জবের প্রশ্নব্যাংক",
+        "serial": 5,
+        "subCategories2": []
+      }
+    ]
   }
 ]

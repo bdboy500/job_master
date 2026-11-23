@@ -86,11 +86,11 @@ import {
 import Link from "next/link";
 import { QUIZ_QUESTIONS, Question, LIVE_QUIZ_ALLOWED_SUBJECTS } from "../data";
 import { getSupabase } from "../lib/supabase";
-import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isQuestionBankPaper, isQuestionBankSubject, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, incrementExamParticipantCount, subscribeToExamParticipantCounts } from "../lib/exams";
-import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages } from "../lib/packages";
-import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep } from "../lib/courses_and_subjects";
+import { fetchExamPapersFromDb, fetchExamPaperById, subscribeToExamPapers, ExamPaper, getExamStatus, sortExamPapersForDisplay, DEFAULT_EXAM_PAPERS, getCachedExamPapers, isExamPapersLoadedFromServer, isQuestionBankPaper, isQuestionBankSubject, sortQuestionBankPapers, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, incrementExamParticipantCount, subscribeToExamParticipantCounts } from "../lib/exams";
+import { PackageItem, fetchPackagesFromDb, subscribeToPackages, DEFAULT_PACKAGES, getCachedPackages, isPackagesLoadedFromServer } from "../lib/packages";
+import { CourseItem, PrepSubjectItem, ProSectionItem, DEFAULT_PRO_SECTION, getCachedCourses, getCachedPrepSubjects, getCachedProSection, fetchCoursesFromDb, fetchPrepSubjectsFromDb, fetchProSectionFromDb, subscribeToCoursesAndPrep, isCoursesLoadedFromServer, isPrepSubjectsLoadedFromServer, isProSectionLoadedFromServer } from "../lib/courses_and_subjects";
 import { JobCircularCategory, JobCircularPost, DEFAULT_JOB_CIRCULAR_CATEGORIES, getCachedJobCircularCategories, getCachedJobCircularPosts, fetchJobCircularCategoriesOnlyFromDb, fetchJobCircularsFromDb, subscribeToJobCirculars, detectCircularFileType, getCircularPreviewUrl, getCircularDownloadUrl, incrementJobCircularViewCount, postMatchesCircularCategory, getCircularPostCategoryIds, formatCircularDeadlineDisplay, getCircularDeadlineStatus, isCircularAutoExpired, getCircularPublicViewDisplay } from "../lib/job_circulars";
-import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings } from "../lib/app_settings";
+import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToAppSettings, isAppSettingsLoadedFromServer } from "../lib/app_settings";
 import { questionMatchesSearch } from "../lib/search_normalizer";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
@@ -1484,7 +1484,71 @@ export default function Home() {
         if (updatedCats && updatedCats.length > 0) setJobCircularCategories(updatedCats);
       });
 
+      // Automatic background recovery for slow mobile / Android WebView cold starts when initial fetch hit fallback
+      let isMounted = true;
+      const syncPendingDatasets = () => {
+        if (!isMounted) return;
+        if (!isExamPapersLoadedFromServer()) {
+          fetchExamPapersFromDb(true)
+            .then((papers) => {
+              if (isMounted && papers && papers.length > 0) setExamPapers(papers);
+            })
+            .catch(() => {});
+        }
+        if (!isCoursesLoadedFromServer()) {
+          fetchCoursesFromDb(true)
+            .then((courses) => {
+              if (isMounted && courses && courses.length > 0) setCoursesList(courses);
+            })
+            .catch(() => {});
+        }
+        if (!isPrepSubjectsLoadedFromServer()) {
+          fetchPrepSubjectsFromDb(true)
+            .then((prep) => {
+              if (isMounted && prep && prep.length > 0) setPrepSubjectsList(prep);
+            })
+            .catch(() => {});
+        }
+        if (!isProSectionLoadedFromServer()) {
+          fetchProSectionFromDb(true)
+            .then((pro) => {
+              if (isMounted && pro && pro.length > 0) setProSectionList(pro);
+            })
+            .catch(() => {});
+        }
+        if (!isPackagesLoadedFromServer()) {
+          fetchPackagesFromDb(true)
+            .then((pkgs) => {
+              if (isMounted && pkgs && pkgs.length > 0) setPackagesList(pkgs);
+            })
+            .catch(() => {});
+        }
+        if (!isAppSettingsLoadedFromServer()) {
+          fetchAppSettingsFromDb(true)
+            .then((settings) => {
+              if (isMounted && settings) setAppSettings(settings);
+            })
+            .catch(() => {});
+        }
+      };
+
+      const retryTimers = [3500, 9000, 20000].map((delayMs) =>
+        setTimeout(() => {
+          syncPendingDatasets();
+        }, delayMs)
+      );
+
+      const handlePageShow = (e: PageTransitionEvent) => {
+        if (e.persisted) {
+          syncPendingDatasets();
+        }
+      };
+      window.addEventListener("pageshow", handlePageShow);
+
       return () => {
+        isMounted = false;
+        retryTimers.forEach((t) => clearTimeout(t));
+        window.removeEventListener("pageshow", handlePageShow);
         if (unsubscribe) unsubscribe();
         if (unsubExamParticipants) unsubExamParticipants();
         if (unsubPkgs) unsubPkgs();

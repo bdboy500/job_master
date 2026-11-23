@@ -62,6 +62,7 @@ const LOCAL_STORAGE_KEY = "jobmaster_app_settings_cache";
 let memorySettingsCache: AppSettings | null = null;
 let settingsInFlightPromise: Promise<AppSettings> | null = null;
 let lastFetchedAt = 0;
+let hasRealSettingsLoaded = false;
 let broadcastChannel: BroadcastChannel | null = null;
 
 if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
@@ -70,10 +71,15 @@ if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
   } catch (e) {}
 }
 
+export function isAppSettingsLoadedFromServer(): boolean {
+  return hasRealSettingsLoaded;
+}
+
 export function invalidateAppSettingsCache() {
   memorySettingsCache = null;
   settingsInFlightPromise = null;
   lastFetchedAt = 0;
+  hasRealSettingsLoaded = false;
 }
 
 export function getCachedAppSettings(): AppSettings {
@@ -98,7 +104,7 @@ export function getCachedAppSettings(): AppSettings {
 export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppSettings> {
   const now = Date.now();
   // Low egress caching: Reuse cache if refreshed within last 5 seconds unless forced
-  if (!forceRefresh && memorySettingsCache && (now - lastFetchedAt < 5000)) {
+  if (!forceRefresh && hasRealSettingsLoaded && memorySettingsCache && (now - lastFetchedAt < 5000)) {
     return memorySettingsCache;
   }
 
@@ -110,15 +116,19 @@ export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppS
 
   settingsInFlightPromise = (async () => {
     try {
-      // 1. Try direct Supabase query first
+      // 1. Try direct Supabase query first with timeout guard
       try {
         const supabase = getSupabase();
         if (supabase) {
-          const { data, error } = await supabase
+          const sbPromise = supabase
             .from("app_config")
             .select("value")
             .eq("key", "home_display_settings")
             .maybeSingle();
+          const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+            setTimeout(() => resolve({ data: null, error: new Error("Settings timeout") }), 8000)
+          );
+          const { data, error } = await Promise.race([sbPromise, timeoutPromise]);
 
           if (!error && data && data.value && typeof data.value.ourCoursesHomeLimit === "number") {
             const merged: AppSettings = {
@@ -131,6 +141,7 @@ export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppS
             };
             memorySettingsCache = merged;
             lastFetchedAt = Date.now();
+            hasRealSettingsLoaded = true;
             if (typeof window !== "undefined") {
               try {
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
@@ -143,18 +154,27 @@ export async function fetchAppSettingsFromDb(forceRefresh = false): Promise<AppS
         console.warn("Direct Supabase settings fetch note:", e);
       }
 
-      // 2. Next try API endpoint
+      // 2. Next try API endpoint with timeout guard
       try {
-        const res = await fetch("/api/app-settings", { cache: "no-store" });
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 8000) : null;
+        const res = await fetch("/api/app-settings", {
+          cache: "no-store",
+          ...(controller ? { signal: controller.signal } : {})
+        });
+        if (timer) clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
           if (data && data.settings && typeof data.settings.ourCoursesHomeLimit === "number") {
-            memorySettingsCache = data.settings;
-            lastFetchedAt = Date.now();
-            if (typeof window !== "undefined") {
-              try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.settings));
-              } catch (e) {}
+            if (data.source !== "default") {
+              memorySettingsCache = data.settings;
+              lastFetchedAt = Date.now();
+              hasRealSettingsLoaded = true;
+              if (typeof window !== "undefined") {
+                try {
+                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.settings));
+                } catch (e) {}
+              }
             }
             return data.settings;
           }

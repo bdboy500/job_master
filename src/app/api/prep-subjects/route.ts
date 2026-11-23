@@ -11,6 +11,11 @@ const TMP_CACHE_FILE = path.join("/tmp", "jobmaster_prep_subjects_cache.json");
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_prep_subjects_v2";
 
 let memoryPrepCache: PrepSubjectItem[] | null = null;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 function loadFromDiskFile(filePath: string): PrepSubjectItem[] | null {
   try {
@@ -41,7 +46,10 @@ function saveToDiskFile(filePath: string, prepSubjects: PrepSubjectItem[]) {
 
 async function loadFromKvStore(): Promise<PrepSubjectItem[] | null> {
   try {
-    const res = await fetch(CLOUD_KV_URL, { cache: "no-store" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(CLOUD_KV_URL, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -134,7 +142,7 @@ export async function GET() {
           memoryPrepCache = configMapped;
           saveToKvStore(configMapped);
           saveToDiskFile(TMP_CACHE_FILE, configMapped);
-          return NextResponse.json({ prepSubjects: configMapped, source: "supabase_app_config" });
+          return NextResponse.json({ prepSubjects: configMapped, source: "supabase_app_config" }, { headers: NO_STORE_HEADERS });
         }
 
         // Priority B: app_prep_subjects table
@@ -150,7 +158,7 @@ export async function GET() {
           memoryPrepCache = mapped;
           saveToKvStore(mapped);
           saveToDiskFile(TMP_CACHE_FILE, mapped);
-          return NextResponse.json({ prepSubjects: mapped, source: "supabase" });
+          return NextResponse.json({ prepSubjects: mapped, source: "supabase" }, { headers: NO_STORE_HEADERS });
         }
       }
     } catch (sbErr) {
@@ -163,12 +171,12 @@ export async function GET() {
       const normalized = kvCached.map(mapPrepItem);
       memoryPrepCache = normalized;
       saveToDiskFile(TMP_CACHE_FILE, normalized);
-      return NextResponse.json({ prepSubjects: normalized, source: "kv" });
+      return NextResponse.json({ prepSubjects: normalized, source: "kv" }, { headers: NO_STORE_HEADERS });
     }
 
     // 3. Memory Cache (Warm Lambda)
     if (memoryPrepCache && memoryPrepCache.length > 0) {
-      return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" });
+      return NextResponse.json({ prepSubjects: memoryPrepCache, source: "memory" }, { headers: NO_STORE_HEADERS });
     }
 
     // 4. Temporary /tmp Cache
@@ -176,15 +184,15 @@ export async function GET() {
     if (tmpCached && tmpCached.length > 0) {
       const normalized = tmpCached.map(mapPrepItem);
       memoryPrepCache = normalized;
-      return NextResponse.json({ prepSubjects: normalized, source: "tmp_file" });
+      return NextResponse.json({ prepSubjects: normalized, source: "tmp_file" }, { headers: NO_STORE_HEADERS });
     }
 
     // 5. Default Fallback
     const projectCached = loadFromDiskFile(PROJECT_DATA_FILE);
     const finalFallback = (projectCached && projectCached.length > 0) ? projectCached : DEFAULT_PREP_SUBJECTS;
-    return NextResponse.json({ prepSubjects: finalFallback, source: "default" });
+    return NextResponse.json({ prepSubjects: finalFallback, source: "default" }, { headers: NO_STORE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to fetch prep subjects" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Failed to fetch prep subjects" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
 

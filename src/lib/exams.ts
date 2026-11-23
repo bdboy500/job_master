@@ -390,6 +390,12 @@ export const DEFAULT_EXAM_PAPERS: ExamPaper[] = [
   }
 ];
 
+function isDefaultDemoExamList(papers: ExamPaper[]): boolean {
+  if (!Array.isArray(papers) || papers.length !== DEFAULT_EXAM_PAPERS.length) return false;
+  const defaultIds = new Set(DEFAULT_EXAM_PAPERS.map((p) => p.id));
+  return papers.every((p) => defaultIds.has(p?.id));
+}
+
 export function getCachedExamPapers(): ExamPaper[] {
   if (typeof window !== "undefined") {
     const cached = localStorage.getItem("job_master_exam_papers");
@@ -397,7 +403,11 @@ export function getCachedExamPapers(): ExamPaper[] {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          if (isDefaultDemoExamList(parsed)) {
+            localStorage.removeItem("job_master_exam_papers");
+          } else {
+            return parsed;
+          }
         }
       } catch (e) {
         console.error("Failed parsing cached exam papers:", e);
@@ -409,14 +419,44 @@ export function getCachedExamPapers(): ExamPaper[] {
 
 let examPapersInFlightPromise: Promise<ExamPaper[]> | null = null;
 let examPapersMemoryCache: ExamPaper[] | null = null;
+let hasRealExamPapersLoaded = false;
+
+export function isExamPapersLoadedFromServer(): boolean {
+  return hasRealExamPapersLoaded;
+}
 
 export function invalidateExamPapersCache() {
   examPapersMemoryCache = null;
   examPapersInFlightPromise = null;
+  hasRealExamPapersLoaded = false;
+}
+
+async function fetchExamPapersViaOriginApi(timeoutMs = 8000): Promise<ExamPaper[] | null> {
+  if (typeof window === "undefined") return null;
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch("/api/exam-papers", {
+      method: "GET",
+      cache: "no-store",
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json?.papers) && json.papers.length > 0 && json.source !== "empty") {
+        return json.papers.map((item: any) => parseRawExamPaper(item));
+      }
+    }
+  } catch (e) {
+    console.warn("Origin /api/exam-papers fetch note:", e);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+  return null;
 }
 
 export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamPaper[]> {
-  if (!forceRefresh && examPapersMemoryCache && examPapersMemoryCache.length > 0) {
+  if (!forceRefresh && hasRealExamPapersLoaded && examPapersMemoryCache && examPapersMemoryCache.length > 0) {
     return examPapersMemoryCache;
   }
 
@@ -432,7 +472,11 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
         try {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            localPapers = parsed;
+            if (isDefaultDemoExamList(parsed)) {
+              localStorage.removeItem("job_master_exam_papers");
+            } else {
+              localPapers = parsed;
+            }
           }
         } catch (e) {
           console.error("Failed parsing cached exam papers:", e);
@@ -440,37 +484,75 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
       }
     }
 
+    const sortAndCommitRealPapers = (papers: ExamPaper[]): ExamPaper[] => {
+      papers.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("job_master_exam_papers", JSON.stringify(papers));
+        } catch (e) {}
+      }
+      examPapersMemoryCache = papers;
+      hasRealExamPapersLoaded = true;
+      return papers;
+    };
+
     try {
+      // Try direct Supabase first; if it takes >2.5s or fails/empties (common in Android WebView slow networks),
+      // also query same-origin /api/exam-papers which reuses WebView's already-open connection.
       const supabase = getSupabase();
-      if (supabase) {
-        // Fetch ONLY lightweight metadata for homepage cards (excluding heavy 'questions' column)
-        const supabasePromise = supabase
-          .from("exam_papers")
-          .select("id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, sub_subject, category_type");
-        
-        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
-          setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 2500)
-        );
+      let apiPromise: Promise<ExamPaper[] | null> | null = null;
+      let hedgeTimer: ReturnType<typeof setTimeout> | null = null;
 
-        const { data, error } = await Promise.race([supabasePromise, timeoutPromise]);
-        
-        if (!error && data && Array.isArray(data) && data.length > 0) {
-          const parsedSupabaseData: ExamPaper[] = data.map((item: any) => parseRawExamPaper(item));
-
-          // Sort parsedSupabaseData by updatedAt / createdAt descending
-          parsedSupabaseData.sort((a, b) => {
-            const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-            const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-            return timeB - timeA;
-          });
-
-          // Store in memory cache
-          if (typeof window !== "undefined") {
-            localStorage.setItem("job_master_exam_papers", JSON.stringify(parsedSupabaseData));
-          }
-          examPapersMemoryCache = parsedSupabaseData;
-          return parsedSupabaseData;
+      const triggerOriginFallback = () => {
+        if (!apiPromise) {
+          apiPromise = fetchExamPapersViaOriginApi(8000);
         }
+        return apiPromise;
+      };
+
+      if (supabase) {
+        hedgeTimer = setTimeout(() => {
+          triggerOriginFallback();
+        }, 2500);
+
+        try {
+          const supabasePromise = supabase
+            .from("exam_papers")
+            .select(
+              "id, title, course, exam_type, subject, question_count, time_per_question, total_duration, total_marks, topic, exam_date, status, created_at, sub_subject, category_type"
+            );
+
+          const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+            setTimeout(() => resolve({ data: null, error: new Error("Network Timeout") }), 8000)
+          );
+
+          const { data, error } = await Promise.race([supabasePromise, timeoutPromise]);
+          if (hedgeTimer) {
+            clearTimeout(hedgeTimer);
+            hedgeTimer = null;
+          }
+
+          if (!error && data && Array.isArray(data) && data.length > 0) {
+            const parsedSupabaseData: ExamPaper[] = data.map((item: any) => parseRawExamPaper(item));
+            return sortAndCommitRealPapers(parsedSupabaseData);
+          }
+        } catch (sbErr) {
+          if (hedgeTimer) {
+            clearTimeout(hedgeTimer);
+            hedgeTimer = null;
+          }
+          console.warn("Direct Supabase exam papers query note:", sbErr);
+        }
+      }
+
+      // Secondary / Android WebView rescue via same-origin API
+      const originPapers = await triggerOriginFallback();
+      if (originPapers && originPapers.length > 0) {
+        return sortAndCommitRealPapers(originPapers);
       }
     } catch (err) {
       console.warn("Falling back to local exam papers:", err);
@@ -488,10 +570,7 @@ export async function fetchExamPapersFromDb(forceRefresh = false): Promise<ExamP
       return localPapers;
     }
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("job_master_exam_papers", JSON.stringify(DEFAULT_EXAM_PAPERS));
-    }
-    examPapersMemoryCache = DEFAULT_EXAM_PAPERS;
+    // Never poison localStorage or examPapersMemoryCache with DEFAULT_EXAM_PAPERS!
     return DEFAULT_EXAM_PAPERS;
   })();
 
@@ -800,8 +879,18 @@ export function subscribeToExamPapers(onUpdate: (papers: ExamPaper[]) => void) {
     }
   };
 
+  const handleRecover = () => {
+    if (document.visibilityState === "hidden") return;
+    if (!hasRealExamPapersLoaded) {
+      fetchExamPapersFromDb(true).then(onUpdate).catch(() => {});
+    }
+  };
+
   window.addEventListener("jobmaster_exam_papers_updated", handleUpdate);
   window.addEventListener("storage", handleUpdate);
+  window.addEventListener("online", handleRecover);
+  window.addEventListener("focus", handleRecover);
+  document.addEventListener("visibilitychange", handleRecover);
 
   let supabaseChannel: any = null;
   let supabaseRef: any = null;
@@ -837,6 +926,9 @@ export function subscribeToExamPapers(onUpdate: (papers: ExamPaper[]) => void) {
     }
     window.removeEventListener("jobmaster_exam_papers_updated", handleUpdate);
     window.removeEventListener("storage", handleUpdate);
+    window.removeEventListener("online", handleRecover);
+    window.removeEventListener("focus", handleRecover);
+    document.removeEventListener("visibilitychange", handleRecover);
   };
 }
 
