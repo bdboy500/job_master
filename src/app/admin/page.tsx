@@ -2397,9 +2397,7 @@ export default function AdminPage() {
 
     const toBnDigit = (n: number) => n.toString().replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[+d]);
     const existingWeeklyCount = examPapers.filter(p => p.categoryType === "weekly_model_test").length;
-    const autoWeeklyTitle = paperTopic.trim()
-      ? (paperTopic.trim().includes("সাপ্তাহিক মডেল টেস্ট") ? paperTopic.trim() : `সাপ্তাহিক মডেল টেস্ট - ${paperTopic.trim()}`)
-      : `সাপ্তাহিক মডেল টেস্ট - ${toBnDigit(existingWeeklyCount + 1)}`;
+    const autoWeeklyTitle = `সাপ্তাহিক মডেল টেস্ট - ${toBnDigit(existingWeeklyCount + 1)}`;
     const finalTitle = paperCategoryType === "weekly_model_test"
       ? (paperTitle.trim() || autoWeeklyTitle)
       : paperTitle.trim();
@@ -5547,31 +5545,41 @@ export default function AdminPage() {
 
                   {/* Form fields */}
                   <div className="space-y-4">
-                    {/* 1. Exam Title (Hidden for Weekly Model Test) */}
-                    {paperCategoryType !== "weekly_model_test" && (
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                          ১. পরীক্ষার নাম (Exam Title) *
-                        </label>
-                        <input 
-                          type="text"
-                          placeholder="যেমন: Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস"
-                          value={paperTitle}
-                          onChange={(e) => setPaperTitle(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
-                          required
-                        />
-                      </div>
-                    )}
-
-                    {/* 2. Topic */}
+                    {/* 1. Exam Title */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
-                        ২. টপিক / বিষয় বিবরণ (Topic)
+                        {paperCategoryType === "weekly_model_test"
+                          ? "১. পরীক্ষার নাম (Exam Title - ঐচ্ছিক)"
+                          : "১. পরীক্ষার নাম (Exam Title) *"}
                       </label>
                       <input 
                         type="text"
-                        placeholder={paperCategoryType === "weekly_model_test" ? 'যেমন: সকল চাকরির সাপ্তাহিক মডেল টেস্ট - ০১ (সিলেবাস)' : 'যেমন: "Award Mania" এর জন্য প্রযোজ্য'}
+                        placeholder={
+                          paperCategoryType === "weekly_model_test"
+                            ? "যেমন: সাপ্তাহিক মডেল টেস্ট - ০১ (খালি রাখলে অটো নাম হবে)"
+                            : "যেমন: Live MCQ ফ্রি সাপ্তাহিক ফুল মডেল টেস্ট: বিসিএস"
+                        }
+                        value={paperTitle}
+                        onChange={(e) => setPaperTitle(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
+                        required={paperCategoryType !== "weekly_model_test"}
+                      />
+                    </div>
+
+                    {/* 2. Topic (Separate optional option for all categories including Weekly Model Test) */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase block pl-1">
+                        {paperCategoryType === "weekly_model_test"
+                          ? "২. টপিক (Topic - ঐচ্ছিক)"
+                          : "২. টপিক / বিষয় বিবরণ (Topic)"}
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder={
+                          paperCategoryType === "weekly_model_test"
+                            ? 'যেমন: বাংলা, ইংরেজি ও সাধারণ জ্ঞান (খালি রাখলে কার্ডে "টপিক:" দেখাবে না)'
+                            : 'যেমন: "Award Mania" এর জন্য প্রযোজ্য'
+                        }
                         value={paperTopic}
                         onChange={(e) => setPaperTopic(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 focus:border-[#FF6A00] focus:ring-2 focus:ring-[#FF6A00]/20 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none transition-all text-slate-800"
@@ -12247,7 +12255,9 @@ CREATE INDEX IF NOT EXISTS idx_quiz_scores_all_time ON public.quiz_scores(all_ti
                     </span>
                   </div>
                   <h2 className="text-lg sm:text-xl font-black text-white">{viewingExamPaper.title}</h2>
-                  {viewingExamPaper.topic && <p className="text-xs text-purple-200 font-medium">টপিক: {viewingExamPaper.topic}</p>}
+                  {viewingExamPaper.topic && viewingExamPaper.topic.trim() !== "" && (
+                    <p className="text-xs text-purple-200 font-medium">টপিক: {viewingExamPaper.topic}</p>
+                  )}
                 </div>
 
                 <button

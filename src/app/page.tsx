@@ -10569,9 +10569,9 @@ export default function Home() {
                 </div>
               </div>
 
-              {selectedLiveExamModal.topic && (
+              {selectedLiveExamModal.topic && selectedLiveExamModal.topic.trim() !== "" && (
                 <div className="p-3 bg-orange-50/70 border border-orange-100 rounded-2xl text-xs font-semibold text-slate-700 space-y-0.5">
-                  <span className="font-black text-[#FF6A00] block text-[11px]">সিলেবাস / বিষয়বস্তু:</span>
+                  <span className="font-black text-[#FF6A00] block text-[11px]">টপিক / বিষয়বস্তু:</span>
                   <p>{selectedLiveExamModal.topic}</p>
                 </div>
               )}
