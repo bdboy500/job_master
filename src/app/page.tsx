@@ -5563,7 +5563,7 @@ export default function Home() {
                                   <div
                                     key={paper.id}
                                     onClick={() => handleOpenViewPaper(paper)}
-                                    className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3 text-left"
+                                    className="bg-white border-[1.5px] border-orange-300/85 hover:border-[#FF6A00] rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-[0_6px_18px_-4px_rgba(15,23,42,0.1),0_2px_6px_-1px_rgba(255,106,0,0.08)] hover:shadow-[0_10px_24px_-4px_rgba(255,106,0,0.18)] transition-all cursor-pointer group space-y-3 text-left"
                                   >
                                     <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">
                                       <MathRenderer content={paper.title} />
@@ -6041,7 +6041,7 @@ export default function Home() {
                           <div
                             key={paper.id}
                             onClick={() => handleOpenViewPaper(paper)}
-                            className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3 text-left"
+                            className="bg-white border-[1.5px] border-orange-300/85 hover:border-[#FF6A00] rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-[0_6px_18px_-4px_rgba(15,23,42,0.1),0_2px_6px_-1px_rgba(255,106,0,0.08)] hover:shadow-[0_10px_24px_-4px_rgba(255,106,0,0.18)] transition-all cursor-pointer group space-y-3 text-left"
                           >
                             {/* Top Row: Title */}
                             <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">

@@ -38,6 +38,36 @@ export const QB_MONTH_NAMES = [
   "December"
 ] as const;
 
+export const QB_MONTH_NAMES_BN = [
+  "জানুয়ারি",
+  "ফেব্রুয়ারি",
+  "মার্চ",
+  "এপ্রিল",
+  "মে",
+  "জুন",
+  "জুলাই",
+  "আগস্ট",
+  "সেপ্টেম্বর",
+  "অক্টোবর",
+  "নভেম্বর",
+  "ডিসেম্বর"
+] as const;
+
+const QB_MONTH_BN_ALIASES: ReadonlyArray<readonly string[]> = [
+  ["জানুয়ারি", "জানুয়ারি", "জানুয়ারী", "জানু"],
+  ["ফেব্রুয়ারি", "ফেব্রুয়ারি", "ফেব্রুয়ারী", "ফেব্রু"],
+  ["মার্চ"],
+  ["এপ্রিল"],
+  ["মে"],
+  ["জুন"],
+  ["জুলাই"],
+  ["আগস্ট", "আগষ্ট", "অগাস্ট", "অগষ্ট"],
+  ["সেপ্টেম্বর", "সেপ্টেম্বার", "সেপ্টে"],
+  ["অক্টোবর", "অক্টবর", "অক্টো"],
+  ["নভেম্বর", "নবেম্বর", "নভেম্বার", "নবেম্বার"],
+  ["ডিসেম্বর", "ডিসেম্বার"]
+];
+
 const BN_DIGITS_MAP = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
 
 export function toBanglaDigits(val: string | number): string {
@@ -106,12 +136,22 @@ export function formatQuestionBankDisplayDate(year: number | string, month?: num
     const num = Number(toEnglishDigits(mStr));
     let monthName = "";
     if (!isNaN(num) && num >= 1 && num <= 12) {
-      monthName = QB_MONTH_NAMES[num - 1];
+      monthName = QB_MONTH_NAMES_BN[num - 1];
     } else {
-      const matched = QB_MONTH_NAMES.find(
-        (m) => m.toLowerCase() === mStr.toLowerCase() || m.toLowerCase().startsWith(mStr.toLowerCase().slice(0, 3))
+      const mLow = mStr.toLowerCase();
+      const enIdx = QB_MONTH_NAMES.findIndex(
+        (m) => m.toLowerCase() === mLow || m.toLowerCase().startsWith(mLow.slice(0, 3))
       );
-      if (matched) monthName = matched;
+      if (enIdx >= 0) {
+        monthName = QB_MONTH_NAMES_BN[enIdx];
+      } else {
+        const bnIdx = QB_MONTH_BN_ALIASES.findIndex((aliases) =>
+          aliases.some((a) => a === mStr || mStr.includes(a))
+        );
+        if (bnIdx >= 0) {
+          monthName = QB_MONTH_NAMES_BN[bnIdx];
+        }
+      }
     }
     if (monthName && yearBn) return `${monthName} ${yearBn}`;
     if (monthName) return monthName;
@@ -127,12 +167,17 @@ export function parseQuestionBankDateInfo(paper: Partial<ExamPaper>): { year: nu
   let year = 0;
   let month = 0;
 
-  // Match month name in examDate
+  // Match English or Bangla month name in examDate
   const lowDate = rawDateClean.toLowerCase();
   for (let i = 0; i < QB_MONTH_NAMES.length; i++) {
     const full = QB_MONTH_NAMES[i].toLowerCase();
     const abbr = full.slice(0, 3);
-    if (lowDate.includes(full) || new RegExp(`\\b${abbr}\\b`, "i").test(lowDate)) {
+    const bnAliases = QB_MONTH_BN_ALIASES[i];
+    if (
+      lowDate.includes(full) ||
+      new RegExp(`\\b${abbr}\\b`, "i").test(lowDate) ||
+      bnAliases.some((a) => rawDateClean.includes(a))
+    ) {
       month = i + 1;
       break;
     }

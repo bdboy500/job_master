@@ -91,7 +91,7 @@ import {
   deleteUserProfileFromDb, 
   UserProfile 
 } from "../../lib/user_profiles";
-import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, isQuestionBankSubject, QUESTION_BANK_SUBJECT, QUESTION_BANK_SUBJECT_VARIANTS, QB_MONTH_NAMES, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, subscribeToExamParticipantCounts } from "../../lib/exams";
+import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, isQuestionBankSubject, QUESTION_BANK_SUBJECT, QUESTION_BANK_SUBJECT_VARIANTS, QB_MONTH_NAMES, QB_MONTH_NAMES_BN, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, subscribeToExamParticipantCounts } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { PaymentTransaction, UserSubscription, SUBSCRIPTIONS_BKASH_SUPABASE_SQL, formatSubscriptionDateBn } from "../../lib/subscriptions";
 import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
@@ -6932,8 +6932,8 @@ export default function AdminPage() {
                           className="w-full bg-white border border-slate-200 focus:border-[#FF6A00] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
                         >
                           <option value="">মাস ছাড়া (শুধু সাল)</option>
-                          {QB_MONTH_NAMES.map((m) => (
-                            <option key={m} value={m}>{m}</option>
+                          {QB_MONTH_NAMES.map((m, idx) => (
+                            <option key={m} value={m}>{QB_MONTH_NAMES_BN[idx]} ({m})</option>
                           ))}
                         </select>
                       </div>
