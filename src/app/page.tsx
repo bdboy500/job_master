@@ -5559,55 +5559,36 @@ export default function Home() {
                                 ? formatQuestionBankDisplayDate(dateInfo.year, dateInfo.month > 0 ? dateInfo.month : undefined)
                                 : (paper.examDate || "");
 
-                              return (
-                                <div
-                                  key={paper.id}
-                                  onClick={() => handleOpenViewPaper(paper)}
-                                  className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3.5 text-left"
-                                >
-                                  <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">
-                                    <MathRenderer content={paper.title} />
-                                  </h4>
+                                return (
+                                  <div
+                                    key={paper.id}
+                                    onClick={() => handleOpenViewPaper(paper)}
+                                    className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3 text-left"
+                                  >
+                                    <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">
+                                      <MathRenderer content={paper.title} />
+                                    </h4>
 
-                                  <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
-                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                                      <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black whitespace-nowrap">
-                                        <Clock className="w-3 h-3 shrink-0" />
-                                        <span>{toBanglaDigits(durationMins)} মিনিট</span>
-                                      </span>
-                                      <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black whitespace-nowrap">
-                                        <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
-                                      </span>
-                                    </div>
-
-                                    {displayDate && (
-                                      <div className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-500 min-w-0">
-                                        <Calendar className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
-                                        <span className="truncate whitespace-nowrap">{displayDate}</span>
+                                    <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
+                                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                        <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-orange-300/90 bg-orange-50/70 text-[#FF6A00] text-[11px] sm:text-xs font-black whitespace-nowrap">
+                                          <Clock className="w-3 h-3 shrink-0" />
+                                          <span>{toBanglaDigits(durationMins)} মিনিট</span>
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-300/90 bg-emerald-50/70 text-emerald-700 text-[11px] sm:text-xs font-black whitespace-nowrap">
+                                          <span>{toBanglaDigits(qCount)}টি প্রশ্ন</span>
+                                        </span>
                                       </div>
-                                    )}
-                                  </div>
 
-                                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenViewPaper(paper)}
-                                      className="py-2 px-3 bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] border border-orange-300/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
-                                    >
-                                      <FileText className="w-3.5 h-3.5" />
-                                      <span>প্রশ্নপত্র দেখুন</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenTakeExam(paper)}
-                                      className="py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
-                                    >
-                                      <Play className="w-3.5 h-3.5 fill-current" />
-                                      <span>পরীক্ষা দিন</span>
-                                    </button>
+                                      {displayDate && (
+                                        <div className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-500 min-w-0">
+                                          <Calendar className="w-3.5 h-3.5 text-[#FF6A00] shrink-0" />
+                                          <span className="truncate whitespace-nowrap">{displayDate}</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
+                                );
                             })}
                           </div>
                         );
@@ -6060,7 +6041,7 @@ export default function Home() {
                           <div
                             key={paper.id}
                             onClick={() => handleOpenViewPaper(paper)}
-                            className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3.5 text-left"
+                            className="bg-white border border-orange-100/90 hover:border-[#FF6A00]/50 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group space-y-3 text-left"
                           >
                             {/* Top Row: Title */}
                             <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-[#FF6A00] transition-colors">
@@ -6085,29 +6066,6 @@ export default function Home() {
                                   <span className="truncate whitespace-nowrap">{displayDate}</span>
                                 </div>
                               )}
-                            </div>
-
-                            {/* Bottom Row: প্রশ্নপত্র দেখুন + পরীক্ষা দিন */}
-                            <div
-                              className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => handleOpenViewPaper(paper)}
-                                className="py-2 px-3 bg-orange-50/70 hover:bg-orange-100/80 text-[#FF6A00] border border-orange-300/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                <span>প্রশ্নপত্র দেখুন</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenTakeExam(paper)}
-                                className="py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/90 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
-                              >
-                                <Play className="w-3.5 h-3.5 fill-current" />
-                                <span>পরীক্ষা দিন</span>
-                              </button>
                             </div>
                           </div>
                         );
