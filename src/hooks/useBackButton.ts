@@ -286,6 +286,7 @@ export function useAppNavigationHistory(
     prepSubjectOrigin?: string;
     activeQuizTitle?: string;
     searchQuery?: string;
+    selectedCircularPost?: any;
   },
   handlers: {
     setCurrentScreen: (s: any) => void;
@@ -318,6 +319,8 @@ export function useAppNavigationHistory(
     setSelectedPurchasePkg?: (pkg: any) => void;
     setQuizStarted?: (started: boolean) => void;
     handleResetQuizToHome?: () => void;
+    setSelectedCircularPost?: (post: any) => void;
+    onBackNavigate?: () => void;
   }
 ) {
   const isPopstateHandlingRef = useRef<boolean>(false);
@@ -355,6 +358,7 @@ export function useAppNavigationHistory(
     navState.archiveModalOpen ? "archive_open" : "",
     navState.quickToolModal ? "quicktool_open" : "",
     navState.selectedPurchasePkg ? `pkg_${navState.selectedPurchasePkg.id || "open"}` : "",
+    navState.selectedCircularPost ? `circular_${navState.selectedCircularPost.id || "open"}` : "",
     (navState.quizStarted && !navState.isCompleted && !navState.isSubmitted && !navState.isTimedOut) ? "quiz_playing" : (navState.isCompleted ? "quiz_completed" : ""),
   ].join("|");
 
@@ -623,12 +627,20 @@ export function useAppNavigationHistory(
       }
 
       // 10. SCREEN HIERARCHY & SUB-VIEW BACK NAVIGATION (1-by-1)
+      if (navState.currentScreen === "job-circulars" && navState.selectedCircularPost) {
+        handlers.onBackNavigate?.();
+        if (handlers.setSelectedCircularPost) handlers.setSelectedCircularPost(null);
+        return;
+      }
+
       if (navState.activeExamSection) {
+        handlers.onBackNavigate?.();
         if (handlers.setActiveExamSection) handlers.setActiveExamSection(null);
         return;
       }
 
       if (navState.currentScreen === "quiz") {
+        handlers.onBackNavigate?.();
         if (handlers.setQuizStarted) {
           handlers.setQuizStarted(false);
         }
@@ -646,6 +658,7 @@ export function useAppNavigationHistory(
         } else if (navState.selectedLevel3Topic) {
           if (handlers.setSelectedLevel3Topic) handlers.setSelectedLevel3Topic(null);
         } else {
+          handlers.onBackNavigate?.();
           const dest = (navState.previousScreen && navState.previousScreen !== "prep-sub-detail")
             ? navState.previousScreen
             : "prep-sub";
@@ -655,12 +668,14 @@ export function useAppNavigationHistory(
       }
 
       if (navState.currentScreen === "prep-sub") {
+        handlers.onBackNavigate?.();
         const dest = navState.prepSubjectOrigin || "courses";
         handlers.setCurrentScreen(dest);
         return;
       }
 
       if (navState.currentScreen === "course-detail") {
+        handlers.onBackNavigate?.();
         const dest = (navState.previousScreen && navState.previousScreen !== "course-detail")
           ? navState.previousScreen
           : (navState.courseOriginScreen || "courses");
@@ -669,6 +684,7 @@ export function useAppNavigationHistory(
       }
 
       if (navState.currentScreen === "auth") {
+        handlers.onBackNavigate?.();
         const dest = (navState.previousScreen && navState.previousScreen !== "auth")
           ? navState.previousScreen
           : "home";
@@ -690,10 +706,12 @@ export function useAppNavigationHistory(
         navState.currentScreen === "cv-maker" ||
         navState.currentScreen === "all-live-exams" ||
         navState.currentScreen === "rankings" ||
+        navState.currentScreen === "daily-quick-test" ||
         navState.currentScreen === "privacy-policy" ||
         navState.currentScreen === "privacy" ||
         navState.currentScreen === "contact"
       ) {
+        handlers.onBackNavigate?.();
         handlers.setCurrentScreen("home");
         return;
       }

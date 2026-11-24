@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import MathRenderer from "@/src/components/MathRenderer";
 import { submitLiveQuizScore } from "@/src/lib/leaderboard";
@@ -892,7 +892,18 @@ export default function Home() {
   const [isPageHidden, setIsPageHidden] = useState<boolean>(false);
   const isCompleted = quizStarted && questions.length > 0 && currentQuestionIndex >= questions.length;
 
+  const mainScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollPositionsRef = useRef<Record<string, number>>({});
+  const activeViewKeyRef = useRef<string>("home");
+  const shouldRestoreNextScrollRef = useRef<boolean>(false);
+  const isProgrammaticScrollRef = useRef<boolean>(false);
+
+  const markBackNavigation = useCallback(() => {
+    shouldRestoreNextScrollRef.current = true;
+  }, []);
+
   const handleResetQuizToHome = useCallback(() => {
+    shouldRestoreNextScrollRef.current = true;
     setQuizStarted(false);
     setLoading(false);
     setIsTimedOut(false);
@@ -966,6 +977,7 @@ export default function Home() {
       previousScreen,
       courseOriginScreen,
       prepSubjectOrigin,
+      selectedCircularPost,
     },
     {
       setCurrentScreen,
@@ -998,8 +1010,87 @@ export default function Home() {
       setSelectedPurchasePkg,
       setQuizStarted,
       handleResetQuizToHome,
+      setSelectedCircularPost,
+      onBackNavigate: markBackNavigation,
     }
   );
+
+  const viewScrollKey = useMemo(() => {
+    if (currentScreen === "course-detail") {
+      const cId = selectedCourseDetail?.id || selectedCourseId || "none";
+      return activeExamSection ? `course-detail:${cId}:sec:${activeExamSection}` : `course-detail:${cId}`;
+    }
+    if (currentScreen === "prep-sub") {
+      const sub = selectedPrepSubject || "none";
+      return activeExamSection ? `prep-sub:${sub}:sec:${activeExamSection}` : `prep-sub:${sub}`;
+    }
+    if (currentScreen === "prep-sub-detail") {
+      const sub = selectedPrepSubject || "none";
+      const sub2 = selectedPrepSubSubject?.id || selectedPrepSubSubject?.name || "none";
+      return `prep-sub-detail:${sub}:${sub2}`;
+    }
+    if (currentScreen === "job-circulars") {
+      return selectedCircularPost
+        ? `job-circulars:detail:${selectedCircularPost.id}`
+        : "job-circulars:list";
+    }
+    return currentScreen;
+  }, [
+    currentScreen,
+    selectedCourseDetail?.id,
+    selectedCourseId,
+    activeExamSection,
+    selectedPrepSubject,
+    selectedPrepSubSubject?.id,
+    selectedPrepSubSubject?.name,
+    selectedCircularPost?.id,
+  ]);
+
+  const handleMainContainerScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isProgrammaticScrollRef.current) return;
+    const key = activeViewKeyRef.current;
+    if (key) {
+      scrollPositionsRef.current[key] = e.currentTarget.scrollTop;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = mainScrollContainerRef.current;
+    if (!el) return;
+
+    const isRestoring = shouldRestoreNextScrollRef.current;
+    shouldRestoreNextScrollRef.current = false;
+    activeViewKeyRef.current = viewScrollKey;
+
+    const targetY = isRestoring ? (scrollPositionsRef.current[viewScrollKey] ?? 0) : 0;
+    if (!isRestoring) {
+      scrollPositionsRef.current[viewScrollKey] = 0;
+    }
+
+    isProgrammaticScrollRef.current = true;
+    el.scrollTop = targetY;
+
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      if (mainScrollContainerRef.current && activeViewKeyRef.current === viewScrollKey) {
+        isProgrammaticScrollRef.current = true;
+        mainScrollContainerRef.current.scrollTop = targetY;
+      }
+      raf2 = window.requestAnimationFrame(() => {
+        isProgrammaticScrollRef.current = false;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      if (raf2) window.cancelAnimationFrame(raf2);
+      isProgrammaticScrollRef.current = false;
+    };
+  }, [viewScrollKey]);
+
+  useEffect(() => {
+    shouldRestoreNextScrollRef.current = false;
+  });
 
   // OneSignal Native & Web Push Notification Hook
   const {
@@ -2077,6 +2168,7 @@ export default function Home() {
   };
 
   const handleCloseAuthScreen = () => {
+    shouldRestoreNextScrollRef.current = true;
     const dest = previousScreen && previousScreen !== "auth" ? previousScreen : "home";
     setCurrentScreen(dest);
     setPendingExamAction(null);
@@ -3620,6 +3712,9 @@ export default function Home() {
             <button 
               onClick={() => {
                 setDrawerOpen(false);
+                if (currentScreen !== "home") {
+                  shouldRestoreNextScrollRef.current = true;
+                }
                 if (currentScreen === "quiz") {
                   if (quizStarted && !isCompleted && !isTimedOut) {
                     attemptExitQuiz(() => {
@@ -3711,6 +3806,7 @@ export default function Home() {
                 if (currentScreen === "auth") {
                   handleCloseAuthScreen();
                 } else if (currentScreen === "packages") {
+                  shouldRestoreNextScrollRef.current = true;
                   const dest = (previousScreen && previousScreen !== "packages") ? previousScreen : "home";
                   setCurrentScreen(dest);
                 } else if (currentScreen === "quiz") {
@@ -3721,8 +3817,14 @@ export default function Home() {
                   } else {
                     handleResetQuizToHome();
                   }
+                } else if (currentScreen === "home") {
+                  mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollPositionsRef.current["home"] = 0;
                 } else {
-                  attemptExitQuiz(() => setCurrentScreen("home"));
+                  attemptExitQuiz(() => {
+                    shouldRestoreNextScrollRef.current = false;
+                    setCurrentScreen("home");
+                  });
                 }
                 if (soundEnabled) quizAudio.playClick();
               }}
@@ -3854,7 +3956,18 @@ export default function Home() {
           {/* Center: Apple UI Navigation Menu for Desktop */}
           <nav className="hidden lg:flex bg-slate-100/90 border border-slate-200/70 p-1 rounded-xl items-center gap-1 shadow-inner lg:mx-auto lg:mr-10 xl:mr-16 2xl:mr-24">
             <button
-              onClick={() => { setCurrentScreen("home"); if (soundEnabled) quizAudio.playClick(); }}
+              onClick={() => {
+                if (currentScreen === "home") {
+                  mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollPositionsRef.current["home"] = 0;
+                } else {
+                  attemptExitQuiz(() => {
+                    shouldRestoreNextScrollRef.current = false;
+                    setCurrentScreen("home");
+                  });
+                }
+                if (soundEnabled) quizAudio.playClick();
+              }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                 currentScreen === "home"
                   ? "bg-white text-[#FF6A00] shadow-2xs"
@@ -3865,7 +3978,18 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => { setCurrentScreen("profile"); if (soundEnabled) quizAudio.playClick(); }}
+              onClick={() => {
+                if (currentScreen === "profile") {
+                  mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollPositionsRef.current["profile"] = 0;
+                } else {
+                  attemptExitQuiz(() => {
+                    shouldRestoreNextScrollRef.current = false;
+                    setCurrentScreen("profile");
+                  });
+                }
+                if (soundEnabled) quizAudio.playClick();
+              }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                 currentScreen === "profile"
                   ? "bg-white text-[#FF6A00] shadow-2xs"
@@ -3876,7 +4000,18 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => { attemptExitQuiz(() => setCurrentScreen("rankings")); if (soundEnabled) quizAudio.playClick(); }}
+              onClick={() => {
+                if (currentScreen === "rankings") {
+                  mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollPositionsRef.current["rankings"] = 0;
+                } else {
+                  attemptExitQuiz(() => {
+                    shouldRestoreNextScrollRef.current = false;
+                    setCurrentScreen("rankings");
+                  });
+                }
+                if (soundEnabled) quizAudio.playClick();
+              }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                 currentScreen === "rankings"
                   ? "bg-white text-[#FF6A00] shadow-2xs"
@@ -3887,7 +4022,18 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => { setCurrentScreen("packages"); if (soundEnabled) quizAudio.playClick(); }}
+              onClick={() => {
+                if (currentScreen === "packages") {
+                  mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollPositionsRef.current["packages"] = 0;
+                } else {
+                  attemptExitQuiz(() => {
+                    shouldRestoreNextScrollRef.current = false;
+                    setCurrentScreen("packages");
+                  });
+                }
+                if (soundEnabled) quizAudio.playClick();
+              }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                 currentScreen === "packages"
                   ? "bg-white text-[#FF6A00] shadow-2xs"
@@ -4023,7 +4169,11 @@ export default function Home() {
         </header>
 
         {/* Scrollable Main Content Frame */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y px-0 sm:px-6 md:px-12 lg:px-[16.666%] xl:px-[16.666%] 2xl:px-[20%]">
+        <div
+          ref={mainScrollContainerRef}
+          onScroll={handleMainContainerScroll}
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-auto pb-24 sm:pb-28 md:pb-8 bg-slate-50/60 relative touch-pan-y px-0 sm:px-6 md:px-12 lg:px-[16.666%] xl:px-[16.666%] 2xl:px-[20%]"
+        >
           
           {/* ========================================================= */}
           {/* 1. SCREEN: HOME                                           */}
@@ -4543,24 +4693,18 @@ export default function Home() {
                           onClick={openHomeQuestionBank}
                           className="relative w-full h-full bg-white rounded-[calc(1rem-1px)] sm:rounded-[calc(1.5rem-1px)] px-2 py-2.5 sm:px-3.5 sm:py-3.5 flex items-center justify-between gap-1 sm:gap-2 active:scale-[0.99] cursor-pointer text-center"
                         >
-                          {/* Center Content: Title + Bottom Centered CTA */}
-                          <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-2 h-full">
-                            <div className="min-w-0 w-full flex flex-col items-center">
-                              <h4 className="font-black text-[12px] min-[380px]:text-[13px] sm:text-base text-slate-900 group-hover:text-[#FF6A00] transition-colors truncate max-w-full">
-                                প্রশ্ন ব্যাংক
-                              </h4>
-                            </div>
-
+                          {/* Center Content: Theme-colored button for প্রশ্ন ব্যাংক */}
+                          <div className="flex-1 min-w-0 flex flex-col items-center justify-center h-full">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openHomeQuestionBank();
                               }}
-                              className="px-2.5 sm:px-4 py-1.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-black shadow-sm shadow-orange-500/20 self-center mx-auto"
+                              className="px-3 sm:px-4 py-2 sm:py-2.5 bg-[#FF6A00] hover:bg-[#e55f00] text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer active:scale-95 inline-flex items-center justify-center gap-1 text-[12px] min-[380px]:text-[13px] sm:text-sm font-black shadow-sm shadow-orange-500/20 max-w-full"
                             >
-                              <span>প্রশ্ন দেখুন</span>
-                              <ChevronRight className="w-3.5 h-3.5 stroke-[2.6px]" />
+                              <span className="truncate">প্রশ্ন ব্যাংক</span>
+                              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.6px] shrink-0" />
                             </button>
                           </div>
 
@@ -6711,6 +6855,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => {
+                            shouldRestoreNextScrollRef.current = true;
                             setSelectedCircularPost(null);
                             if (soundEnabled) quizAudio.playClick();
                           }}
@@ -7804,6 +7949,7 @@ export default function Home() {
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => {
+                        shouldRestoreNextScrollRef.current = true;
                         setCurrentScreen(previousScreen || "home");
                         if (soundEnabled) quizAudio.playClick();
                       }}
@@ -8075,7 +8221,10 @@ export default function Home() {
           {/* ========================================================= */}
           {currentScreen === "rankings" && (
             <LeaderboardView
-              onBack={() => setCurrentScreen("home")}
+              onBack={() => {
+                shouldRestoreNextScrollRef.current = true;
+                setCurrentScreen("home");
+              }}
               currentUserProfile={currentUser}
               profileAvatarUrl={profileAvatarUrl}
             />
@@ -8085,14 +8234,20 @@ export default function Home() {
           {/* 10. SCREEN: PRIVACY POLICY VIEW                           */}
           {/* ========================================================= */}
           {currentScreen === "privacy-policy" && (
-            <PrivacyPolicyView onBack={() => setCurrentScreen("home")} />
+            <PrivacyPolicyView onBack={() => {
+              shouldRestoreNextScrollRef.current = true;
+              setCurrentScreen("home");
+            }} />
           )}
 
           {/* ========================================================= */}
           {/* 11. SCREEN: CONTACT US VIEW                               */}
           {/* ========================================================= */}
           {currentScreen === "contact" && (
-            <ContactUsView onBack={() => setCurrentScreen("home")} />
+            <ContactUsView onBack={() => {
+              shouldRestoreNextScrollRef.current = true;
+              setCurrentScreen("home");
+            }} />
           )}
 
           {/* ========================================================= */}
@@ -8678,7 +8833,15 @@ export default function Home() {
           <button
             onClick={() => {
               setDrawerOpen(false);
-              attemptExitQuiz(() => setCurrentScreen("home"));
+              if (currentScreen === "home") {
+                mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                scrollPositionsRef.current["home"] = 0;
+              } else {
+                attemptExitQuiz(() => {
+                  shouldRestoreNextScrollRef.current = false;
+                  setCurrentScreen("home");
+                });
+              }
               if (soundEnabled) quizAudio.playClick();
             }}
             className="flex flex-col items-center justify-center flex-1 py-1 active:scale-95 transition-transform cursor-pointer"
@@ -8702,7 +8865,15 @@ export default function Home() {
           <button
             onClick={() => {
               setDrawerOpen(false);
-              attemptExitQuiz(() => setCurrentScreen("rankings"));
+              if (currentScreen === "rankings") {
+                mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                scrollPositionsRef.current["rankings"] = 0;
+              } else {
+                attemptExitQuiz(() => {
+                  shouldRestoreNextScrollRef.current = false;
+                  setCurrentScreen("rankings");
+                });
+              }
               if (soundEnabled) quizAudio.playClick();
             }}
             className="flex flex-col items-center justify-center flex-1 py-1 active:scale-95 transition-transform cursor-pointer"
@@ -8726,7 +8897,15 @@ export default function Home() {
           <button
             onClick={() => {
               setDrawerOpen(false);
-              attemptExitQuiz(() => setCurrentScreen("packages"));
+              if (currentScreen === "packages") {
+                mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                scrollPositionsRef.current["packages"] = 0;
+              } else {
+                attemptExitQuiz(() => {
+                  shouldRestoreNextScrollRef.current = false;
+                  setCurrentScreen("packages");
+                });
+              }
               if (soundEnabled) quizAudio.playClick();
             }}
             className="flex flex-col items-center justify-center flex-1 py-1 active:scale-95 transition-transform cursor-pointer"
@@ -8750,7 +8929,15 @@ export default function Home() {
           <button
             onClick={() => {
               setDrawerOpen(false);
-              attemptExitQuiz(() => setCurrentScreen("profile"));
+              if (currentScreen === "profile") {
+                mainScrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                scrollPositionsRef.current["profile"] = 0;
+              } else {
+                attemptExitQuiz(() => {
+                  shouldRestoreNextScrollRef.current = false;
+                  setCurrentScreen("profile");
+                });
+              }
               if (soundEnabled) quizAudio.playClick();
             }}
             className="flex flex-col items-center justify-center flex-1 py-1 active:scale-95 transition-transform cursor-pointer"
