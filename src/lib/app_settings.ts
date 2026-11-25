@@ -53,7 +53,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   prepHubHomeLimit: 4,
   proSectionHomeLimit: 4,
   proSectionActive: true,
-  popupNotification: DEFAULT_POPUP_CONFIG
+  popupNotification: DEFAULT_POPUP_CONFIG,
+  pwaAssetLinks: {
+    packageName: "com.bd.jobmaster.app",
+    sha256Fingerprints: [
+      "C4:2D:E6:9A:65:2F:A7:A6:43:F9:4A:B4:A9:51:DC:9A:C2:E6:FC:0B:BA:73:9F:66:B3:1D:13:24:D7:BF:DA:8E",
+    ],
+  },
 };
 
 const CLOUD_KV_URL = "https://kvdb.io/A84N9zB1K2m0P3L4x5Q6/jobmaster_app_settings_v2";

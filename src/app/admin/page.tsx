@@ -94,7 +94,7 @@ import {
 import { ExamPaper, fetchExamPapersFromDb, fetchExamPaperById, saveExamPaperToDb, deleteExamPaperFromDb, getExamStatus, sortExamPapersForDisplay, subscribeToExamPapers, isQuestionBankPaper, isQuestionBankSubject, QUESTION_BANK_SUBJECT, QUESTION_BANK_SUBJECT_VARIANTS, QB_MONTH_NAMES, QB_MONTH_NAMES_BN, formatQuestionBankDisplayDate, parseQuestionBankDateInfo, sortQuestionBankPapers, toBanglaDigits, getCachedExamParticipantCounts, fetchExamParticipantCountsFromDb, subscribeToExamParticipantCounts } from "../../lib/exams";
 import { PackageItem, fetchPackagesFromDb, savePackageToDb, deletePackageFromDb, subscribeToPackages, syncAllPackagesToSupabase } from "../../lib/packages";
 import { PaymentTransaction, UserSubscription, SUBSCRIPTIONS_BKASH_SUPABASE_SQL, formatSubscriptionDateBn } from "../../lib/subscriptions";
-import { AppSettings, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
+import { AppSettings, DEFAULT_APP_SETTINGS, DEFAULT_POPUP_CONFIG, getCachedAppSettings, fetchAppSettingsFromDb, saveAppSettingsToDb, subscribeToAppSettings } from "../../lib/app_settings";
 import { 
   CourseItem, 
   PrepSubjectItem, 
@@ -552,10 +552,16 @@ export default function AdminPage() {
   // App Settings State (Grid Display Limits)
   const [appSettings, setAppSettings] = useState<AppSettings>(getCachedAppSettings());
   const [assetLinksPkgInput, setAssetLinksPkgInput] = useState<string>(
-    getCachedAppSettings().pwaAssetLinks?.packageName || "com.bd.jobmaster.app"
+    getCachedAppSettings().pwaAssetLinks?.packageName ||
+      DEFAULT_APP_SETTINGS.pwaAssetLinks?.packageName ||
+      "com.bd.jobmaster.app"
   );
   const [assetLinksShaInput, setAssetLinksShaInput] = useState<string>(
-    (getCachedAppSettings().pwaAssetLinks?.sha256Fingerprints || []).join("\n")
+    (
+      (getCachedAppSettings().pwaAssetLinks?.sha256Fingerprints?.length
+        ? getCachedAppSettings().pwaAssetLinks?.sha256Fingerprints
+        : DEFAULT_APP_SETTINGS.pwaAssetLinks?.sha256Fingerprints) || []
+    ).join("\n")
   );
   const [savingAssetLinks, setSavingAssetLinks] = useState<boolean>(false);
   const [assetLinksSaveMsg, setAssetLinksSaveMsg] = useState<string>("");
@@ -1267,15 +1273,29 @@ export default function AdminPage() {
     fetchAppSettingsFromDb(true).then((s) => {
       if (s) {
         setAppSettings(s);
-        setAssetLinksPkgInput(s.pwaAssetLinks?.packageName || "com.bd.jobmaster.app");
-        setAssetLinksShaInput((s.pwaAssetLinks?.sha256Fingerprints || []).join("\n"));
+        setAssetLinksPkgInput(
+          s.pwaAssetLinks?.packageName ||
+            DEFAULT_APP_SETTINGS.pwaAssetLinks?.packageName ||
+            "com.bd.jobmaster.app"
+        );
+        const fps = s.pwaAssetLinks?.sha256Fingerprints?.length
+          ? s.pwaAssetLinks.sha256Fingerprints
+          : DEFAULT_APP_SETTINGS.pwaAssetLinks?.sha256Fingerprints || [];
+        setAssetLinksShaInput(fps.join("\n"));
       }
     });
     const unsubAppSettings = subscribeToAppSettings((s) => {
       if (s) {
         setAppSettings(s);
-        setAssetLinksPkgInput(s.pwaAssetLinks?.packageName || "com.bd.jobmaster.app");
-        setAssetLinksShaInput((s.pwaAssetLinks?.sha256Fingerprints || []).join("\n"));
+        setAssetLinksPkgInput(
+          s.pwaAssetLinks?.packageName ||
+            DEFAULT_APP_SETTINGS.pwaAssetLinks?.packageName ||
+            "com.bd.jobmaster.app"
+        );
+        const fps = s.pwaAssetLinks?.sha256Fingerprints?.length
+          ? s.pwaAssetLinks.sha256Fingerprints
+          : DEFAULT_APP_SETTINGS.pwaAssetLinks?.sha256Fingerprints || [];
+        setAssetLinksShaInput(fps.join("\n"));
       }
     });
     fetchCoursesFromDb(true).then((courses) => {

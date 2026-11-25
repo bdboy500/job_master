@@ -97,6 +97,12 @@ export async function GET() {
     }
   }
 
+  const DEFAULT_PLAY_SHA256 =
+    "C4:2D:E6:9A:65:2F:A7:A6:43:F9:4A:B4:A9:51:DC:9A:C2:E6:FC:0B:BA:73:9F:66:B3:1D:13:24:D7:BF:DA:8E";
+  if (fingerprints.size === 0) {
+    fingerprints.add(DEFAULT_PLAY_SHA256);
+  }
+
   const payload = [
     {
       relation: [
