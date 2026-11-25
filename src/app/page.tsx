@@ -94,6 +94,7 @@ import { AppSettings, getCachedAppSettings, fetchAppSettingsFromDb, subscribeToA
 import { questionMatchesSearch } from "../lib/search_normalizer";
 import { quizAudio } from "../lib/audio";
 import { PwaProvider, BottomInstallBanner, InstallPwaPopup } from "../components/InstallPwaPopup";
+import SmartAppBanner from "../components/SmartAppBanner";
 import ProfileImage from "../components/ProfileImage";
 import LeaderboardSkeleton from "../components/LeaderboardSkeleton";
 import { useModalHistory, useExamExitProtection, useAppNavigationHistory, generateShareUrl, buildUrlSearchString } from "../hooks/useBackButton";
@@ -4179,7 +4180,9 @@ export default function Home() {
           {/* 1. SCREEN: HOME                                           */}
           {/* ========================================================= */}
           {currentScreen === "home" && (
-            <div className="px-1.5 sm:px-2.5 pt-2 sm:pt-3 pb-5 space-y-3.5 sm:space-y-5 animate-fade-in">
+            <>
+              <SmartAppBanner />
+              <div className="px-1.5 sm:px-2.5 pt-2 sm:pt-3 pb-5 space-y-3.5 sm:space-y-5 animate-fade-in">
               
               {/* ========================================================= */}
               {/* LIVE EXAM SECTION (লাইভ পরীক্ষা)                         */}
@@ -4843,6 +4846,7 @@ export default function Home() {
               )}
 
             </div>
+            </>
           )}
 
           {/* ========================================================= */}

@@ -113,7 +113,6 @@ export function generateShareUrl(params: {
 }): string {
   if (typeof window === "undefined") return "";
   const origin = window.location.origin;
-  const path = window.location.pathname;
   const searchParams = new URLSearchParams();
   if (params.view && params.view !== "home") {
     searchParams.set("view", params.view);
@@ -128,7 +127,7 @@ export function generateShareUrl(params: {
     searchParams.set("q", params.q);
   }
   const queryString = searchParams.toString();
-  return `${origin}${path}${queryString ? `?${queryString}` : ""}`;
+  return `${origin}/open${queryString ? `?${queryString}` : ""}`;
 }
 
 /**

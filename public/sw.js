@@ -1,7 +1,7 @@
 // Job Master Performance-First & Offline-Resilient PWA Service Worker
-const SHELL_CACHE = 'jobmaster-shell-v12';
-const STATIC_CACHE = 'jobmaster-static-v12';
-const DATA_CACHE = 'jobmaster-data-v12';
+const SHELL_CACHE = 'jobmaster-shell-v13';
+const STATIC_CACHE = 'jobmaster-static-v13';
+const DATA_CACHE = 'jobmaster-data-v13';
 const VALID_CACHES = [SHELL_CACHE, STATIC_CACHE, DATA_CACHE];
 const IS_DEV_PREVIEW_HOST =
   self.location.hostname.includes('ais-dev') ||
@@ -81,12 +81,14 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Bypass non-HTTP, auth callbacks, admin, dev preview bundles, and third-party services
+  // Bypass non-HTTP, auth callbacks, admin, smart open redirect, assetlinks, dev preview bundles, and third-party services
   if (
     !url.protocol.startsWith('http') ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith('/auth/') ||
     url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/open') ||
+    url.pathname.startsWith('/.well-known/') ||
     url.pathname.includes('_next/webpack-hmr') ||
     (IS_DEV_PREVIEW_HOST && url.pathname.startsWith('/_next/'))
   ) {
